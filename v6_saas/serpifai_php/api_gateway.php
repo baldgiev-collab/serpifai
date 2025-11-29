@@ -5,6 +5,37 @@
  * Handles authentication, credit validation, and API proxying
  */
 
+// Error handling
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("PHP Error [$errno]: $errstr in $errfile:$errline");
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+    }
+    echo json_encode([
+        'success' => false,
+        'error' => 'Server error: ' . $errstr,
+        'details' => ['file' => $errfile, 'line' => $errline]
+    ]);
+    exit;
+});
+
+set_exception_handler(function($exception) {
+    error_log("Exception: " . $exception->getMessage());
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+    }
+    echo json_encode([
+        'success' => false,
+        'error' => 'Server error: ' . $exception->getMessage()
+    ]);
+    exit;
+});
+
 require_once __DIR__ . '/config/db_config.php';
 
 // CORS Headers
@@ -24,7 +55,14 @@ $method = $_SERVER['REQUEST_METHOD'];
 $input = null;
 
 if ($method === 'POST') {
-    $input = json_decode(file_get_contents('php://input'), true);
+    $rawInput = file_get_contents('php://input');
+    if (!empty($rawInput)) {
+        $input = json_decode($rawInput, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log("JSON decode error: " . json_last_error_msg());
+            $input = null;
+        }
+    }
 } else if ($method === 'GET') {
     $input = $_GET;
 }
@@ -115,24 +153,34 @@ try {
 // ============================================================================
 
 function authenticateUser($license) {
-    $db = getDB();
-    
-    $stmt = $db->prepare("
-        SELECT * FROM users 
-        WHERE license_key = ? AND status = 'active'
-    ");
-    $stmt->execute([$license]);
-    $user = $stmt->fetch();
-    
-    if (!$user) {
-        sendError('Invalid or inactive license key', 401);
+    try {
+        $db = getDB();
+        
+        $stmt = $db->prepare("
+            SELECT * FROM users 
+            WHERE license_key = ? AND status = 'active'
+        ");
+        
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $db->errorInfo()[2]);
+        }
+        
+        $stmt->execute([$license]);
+        $user = $stmt->fetch();
+        
+        if (!$user) {
+            sendError('Invalid or inactive license key', 401);
+        }
+        
+        // Update last login
+        $updateStmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+        $updateStmt->execute([$user['id']]);
+        
+        return $user;
+    } catch (Exception $e) {
+        error_log("authenticateUser error: " . $e->getMessage());
+        sendError('Authentication failed: ' . $e->getMessage(), 500);
     }
-    
-    // Update last login
-    $updateStmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-    $updateStmt->execute([$user['id']]);
-    
-    return $user;
 }
 
 function calculateCreditCost($action, $payload) {
@@ -286,16 +334,26 @@ function handleUserAction($action, $payload, $license) {
 }
 
 function updateUserCredits($license, $newCredits) {
-    $db = getDB();
-    
-    $stmt = $db->prepare("
-        UPDATE users 
-        SET credits = ?,
-            total_credits_used = total_credits_used + (? - credits),
-            updated_at = NOW() 
-        WHERE license_key = ?
-    ");
-    $stmt->execute([$newCredits, $newCredits, $license]);
+    try {
+        $db = getDB();
+        
+        $stmt = $db->prepare("
+            UPDATE users 
+            SET credits = ?,
+                total_credits_used = total_credits_used + (? - credits),
+                updated_at = NOW() 
+            WHERE license_key = ?
+        ");
+        
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $db->errorInfo()[2]);
+        }
+        
+        $stmt->execute([$newCredits, $newCredits, $license]);
+    } catch (Exception $e) {
+        error_log("updateUserCredits error: " . $e->getMessage());
+        throw $e;
+    }
 }
 
 function logTransaction($userId, $action, $cost, $result) {
