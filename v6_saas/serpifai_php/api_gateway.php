@@ -58,7 +58,8 @@ if (empty($license) && !$isUserAction) {
 }
 
 try {
-    // Handle user management actions separately (no authentication needed)\n    if ($isUserAction) {
+    // Handle user management actions separately (no authentication needed)
+    if ($isUserAction) {
         $result = handleUserAction($action, $payload, $license);
         sendJSON($result);
     }
@@ -249,38 +250,7 @@ function executeAction($action, $payload, $user, $license) {
     throw new Exception('Unknown action: ' . $action);
 }
 
-function handleGeminiAction($action, $payload) {
-    require_once 'apis/gemini_api.php';
-    return callGeminiAPI($action, $payload);
-}
 
-function handleSerperAction($action, $payload) {
-    require_once 'apis/serper_api.php';
-    return handleSerperAction($action, $payload, '');
-}
-
-function handleWorkflowAction($action, $payload, $license) {
-    require_once 'handlers/workflow_handler.php';
-    $user = authenticateUser($license);
-    return handleWorkflowAction($action, $payload, $license, $user['id']);
-}
-
-function handleCompetitorAction($action, $payload, $license) {
-    require_once 'handlers/competitor_handler.php';
-    $user = authenticateUser($license);
-    return handleCompetitorAction($action, $payload, $license, $user['id']);
-}
-
-function handleProjectActionWrapper($action, $payload, $license) {
-    require_once 'handlers/project_handler.php';
-    return handleProjectAction($action, $payload, $license);
-}
-
-function handleContentAction($action, $payload) {
-    require_once __DIR__ . '/handlers/content_handler.php';
-    $user = authenticateUser($_REQUEST['license'] ?? '');
-    return handleContentAction($action, $payload, $_REQUEST['license'] ?? '', $user['id']);
-}
 
 function handleUserAction($action, $payload, $license) {
     require_once __DIR__ . '/handlers/user_handler.php';
