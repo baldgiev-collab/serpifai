@@ -51,7 +51,8 @@ function getDB() {
             $db = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
             error_log("Database connection failed: " . $e->getMessage());
-            throw new Exception("Database connection failed");
+            // Return the actual PDO error message, not a generic one
+            throw new Exception("Database error: " . $e->getMessage() . " (Code: " . $e->getCode() . ")");
         }
     }
     

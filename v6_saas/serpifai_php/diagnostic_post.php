@@ -30,6 +30,13 @@ try {
 } catch (Exception $e) {
     $tests[1]['status'] = 'FAILED';
     $tests[1]['error'] = $e->getMessage();
+    $tests[1]['details'] = [
+        'host' => DB_HOST,
+        'database' => DB_NAME,
+        'user' => DB_USER,
+        'port' => 'default (3306)',
+        'note' => 'Check Hostinger database credentials match'
+    ];
     echo json_encode(['success' => false, 'tests' => $tests]);
     exit;
 }
