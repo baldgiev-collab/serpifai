@@ -4,18 +4,26 @@
  * Hostinger MySQL Connection
  */
 
-// Database credentials
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'U187453795_SrpAIDataGate');
-define('DB_USER', 'u187453795_Admin');
-define('DB_PASS', 'OoRB1Pz9i?H');
+// Load environment variables from .env file
+if (file_exists(__DIR__ . '/.env')) {
+    $env = parse_ini_file(__DIR__ . '/.env');
+    foreach ($env as $key => $value) {
+        $_ENV[$key] = $value;
+    }
+}
+
+// Database credentials (read from environment)
+define('DB_HOST', $_ENV['DB_HOST'] ?? 'localhost');
+define('DB_NAME', $_ENV['DB_NAME'] ?? '');
+define('DB_USER', $_ENV['DB_USER'] ?? '');
+define('DB_PASS', $_ENV['DB_PASS'] ?? '');
 define('DB_CHARSET', 'utf8mb4');
 
-// API Keys
-define('GEMINI_API_KEY', 'AIzaSyClWii1Vktx1izC0WnYRlyFwbi9pFgk_1E');
-define('SERPER_API_KEY', 'f7dc4d3ac3252f2cdb8281c4cf57200223e1d1d2');
-define('PAGE_SPEED_API_KEY', 'AIzaSyCqYuEgWHKVxL3EtaY1MhLmEm-eGFLF2Cc');
-define('OPEN_PAGERANK_API_KEY', 'w00ckwcko4g8c0so4wcc040owwwswck8sgsg4sc4');
+// API Keys (read from environment - NEVER hardcode!)
+define('GEMINI_API_KEY', $_ENV['GEMINI_API_KEY'] ?? '');
+define('SERPER_API_KEY', $_ENV['SERPER_API_KEY'] ?? '');
+define('PAGE_SPEED_API_KEY', $_ENV['PAGE_SPEED_API_KEY'] ?? '');
+define('OPEN_PAGERANK_API_KEY', $_ENV['OPEN_PAGERANK_API_KEY'] ?? '');
 
 // Apps Script Project
 define('APPS_SCRIPT_PROJECT_ID', '1ccoF_sOZRHtmee-M9h-MZ5AZMS44tq2SpZYf5TJvRMErBOIEM489tpY3');

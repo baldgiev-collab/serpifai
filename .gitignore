@@ -1,0 +1,32 @@
+# Environment variables with secrets
+.env
+.env.local
+.env.*.local
+
+# Node/npm
+node_modules/
+npm-debug.log
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
