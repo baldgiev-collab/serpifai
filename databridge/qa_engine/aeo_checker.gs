@@ -1,0 +1,1 @@
+function QA_aeo(text){text=String(text||'');var faq=/\bFAQ\b|<details>|<summary>/i.test(text),list=/\n\s*[-*]\s+|<li>/i.test(text),qa=/\bQ:\b|\bA:\b/.test(text);return Math.min(100,38+(faq?18:0)+(list?12:0)+(qa?8:0));}

@@ -1,0 +1,1 @@
+function APIS_dataForSEO(q){var cred=PropertiesService.getScriptProperties().getProperty('DATAFORSEO_KEY');if(!cred)return{ok:false,msg:'No DataForSEO cred'};return {ok:false,msg:'Implement REST calls as needed'};}

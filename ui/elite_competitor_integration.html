@@ -1,0 +1,875 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE COMPETITOR ANALYSIS INTEGRATION
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Wires up Stage 1 "Analyze Competitors" button to backend orchestrator
+ * Handles: Loading states, progress tracking, error handling, result rendering
+ * Uses: google.script.run to call Code.gs → runEliteCompetitorAnalysis()
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Initialize competitor analysis button handler
+ */
+function initCompetitorAnalysis() {
+  const analyzeBtn = document.getElementById('btnAnalyzeCompetitors');
+  
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', handleCompetitorAnalysisClick);
+    console.log('✅ Competitor analysis button initialized');
+  } else {
+    console.warn('⚠️ Competitor analysis button not found');
+  }
+}
+
+/**
+ * Handle analyze button click
+ */
+async function handleCompetitorAnalysisClick(event) {
+  event.preventDefault();
+  
+  console.log('🚀 Starting competitor analysis...');
+  
+  try {
+    // 1. COLLECT COMPETITOR URLs (Optional - can analyze existing data from sheets)
+    const competitorInput = document.getElementById('keyCompetitors');
+    let competitorUrls = [];
+    
+    if (competitorInput && competitorInput.value.trim()) {
+      competitorUrls = competitorInput.value
+        .split(/[,\n]/)
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+      
+      if (competitorUrls.length > 6) {
+        showToast('Maximum 6 competitors allowed', 'warning');
+        return;
+      }
+      
+      console.log(`📊 Will analyze ${competitorUrls.length} new competitors...`);
+    } else {
+      console.log('📊 No new competitors entered - will read existing data from Google Sheets');
+      competitorUrls = []; // Empty array = read from sheets
+    }
+    
+    // 2. COLLECT PROJECT CONTEXT from Stage 1 form
+    const projectContext = collectProjectContext();
+    console.log('🎯 Project:', projectContext.brandName || 'Unknown');
+    
+    // 3. SHOW LOADING STATE
+    showCompetitorLoadingState(competitorUrls.length || 'existing');
+    
+    // 4. CALL BACKEND API (will fallback to sheets if HTTP fails or no new competitors)
+    const result = await callCompetitorAnalysisAPI(competitorUrls, projectContext);
+    
+    // 5. HIDE LOADING, SHOW RESULTS
+    hideCompetitorLoadingState();
+    
+    if (result && result.success) {
+      // Switch to competitor tab
+      switchToCompetitorTab();
+      
+      // Render results
+      renderCompetitorIntelligence(result);
+      
+      const competitorCount = result.competitors ? Object.keys(result.competitors).length : 0;
+      showToast(`✅ Analysis complete! ${competitorCount} competitors loaded`, 'success');
+    } else {
+      showToast(result?.error || 'Analysis failed', 'error');
+      showCompetitorError(result?.error || 'Unknown error occurred');
+    }
+    
+  } catch (error) {
+    console.error('❌ Competitor analysis error:', error);
+    hideCompetitorLoadingState();
+    showToast('Analysis failed: ' + error.message, 'error');
+    showCompetitorError(error.message);
+  }
+}
+
+/**
+ * Collect project context from Stage 1 form fields
+ */
+function collectProjectContext() {
+  return {
+    // Required fields
+    brandName: getFieldValue('brandName'),
+    targetAudience: getFieldValue('targetAudience'),
+    audiencePains: getFieldValue('audiencePains'),
+    audienceDesired: getFieldValue('audienceDesired'),
+    productOrService: getFieldValue('productOrService'),
+    coreTopic: getFieldValue('coreTopic'),
+    quarterlyObjective: getFieldValue('quarterlyObjective'),
+    
+    // Optional strategic fields
+    brandIdeology: getFieldValue('brandIdeology'),
+    brandArchetype: getFieldValue('brandArchetype'),
+    brandLexicon: getFieldValue('brandLexicon'),
+    uvp: getFieldValue('uvp'),
+    existingMessaging: getFieldValue('existingMessaging'),
+    
+    // Audience intelligence
+    secondaryAudience: getFieldValue('secondaryAudience'),
+    customerDemographics: getFieldValue('customerDemographics'),
+    geographicFocus: getFieldValue('geographicFocus'),
+    industryVertical: getFieldValue('industryVertical'),
+    
+    // Competitive advantage
+    competitiveAdvantages: getFieldValue('competitiveAdvantages'),
+    coreMarketProblem: getFieldValue('coreMarketProblem'),
+    
+    // Goals & channels
+    northStarKpis: getFieldValue('northStarKpis'),
+    contentGoals: getFieldValue('contentGoals'),
+    primaryChannels: getFieldValue('primaryChannels'),
+    contentFormats: getFieldValue('contentFormats'),
+    seasonality: getFieldValue('seasonality'),
+    futureVision: getFieldValue('futureVision')
+  };
+}
+
+/**
+ * Get field value helper
+ */
+function getFieldValue(fieldId) {
+  const field = document.getElementById(fieldId);
+  return field ? field.value.trim() : '';
+}
+
+/**
+ * Call backend API for competitor analysis with fallback to Google Sheets
+ * Uses google.script.run to call Code.gs function
+ */
+async function callCompetitorAnalysisAPI(competitors, projectContext) {
+  console.log('📡 Starting competitor analysis...');
+  console.log('   Competitors:', competitors.length);
+  console.log('   Project:', projectContext.brandName || 'Unknown');
+  
+  return new Promise((resolve, reject) => {
+    // If competitors provided, ONLY analyze those specific competitors
+    if (competitors && competitors.length > 0) {
+      console.log(`📤 Analyzing ${competitors.length} specific competitors: ${competitors.join(', ')}`);
+      
+      google.script.run
+        .withSuccessHandler(result => {
+          console.log('📥 HTTP response received:', result);
+          
+          if (result && result.success) {
+            console.log('✅ HTTP call successful - analyzing your specific competitors');
+            console.log('   Total metrics:', result.metadata?.totalMetrics || 0);
+            
+            // 🔍 DIAGNOSTIC: Check competitor structure before conversion
+            if (result.competitors && result.competitors.length > 0) {
+              console.log('🔍 DIAGNOSTIC: First competitor structure:', {
+                type: typeof result.competitors[0],
+                value: result.competitors[0],
+                isString: typeof result.competitors[0] === 'string',
+                isObject: typeof result.competitors[0] === 'object',
+                domain: result.competitors[0].domain || result.competitors[0],
+                hasCategories: !!result.competitors[0].categories,
+                hasProcessedMetrics: !!result.competitors[0].processedMetrics,
+                categoriesKeys: result.competitors[0].categories ? Object.keys(result.competitors[0].categories) : [],
+                processedMetricsKeys: result.competitors[0].processedMetrics ? Object.keys(result.competitors[0].processedMetrics) : []
+              });
+              
+              // Check if there's a separate data structure
+              console.log('🔍 DIAGNOSTIC: Checking for separate data structures:', {
+                hasCompetitorData: !!result.competitorData,
+                competitorDataKeys: result.competitorData ? Object.keys(result.competitorData) : [],
+                hasData: !!result.data,
+                dataKeys: result.data ? Object.keys(result.data) : [],
+                allResultKeys: Object.keys(result)
+              });
+            }
+            
+            // Convert object to array if needed
+            const convertedResult = convertCompetitorsToArray(result);
+            resolve(convertedResult);
+          } else {
+            console.error('❌ HTTP call failed:', result ? result.error : 'Unknown');
+            
+            // FALLBACK: Create minimal competitor objects for domain estimates
+            if (result && result.error && result.error.includes('429')) {
+              console.warn('⚠️ Backend rate limited (429) - creating fallback competitor objects');
+              
+              const fallbackResult = {
+                success: true,
+                competitors: competitors.map(url => {
+                  // Clean domain from URL
+                  const domain = url.replace(/^https?:\/\//, '').replace(/\/$/, '').split('/')[0];
+                  return {
+                    domain: domain,
+                    url: url,
+                    categories: {},  // Empty - will trigger domain estimates
+                    rawData: {},
+                    processedMetrics: {},
+                    _fallback: true,
+                    _fallbackReason: '429 rate limit'
+                  };
+                }),
+                metadata: {
+                  totalMetrics: 0,
+                  completeness: 0,
+                  analysisDate: new Date().toISOString(),
+                  _fallback: true
+                },
+                overview: {},
+                charts: {},
+                insights: {
+                  summary: 'Backend temporarily unavailable (rate limited). Showing domain-based estimates from industry benchmarks. Configure API keys for real-time data.'
+                }
+              };
+              
+              console.log('✅ Created fallback objects for', fallbackResult.competitors.length, 'domains');
+              resolve(fallbackResult);
+            } else {
+              console.error('⚠️ CANNOT FALLBACK - Non-429 error or no competitors');
+              reject(new Error('Backend analysis failed: ' + (result ? result.error : 'Unknown error')));
+            }
+          }
+        })
+        .withFailureHandler(httpError => {
+          console.error('❌ HTTP call failed:', httpError);
+          console.error('⚠️ CANNOT FALLBACK TO SHEETS - You entered specific competitors');
+          console.error('   The backend needs to analyze these URLs:', competitors);
+          reject(new Error('Backend connection failed: ' + httpError.message));
+        })
+        .runEliteCompetitorAnalysis(competitors, projectContext);
+    } else {
+      // No new competitors - just read existing data from sheets
+      console.log('📊 No new competitors - reading existing data from Google Sheets...');
+      
+      google.script.run
+        .withSuccessHandler(sheetResult => {
+          console.log('✅ Successfully read data from Google Sheets');
+          console.log('   Competitors found:', sheetResult.competitors ? Object.keys(sheetResult.competitors).length : 0);
+          
+          // CRITICAL: Convert object to array
+          const convertedResult = convertCompetitorsToArray(sheetResult);
+          resolve(convertedResult);
+        })
+        .withFailureHandler(sheetError => {
+          console.error('❌ Failed to read from Google Sheets');
+          console.error('   Sheets error:', sheetError);
+          reject(new Error('Failed to load data: ' + (sheetError.message || sheetError.toString())));
+        })
+        .readEliteCompetitorDataFromSheets();
+    }
+  });
+}
+
+/**
+ * Convert competitors object to array format expected by renderer
+ * Google Sheets returns: {domain1: {categories: {}}, domain2: {categories: {}}}
+ * DataBridge may return: [domain1, domain2, ...] (strings)
+ * Renderer expects: [{domain, url, categories}, {domain, url, categories}]
+ */
+function convertCompetitorsToArray(result) {
+  console.log('🔄 Converting competitors object to array...');
+  
+  if (!result || !result.competitors) {
+    console.warn('⚠️ No competitors data to convert');
+    return result;
+  }
+  
+  // Check if already an array
+  if (Array.isArray(result.competitors)) {
+    console.log('✅ Competitors in array format:', result.competitors.length, 'items');
+    
+    // Check if array contains strings (domains only) or objects
+    const firstItem = result.competitors[0];
+    
+    if (typeof firstItem === 'string') {
+      console.warn('⚠️ Competitors are strings only - converting to objects with domain property');
+      
+      // Convert string array to object array
+      const competitorsArray = result.competitors.map(domain => ({
+        domain: domain,
+        url: 'https://' + domain.replace(/\/$/, ''),
+        categories: result.competitorData?.[domain]?.categories || {},
+        rawData: result.competitorData?.[domain]?.rawData || {},
+        processedMetrics: result.competitorData?.[domain]?.processedMetrics || {},
+        _converted: true
+      }));
+      
+      console.log('✅ Converted', competitorsArray.length, 'string domains to objects');
+      console.log('🔍 First converted competitor:', {
+        domain: competitorsArray[0].domain,
+        hasCategories: Object.keys(competitorsArray[0].categories || {}).length > 0,
+        hasRawData: Object.keys(competitorsArray[0].rawData || {}).length > 0,
+        categoriesKeys: Object.keys(competitorsArray[0].categories || {}),
+        rawDataKeys: Object.keys(competitorsArray[0].rawData || {})
+      });
+      
+      return {
+        ...result,
+        competitors: competitorsArray
+      };
+    }
+    
+    console.log('✅ Competitors already in object format');
+    return result;
+  }
+  
+  // Convert object to array
+  const competitorsArray = Object.entries(result.competitors).map(([domain, data]) => ({
+    domain: domain,
+    url: data.url || 'https://' + domain,
+    categories: data.categories || {},
+    rawData: data.rawData || {},
+    processedMetrics: data.processedMetrics || {},
+    ...data
+  }));
+  
+  console.log(`✅ Converted ${competitorsArray.length} competitors from object to array format`);
+  
+  return {
+    ...result,
+    competitors: competitorsArray
+  };
+}
+
+/**
+ * Show competitor loading state
+ */
+function showCompetitorLoadingState(competitorCount) {
+  const loadingState = document.getElementById('comp-loading-state');
+  const statusEl = document.getElementById('comp-loading-status');
+  const progressEl = document.getElementById('comp-loading-progress');
+  const detailsEl = document.getElementById('comp-loading-details');
+  
+  if (!loadingState) return;
+  
+  // Hide other states
+  document.getElementById('comp-empty-state').style.display = 'none';
+  document.getElementById('comp-results').style.display = 'none';
+  
+  // Show loading
+  loadingState.style.display = 'block';
+  
+  // Update status
+  if (statusEl) {
+    statusEl.textContent = `Analyzing ${competitorCount} competitor${competitorCount > 1 ? 's' : ''}...`;
+  }
+  
+  // Animate progress
+  animateProgressBar(progressEl, competitorCount);
+  
+  // Show analysis steps
+  if (detailsEl) {
+    const steps = [
+      { text: '🔍 Fetching SEO metrics...', delay: 0 },
+      { text: '🏆 Collecting domain authority...', delay: 2000 },
+      { text: '⚡ Analyzing page speed...', delay: 4000 },
+      { text: '🔎 Gathering SERP intelligence...', delay: 6000 },
+      { text: '🤖 Running AI analysis...', delay: 8000 },
+      { text: '📊 Generating insights...', delay: 10000 }
+    ];
+    
+    detailsEl.innerHTML = '';
+    
+    steps.forEach(step => {
+      setTimeout(() => {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'loading-step';
+        stepEl.textContent = step.text;
+        detailsEl.appendChild(stepEl);
+      }, step.delay);
+    });
+  }
+}
+
+/**
+ * Animate progress bar
+ */
+function animateProgressBar(progressEl, competitorCount) {
+  if (!progressEl) return;
+  
+  const estimatedTime = competitorCount * 2000; // 2s per competitor
+  const steps = 100;
+  const interval = estimatedTime / steps;
+  
+  let progress = 0;
+  
+  const timer = setInterval(() => {
+    progress += 1;
+    progressEl.style.width = progress + '%';
+    
+    if (progress >= 95) {
+      clearInterval(timer);
+    }
+  }, interval);
+  
+  // Store timer to clear on completion
+  window.competitorProgressTimer = timer;
+}
+
+/**
+ * Hide competitor loading state
+ */
+function hideCompetitorLoadingState() {
+  const loadingState = document.getElementById('comp-loading-state');
+  if (loadingState) {
+    loadingState.style.display = 'none';
+  }
+  
+  // Clear progress timer
+  if (window.competitorProgressTimer) {
+    clearInterval(window.competitorProgressTimer);
+  }
+  
+  // Set progress to 100%
+  const progressEl = document.getElementById('comp-loading-progress');
+  if (progressEl) {
+    progressEl.style.width = '100%';
+  }
+}
+
+/**
+ * Switch to competitor intelligence tab
+ */
+function switchToCompetitorTab() {
+  // Hide all main tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.remove('active');
+    tab.style.display = 'none';
+  });
+  
+  // Show competitor tab
+  const compTab = document.getElementById('tab-competitors');
+  if (compTab) {
+    compTab.classList.add('active');
+    compTab.style.display = 'block';
+  }
+  
+  // Update sidebar active state
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  const compNavItem = document.querySelector('[data-tab="competitors"]');
+  if (compNavItem) {
+    compNavItem.classList.add('active');
+  }
+  
+  // Scroll to top
+  window.scrollTo(0, 0);
+}
+
+/**
+ * Show toast notification
+ */
+function showToast(message, type = 'info') {
+  console.log(`[${type.toUpperCase()}] ${message}`);
+  
+  // Create toast element if it doesn't exist
+  let toast = document.getElementById('elite-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'elite-toast';
+    toast.className = 'elite-toast';
+    document.body.appendChild(toast);
+  }
+  
+  // Set message and type
+  toast.textContent = message;
+  toast.className = `elite-toast elite-toast-${type} elite-toast-show`;
+  
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    toast.classList.remove('elite-toast-show');
+  }, 5000);
+}
+
+/**
+ * Show competitor error state
+ */
+function showCompetitorError(errorMessage) {
+  const emptyState = document.getElementById('comp-empty-state');
+  if (!emptyState) return;
+  
+  emptyState.innerHTML = `
+    <div class="empty-state-icon">⚠️</div>
+    <h3 class="empty-state-title">Analysis Error</h3>
+    <p class="empty-state-text">${errorMessage}</p>
+    <button class="btn-primary" onclick="location.reload()">Try Again</button>
+  `;
+  
+  emptyState.style.display = 'block';
+  document.getElementById('comp-results').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPETITOR TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Initialize competitor tab navigation
+ */
+function initCompetitorTabNavigation() {
+  const tabButtons = document.querySelectorAll('.comp-tab-btn');
+  
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const targetTab = this.getAttribute('data-comp-tab');
+      switchCompetitorCategoryTab(targetTab);
+    });
+  });
+  
+  console.log('✅ Competitor tab navigation initialized');
+}
+
+/**
+ * Switch between competitor category tabs
+ */
+function switchCompetitorCategoryTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.comp-tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  const activeBtn = document.querySelector(`[data-comp-tab="${tabName}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
+  
+  // Update tab panels
+  document.querySelectorAll('.comp-tab-panel').forEach(panel => {
+    panel.classList.remove('active');
+    panel.style.display = 'none';
+  });
+  
+  const activePanel = document.querySelector(`[data-comp-panel="${tabName}"]`);
+  if (activePanel) {
+    activePanel.classList.add('active');
+    activePanel.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    initCompetitorAnalysis();
+    initCompetitorTabNavigation();
+  });
+} else {
+  initCompetitorAnalysis();
+  initCompetitorTabNavigation();
+}
+
+console.log('✅ Elite Competitor Integration loaded');
+</script>
+
+<style>
+/* Toast notifications */
+.elite-toast {
+  position: fixed;
+  bottom: -100px;
+  right: 20px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  background: #1f2937;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 10000;
+  transition: bottom 0.3s ease;
+  max-width: 400px;
+}
+
+.elite-toast-show {
+  bottom: 20px;
+}
+
+.elite-toast-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.elite-toast-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.elite-toast-error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.elite-toast-info {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+/* Competitor metric cards */
+.comp-metric-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.comp-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.card-domain {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.completeness-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.card-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.metric-badge {
+  margin-left: 8px;
+}
+
+/* Data quality badges */
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.badge-real {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.badge-predicted {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.badge-calculated {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.badge-unavailable {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+/* Priority indicators */
+.priority-high {
+  border-left: 4px solid #ef4444;
+}
+
+.priority-medium {
+  border-left: 4px solid #f59e0b;
+}
+
+.priority-low {
+  border-left: 4px solid #3b82f6;
+}
+
+/* Insights panel */
+.insights-panel {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 24px;
+}
+
+.insights-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+.insight-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.insight-item:last-child {
+  border-bottom: none;
+}
+
+/* Scoring cards */
+.scoring-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin: 24px 0;
+}
+
+.scoring-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 3px solid transparent;
+  transition: all 0.3s;
+}
+
+.scoring-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.scoring-card.grade-excellent {
+  border-color: #10b981;
+}
+
+.scoring-card.grade-good {
+  border-color: #3b82f6;
+}
+
+.scoring-card.grade-fair {
+  border-color: #f59e0b;
+}
+
+.scoring-card.grade-poor {
+  border-color: #ef4444;
+}
+
+.score-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.score-label {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.score-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.score-grade {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.grade-excellent .score-grade {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.grade-good .score-grade {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.grade-fair .score-grade {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.grade-poor .score-grade {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Roadmap */
+.roadmap-container {
+  margin: 24px 0;
+}
+
+.roadmap-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.roadmap-item {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  border-left: 4px solid #3b82f6;
+}
+
+.roadmap-week {
+  font-weight: 700;
+  color: #111827;
+  min-width: 80px;
+}
+
+.roadmap-focus {
+  color: #374151;
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .metric-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .scoring-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

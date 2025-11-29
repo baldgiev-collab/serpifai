@@ -1,0 +1,24 @@
+<section class="card" id="projectCard">
+  <h2>Project Manager</h2>
+  <p class="card-sub">Create, select, and manage SerpifAI projects. Each project stores the full 5‑stage workflow, QA snapshot, and competitor context.</p>
+  <div class="project-toolbar">
+    <div class="project-main">
+      <label for="projectSelect">Active Project</label>
+      <select id="projectSelect"></select>
+      <input type="text" id="projectNameInput" placeholder="New project name…" />
+    </div>
+    <div class="project-ai-model">
+      <label for="geminiModelSelect">🤖 AI Model</label>
+      <select id="geminiModelSelect" class="model-select-compact">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+    <div class="project-actions">
+      <button class="btn btn-ghost btn-small" id="newProjectBtn">＋ New</button>
+      <button class="btn btn-ghost btn-small" id="renameProjectBtn">✎ Rename</button>
+      <button class="btn btn-ghost btn-small" id="deleteProjectBtn">🗑 Delete</button>
+      <button class="btn btn-primary btn-small" id="saveProjectBtn">💾 Save</button>
+      <span id="saveStatus" style="display:none;">Not saved yet</span>
+    </div>
+  </div>
+</section>

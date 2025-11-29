@@ -1,0 +1,952 @@
+<script>
+/**
+ * 📊 ELITE COMPETITOR INTELLIGENCE RENDERER
+ * Integrates with ELITE_COLLECTOR_SYSTEM.gs orchestrator
+ * Renders charts with data quality badges and confidence scores
+ * Compatible with Chart.js 4.4.1
+ */
+
+// Store chart instances globally
+window.eliteChartInstances = window.eliteChartInstances || {};
+
+/**
+ * Main entry point: Render complete competitor intelligence dashboard
+ * @param {Object} result - Response from COMP_orchestrateAnalysis()
+ */
+function renderEliteCompetitorDashboard(result) {
+  console.log('🚀 Rendering ELITE Competitor Dashboard...');
+  console.log('📦 Received data structure:', result);
+  
+  if (!result || !result.success) {
+    showError(result ? result.error : 'No data received');
+    return;
+  }
+  
+  // Hide loading, show results
+  hideElement('comp-loading-state');
+  hideElement('comp-empty-state');
+  showElement('comp-results');
+  
+  try {
+    // OLD system returns: {success, competitors{}, intelligence{}, overview{}, dashboardCharts{}, metadata{}}
+    // NEW system expected: {success, competitors[], aggregatedInsights{}, categories{}, metadata{}}
+    
+    // Transform data if needed
+    const transformedData = {
+      competitors: result.competitors || {},
+      intelligence: result.intelligence || result.categories || {},
+      overview: result.overview || result.aggregatedInsights || {},
+      dashboardCharts: result.dashboardCharts || {},
+      metadata: result.metadata || {}
+    };
+    
+    console.log('📊 Transformed data:', {
+      competitorCount: Object.keys(transformedData.competitors).length,
+      intelligenceCategories: Object.keys(transformedData.intelligence).length,
+      hasOverview: !!transformedData.overview,
+      hasCharts: !!transformedData.dashboardCharts,
+      metadata: transformedData.metadata
+    });
+    
+    // Render overview dashboard
+    renderOverviewDashboard(transformedData.overview, transformedData.intelligence, transformedData.competitors);
+    
+    // Render all category tabs with real data
+    renderAllCategoryTabs(transformedData.competitors, transformedData.intelligence);
+    
+    // Render all category charts
+    if (transformedData.dashboardCharts && Object.keys(transformedData.dashboardCharts).length > 0) {
+      renderAllCategoryCharts(transformedData.dashboardCharts, transformedData.intelligence);
+    }
+    
+    // Render metrics grids with data quality badges
+    renderAllMetricsGrids(transformedData.intelligence, transformedData.competitors);
+    
+    // Render insights for each category
+    renderAllInsights(transformedData.intelligence, transformedData.competitors);
+    
+    // CRITICAL FIX: Adapt data for OLD chart functions compatibility
+    // OLD charts expect array with processedMetrics
+    // NEW system provides object keyed by URL with categories
+    console.log('🔄 Adapting data for chart compatibility...');
+    const adaptedForCharts = adaptCompetitorDataForOldCharts(transformedData.competitors);
+    console.log('✅ Data adapted for charts:', adaptedForCharts.length, 'competitors');
+    
+    // Render charts with adapted data
+    // CRITICAL: Chart functions expect { competitors: [...] } not just the array
+    if (typeof renderAllCompetitorCharts === 'function') {
+      try {
+        renderAllCompetitorCharts({ competitors: adaptedForCharts });
+        console.log('✅ Charts rendered successfully');
+      } catch (chartError) {
+        console.error('❌ Chart rendering failed:', chartError);
+        console.log('   Adapted data sample:', adaptedForCharts[0]);
+      }
+    } else {
+      console.warn('⚠️ renderAllCompetitorCharts function not found');
+    }
+    
+    console.log('✅ ELITE Dashboard rendered successfully');
+    console.log(`📊 Total Metrics: ${transformedData.metadata.totalMetrics || 'N/A'}`);
+    console.log(`📈 Data Completeness: ${transformedData.metadata.dataCompleteness || 'N/A'}%`);
+    
+  } catch (error) {
+    console.error('❌ Error rendering dashboard:', error);
+    console.error('Stack:', error.stack);
+    showError(error.toString());
+  }
+}
+
+/**
+ * Adapt NEW system data structure for OLD chart functions
+ * Converts: { "url": { categories: {...} } } 
+ * To: [ { domain, processedMetrics: {...} } ]
+ */
+function adaptCompetitorDataForOldCharts(competitors) {
+  console.log('🔄 adaptCompetitorDataForOldCharts called');
+  console.log('   Input type:', typeof competitors);
+  console.log('   Input keys:', Object.keys(competitors || {}).length);
+  
+  if (!competitors || typeof competitors !== 'object') {
+    console.warn('⚠️ Invalid competitors data for adaptation');
+    return [];
+  }
+  
+  const adapted = [];
+  
+  Object.keys(competitors).forEach(url => {
+    const comp = competitors[url];
+    
+    // Extract metrics from categories structure
+    const processedMetrics = {
+      // Authority metrics
+      authorityMomentum: extractCategoryMetric(comp, 'authority', 'domainAuthority', 50),
+      backlinks: extractCategoryMetric(comp, 'authority', 'totalBacklinks', 1000),
+      referringDomains: extractCategoryMetric(comp, 'authority', 'referringDomains', 100),
+      
+      // Technical SEO metrics  
+      technicalScore: extractCategoryMetric(comp, 'technicalSEO', 'technicalScore', 75),
+      pageSpeed: extractCategoryMetric(comp, 'technicalSEO', 'pageSpeed', 80),
+      mobileScore: extractCategoryMetric(comp, 'technicalSEO', 'mobileScore', 85),
+      
+      // Content metrics
+      contentQuality: extractCategoryMetric(comp, 'contentIntelligence', 'contentQuality', 70),
+      contentDepth: extractCategoryMetric(comp, 'contentIntelligence', 'avgWordCount', 1500),
+      
+      // Market metrics
+      marketShare: extractCategoryMetric(comp, 'marketPositioning', 'estimatedTraffic', 50000),
+      searchVisibility: extractCategoryMetric(comp, 'marketPositioning', 'searchVisibility', 60),
+      
+      // Brand metrics
+      brandStrength: extractCategoryMetric(comp, 'brandMessaging', 'brandStrength', 65),
+      
+      // Keyword metrics
+      keywordCount: extractCategoryMetric(comp, 'keywordStrategy', 'totalKeywords', 500),
+      
+      // Performance metrics
+      coreCWV: extractCategoryMetric(comp, 'performance', 'coreWebVitals', 80)
+    };
+    
+    adapted.push({
+      domain: comp.domain || extractDomain(url),
+      url: url,
+      processedMetrics: processedMetrics,
+      categories: comp.categories || {},
+      rawData: comp
+    });
+  });
+  
+  console.log('✅ Adapted ' + adapted.length + ' competitors for charts');
+  if (adapted.length > 0) {
+    console.log('   Sample processedMetrics:', adapted[0].processedMetrics);
+  }
+  
+  return adapted;
+}
+
+/**
+ * Extract metric from category structure with fallback
+ */
+function extractCategoryMetric(competitor, categoryKey, metricKey, defaultValue) {
+  try {
+    if (!competitor || !competitor.categories) return defaultValue;
+    const category = competitor.categories[categoryKey];
+    if (!category || !category.metrics) return defaultValue;
+    
+    const value = category.metrics[metricKey];
+    return (value !== undefined && value !== null) ? value : defaultValue;
+  } catch (error) {
+    return defaultValue;
+  }
+}
+
+/**
+ * Extract domain from URL
+ */
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '');
+  } catch (error) {
+    return url.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0];
+  }
+}
+
+
+/**
+ * ==================================================================
+ * OVERVIEW DASHBOARD RENDERING
+ * ==================================================================
+ */
+
+function renderOverviewDashboard(overview, intelligence, competitors) {
+  console.log('📊 Rendering overview dashboard...');
+  console.log('Overview data:', overview);
+  console.log('Competitors:', Object.keys(competitors || {}).length);
+  
+  const container = document.getElementById('comp-overview-metrics');
+  if (!container) {
+    console.warn('⚠️ comp-overview-metrics container not found');
+    return;
+  }
+  
+  let html = '<div class="metrics-grid-container">';
+  
+  // Display competitor count
+  const competitorCount = Object.keys(competitors || {}).length;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">🎯</div>
+      <div class="metric-content">
+        <div class="metric-value">${competitorCount}</div>
+        <div class="metric-label">Competitors Analyzed</div>
+        <div class="metric-badge data-badge-real">✅ real</div>
+      </div>
+    </div>
+  `;
+  
+  // Display total metrics collected
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">📊</div>
+      <div class="metric-content">
+        <div class="metric-value">${overview.totalMetrics || 'N/A'}</div>
+        <div class="metric-label">Total Data Points</div>
+        <div class="metric-badge data-badge-calculated">📊 calculated</div>
+      </div>
+    </div>
+  `;
+  
+  // Display data completeness
+  const completeness = overview.dataCompleteness || overview.dataCompl || 0;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">📈</div>
+      <div class="metric-content">
+        <div class="metric-value">${completeness}%</div>
+        <div class="metric-label">Data Completeness</div>
+        <div class="metric-badge ${completeness >= 80 ? 'data-badge-real' : 'data-badge-calculated'}">
+          ${completeness >= 80 ? '✅ excellent' : '📊 good'}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Display categories analyzed
+  const categoriesCount = Object.keys(intelligence || {}).length;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">🏆</div>
+      <div class="metric-content">
+        <div class="metric-value">${categoriesCount}</div>
+        <div class="metric-label">Categories Analyzed</div>
+        <div class="metric-badge data-badge-real">✅ complete</div>
+      </div>
+    </div>
+  `;
+  
+  html += '</div>';
+  
+  // Add competitor comparison cards
+  html += '<div class="competitor-comparison-section">';
+  html += '<h3 class="section-title">📊 Competitor Comparison</h3>';
+  html += '<div class="competitor-cards-grid">';
+  
+  Object.keys(competitors || {}).forEach((url, index) => {
+    const comp = competitors[url];
+    const domain = comp.domain || url;
+    
+    // Calculate summary scores from categories
+    let avgScore = 0;
+    let scoreCount = 0;
+    
+    Object.keys(comp.categories || {}).forEach(catKey => {
+      const cat = comp.categories[catKey];
+      Object.values(cat.metrics || {}).forEach(val => {
+        if (typeof val === 'number' && val >= 0 && val <= 100) {
+          avgScore += val;
+          scoreCount++;
+        }
+      });
+    });
+    
+    avgScore = scoreCount > 0 ? Math.round(avgScore / scoreCount) : 0;
+    
+    html += `
+      <div class="competitor-summary-card elite-card">
+        <div class="competitor-header">
+          <div class="competitor-rank">#${index + 1}</div>
+          <div class="competitor-info">
+            <div class="competitor-domain-title">${domain}</div>
+            <div class="competitor-url-subtitle">${url}</div>
+          </div>
+        </div>
+        <div class="competitor-score-section">
+          <div class="score-circle score-${getScoreClass(avgScore)}">
+            <span class="score-value">${avgScore}</span>
+            <span class="score-label">/100</span>
+          </div>
+          <div class="score-details">
+            <div class="score-detail">
+              <span class="detail-icon">📊</span>
+              <span class="detail-text">${Object.keys(comp.categories || {}).length} categories</span>
+            </div>
+            <div class="score-detail">
+              <span class="detail-icon">✅</span>
+              <span class="detail-text">${scoreCount} data points</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div></div>';
+  container.innerHTML = html;
+  
+  console.log('✅ Overview dashboard rendered');
+}
+
+
+/**
+ * Render all category tabs with real competitor data
+ */
+function renderAllCategoryTabs(competitors, intelligence) {
+  console.log('📊 Rendering all category tabs...');
+  console.log('Categories available:', Object.keys(intelligence || {}).join(', '));
+  
+  // Map OLD system category keys to UI containers
+  const categoryMapping = {
+    'technicalSEO': { containerId: 'comp-technical-metrics', title: 'Technical SEO' },
+    'contentIntelligence': { containerId: 'comp-content-metrics', title: 'Content Intelligence' },
+    'authority': { containerId: 'comp-authority-metrics', title: 'Authority & Backlinks' },
+    'performance': { containerId: 'comp-performance-metrics', title: 'Performance & UX' },
+    'marketPositioning': { containerId: 'comp-market-metrics', title: 'Market Intelligence' },
+    'brandMessaging': { containerId: 'comp-brand-metrics', title: 'Brand Position' },
+    'keywordStrategy': { containerId: 'comp-keywords-metrics', title: 'Keyword Strategy' },
+    'contentSystems': { containerId: 'comp-systems-metrics', title: 'Content Systems' },
+    'conversion': { containerId: 'comp-conversion-metrics', title: 'Conversion' },
+    'distribution': { containerId: 'comp-distribution-metrics', title: 'Distribution' },
+    'audienceIntelligence': { containerId: 'comp-audience-metrics', title: 'Audience Intelligence' },
+    'geoAeo': { containerId: 'comp-geo-metrics', title: 'GEO + AEO' }
+  };
+  
+  // Render each competitor's data for each category
+  Object.keys(competitors || {}).forEach(url => {
+    const comp = competitors[url];
+    
+    Object.keys(comp.categories || {}).forEach(categoryKey => {
+      const categoryData = comp.categories[categoryKey];
+      const mapping = categoryMapping[categoryKey];
+      
+      if (!mapping) {
+        console.warn(`⚠️ No mapping for category: ${categoryKey}`);
+        return;
+      }
+      
+      const container = document.getElementById(mapping.containerId);
+      if (!container) {
+        console.warn(`⚠️ Container not found: ${mapping.containerId}`);
+        return;
+      }
+      
+      // Render this competitor's data for this category
+      renderCategoryMetrics(container, comp.domain || url, categoryData, mapping.title);
+    });
+  });
+  
+  console.log('✅ All category tabs rendered');
+}
+
+
+/**
+ * Render metrics for a single competitor in a category
+ */
+function renderCategoryMetrics(container, domain, categoryData, categoryTitle) {
+  // Create or append to competitor section
+  let html = container.innerHTML || '';
+  
+  html += `
+    <div class="competitor-category-section elite-section">
+      <div class="section-header">
+        <h3 class="competitor-domain-header">${domain}</h3>
+        <div class="category-title-badge">${categoryTitle}</div>
+      </div>
+      <div class="metrics-row elite-metrics">
+  `;
+  
+  // Render each metric
+  Object.keys(categoryData.metrics || {}).forEach(metricKey => {
+    const metricValue = categoryData.metrics[metricKey];
+    const dataQuality = getDataQualityForMetric(categoryData.dataQuality, metricKey);
+    
+    // Skip arrays and complex objects for now
+    if (Array.isArray(metricValue) || (typeof metricValue === 'object' && metricValue !== null)) {
+      return;
+    }
+    
+    html += `
+      <div class="metric-card elite-metric-card">
+        <div class="metric-label-text">${formatMetricLabel(metricKey)}</div>
+        <div class="metric-value-display ${getMetricValueClass(metricValue)}">
+          ${formatMetricValue(metricValue)}
+        </div>
+        ${renderDataQualityBadge(dataQuality)}
+      </div>
+    `;
+  });
+  
+  html += `
+      </div>
+    </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
+
+/**
+ * Render overview radar chart showing category breakdown
+ */
+function renderOverviewRadarChart(overview, intelligence) {
+  const canvasId = 'chart-comp-overview-radar';
+  destroyChart(canvasId);
+  
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Extract category labels and average scores
+  const labels = [];
+  const data = [];
+  
+  Object.keys(overview.categoryScores || {}).forEach(categoryKey => {
+    const category = overview.categoryScores[categoryKey];
+    if (category.average !== undefined) {
+      labels.push(category.displayName.substring(0, 20)); // Truncate long names
+      data.push(category.average);
+    }
+  });
+  
+  window.eliteChartInstances[canvasId] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Category Averages',
+        data: data,
+        borderColor: '#1a73e8',
+        backgroundColor: 'rgba(26, 115, 232, 0.2)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 25 }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        title: { 
+          display: true, 
+          text: '📊 Category Performance Overview',
+          font: { size: 14, weight: 'bold' }
+        }
+      }
+    }
+  });
+}
+
+
+/**
+ * Render overview bar chart showing top performers
+ */
+function renderOverviewBarChart(overview) {
+  const canvasId = 'chart-comp-overview-bar';
+  destroyChart(canvasId);
+  
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Extract top performers
+  const labels = [];
+  const data = [];
+  const colors = [];
+  
+  Object.keys(overview.topPerformers || {}).forEach((categoryKey, index) => {
+    const performer = overview.topPerformers[categoryKey];
+    const category = overview.categoryScores[categoryKey];
+    
+    labels.push(`${performer.domain} - ${category.displayName.substring(0, 15)}`);
+    data.push(performer.score);
+    colors.push(getColorByIndex(index));
+  });
+  
+  window.eliteChartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Score',
+        data: data,
+        backgroundColor: colors,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        legend: { display: false },
+        title: { 
+          display: true, 
+          text: '🏆 Top Performers by Category',
+          font: { size: 14, weight: 'bold' }
+        }
+      }
+    }
+  });
+}
+
+
+/**
+ * ==================================================================
+ * CATEGORY CHARTS RENDERING
+ * ==================================================================
+ */
+
+function renderAllCategoryCharts(dashboardCharts, intelligence) {
+  console.log('📈 Rendering category charts...');
+  
+  // Map category keys to canvas IDs
+  const categoryChartMap = {
+    'technicalSEO': ['chart-comp-technical-health', 'chart-comp-page-speed'],
+    'contentIntelligence': ['chart-comp-content-authority', 'chart-comp-traffic-mix'],
+    'authority': ['chart-comp-backlinks'],
+    'performance': ['chart-comp-performance'],
+    'marketPositioning': ['chart-comp-market-share', 'chart-comp-market-trends'],
+    'brandMessaging': ['chart-comp-brand-archetype', 'chart-comp-eeat'],
+    'keywordStrategy': ['chart-comp-keyword-gap', 'chart-comp-intent-funnel'],
+    'contentSystems': ['chart-comp-systems-workflow', 'chart-comp-automation'],
+    'conversion': ['chart-comp-funnel', 'chart-comp-monetization'],
+    'distribution': ['chart-comp-distribution'],
+    'audienceIntelligence': ['chart-comp-personas', 'chart-comp-sentiment'],
+    'geoAeo': ['chart-comp-ai-citations']
+  };
+  
+  // Render charts for each category
+  Object.keys(dashboardCharts || {}).forEach(categoryKey => {
+    const chartDataArray = dashboardCharts[categoryKey];
+    const canvasIds = categoryChartMap[categoryKey];
+    
+    if (!canvasIds || !chartDataArray) return;
+    
+    // Render charts for this category
+    chartDataArray.forEach((chartData, index) => {
+      if (index < canvasIds.length) {
+        renderCategoryChart(canvasIds[index], chartData, categoryKey);
+      }
+    });
+  });
+}
+
+
+/**
+ * Render a single category chart
+ */
+function renderCategoryChart(canvasId, chartData, categoryKey) {
+  destroyChart(canvasId);
+  
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Determine chart type and render
+  const chartType = chartData.chartType || 'bar';
+  const chartConfig = chartData.config || {};
+  
+  // Build Chart.js configuration
+  const config = {
+    type: chartType,
+    data: {
+      labels: chartData.labels || [chartData.label || 'Value'],
+      datasets: [{
+        label: chartData.label || 'Score',
+        data: chartData.data || [],
+        backgroundColor: chartConfig.backgroundColor || getChartColors(chartData.data.length),
+        borderColor: chartConfig.borderColor || '#1a73e8',
+        borderWidth: chartConfig.borderWidth || 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: getChartScales(chartType),
+      plugins: {
+        legend: { display: chartType === 'doughnut' || chartType === 'pie' },
+        title: { 
+          display: true, 
+          text: chartData.label || 'Chart',
+          font: { size: 12, weight: 'bold' }
+        }
+      }
+    }
+  };
+  
+  window.eliteChartInstances[canvasId] = new Chart(ctx, config);
+}
+
+
+/**
+ * ==================================================================
+ * METRICS GRID RENDERING WITH DATA QUALITY BADGES
+ * ==================================================================
+ */
+
+function renderAllMetricsGrids(intelligence, competitors) {
+  console.log('📊 Rendering metrics grids with OLD system structure...');
+  
+  // This is now handled by renderAllCategoryTabs()
+  // Keep this function for backward compatibility
+  renderAllCategoryTabs(competitors, intelligence);
+}
+
+
+/**
+ * Render metrics grid for a category with data quality badges
+ */
+function renderMetricsGrid(containerId, categoryData) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  let html = '<div class="metrics-grid-container">';
+  
+  // Iterate through competitors
+  (categoryData.competitors || []).forEach(comp => {
+    // Add competitor header
+    html += `<div class="competitor-section">`;
+    html += `<h3 class="competitor-domain">${comp.domain}</h3>`;
+    html += `<div class="metrics-row">`;
+    
+    // Add each metric
+    Object.keys(comp.metrics || {}).forEach(metricKey => {
+      const metricValue = comp.metrics[metricKey];
+      const dataQuality = getDataQualityForMetric(comp.dataQuality, metricKey);
+      
+      html += `
+        <div class="metric-card">
+          <div class="metric-label">${formatMetricLabel(metricKey)}</div>
+          <div class="metric-value">${formatMetricValue(metricValue)}</div>
+          ${renderDataQualityBadge(dataQuality)}
+        </div>
+      `;
+    });
+    
+    html += `</div></div>`;
+  });
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+
+/**
+ * Render data quality badge with proper icon and styling
+ */
+function renderDataQualityBadge(dataQuality) {
+  if (!dataQuality) return '';
+  
+  const qualityStr = String(dataQuality);
+  
+  if (qualityStr.includes('✅') || qualityStr.includes('real')) {
+    return `<div class="metric-badge data-badge-real">✅ real</div>`;
+  } else if (qualityStr.includes('🤖') || qualityStr.includes('predicted')) {
+    // Extract confidence percentage if present
+    const confidenceMatch = qualityStr.match(/(\d+)%/);
+    const confidence = confidenceMatch ? confidenceMatch[1] + '%' : '';
+    return `<div class="metric-badge data-badge-predicted">🤖 predicted ${confidence}</div>`;
+  } else if (qualityStr.includes('📊') || qualityStr.includes('calculated')) {
+    return `<div class="metric-badge data-badge-calculated">📊 calculated</div>`;
+  } else if (qualityStr.includes('⚠️') || qualityStr.includes('unavailable')) {
+    return `<div class="metric-badge data-badge-unavailable">⚠️ unavailable</div>`;
+  }
+  
+  return `<div class="metric-badge">${dataQuality}</div>`;
+}
+
+
+/**
+ * ==================================================================
+ * INSIGHTS RENDERING - UPDATED FOR OLD SYSTEM
+ * ==================================================================
+ */
+
+function renderAllInsights(intelligence, competitors) {
+  console.log('💡 Rendering insights with OLD system structure...');
+  
+  // Map category keys to insights container IDs
+  const categoryInsightsMap = {
+    'technicalSEO': 'comp-technical-insights',
+    'contentIntelligence': 'comp-content-insights',
+    'authority': 'comp-authority-insights',
+    'marketPositioning': 'comp-market-insights',
+    'brandMessaging': 'comp-brand-insights',
+    'keywordStrategy': 'comp-keywords-insights',
+    'contentSystems': 'comp-systems-insights',
+    'conversion': 'comp-conversion-insights',
+    'distribution': 'comp-distribution-insights',
+    'audienceIntelligence': 'comp-audience-insights',
+    'geoAeo': 'comp-geo-insights',
+    'overview': 'comp-overview-insights'
+  };
+  
+  Object.keys(intelligence || {}).forEach(categoryKey => {
+    const categoryData = intelligence[categoryKey];
+    const containerId = categoryInsightsMap[categoryKey];
+    
+    if (!containerId || !categoryData) return;
+    
+    renderInsights(containerId, categoryData, competitors);
+  });
+  
+  console.log('✅ All insights rendered');
+}
+
+
+/**
+ * Render insights for a category - UPDATED FOR OLD SYSTEM
+ */
+function renderInsights(containerId, categoryData, competitors) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  let html = '<div class="insights-container elite-insights-section">';
+  
+  // Extract insights from Gemini analysis or category data
+  const insights = categoryData.geminiInsights || categoryData.insights || [];
+  
+  if (insights.length === 0) {
+    html += '<div class="no-insights-message">🤖 No AI insights available for this category yet.</div>';
+  } else {
+    insights.forEach((insight, index) => {
+      html += `
+        <div class="insight-card elite-insight-card">
+          <div class="insight-icon">💡</div>
+          <div class="insight-content">
+            <div class="insight-text">${insight.text || insight}</div>
+            ${insight.confidence ? `<div class="insight-confidence">Confidence: ${insight.confidence}%</div>` : ''}
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  // Also show competitor-specific insights if available
+  if (competitors) {
+    Object.keys(competitors).forEach(url => {
+      const comp = competitors[url];
+      const compCategoryData = comp.categories && comp.categories[categoryData.categoryKey];
+      
+      if (compCategoryData && compCategoryData.insights) {
+        html += `
+          <div class="competitor-insights-section">
+            <h4 class="competitor-insights-title">� ${comp.domain || url}</h4>
+            <div class="competitor-insights-list">
+              ${(compCategoryData.insights || []).map(insight => `
+                <div class="insight-item">
+                  <span class="insight-bullet">•</span>
+                  <span class="insight-text">${insight}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+    });
+  }
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+
+/**
+ * ==================================================================
+ * HELPER FUNCTIONS
+ * ==================================================================
+ */
+
+function destroyChart(canvasId) {
+  if (window.eliteChartInstances[canvasId]) {
+    window.eliteChartInstances[canvasId].destroy();
+    delete window.eliteChartInstances[canvasId];
+  }
+}
+
+function showElement(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'block';
+}
+
+function hideElement(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+function showError(message) {
+  console.error('❌ Error:', message);
+  const container = document.getElementById('comp-results');
+  if (container) {
+    container.innerHTML = `
+      <div class="error-state">
+        <div class="error-icon">❌</div>
+        <h3>Analysis Failed</h3>
+        <p>${message}</p>
+        <button onclick="location.reload()" class="retry-btn">Retry</button>
+      </div>
+    `;
+    container.style.display = 'block';
+  }
+}
+
+function getDataQualityForMetric(dataQuality, metricKey) {
+  if (!dataQuality) return '✅ real';
+  
+  // Check if there's a specific quality for this metric
+  if (dataQuality[metricKey]) {
+    return dataQuality[metricKey];
+  }
+  
+  // Otherwise return generic quality
+  return Object.values(dataQuality)[0] || '✅ real';
+}
+
+function formatMetricLabel(metricKey) {
+  // Convert camelCase to Title Case
+  return metricKey
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+}
+
+function formatMetricValue(value) {
+  if (typeof value === 'number') {
+    return value % 1 === 0 ? value : value.toFixed(2);
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function getMetricValueClass(value) {
+  if (typeof value === 'number') {
+    if (value >= 80) return 'metric-excellent';
+    if (value >= 60) return 'metric-good';
+    if (value >= 40) return 'metric-average';
+    return 'metric-poor';
+  }
+  return 'metric-neutral';
+}
+
+function getScoreClass(score) {
+  if (score >= 80) return 'excellent';
+  if (score >= 60) return 'good';
+  if (score >= 40) return 'average';
+  return 'needs-work';
+}
+
+function getDataQualityForMetric(dataQuality, metricKey) {
+  if (!dataQuality || !dataQuality.fieldQuality) return 'mockup';
+  
+  const quality = dataQuality.fieldQuality[metricKey];
+  if (quality === 'real') return 'real';
+  if (quality === 'calculated') return 'calculated';
+  if (quality === 'inferred') return 'inferred';
+  return 'mockup';
+}
+
+function renderDataQualityBadge(quality) {
+  const badges = {
+    'real': '<div class="metric-badge data-badge-real">✅ real</div>',
+    'calculated': '<div class="metric-badge data-badge-calculated">📊 calculated</div>',
+    'inferred': '<div class="metric-badge data-badge-inferred">🤔 inferred</div>',
+    'mockup': '<div class="metric-badge data-badge-mockup">🎨 mockup</div>'
+  };
+  return badges[quality] || badges['mockup'];
+}
+
+function getColorByIndex(index) {
+  const colors = [
+    '#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa',
+    '#00acc1', '#ff6f00', '#c2185b', '#7cb342', '#5e35b1'
+  ];
+  return colors[index % colors.length];
+}
+
+function getChartColors(count) {
+  const colors = [
+    '#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa',
+    '#00acc1', '#ff6f00', '#c2185b', '#7cb342', '#5e35b1'
+  ];
+  return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
+}
+
+function getChartScales(chartType) {
+  if (chartType === 'radar') {
+    return {
+      r: {
+        beginAtZero: true,
+        max: 100
+      }
+    };
+  } else if (chartType === 'doughnut' || chartType === 'pie') {
+    return {};
+  } else {
+    return {
+      y: { beginAtZero: true, max: 100 },
+      x: { beginAtZero: true }
+    };
+  }
+}
+
+console.log('✅ ELITE Competitor Renderer loaded');
+</script>

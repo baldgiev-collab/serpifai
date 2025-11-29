@@ -1,0 +1,530 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UI DATA MAPPER
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * Transforms unified competitor JSON from backend into UI-ready structures.
+ * 
+ * INPUT: Unified JSON from STORAGE_readCompetitorJSON()
+ * {
+ *   domain: "ahrefs.com",
+ *   rawData: {fetcher: {...}, apis: {...}},
+ *   processedMetrics: {...},
+ *   aiInsights: {...}
+ * }
+ * 
+ * OUTPUT: Structured data for specific UI components:
+ * - Authority metrics for cards/gauges
+ * - Performance data for charts
+ * - Content structure for analysis tables
+ * - Technical SEO for health indicators
+ * - Comparative metrics for gap analysis
+ * 
+ * @module UIDataMapper
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+window.DataMapper = {
+
+  /**
+   * Map authority & backlink metrics
+   * @param {Object} competitorJSON - Unified competitor data
+   * @returns {Object} Authority metrics ready for UI
+   */
+  mapAuthorityMetrics: function(competitorJSON) {
+    const domain = competitorJSON.domain || 'Unknown';
+    const opr = competitorJSON.rawData?.apis?.openpagerank || {};
+    const processed = competitorJSON.processedMetrics || {};
+    
+    return {
+      domain: domain,
+      
+      // Primary authority score
+      authorityScore: opr.pageRank || processed.authorityScore || 0,
+      
+      // Backlink metrics
+      totalBacklinks: opr.totalBacklinks || 0,
+      referringDomains: opr.referringDomains || 0,
+      domainRank: opr.domainRank || 0,
+      
+      // Display formatting
+      backlinksFormatted: this.formatNumber(opr.totalBacklinks || 0),
+      referringDomainsFormatted: this.formatNumber(opr.referringDomains || 0),
+      
+      // Data quality indicators
+      dataSource: opr.pageRank ? '✅ OpenPageRank API' : '⚠️ Estimated',
+      isRealData: !!opr.pageRank,
+      lastUpdated: opr.lastUpdated || competitorJSON.metadata?.lastUpdated || '',
+      
+      // Grade categorization
+      grade: this.gradeAuthority(opr.pageRank || processed.authorityScore || 0),
+      
+      // Context for tooltips
+      tooltip: `Authority: ${opr.pageRank || 0}/100\nBacklinks: ${this.formatNumber(opr.totalBacklinks)}\nRef. Domains: ${this.formatNumber(opr.referringDomains)}`
+    };
+  },
+
+  /**
+   * Map performance metrics (Core Web Vitals)
+   * @param {Object} competitorJSON - Unified competitor data
+   * @returns {Object} Performance data ready for charts
+   */
+  mapPerformanceMetrics: function(competitorJSON) {
+    const domain = competitorJSON.domain || 'Unknown';
+    const psi = competitorJSON.rawData?.apis?.pagespeed || {};
+    const snapshot = competitorJSON.rawData?.fetcher?.seoSnapshot || {};
+    
+    return {
+      domain: domain,
+      
+      // Overall performance score
+      performanceScore: psi.performanceScore || 0,
+      
+      // Core Web Vitals
+      coreWebVitals: {
+        lcp: {
+          value: psi.lcp || 0,
+          rating: this.rateLCP(psi.lcp),
+          label: 'Largest Contentful Paint',
+          unit: 's'
+        },
+        fid: {
+          value: psi.fid || 0,
+          rating: this.rateFID(psi.fid),
+          label: 'First Input Delay',
+          unit: 'ms'
+        },
+        cls: {
+          value: psi.cls || 0,
+          rating: this.rateCLS(psi.cls),
+          label: 'Cumulative Layout Shift',
+          unit: ''
+        }
+      },
+      
+      // Additional metrics
+      fcp: psi.fcp || 0,
+      tti: psi.tti || 0,
+      tbt: psi.tbt || 0,
+      speedIndex: psi.speedIndex || 0,
+      
+      // Technical details
+      loadTime: snapshot.loadTime || 0,
+      pageSize: snapshot.pageSize || 0,
+      
+      // Data quality
+      dataSource: psi.performanceScore ? '✅ PageSpeed Insights API' : '⚠️ Estimated',
+      isRealData: !!psi.performanceScore,
+      
+      // Grade
+      grade: this.gradePerformance(psi.performanceScore || 0),
+      
+      // Chart data
+      chartData: {
+        labels: ['Performance', 'FCP', 'LCP', 'CLS'],
+        values: [
+          psi.performanceScore || 0,
+          this.normalizeToScore(psi.fcp, 1.8, 3.0),
+          this.normalizeToScore(psi.lcp, 2.5, 4.0),
+          this.normalizeToScore(1 - (psi.cls || 0), 0.9, 0.75)
+        ]
+      }
+    };
+  },
+
+  /**
+   * Map content structure & depth
+   * @param {Object} competitorJSON - Unified competitor data
+   * @returns {Object} Content analysis ready for UI
+   */
+  mapContentStructure: function(competitorJSON) {
+    const domain = competitorJSON.domain || 'Unknown';
+    const headings = competitorJSON.rawData?.fetcher?.headings || {};
+    const metadata = competitorJSON.rawData?.fetcher?.metadata || {};
+    const schema = competitorJSON.rawData?.fetcher?.schema || {};
+    const aiInsights = competitorJSON.aiInsights || {};
+    
+    return {
+      domain: domain,
+      
+      // Heading structure
+      headingHierarchy: {
+        h1: headings.h1Count || 0,
+        h2: headings.h2Count || 0,
+        h3: headings.h3Count || 0,
+        total: headings.totalHeadings || 0,
+        hierarchy: headings.hierarchy || []
+      },
+      
+      // Content metrics
+      wordCount: metadata.wordCount || 0,
+      imageCount: metadata.imageCount || 0,
+      linkCount: metadata.linkCount || 0,
+      
+      // Structured data
+      schemaTypes: schema.schemaTypes || [],
+      schemaCount: schema.count || 0,
+      hasOrganizationSchema: !!schema.organization,
+      hasProductSchema: !!schema.product,
+      hasArticleSchema: !!schema.article,
+      hasFAQSchema: !!schema.faq,
+      
+      // Content depth score (calculated)
+      contentDepthScore: this.calculateContentDepth({
+        wordCount: metadata.wordCount,
+        headingCount: headings.totalHeadings,
+        schemaCount: schema.count,
+        imageCount: metadata.imageCount
+      }),
+      
+      // AI insights
+      topicalAuthority: aiInsights.topicalAuthority || 0,
+      contentGaps: aiInsights.contentGaps || [],
+      
+      // Data quality
+      dataSource: headings.hierarchy ? '✅ Extracted from HTML' : '⚠️ Not Available',
+      isRealData: !!headings.hierarchy,
+      
+      // Display format
+      headingsFormatted: `H1: ${headings.h1Count || 0}, H2: ${headings.h2Count || 0}, H3: ${headings.h3Count || 0}`,
+      contentSummary: `${metadata.wordCount || 0} words, ${headings.totalHeadings || 0} headings, ${schema.count || 0} schemas`
+    };
+  },
+
+  /**
+   * Map technical SEO health
+   * @param {Object} competitorJSON - Unified competitor data
+   * @returns {Object} Technical SEO data ready for UI
+   */
+  mapTechnicalSEO: function(competitorJSON) {
+    const domain = competitorJSON.domain || 'Unknown';
+    const metadata = competitorJSON.rawData?.fetcher?.metadata || {};
+    const snapshot = competitorJSON.rawData?.fetcher?.seoSnapshot || {};
+    const schema = competitorJSON.rawData?.fetcher?.schema || {};
+    const opengraph = competitorJSON.rawData?.fetcher?.opengraph || {};
+    
+    return {
+      domain: domain,
+      
+      // Meta tags
+      metaTags: {
+        title: metadata.title || '',
+        titleLength: (metadata.title || '').length,
+        titleOptimal: this.isOptimalTitleLength(metadata.title),
+        
+        description: metadata.metaDescription || '',
+        descriptionLength: (metadata.metaDescription || '').length,
+        descriptionOptimal: this.isOptimalDescriptionLength(metadata.metaDescription),
+        
+        canonical: metadata.canonical || '',
+        robots: metadata.robots || '',
+        viewport: metadata.viewport || '',
+        lang: metadata.lang || ''
+      },
+      
+      // Open Graph
+      openGraph: {
+        complete: !!(opengraph.title && opengraph.description && opengraph.image),
+        title: opengraph.title || '',
+        description: opengraph.description || '',
+        image: opengraph.image || '',
+        type: opengraph.type || ''
+      },
+      
+      // Schema markup
+      structuredData: {
+        implemented: schema.count > 0,
+        schemaCount: schema.count || 0,
+        types: schema.schemaTypes || [],
+        criticalSchemas: {
+          organization: !!schema.organization,
+          breadcrumb: !!schema.breadcrumb
+        }
+      },
+      
+      // Technical health
+      technicalHealth: {
+        statusCode: snapshot.statusCode || 0,
+        httpsEnabled: snapshot.httpsEnabled || false,
+        mobileOptimized: snapshot.mobileOptimized || false,
+        loadTime: snapshot.loadTime || 0,
+        pageSize: snapshot.pageSize || 0,
+        issues: snapshot.issues || []
+      },
+      
+      // Overall health score
+      healthScore: this.calculateTechnicalHealthScore({
+        hasCanonical: !!metadata.canonical,
+        hasMetaDescription: !!metadata.metaDescription,
+        hasOpenGraph: !!(opengraph.title && opengraph.image),
+        hasSchema: schema.count > 0,
+        httpsEnabled: snapshot.httpsEnabled,
+        mobileOptimized: snapshot.mobileOptimized,
+        statusCode: snapshot.statusCode
+      }),
+      
+      // Data quality
+      dataSource: '✅ Fetched & Analyzed',
+      isRealData: true
+    };
+  },
+
+  /**
+   * Map keyword & traffic data
+   * @param {Object} competitorJSON - Unified competitor data
+   * @returns {Object} Keyword metrics ready for UI
+   */
+  mapKeywordMetrics: function(competitorJSON) {
+    const domain = competitorJSON.domain || 'Unknown';
+    const serper = competitorJSON.rawData?.apis?.serper || {};
+    const opr = competitorJSON.rawData?.apis?.openpagerank || {};
+    const gsc = competitorJSON.rawData?.apis?.searchConsole || {};
+    
+    return {
+      domain: domain,
+      
+      // Organic keywords
+      organicKeywords: serper.organicKeywords || 0,
+      paidKeywords: serper.paidKeywords || 0,
+      
+      // Traffic estimates
+      organicTraffic: serper.organicTraffic || opr.organicTraffic || 0,
+      paidTraffic: serper.paidTraffic || 0,
+      
+      // SERP features
+      serpFeatures: serper.serpFeatures || [],
+      hasRichSnippets: (serper.serpFeatures || []).length > 0,
+      
+      // Top keywords
+      topKeywords: serper.topKeywords || [],
+      
+      // Search Console data (if available)
+      searchConsole: gsc.clicks ? {
+        clicks: gsc.clicks,
+        impressions: gsc.impressions,
+        ctr: gsc.ctr,
+        avgPosition: gsc.position,
+        topQueries: gsc.topQueries || []
+      } : null,
+      
+      // Formatted display
+      keywordsFormatted: this.formatNumber(serper.organicKeywords || 0),
+      trafficFormatted: this.formatNumber(serper.organicTraffic || 0),
+      
+      // Data quality
+      dataSource: serper.organicKeywords ? '✅ Serper API' : 
+                   (opr.organicKeywords ? '✅ OpenPageRank API' : '⚠️ Estimated'),
+      isRealData: !!(serper.organicKeywords || opr.organicKeywords),
+      
+      // Grade
+      grade: this.gradeKeywordPerformance(serper.organicKeywords || 0)
+    };
+  },
+
+  /**
+   * Map comparative gap analysis
+   * @param {Object} yourData - Your site's unified JSON
+   * @param {Object} competitorData - Competitor's unified JSON
+   * @returns {Object} Gap analysis ready for UI
+   */
+  mapGapAnalysis: function(yourData, competitorData) {
+    const yourAuthority = this.mapAuthorityMetrics(yourData);
+    const compAuthority = this.mapAuthorityMetrics(competitorData);
+    
+    const yourPerformance = this.mapPerformanceMetrics(yourData);
+    const compPerformance = this.mapPerformanceMetrics(competitorData);
+    
+    const yourKeywords = this.mapKeywordMetrics(yourData);
+    const compKeywords = this.mapKeywordMetrics(competitorData);
+    
+    return {
+      competitor: competitorData.domain,
+      
+      gaps: {
+        authority: {
+          yourScore: yourAuthority.authorityScore,
+          compScore: compAuthority.authorityScore,
+          gap: compAuthority.authorityScore - yourAuthority.authorityScore,
+          percentage: this.calculatePercentageGap(yourAuthority.authorityScore, compAuthority.authorityScore),
+          status: this.getGapStatus(yourAuthority.authorityScore, compAuthority.authorityScore)
+        },
+        
+        performance: {
+          yourScore: yourPerformance.performanceScore,
+          compScore: compPerformance.performanceScore,
+          gap: compPerformance.performanceScore - yourPerformance.performanceScore,
+          percentage: this.calculatePercentageGap(yourPerformance.performanceScore, compPerformance.performanceScore),
+          status: this.getGapStatus(yourPerformance.performanceScore, compPerformance.performanceScore)
+        },
+        
+        keywords: {
+          yourCount: yourKeywords.organicKeywords,
+          compCount: compKeywords.organicKeywords,
+          gap: compKeywords.organicKeywords - yourKeywords.organicKeywords,
+          percentage: this.calculatePercentageGap(yourKeywords.organicKeywords, compKeywords.organicKeywords),
+          status: this.getGapStatus(yourKeywords.organicKeywords, compKeywords.organicKeywords)
+        },
+        
+        traffic: {
+          yourTraffic: yourKeywords.organicTraffic,
+          compTraffic: compKeywords.organicTraffic,
+          gap: compKeywords.organicTraffic - yourKeywords.organicTraffic,
+          percentage: this.calculatePercentageGap(yourKeywords.organicTraffic, compKeywords.organicTraffic),
+          status: this.getGapStatus(yourKeywords.organicTraffic, compKeywords.organicTraffic)
+        }
+      },
+      
+      // Priority recommendations
+      priorities: this.calculatePriorities(yourData, competitorData)
+    };
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UTILITY FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  formatNumber: function(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  },
+
+  gradeAuthority: function(score) {
+    if (score >= 70) return { letter: 'A', color: '#10b981', label: 'Excellent' };
+    if (score >= 50) return { letter: 'B', color: '#3b82f6', label: 'Good' };
+    if (score >= 30) return { letter: 'C', color: '#f59e0b', label: 'Fair' };
+    return { letter: 'D', color: '#ef4444', label: 'Poor' };
+  },
+
+  gradePerformance: function(score) {
+    if (score >= 90) return { letter: 'A', color: '#10b981', label: 'Excellent' };
+    if (score >= 70) return { letter: 'B', color: '#3b82f6', label: 'Good' };
+    if (score >= 50) return { letter: 'C', color: '#f59e0b', label: 'Fair' };
+    return { letter: 'D', color: '#ef4444', label: 'Poor' };
+  },
+
+  gradeKeywordPerformance: function(count) {
+    if (count >= 100000) return { letter: 'A', color: '#10b981', label: 'Excellent' };
+    if (count >= 10000) return { letter: 'B', color: '#3b82f6', label: 'Good' };
+    if (count >= 1000) return { letter: 'C', color: '#f59e0b', label: 'Fair' };
+    return { letter: 'D', color: '#ef4444', label: 'Poor' };
+  },
+
+  rateLCP: function(lcp) {
+    if (lcp <= 2.5) return 'good';
+    if (lcp <= 4.0) return 'needs-improvement';
+    return 'poor';
+  },
+
+  rateFID: function(fid) {
+    if (fid <= 100) return 'good';
+    if (fid <= 300) return 'needs-improvement';
+    return 'poor';
+  },
+
+  rateCLS: function(cls) {
+    if (cls <= 0.1) return 'good';
+    if (cls <= 0.25) return 'needs-improvement';
+    return 'poor';
+  },
+
+  normalizeToScore: function(value, goodThreshold, poorThreshold) {
+    if (value <= goodThreshold) return 100;
+    if (value >= poorThreshold) return 0;
+    return Math.round(100 - ((value - goodThreshold) / (poorThreshold - goodThreshold)) * 100);
+  },
+
+  calculateContentDepth: function(metrics) {
+    let score = 0;
+    
+    // Word count (40 points)
+    if (metrics.wordCount > 2000) score += 40;
+    else if (metrics.wordCount > 1000) score += 30;
+    else if (metrics.wordCount > 500) score += 20;
+    else score += 10;
+    
+    // Headings (30 points)
+    if (metrics.headingCount > 10) score += 30;
+    else if (metrics.headingCount > 5) score += 20;
+    else score += 10;
+    
+    // Schema (20 points)
+    if (metrics.schemaCount > 3) score += 20;
+    else if (metrics.schemaCount > 0) score += 10;
+    
+    // Images (10 points)
+    if (metrics.imageCount > 10) score += 10;
+    else if (metrics.imageCount > 5) score += 5;
+    
+    return Math.min(score, 100);
+  },
+
+  calculateTechnicalHealthScore: function(checks) {
+    let score = 0;
+    const weights = {
+      statusCode: 20,
+      httpsEnabled: 15,
+      mobileOptimized: 15,
+      hasCanonical: 10,
+      hasMetaDescription: 10,
+      hasOpenGraph: 15,
+      hasSchema: 15
+    };
+    
+    if (checks.statusCode === 200) score += weights.statusCode;
+    if (checks.httpsEnabled) score += weights.httpsEnabled;
+    if (checks.mobileOptimized) score += weights.mobileOptimized;
+    if (checks.hasCanonical) score += weights.hasCanonical;
+    if (checks.hasMetaDescription) score += weights.hasMetaDescription;
+    if (checks.hasOpenGraph) score += weights.hasOpenGraph;
+    if (checks.hasSchema) score += weights.hasSchema;
+    
+    return score;
+  },
+
+  isOptimalTitleLength: function(title) {
+    const len = (title || '').length;
+    return len >= 30 && len <= 60;
+  },
+
+  isOptimalDescriptionLength: function(desc) {
+    const len = (desc || '').length;
+    return len >= 120 && len <= 160;
+  },
+
+  calculatePercentageGap: function(yourValue, compValue) {
+    if (yourValue === 0) return compValue > 0 ? 100 : 0;
+    return Math.round(((compValue - yourValue) / yourValue) * 100);
+  },
+
+  getGapStatus: function(yourValue, compValue) {
+    const diff = compValue - yourValue;
+    if (diff > yourValue * 0.2) return 'critical'; // They're 20%+ ahead
+    if (diff > 0) return 'behind';
+    if (diff < -yourValue * 0.2) return 'ahead'; // You're 20%+ ahead
+    return 'competitive';
+  },
+
+  calculatePriorities: function(yourData, competitorData) {
+    // Analyze gaps and return prioritized action items
+    const priorities = [];
+    
+    const yourAuth = this.mapAuthorityMetrics(yourData);
+    const compAuth = this.mapAuthorityMetrics(competitorData);
+    
+    if (compAuth.authorityScore - yourAuth.authorityScore > 20) {
+      priorities.push({
+        type: 'authority',
+        priority: 'high',
+        action: 'Focus on backlink acquisition',
+        gap: compAuth.authorityScore - yourAuth.authorityScore
+      });
+    }
+    
+    // Add more priority logic...
+    
+    return priorities;
+  }
+};
+
+console.log('✅ Data Mapper loaded');

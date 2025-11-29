@@ -1,0 +1,191 @@
+<section class="card tab" id="tab-results">
+  <h2>Workflow Results</h2>
+  <p class="card-sub">AI-generated insights from your 5-stage workflow.</p>
+  
+  <div class="results-tabs">
+    <button class="results-tab-btn active" data-results-stage="1">
+      <span class="results-tab-num">1</span>
+      <span class="results-tab-label">Strategy</span>
+    </button>
+    <button class="results-tab-btn" data-results-stage="2">
+      <span class="results-tab-num">2</span>
+      <span class="results-tab-label">Keywords</span>
+    </button>
+    <button class="results-tab-btn" data-results-stage="3">
+      <span class="results-tab-num">3</span>
+      <span class="results-tab-label">Architecture</span>
+    </button>
+    <button class="results-tab-btn" data-results-stage="4">
+      <span class="results-tab-num">4</span>
+      <span class="results-tab-label">Calendar</span>
+    </button>
+    <button class="results-tab-btn" data-results-stage="5">
+      <span class="results-tab-num">5</span>
+      <span class="results-tab-label">Generation</span>
+    </button>
+  </div>
+
+  <!-- Stage 1 Results -->
+  <div class="results-panel active" data-results-panel="1">
+    <div class="results-header">
+      <h3>Stage 1: Market Research & Strategy</h3>
+      <span class="results-timestamp" id="stage1-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <!-- Visual Analytics Section -->
+      <div class="results-section">
+        <h4>📈 Strategic Insights Dashboard</h4>
+        <div class="charts-grid" id="stage1-charts">
+          <div class="chart-container">
+            <h5>Customer Frustrations</h5>
+            <canvas id="chart-emotional-pains"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Hidden Aspirations</h5>
+            <canvas id="chart-hidden-desires"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Mindset Transformation</h5>
+            <canvas id="chart-mindset-shifts"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Customer Job Priority</h5>
+            <canvas id="chart-jtbd-impact"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Competitive Advantage Map</h5>
+            <canvas id="chart-competitor-gaps"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Content Format Strategy</h5>
+            <canvas id="chart-format-usage"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Brand Positioning</h5>
+            <canvas id="chart-brand-positioning"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Value Proposition Mix</h5>
+            <canvas id="chart-value-proposition"></canvas>
+          </div>
+          <div class="chart-container large">
+            <h5>Strategic Content Pillars</h5>
+            <canvas id="chart-content-pillars"></canvas>
+          </div>
+          <div class="chart-container">
+            <h5>Priority Focus Matrix</h5>
+            <canvas id="chart-priority-matrix"></canvas>
+          </div>
+          <div class="chart-container large">
+            <h5>Market Opportunity Analysis</h5>
+            <canvas id="chart-opportunity-gaps"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4> Complete Strategic Analysis</h4>
+        <div class="report-viewer" id="stage1-report">
+          <div class="report-placeholder">Run Stage 1 to generate the complete strategic analysis</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 2 Results -->
+  <div class="results-panel" data-results-panel="2">
+    <div class="results-header">
+      <h3>Stage 2: Keyword Discovery</h3>
+      <span class="results-timestamp" id="stage2-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Keyword Data Export</h4>
+        <div class="json-viewer" id="stage2-json">
+          <div class="json-placeholder">Run Stage 2 to see keyword insights</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Complete Keyword Analysis</h4>
+        <div class="report-viewer" id="stage2-report">
+          <div class="report-placeholder">Run Stage 2 to generate keyword analysis</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 3 Results -->
+  <div class="results-panel" data-results-panel="3">
+    <div class="results-header">
+      <h3>Stage 3: Clustering & Architecture</h3>
+      <span class="results-timestamp" id="stage3-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Architecture Data Export</h4>
+        <div class="json-viewer" id="stage3-json">
+          <div class="json-placeholder">Run Stage 3 to see architecture insights</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Complete Content Architecture</h4>
+        <div class="report-viewer" id="stage3-report">
+          <div class="report-placeholder">Run Stage 3 to generate content architecture</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 4 Results -->
+  <div class="results-panel" data-results-panel="4">
+    <div class="results-header">
+      <h3>Stage 4: Content Calendar</h3>
+      <span class="results-timestamp" id="stage4-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Calendar Data Export</h4>
+        <div class="json-viewer" id="stage4-json">
+          <div class="json-placeholder">Run Stage 4 to see calendar data</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Complete Content Calendar</h4>
+        <div class="report-viewer" id="stage4-report">
+          <div class="report-placeholder">Run Stage 4 to generate content calendar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 5 Results -->
+  <div class="results-panel" data-results-panel="5">
+    <div class="results-header">
+      <h3>Stage 5: Content Generation</h3>
+      <span class="results-timestamp" id="stage5-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Generation Configuration Export</h4>
+        <div class="json-viewer" id="stage5-json">
+          <div class="json-placeholder">Run Stage 5 to see generation config</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Complete Content Package</h4>
+        <div class="report-viewer" id="stage5-report">
+          <div class="report-placeholder">Run Stage 5 to generate final content</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

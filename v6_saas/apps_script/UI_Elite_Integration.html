@@ -1,0 +1,664 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE COMPETITOR ANALYSIS INTEGRATION (v6 SaaS)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Wires up Stage 1 "Analyze Competitors" button to PHP Gateway backend
+ * Handles: Loading states, progress tracking, error handling, result rendering
+ * Uses: google.script.run → UI_Main.gs → runEliteCompetitorAnalysis() → UI_Gateway.gs → PHP Gateway
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Initialize competitor analysis button handler
+ */
+function initCompetitorAnalysis() {
+  const analyzeBtn = document.getElementById('btnAnalyzeCompetitors');
+  
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', handleCompetitorAnalysisClick);
+    console.log('✅ Competitor analysis button initialized');
+  } else {
+    console.warn('⚠️ Competitor analysis button not found');
+  }
+}
+
+/**
+ * Handle analyze button click
+ */
+async function handleCompetitorAnalysisClick(event) {
+  event.preventDefault();
+  
+  console.log('🚀 Starting competitor analysis...');
+  
+  try {
+    // 1. COLLECT COMPETITOR URLs
+    const competitorInput = document.getElementById('keyCompetitors');
+    let competitorUrls = [];
+    
+    if (competitorInput && competitorInput.value.trim()) {
+      competitorUrls = competitorInput.value
+        .split(/[,\n]/)
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+      
+      if (competitorUrls.length > 6) {
+        showToast('Maximum 6 competitors allowed', 'warning');
+        return;
+      }
+      
+      console.log(`📊 Will analyze ${competitorUrls.length} competitors...`);
+    } else {
+      showToast('Please enter competitor URLs in Stage 1', 'warning');
+      return;
+    }
+    
+    // 2. COLLECT PROJECT CONTEXT from Stage 1 form
+    const projectContext = collectProjectContext();
+    console.log('🎯 Project:', projectContext.brandName || 'Unknown');
+    
+    // 3. SHOW LOADING STATE
+    showCompetitorLoadingState(competitorUrls.length);
+    
+    // 4. CALL BACKEND API via Gateway
+    const result = await callCompetitorAnalysisAPI(competitorUrls, projectContext);
+    
+    // 5. HIDE LOADING, SHOW RESULTS
+    hideCompetitorLoadingState();
+    
+    if (result && result.success) {
+      // Switch to competitor tab
+      switchToCompetitorTab();
+      
+      // Render results
+      renderCompetitorIntelligence(result);
+      
+      const competitorCount = result.competitors ? Object.keys(result.competitors).length : 0;
+      showToast(`✅ Analysis complete! ${competitorCount} competitors loaded`, 'success');
+    } else {
+      showToast(result?.error || 'Analysis failed', 'error');
+      showCompetitorError(result?.error || 'Unknown error occurred');
+    }
+    
+  } catch (error) {
+    console.error('❌ Competitor analysis error:', error);
+    hideCompetitorLoadingState();
+    
+    // Handle credit errors
+    if (error.message && error.message.includes('credit')) {
+      showToast('Insufficient credits. Please upgrade your plan.', 'error');
+    } else {
+      showToast('Analysis failed: ' + error.message, 'error');
+    }
+    
+    showCompetitorError(error.message);
+  }
+}
+
+/**
+ * Collect project context from Stage 1 form fields
+ */
+function collectProjectContext() {
+  return {
+    // Required fields
+    brandName: getFieldValue('brandName'),
+    targetAudience: getFieldValue('targetAudience'),
+    audiencePains: getFieldValue('audiencePains'),
+    audienceDesired: getFieldValue('audienceDesired'),
+    productOrService: getFieldValue('productOrService'),
+    coreTopic: getFieldValue('coreTopic'),
+    quarterlyObjective: getFieldValue('quarterlyObjective'),
+    
+    // Optional strategic fields
+    brandIdeology: getFieldValue('brandIdeology'),
+    brandArchetype: getFieldValue('brandArchetype'),
+    brandLexicon: getFieldValue('brandLexicon'),
+    uvp: getFieldValue('uvp'),
+    existingMessaging: getFieldValue('existingMessaging'),
+    
+    // Audience intelligence
+    secondaryAudience: getFieldValue('secondaryAudience'),
+    customerDemographics: getFieldValue('customerDemographics'),
+    geographicFocus: getFieldValue('geographicFocus'),
+    industryVertical: getFieldValue('industryVertical'),
+    
+    // Competitive advantage
+    competitiveAdvantages: getFieldValue('competitiveAdvantages'),
+    coreMarketProblem: getFieldValue('coreMarketProblem'),
+    
+    // Goals & channels
+    northStarKpis: getFieldValue('northStarKpis'),
+    contentGoals: getFieldValue('contentGoals'),
+    primaryChannels: getFieldValue('primaryChannels'),
+    contentFormats: getFieldValue('contentFormats'),
+    seasonality: getFieldValue('seasonality'),
+    futureVision: getFieldValue('futureVision')
+  };
+}
+
+/**
+ * Get field value helper
+ */
+function getFieldValue(fieldId) {
+  const field = document.getElementById(fieldId);
+  return field ? field.value.trim() : '';
+}
+
+/**
+ * Call backend API for competitor analysis via PHP Gateway
+ * Routes through UI_Main.gs → runEliteCompetitorAnalysis() → UI_Gateway.gs → PHP Gateway
+ */
+async function callCompetitorAnalysisAPI(competitors, projectContext) {
+  console.log('📡 Starting competitor analysis via Gateway...');
+  console.log('   Competitors:', competitors.length);
+  console.log('   Project:', projectContext.brandName || 'Unknown');
+  
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(result => {
+        console.log('📥 Gateway response received:', result);
+        
+        if (result && result.success) {
+          console.log('✅ Analysis successful');
+          console.log('   Total metrics:', result.metadata?.totalMetrics || 0);
+          
+          // Convert object to array if needed
+          const convertedResult = convertCompetitorsToArray(result);
+          resolve(convertedResult);
+        } else {
+          console.error('❌ Analysis failed:', result ? result.error : 'Unknown');
+          reject(new Error(result?.error || 'Analysis failed'));
+        }
+      })
+      .withFailureHandler(error => {
+        console.error('❌ Gateway call failed:', error);
+        reject(new Error('Backend connection failed: ' + error.message));
+      })
+      .runEliteCompetitorAnalysis(competitors, projectContext);
+  });
+}
+
+/**
+ * Convert competitors object to array format expected by renderer
+ */
+function convertCompetitorsToArray(result) {
+  console.log('🔄 Converting competitors object to array...');
+  
+  if (!result || !result.competitors) {
+    console.warn('⚠️ No competitors data to convert');
+    return result;
+  }
+  
+  // Check if already an array
+  if (Array.isArray(result.competitors)) {
+    console.log('✅ Competitors in array format:', result.competitors.length, 'items');
+    
+    // Check if array contains strings (domains only) or objects
+    const firstItem = result.competitors[0];
+    
+    if (typeof firstItem === 'string') {
+      console.warn('⚠️ Competitors are strings only - converting to objects');
+      
+      // Convert string array to object array
+      const competitorsArray = result.competitors.map(domain => ({
+        domain: domain,
+        url: 'https://' + domain.replace(/\/$/, ''),
+        categories: result.competitorData?.[domain]?.categories || {},
+        rawData: result.competitorData?.[domain]?.rawData || {},
+        processedMetrics: result.competitorData?.[domain]?.processedMetrics || {}
+      }));
+      
+      console.log('✅ Converted', competitorsArray.length, 'string domains to objects');
+      
+      return {
+        ...result,
+        competitors: competitorsArray
+      };
+    }
+    
+    console.log('✅ Competitors already in object format');
+    return result;
+  }
+  
+  // Convert object to array
+  const competitorsArray = Object.entries(result.competitors).map(([domain, data]) => ({
+    domain: domain,
+    url: data.url || 'https://' + domain,
+    categories: data.categories || {},
+    rawData: data.rawData || {},
+    processedMetrics: data.processedMetrics || {},
+    ...data
+  }));
+  
+  console.log(`✅ Converted ${competitorsArray.length} competitors from object to array format`);
+  
+  return {
+    ...result,
+    competitors: competitorsArray
+  };
+}
+
+/**
+ * Show competitor loading state
+ */
+function showCompetitorLoadingState(competitorCount) {
+  const loadingState = document.getElementById('comp-loading-state');
+  const statusEl = document.getElementById('comp-loading-status');
+  const progressEl = document.getElementById('comp-loading-progress');
+  const detailsEl = document.getElementById('comp-loading-details');
+  
+  if (!loadingState) return;
+  
+  // Hide other states
+  document.getElementById('comp-empty-state').style.display = 'none';
+  document.getElementById('comp-results').style.display = 'none';
+  
+  // Show loading
+  loadingState.style.display = 'block';
+  
+  // Update status
+  if (statusEl) {
+    statusEl.textContent = `Analyzing ${competitorCount} competitor${competitorCount > 1 ? 's' : ''}...`;
+  }
+  
+  // Animate progress
+  animateProgressBar(progressEl, competitorCount);
+  
+  // Show analysis steps
+  if (detailsEl) {
+    const steps = [
+      { text: '🔍 Fetching SEO metrics...', delay: 0 },
+      { text: '🏆 Collecting domain authority...', delay: 2000 },
+      { text: '⚡ Analyzing page speed...', delay: 4000 },
+      { text: '🔎 Gathering SERP intelligence...', delay: 6000 },
+      { text: '🤖 Running AI analysis...', delay: 8000 },
+      { text: '📊 Generating insights...', delay: 10000 }
+    ];
+    
+    detailsEl.innerHTML = '';
+    
+    steps.forEach(step => {
+      setTimeout(() => {
+        const stepEl = document.createElement('div');
+        stepEl.className = 'loading-step';
+        stepEl.textContent = step.text;
+        detailsEl.appendChild(stepEl);
+      }, step.delay);
+    });
+  }
+}
+
+/**
+ * Animate progress bar
+ */
+function animateProgressBar(progressEl, competitorCount) {
+  if (!progressEl) return;
+  
+  const estimatedTime = competitorCount * 2000; // 2s per competitor
+  const steps = 100;
+  const interval = estimatedTime / steps;
+  
+  let progress = 0;
+  
+  const timer = setInterval(() => {
+    progress += 1;
+    progressEl.style.width = progress + '%';
+    
+    if (progress >= 95) {
+      clearInterval(timer);
+    }
+  }, interval);
+  
+  // Store timer to clear on completion
+  window.competitorProgressTimer = timer;
+}
+
+/**
+ * Hide competitor loading state
+ */
+function hideCompetitorLoadingState() {
+  const loadingState = document.getElementById('comp-loading-state');
+  if (loadingState) {
+    loadingState.style.display = 'none';
+  }
+  
+  // Clear progress timer
+  if (window.competitorProgressTimer) {
+    clearInterval(window.competitorProgressTimer);
+  }
+  
+  // Set progress to 100%
+  const progressEl = document.getElementById('comp-loading-progress');
+  if (progressEl) {
+    progressEl.style.width = '100%';
+  }
+}
+
+/**
+ * Switch to competitor intelligence tab
+ */
+function switchToCompetitorTab() {
+  // Hide all main tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.remove('active');
+    tab.style.display = 'none';
+  });
+  
+  // Show competitor tab
+  const compTab = document.getElementById('tab-competitors');
+  if (compTab) {
+    compTab.classList.add('active');
+    compTab.style.display = 'block';
+  }
+  
+  // Update sidebar active state
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  const compNavItem = document.querySelector('[data-tab="competitors"]');
+  if (compNavItem) {
+    compNavItem.classList.add('active');
+  }
+  
+  // Scroll to top
+  window.scrollTo(0, 0);
+}
+
+/**
+ * Show toast notification
+ */
+function showToast(message, type = 'info') {
+  console.log(`[${type.toUpperCase()}] ${message}`);
+  
+  // Create toast element if it doesn't exist
+  let toast = document.getElementById('elite-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'elite-toast';
+    toast.className = 'elite-toast';
+    document.body.appendChild(toast);
+  }
+  
+  // Set message and type
+  toast.textContent = message;
+  toast.className = `elite-toast elite-toast-${type} elite-toast-show`;
+  
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    toast.classList.remove('elite-toast-show');
+  }, 5000);
+}
+
+/**
+ * Show competitor error state
+ */
+function showCompetitorError(errorMessage) {
+  const emptyState = document.getElementById('comp-empty-state');
+  if (!emptyState) return;
+  
+  emptyState.innerHTML = `
+    <div class="empty-state-icon">⚠️</div>
+    <h3 class="empty-state-title">Analysis Error</h3>
+    <p class="empty-state-text">${errorMessage}</p>
+    <button class="btn-primary" onclick="location.reload()">Try Again</button>
+  `;
+  
+  emptyState.style.display = 'block';
+  document.getElementById('comp-results').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPETITOR TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Initialize competitor tab navigation
+ */
+function initCompetitorTabNavigation() {
+  const tabButtons = document.querySelectorAll('.comp-tab-btn');
+  
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const targetTab = this.getAttribute('data-comp-tab');
+      switchCompetitorCategoryTab(targetTab);
+    });
+  });
+  
+  console.log('✅ Competitor tab navigation initialized');
+}
+
+/**
+ * Switch between competitor category tabs
+ */
+function switchCompetitorCategoryTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.comp-tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  const activeBtn = document.querySelector(`[data-comp-tab="${tabName}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
+  
+  // Update tab panels
+  document.querySelectorAll('.comp-tab-panel').forEach(panel => {
+    panel.classList.remove('active');
+    panel.style.display = 'none';
+  });
+  
+  const activePanel = document.querySelector(`[data-comp-panel="${tabName}"]`);
+  if (activePanel) {
+    activePanel.classList.add('active');
+    activePanel.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    initCompetitorAnalysis();
+    initCompetitorTabNavigation();
+  });
+} else {
+  initCompetitorAnalysis();
+  initCompetitorTabNavigation();
+}
+
+console.log('✅ Elite Competitor Integration loaded (v6 SaaS)');
+</script>
+
+<style>
+/* Toast notifications */
+.elite-toast {
+  position: fixed;
+  bottom: -100px;
+  right: 20px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  background: #1f2937;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 10000;
+  transition: bottom 0.3s ease;
+  max-width: 400px;
+}
+
+.elite-toast-show {
+  bottom: 20px;
+}
+
+.elite-toast-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.elite-toast-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.elite-toast-error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.elite-toast-info {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+/* Loading state styles */
+.comp-loading-state {
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.loading-spinner-large {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 24px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.loading-subtitle {
+  font-size: 16px;
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+.loading-progress-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 400px;
+  margin: 0 auto 24px;
+}
+
+.loading-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.loading-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.loading-step {
+  font-size: 14px;
+  color: #6b7280;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+  animation: fadeInSlide 0.3s ease;
+}
+
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Empty state */
+.comp-empty-state {
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.empty-state-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.empty-state-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+.empty-state-text {
+  font-size: 16px;
+  color: #6b7280;
+  max-width: 600px;
+  margin: 0 auto 32px;
+  line-height: 1.6;
+}
+
+.empty-state-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.empty-state-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.feature-icon {
+  font-size: 24px;
+}
+
+.feature-text {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* Competitor metric cards */
+.comp-metric-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.comp-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .empty-state-features {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

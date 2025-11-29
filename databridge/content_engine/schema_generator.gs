@@ -1,0 +1,1 @@
+function CE_schemaGenerate(p){var type=p.type||'Article';var i=PM_loadProject({project_id:(p&&p.project_id)||'active'}).inputs||{};return {json:{"@context":"https://schema.org","@type":type,"headline":p.title||'',"author":i.author_name||'',"about":i.pillar_topics||'',"articleBody":String(p.body||'').slice(0,5000)}};}

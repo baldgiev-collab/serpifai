@@ -1,0 +1,23 @@
+# Never commit sensitive configuration
+config.php
+
+# Ignore database backups
+*.sql.backup
+*.sql.gz
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Keep template file for reference
+!config.template.php

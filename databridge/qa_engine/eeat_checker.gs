@@ -1,0 +1,1 @@
+function QA_eeat(text,inputs){text=String(text||'');inputs=inputs||{};var cite=/(https?:\/\/|\[\d+\])/.test(text),author=!!inputs.author_name,creds=!!inputs.author_credentials,org=!!inputs.org_about;var len=text.length;var caseStudy=/\bcase study\b/i.test(text);return Math.min(100,35+(cite?20:0)+(author?10:0)+(creds?10:0)+(org?5:0)+(len>1400?10:4)+(caseStudy?6:0));}

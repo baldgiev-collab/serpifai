@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SerpifAI v6 — Architect of Authority</title>
+  
+  <?!= include('UI_Styles_Theme'); ?>
+  <?!= include('UI_Elite_Styles'); ?>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <?!= include('UI_Charts_Competitor'); ?>
+  <?!= include('UI_Elite_Charts'); ?>
+  <?!= include('UI_Metrics_Engine'); ?>
+  <?!= include('UI_Charts_Overview'); ?>
+  <?!= include('UI_Elite_Renderer'); ?>
+  <?!= include('UI_Elite_Integration'); ?>
+</head>
+<body>
+
+  <div class="app-shell">
+    
+    <?!= include('UI_Components_Sidebar'); ?>
+
+    <div class="main-panel">
+      
+      <?!= include('UI_Components_Header'); ?>
+
+      <main class="main-content">
+        
+        <?!= include('UI_Components_ProjectManager'); ?>
+        <?!= include('UI_Components_Overview'); ?>
+        <?!= include('UI_Components_Workflow'); ?>
+        <?!= include('UI_Components_Results'); ?>
+        <?!= include('UI_Components_QA'); ?>
+        <?!= include('UI_Components_Competitors'); ?>
+        <?!= include('UI_Components_Scoring'); ?>
+        
+      </main>
+    </div>
+  </div>
+
+  <?!= include('UI_Components_Toast'); ?>
+  <?!= include('UI_Components_Modal'); ?>
+  <?!= include('UI_Scripts_App'); ?>
+</body>
+</html>

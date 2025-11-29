@@ -1,0 +1,50 @@
+# ============================================================================
+# CRITICAL: API GATEWAY BYPASS - PLACE THIS IN /public_html/.htaccess
+# ============================================================================
+# This .htaccess file allows direct PHP access BEFORE WordPress intercepts
+# MUST be placed in /public_html/ (NOT in /public_html/serpifai_php/)
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # ========================================================================
+    # PRIORITY 1: Direct API Gateway Access (BEFORE WordPress)
+    # ========================================================================
+    # Allow direct access to api_gateway.php in serpifai_php folder
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    
+    # Direct access to serpifai_php files (bypass WordPress completely)
+    RewriteCond %{REQUEST_URI} ^/serpifai_php/
+    RewriteRule ^ - [L]
+    
+    # ========================================================================
+    # PRIORITY 2: WordPress Routing (after API)
+    # ========================================================================
+    # Everything else goes to WordPress
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ /index.php?/$1 [QSA,L]
+</IfModule>
+
+# ============================================================================
+# CORS Headers for API
+# ============================================================================
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+</IfModule>
+
+# ============================================================================
+# PHP Configuration for API
+# ============================================================================
+<IfModule mod_php.c>
+    php_flag display_errors off
+    php_flag log_errors on
+    php_value error_log /var/log/php_errors.log
+    php_value max_execution_time 300
+    php_value post_max_size 50M
+    php_value upload_max_filesize 50M
+</IfModule>

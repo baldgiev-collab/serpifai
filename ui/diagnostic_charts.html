@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SERPIFAI - Chart Diagnostic Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .diagnostic-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .status-ok { color: #22c55e; font-weight: bold; }
+    .status-error { color: #ef4444; font-weight: bold; }
+    .status-warning { color: #f59e0b; font-weight: bold; }
+    pre {
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .chart-test-container {
+      width: 400px;
+      height: 300px;
+      margin: 20px 0;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .test-result {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      border-left: 4px solid #3b82f6;
+      background: #eff6ff;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 SERPIFAI Chart Rendering Diagnostic Tool</h1>
+  
+  <div class="diagnostic-section">
+    <h2>Step 1: Chart.js Library Check</h2>
+    <div id="chartjs-status"></div>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>Step 2: Canvas Element Test</h2>
+    <button onclick="testCanvasElements()">Test Canvas Elements</button>
+    <div id="canvas-status"></div>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>Step 3: Simple Chart Test</h2>
+    <button onclick="createTestChart()">Create Test Chart</button>
+    <div class="chart-test-container">
+      <canvas id="test-chart-1"></canvas>
+    </div>
+    <div id="test-chart-status"></div>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>Step 4: Mock Data Test</h2>
+    <button onclick="testWithMockData()">Test With Mock Stage 1 Data</button>
+    <div id="mock-data-status"></div>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>Step 5: Canvas Containers Check</h2>
+    <button onclick="checkAllCanvasContainers()">Check All Canvas IDs</button>
+    <div id="canvas-containers-status"></div>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>Step 6: CSS/Visibility Check</h2>
+    <button onclick="checkCSSVisibility()">Check CSS Visibility</button>
+    <div id="css-visibility-status"></div>
+  </div>
+
+  <div class="diagnostic-section">
+    <h2>Step 7: Full Integration Test</h2>
+    <button onclick="runFullIntegrationTest()">Run Full Integration Test</button>
+    <div id="integration-test-status"></div>
+  </div>
+
+  <script>
+    // Step 1: Chart.js Check
+    (function checkChartJS() {
+      const statusDiv = document.getElementById('chartjs-status');
+      if (typeof Chart !== 'undefined') {
+        statusDiv.innerHTML = `
+          <p class="status-ok">✅ Chart.js is loaded</p>
+          <p>Version: ${Chart.version}</p>
+          <p>Available chart types: ${Object.keys(Chart.registry.controllers).join(', ')}</p>
+        `;
+      } else {
+        statusDiv.innerHTML = `
+          <p class="status-error">❌ Chart.js is NOT loaded</p>
+          <p>This is the root cause - charts cannot be created without Chart.js library</p>
+        `;
+      }
+    })();
+
+    // Step 2: Canvas Element Test
+    function testCanvasElements() {
+      const statusDiv = document.getElementById('canvas-status');
+      const canvasIds = [
+        'chart-emotional-pains',
+        'chart-hidden-desires',
+        'chart-mindset-shifts',
+        'chart-jtbd-impact',
+        'chart-competitor-gaps',
+        'chart-format-usage',
+        'chart-brand-positioning',
+        'chart-value-proposition',
+        'chart-content-pillars',
+        'chart-priority-matrix',
+        'chart-opportunity-gaps'
+      ];
+
+      let html = '<h3>Canvas Element Check Results:</h3>';
+      let foundCount = 0;
+      let missingCount = 0;
+
+      canvasIds.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+          foundCount++;
+          html += `<p class="status-ok">✅ Found: #${id}</p>`;
+        } else {
+          missingCount++;
+          html += `<p class="status-error">❌ Missing: #${id}</p>`;
+        }
+      });
+
+      html += `<div class="test-result">
+        <strong>Summary:</strong> ${foundCount} found, ${missingCount} missing
+        ${missingCount > 0 ? '<br><strong>⚠️ Missing canvas elements will prevent charts from rendering!</strong>' : ''}
+      </div>`;
+
+      statusDiv.innerHTML = html;
+    }
+
+    // Step 3: Simple Chart Test
+    function createTestChart() {
+      const statusDiv = document.getElementById('test-chart-status');
+      const canvas = document.getElementById('test-chart-1');
+
+      if (!canvas) {
+        statusDiv.innerHTML = '<p class="status-error">❌ Test canvas not found</p>';
+        return;
+      }
+
+      if (typeof Chart === 'undefined') {
+        statusDiv.innerHTML = '<p class="status-error">❌ Chart.js not available</p>';
+        return;
+      }
+
+      try {
+        new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: ['Test 1', 'Test 2', 'Test 3'],
+            datasets: [{
+              label: 'Test Data',
+              data: [10, 20, 30],
+              backgroundColor: 'rgba(59, 130, 246, 0.7)'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+
+        statusDiv.innerHTML = `
+          <p class="status-ok">✅ Test chart created successfully!</p>
+          <p>If you can see a blue bar chart above, Chart.js is working correctly.</p>
+        `;
+      } catch (err) {
+        statusDiv.innerHTML = `
+          <p class="status-error">❌ Failed to create test chart</p>
+          <pre>${err.toString()}</pre>
+        `;
+      }
+    }
+
+    // Step 4: Mock Data Test
+    function testWithMockData() {
+      const statusDiv = document.getElementById('mock-data-status');
+      
+      const mockData = {
+        dashboardCharts: {
+          customerFrustrationsChart: [
+            { label: "Test Frustration 1", intensity: 8, shortDescription: "Test description 1" },
+            { label: "Test Frustration 2", intensity: 7, shortDescription: "Test description 2" },
+            { label: "Test Frustration 3", intensity: 9, shortDescription: "Test description 3" }
+          ],
+          hiddenAspirationsChart: [
+            { label: "Test Aspiration 1", intensity: 7, shortDescription: "Test aspiration 1" },
+            { label: "Test Aspiration 2", intensity: 8, shortDescription: "Test aspiration 2" }
+          ],
+          mindsetTransformationChart: [
+            { fromBelief: "Old belief", toBelief: "New belief", importance: 9, shortDescription: "Test transformation" }
+          ]
+        },
+        jtbdScenarios: [
+          { id: "JTBD_1", title: "Test JTBD", priority: 1, segment: "Test", whenSituation: "Test situation" }
+        ],
+        contentPillars: [
+          { name: "Test Pillar 1", theme: "Theme 1" },
+          { name: "Test Pillar 2", theme: "Theme 2" }
+        ],
+        competitiveGaps: {
+          topicGap: "Test topic gap",
+          angleVoiceGap: "Test voice gap",
+          formatGap: "Test format gap"
+        },
+        uniqueMechanism: {
+          name: "Test Mechanism",
+          oneLinePitch: "Test pitch"
+        }
+      };
+
+      let html = '<h3>Mock Data Structure Check:</h3>';
+      html += '<pre>' + JSON.stringify(mockData, null, 2) + '</pre>';
+      
+      // Check data structure
+      const checks = {
+        'dashboardCharts exists': !!mockData.dashboardCharts,
+        'customerFrustrationsChart has data': mockData.dashboardCharts?.customerFrustrationsChart?.length > 0,
+        'hiddenAspirationsChart has data': mockData.dashboardCharts?.hiddenAspirationsChart?.length > 0,
+        'mindsetTransformationChart has data': mockData.dashboardCharts?.mindsetTransformationChart?.length > 0,
+        'jtbdScenarios has data': mockData.jtbdScenarios?.length > 0,
+        'contentPillars has data': mockData.contentPillars?.length > 0,
+        'competitiveGaps exists': !!mockData.competitiveGaps,
+        'uniqueMechanism exists': !!mockData.uniqueMechanism
+      };
+
+      html += '<h4>Data Structure Validation:</h4>';
+      Object.entries(checks).forEach(([check, passed]) => {
+        html += `<p class="${passed ? 'status-ok' : 'status-error'}">
+          ${passed ? '✅' : '❌'} ${check}
+        </p>`;
+      });
+
+      statusDiv.innerHTML = html;
+    }
+
+    // Step 5: Check All Canvas Containers
+    function checkAllCanvasContainers() {
+      const statusDiv = document.getElementById('canvas-containers-status');
+      
+      const canvasIds = [
+        'chart-emotional-pains',
+        'chart-hidden-desires',
+        'chart-mindset-shifts',
+        'chart-jtbd-impact',
+        'chart-competitor-gaps',
+        'chart-format-usage',
+        'chart-brand-positioning',
+        'chart-value-proposition',
+        'chart-content-pillars',
+        'chart-priority-matrix',
+        'chart-opportunity-gaps'
+      ];
+
+      let html = '<h3>Detailed Canvas Container Analysis:</h3>';
+
+      canvasIds.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const computedStyle = window.getComputedStyle(element);
+          
+          html += `<div class="test-result">
+            <strong>#${id}</strong> ${element ? '✅ Found' : '❌ Missing'}
+            ${element ? `
+              <ul>
+                <li>Tag: ${element.tagName}</li>
+                <li>Width: ${rect.width}px (style: ${computedStyle.width})</li>
+                <li>Height: ${rect.height}px (style: ${computedStyle.height})</li>
+                <li>Display: ${computedStyle.display}</li>
+                <li>Visibility: ${computedStyle.visibility}</li>
+                <li>Opacity: ${computedStyle.opacity}</li>
+                <li>Parent: ${element.parentElement?.tagName} (${element.parentElement?.className})</li>
+              </ul>
+            ` : ''}
+          </div>`;
+        } else {
+          html += `<div class="test-result">
+            <strong>#${id}</strong> <span class="status-error">❌ Element does not exist in DOM</span>
+          </div>`;
+        }
+      });
+
+      statusDiv.innerHTML = html;
+    }
+
+    // Step 6: CSS Visibility Check
+    function checkCSSVisibility() {
+      const statusDiv = document.getElementById('css-visibility-status');
+      
+      const canvasIds = [
+        'chart-emotional-pains',
+        'chart-hidden-desires',
+        'chart-mindset-shifts'
+      ];
+
+      let html = '<h3>CSS Visibility Check (first 3 charts):</h3>';
+      let allVisible = true;
+
+      canvasIds.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const isVisible = rect.width > 0 && rect.height > 0;
+          const computedStyle = window.getComputedStyle(element);
+          
+          const parentVisible = element.parentElement ? window.getComputedStyle(element.parentElement).display !== 'none' : true;
+          
+          if (!isVisible) allVisible = false;
+
+          html += `<div class="test-result">
+            <strong>#${id}</strong>
+            <p class="${isVisible ? 'status-ok' : 'status-error'}">
+              ${isVisible ? '✅' : '❌'} Visible: ${isVisible}
+            </p>
+            <ul>
+              <li>Dimensions: ${rect.width}x${rect.height}</li>
+              <li>Display: ${computedStyle.display}</li>
+              <li>Visibility: ${computedStyle.visibility}</li>
+              <li>Opacity: ${computedStyle.opacity}</li>
+              <li>Parent visible: ${parentVisible ? 'Yes' : 'No'}</li>
+              <li>Position: top=${rect.top}, left=${rect.left}</li>
+            </ul>
+          </div>`;
+        } else {
+          html += `<p class="status-error">❌ #${id} not found in DOM</p>`;
+          allVisible = false;
+        }
+      });
+
+      html += `<div class="test-result">
+        <strong>Overall Visibility:</strong> ${allVisible ? '✅ All checked canvases are visible' : '❌ Some canvases are hidden or not rendered'}
+      </div>`;
+
+      statusDiv.innerHTML = html;
+    }
+
+    // Step 7: Full Integration Test
+    function runFullIntegrationTest() {
+      const statusDiv = document.getElementById('integration-test-status');
+      let html = '<h3>Full Integration Test Results:</h3>';
+      let errors = [];
+      let warnings = [];
+      let successes = [];
+
+      // Test 1: Chart.js
+      if (typeof Chart === 'undefined') {
+        errors.push('Chart.js library is not loaded');
+      } else {
+        successes.push('Chart.js library is loaded (v' + Chart.version + ')');
+      }
+
+      // Test 2: Canvas elements
+      const canvasIds = [
+        'chart-emotional-pains',
+        'chart-hidden-desires',
+        'chart-mindset-shifts',
+        'chart-jtbd-impact',
+        'chart-competitor-gaps',
+        'chart-format-usage',
+        'chart-brand-positioning',
+        'chart-value-proposition',
+        'chart-content-pillars',
+        'chart-priority-matrix',
+        'chart-opportunity-gaps'
+      ];
+
+      const missingCanvases = canvasIds.filter(id => !document.getElementById(id));
+      if (missingCanvases.length > 0) {
+        errors.push(`${missingCanvases.length} canvas elements are missing: ${missingCanvases.join(', ')}`);
+      } else {
+        successes.push('All 11 canvas elements exist in DOM');
+      }
+
+      // Test 3: Visibility
+      const hiddenCanvases = canvasIds.filter(id => {
+        const el = document.getElementById(id);
+        if (!el) return true;
+        const rect = el.getBoundingClientRect();
+        return rect.width === 0 || rect.height === 0;
+      });
+
+      if (hiddenCanvases.length > 0) {
+        warnings.push(`${hiddenCanvases.length} canvas elements are hidden or have zero dimensions`);
+      } else {
+        successes.push('All canvas elements are visible');
+      }
+
+      // Test 4: Parent container
+      const firstCanvas = document.getElementById('chart-emotional-pains');
+      if (firstCanvas) {
+        let parent = firstCanvas.parentElement;
+        let parentChain = [];
+        while (parent && parentChain.length < 5) {
+          const style = window.getComputedStyle(parent);
+          parentChain.push({
+            tag: parent.tagName,
+            class: parent.className,
+            display: style.display,
+            visible: style.display !== 'none'
+          });
+          parent = parent.parentElement;
+        }
+        
+        const hiddenParent = parentChain.find(p => !p.visible);
+        if (hiddenParent) {
+          errors.push(`Canvas parent container is hidden: ${hiddenParent.tag}.${hiddenParent.class}`);
+        } else {
+          successes.push('All parent containers are visible');
+        }
+
+        html += '<h4>Parent Container Chain (chart-emotional-pains):</h4><ul>';
+        parentChain.forEach(p => {
+          html += `<li>${p.tag} (${p.class}) - Display: ${p.display} ${p.visible ? '✅' : '❌'}</li>`;
+        });
+        html += '</ul>';
+      }
+
+      // Display results
+      html += '<h4>Errors:</h4>';
+      if (errors.length === 0) {
+        html += '<p class="status-ok">✅ No errors found</p>';
+      } else {
+        errors.forEach(err => {
+          html += `<p class="status-error">❌ ${err}</p>`;
+        });
+      }
+
+      html += '<h4>Warnings:</h4>';
+      if (warnings.length === 0) {
+        html += '<p class="status-ok">✅ No warnings</p>';
+      } else {
+        warnings.forEach(warn => {
+          html += `<p class="status-warning">⚠️ ${warn}</p>`;
+        });
+      }
+
+      html += '<h4>Successes:</h4>';
+      successes.forEach(success => {
+        html += `<p class="status-ok">✅ ${success}</p>`;
+      });
+
+      // Final recommendation
+      html += '<div class="test-result"><h4>🔍 Diagnostic Summary:</h4>';
+      if (errors.length === 0 && warnings.length === 0) {
+        html += '<p class="status-ok">✅ All checks passed! Charts should be working.</p>';
+      } else if (errors.length > 0) {
+        html += '<p class="status-error"><strong>Critical issues found:</strong></p>';
+        html += '<ol>';
+        errors.forEach(err => html += `<li>${err}</li>`);
+        html += '</ol>';
+        html += '<p><strong>Next Steps:</strong></p>';
+        html += '<ul>';
+        if (errors.some(e => e.includes('Chart.js'))) {
+          html += '<li>Ensure Chart.js CDN link is in your HTML head section</li>';
+          html += '<li>Check browser console for CDN loading errors</li>';
+        }
+        if (errors.some(e => e.includes('canvas elements'))) {
+          html += '<li>Verify that components_results.html contains all canvas elements with correct IDs</li>';
+          html += '<li>Check if you\'re viewing the correct tab (Results → Stage 1)</li>';
+        }
+        if (errors.some(e => e.includes('parent container'))) {
+          html += '<li>Check CSS for display:none on parent containers</li>';
+          html += '<li>Verify that Results tab and Stage 1 panel are active</li>';
+        }
+        html += '</ul>';
+      } else if (warnings.length > 0) {
+        html += '<p class="status-warning"><strong>Minor issues found that may affect rendering:</strong></p>';
+        html += '<ul>';
+        warnings.forEach(warn => html += `<li>${warn}</li>`);
+        html += '</ul>';
+      }
+      html += '</div>';
+
+      statusDiv.innerHTML = html;
+    }
+
+    // Auto-run some tests on load
+    window.addEventListener('load', () => {
+      console.log('🔍 Chart Diagnostic Tool Loaded');
+      console.log('Chart.js available?', typeof Chart !== 'undefined');
+      if (typeof Chart !== 'undefined') {
+        console.log('Chart.js version:', Chart.version);
+      }
+    });
+  </script>
+</body>
+</html>

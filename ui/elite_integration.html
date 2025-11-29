@@ -1,0 +1,295 @@
+<script>
+/**
+ * ELITE INTEGRATION SCRIPT
+ * Connects UI → DataBridge → Renderer
+ * Handles competitor analysis button click and data flow
+ */
+
+(function() {
+  'use strict';
+  
+  console.log('🚀 ELITE Integration Script loaded');
+  
+  // DataBridge URL - UPDATE THIS with your deployed Web App URL
+  const DATABRIDGE_URL = 'YOUR_DATABRIDGE_WEB_APP_URL_HERE';
+  
+  /**
+   * Initialize competitor analysis button
+   */
+  function initCompetitorAnalysis() {
+    const btn = document.getElementById('btnAnalyzeCompetitors');
+    if (!btn) {
+      console.warn('⚠️ Competitor analysis button not found');
+      return;
+    }
+    
+    btn.addEventListener('click', handleCompetitorAnalysis);
+    console.log('✅ Competitor analysis button initialized');
+  }
+  
+  /**
+   * Handle competitor analysis button click
+   */
+  async function handleCompetitorAnalysis() {
+    console.log('🔍 Starting competitor analysis...');
+    
+    try {
+      // Get competitor URLs from input
+      const competitorsInput = document.getElementById('keyCompetitors');
+      if (!competitorsInput || !competitorsInput.value.trim()) {
+        showToast('Please enter 2-6 competitor URLs', 'warning');
+        return;
+      }
+      
+      // Parse competitors (comma or newline separated)
+      const competitors = competitorsInput.value
+        .split(/[,\n]+/)
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+      
+      if (competitors.length < 2 || competitors.length > 6) {
+        showToast('Please enter 2-6 competitor URLs', 'warning');
+        return;
+      }
+      
+      // Get project context
+      const projectData = {
+        brandName: document.getElementById('brandName')?.value || 'Your Brand',
+        targetAudience: document.getElementById('targetAudience')?.value || '',
+        coreTopic: document.getElementById('coreTopic')?.value || '',
+        uvp: document.getElementById('uvp')?.value || ''
+      };
+      
+      // Show loading state
+      showCompetitorLoadingState(competitors.length);
+      
+      // Call DataBridge
+      const result = await callCompetitorAnalysisAPI(competitors, projectData);
+      
+      // Hide loading state
+      hideCompetitorLoadingState();
+      
+      // Check for errors
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'Analysis failed');
+      }
+      
+      // Switch to competitor tab
+      switchToCompetitorTab();
+      
+      // Render results using elite renderer
+      if (typeof renderEliteCompetitorDashboard === 'function') {
+        renderEliteCompetitorDashboard(result);
+      } else {
+        console.error('❌ renderEliteCompetitorDashboard function not found');
+        showToast('Renderer not loaded. Please refresh the page.', 'error');
+      }
+      
+      showToast(`Analysis complete! ${result.metadata?.totalMetrics || 0} metrics collected`, 'success');
+      
+    } catch (error) {
+      console.error('❌ Competitor analysis error:', error);
+      hideCompetitorLoadingState();
+      showToast('Analysis failed: ' + error.message, 'error');
+    }
+  }
+  
+  /**
+   * Call competitor analysis API
+   */
+  async function callCompetitorAnalysisAPI(competitors, projectData) {
+    console.log('📡 Calling DataBridge API...');
+    console.log('Competitors:', competitors);
+    
+    const config = {
+      competitors: competitors,
+      projectId: getProjectId(),
+      yourDomain: projectData.brandName || 'Your Site',
+      spreadsheetId: getSpreadsheetId()
+    };
+    
+    try {
+      const response = await fetch(DATABRIDGE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'COMP_orchestrateAnalysis',
+          config: config
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('📊 API Response:', result);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('❌ API call failed:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Show loading state
+   */
+  function showCompetitorLoadingState(competitorCount) {
+    const loadingEl = document.getElementById('comp-loading-state');
+    const emptyEl = document.getElementById('comp-empty-state');
+    const resultsEl = document.getElementById('comp-results');
+    
+    if (loadingEl) {
+      loadingEl.style.display = 'block';
+      document.getElementById('comp-loading-status').textContent = 
+        `Analyzing ${competitorCount} competitors across 15 intelligence categories...`;
+      
+      // Animate progress bar
+      animateProgressBar();
+    }
+    
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (resultsEl) resultsEl.style.display = 'none';
+  }
+  
+  /**
+   * Hide loading state
+   */
+  function hideCompetitorLoadingState() {
+    const loadingEl = document.getElementById('comp-loading-state');
+    if (loadingEl) {
+      loadingEl.style.display = 'none';
+    }
+  }
+  
+  /**
+   * Animate progress bar
+   */
+  function animateProgressBar() {
+    const progressBar = document.getElementById('comp-loading-progress');
+    if (!progressBar) return;
+    
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 15;
+      if (progress > 90) progress = 90;
+      
+      progressBar.style.width = progress + '%';
+      
+      // Update status text
+      if (progress < 30) {
+        document.getElementById('comp-loading-status').textContent = 
+          '🔍 Fetching SEO metrics and site data...';
+      } else if (progress < 60) {
+        document.getElementById('comp-loading-status').textContent = 
+          '🤖 Running AI predictions and strategic analysis...';
+      } else {
+        document.getElementById('comp-loading-status').textContent = 
+          '📊 Calculating scores and generating insights...';
+      }
+    }, 500);
+    
+    // Clear interval after 30 seconds (failsafe)
+    setTimeout(() => clearInterval(interval), 30000);
+  }
+  
+  /**
+   * Switch to competitor intelligence tab
+   */
+  function switchToCompetitorTab() {
+    // Try multiple methods to switch tabs
+    
+    // Method 1: Click tab button
+    const competitorTabBtn = document.querySelector('[data-tab="competitors"]');
+    if (competitorTabBtn) {
+      competitorTabBtn.click();
+      return;
+    }
+    
+    // Method 2: Show tab directly
+    const competitorTab = document.getElementById('tab-competitors');
+    if (competitorTab) {
+      // Hide all tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+        tab.style.display = 'none';
+      });
+      
+      // Show competitor tab
+      competitorTab.classList.add('active');
+      competitorTab.style.display = 'block';
+    }
+  }
+  
+  /**
+   * Show toast notification
+   */
+  function showToast(message, type = 'info') {
+    console.log(`📢 Toast [${type}]: ${message}`);
+    
+    // Check if toast function exists
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type);
+      return;
+    }
+    
+    // Fallback: console + alert for errors
+    if (type === 'error') {
+      alert('Error: ' + message);
+    }
+  }
+  
+  /**
+   * Get current project ID
+   */
+  function getProjectId() {
+    // Try to get from global state
+    if (window.currentProject && window.currentProject.id) {
+      return window.currentProject.id;
+    }
+    
+    // Generate temporary ID
+    return 'temp-' + Date.now();
+  }
+  
+  /**
+   * Get spreadsheet ID
+   */
+  function getSpreadsheetId() {
+    // Try to get from global state
+    if (window.spreadsheetId) {
+      return window.spreadsheetId;
+    }
+    
+    // Try to get from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('id')) {
+      return urlParams.get('id');
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Initialize on DOM ready
+   */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCompetitorAnalysis);
+  } else {
+    initCompetitorAnalysis();
+  }
+  
+  // Expose for debugging
+  window.ELITE_Integration = {
+    callAPI: callCompetitorAnalysisAPI,
+    showLoading: showCompetitorLoadingState,
+    hideLoading: hideCompetitorLoadingState,
+    switchTab: switchToCompetitorTab
+  };
+  
+})();
+</script>

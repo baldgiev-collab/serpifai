@@ -1,0 +1,1 @@
+function QA_geo(text,inputs){text=String(text||'');inputs=inputs||{};var hasCity=inputs.geo_focus?new RegExp('\\b'+inputs.geo_focus+'\\b','i').test(text):false;return Math.min(100,35+(hasCity?25:0)+(inputs.local_modifiers?10:0));}

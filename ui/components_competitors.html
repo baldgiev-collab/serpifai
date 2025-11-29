@@ -1,0 +1,464 @@
+<!-- COMPETITOR INTELLIGENCE -->
+<div id="tab-competitors" class="tab">
+  <div class="tab-header-section">
+    <h1 class="tab-title">🎯 Competitor Intelligence</h1>
+    <p class="tab-subtitle">Deep analysis across 15 strategic categories • Data-driven insights • Visual comparisons</p>
+  </div>
+
+  <div class="competitor-analysis-container">
+    
+    <!-- Loading State -->
+    <div id="comp-loading-state" class="comp-loading-state" style="display:none;">
+      <div class="loading-spinner-large"></div>
+      <div class="loading-text">
+        <h3 class="loading-title">Analyzing Competitors...</h3>
+        <p class="loading-subtitle" id="comp-loading-status">Initializing analysis...</p>
+        <div class="loading-progress-bar">
+          <div class="loading-progress-fill" id="comp-loading-progress"></div>
+        </div>
+        <div class="loading-details" id="comp-loading-details">
+          <div class="loading-step">🔍 Fetching SEO metrics...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="comp-empty-state" class="comp-empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <h3 class="empty-state-title">No Competitor Analysis Yet</h3>
+      <p class="empty-state-text">
+        Enter competitor domains in Stage 1 Workflow and click "Analyze Competitors" to begin your deep intelligence analysis across 15 strategic categories.
+      </p>
+      <div class="empty-state-features">
+        <div class="empty-state-feature">
+          <span class="feature-icon">📊</span>
+          <span class="feature-text">Visual comparisons</span>
+        </div>
+        <div class="empty-state-feature">
+          <span class="feature-icon">🎯</span>
+          <span class="feature-text">15 intelligence categories</span>
+        </div>
+        <div class="empty-state-feature">
+          <span class="feature-icon">🤖</span>
+          <span class="feature-text">AI-powered insights</span>
+        </div>
+        <div class="empty-state-feature">
+          <span class="feature-icon">📈</span>
+          <span class="feature-text">Strategic recommendations</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div id="comp-results" class="comp-results" style="display:none;">
+      
+      <!-- Tab Navigation -->
+      <div class="comp-tab-nav">
+        <button class="comp-tab-btn active" data-comp-tab="overview">
+          <span class="tab-icon">📊</span>
+          <span class="tab-label">Overview</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="market">
+          <span class="tab-icon">🏢</span>
+          <span class="tab-label">Market Intelligence</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="brand">
+          <span class="tab-icon">🎨</span>
+          <span class="tab-label">Brand Position</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="technical">
+          <span class="tab-icon">⚙️</span>
+          <span class="tab-label">Technical SEO</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="content">
+          <span class="tab-icon">✍️</span>
+          <span class="tab-label">Content Intel</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="keywords">
+          <span class="tab-icon">🔑</span>
+          <span class="tab-label">Keyword Strategy</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="systems">
+          <span class="tab-icon">🔧</span>
+          <span class="tab-label">Content Systems</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="conversion">
+          <span class="tab-icon">💰</span>
+          <span class="tab-label">Conversion</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="distribution">
+          <span class="tab-icon">📡</span>
+          <span class="tab-label">Distribution</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="audience">
+          <span class="tab-icon">👥</span>
+          <span class="tab-label">Audience Intel</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="geo">
+          <span class="tab-icon">🌐</span>
+          <span class="tab-label">GEO + AEO</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="authority">
+          <span class="tab-icon">🏆</span>
+          <span class="tab-label">Authority</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="performance">
+          <span class="tab-icon">📈</span>
+          <span class="tab-label">Performance</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="opportunity">
+          <span class="tab-icon">💡</span>
+          <span class="tab-label">Opportunities</span>
+        </button>
+        <button class="comp-tab-btn" data-comp-tab="scoring">
+          <span class="tab-icon">🎯</span>
+          <span class="tab-label">Scoring Engine</span>
+        </button>
+      </div>
+
+      <!-- Tab Content Panels -->
+      <div class="comp-tab-content">
+        
+        <!-- Overview Tab -->
+        <div class="comp-tab-panel active" data-comp-panel="overview">
+          <div class="panel-header">
+            <h2 class="panel-title">Competitive Overview</h2>
+            <p class="panel-subtitle">Comprehensive comparison across all key metrics</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-overview-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-overview-radar"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-overview-bar"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-overview-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Market Intelligence Tab -->
+        <div class="comp-tab-panel" data-comp-panel="market">
+          <div class="panel-header">
+            <h2 class="panel-title">Market + Category Intelligence</h2>
+            <p class="panel-subtitle">Category mapping • Market share • Narrative analysis • Trend forecasting</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-market-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-market-share"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-market-trends"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-market-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Brand Position Tab -->
+        <div class="comp-tab-panel" data-comp-panel="brand">
+          <div class="panel-header">
+            <h2 class="panel-title">Brand & Strategic Positioning</h2>
+            <p class="panel-subtitle">Brand archetype • Value proposition • E-E-A-T signals • Narrative cohesion</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-brand-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-brand-archetype"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-eeat"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-brand-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Technical SEO Tab -->
+        <div class="comp-tab-panel" data-comp-panel="technical">
+          <div class="panel-header">
+            <h2 class="panel-title">Technical SEO & Performance</h2>
+            <p class="panel-subtitle">Site health • Architecture • Schema • Page speed • Core Web Vitals</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-technical-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-technical-health"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-page-speed"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-technical-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Content Intelligence Tab -->
+        <div class="comp-tab-panel" data-comp-panel="content">
+          <div class="panel-header">
+            <h2 class="panel-title">Organic Traffic & Content Intelligence</h2>
+            <p class="panel-subtitle">Topical authority • Traffic mix • Content performance • SERP features</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-content-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-content-authority"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-traffic-mix"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-content-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Keyword Strategy Tab -->
+        <div class="comp-tab-panel" data-comp-panel="keywords">
+          <div class="panel-header">
+            <h2 class="panel-title">Keyword & Entity Strategy</h2>
+            <p class="panel-subtitle">Keyword gap • Entity mapping • Semantic clusters • Intent layering</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-keywords-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-keyword-gap"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-intent-funnel"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-keywords-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Content Systems Tab -->
+        <div class="comp-tab-panel" data-comp-panel="systems">
+          <div class="panel-header">
+            <h2 class="panel-title">Content Systems & Operations</h2>
+            <p class="panel-subtitle">Workflow detection • AI automation • E-E-A-T integration • Internal linking</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-systems-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-systems-workflow"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-automation"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-systems-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Conversion Tab -->
+        <div class="comp-tab-panel" data-comp-panel="conversion">
+          <div class="panel-header">
+            <h2 class="panel-title">Conversion & Monetization</h2>
+            <p class="panel-subtitle">Funnel architecture • Landing hierarchy • Pricing psychology • Retention</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-conversion-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-funnel"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-monetization"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-conversion-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Distribution Tab -->
+        <div class="comp-tab-panel" data-comp-panel="distribution">
+          <div class="panel-header">
+            <h2 class="panel-title">Distribution & Visibility</h2>
+            <p class="panel-subtitle">Backlink intelligence • Social footprint • PR • Community • Omnichannel</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-distribution-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-backlinks"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-distribution"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-distribution-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Audience Intelligence Tab -->
+        <div class="comp-tab-panel" data-comp-panel="audience">
+          <div class="panel-header">
+            <h2 class="panel-title">Audience & Psychological Intelligence</h2>
+            <p class="panel-subtitle">Persona analysis • JTBD • Emotional triggers • Sentiment • Engagement</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-audience-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-personas"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-sentiment"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-audience-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- GEO + AEO Tab -->
+        <div class="comp-tab-panel" data-comp-panel="geo">
+          <div class="panel-header">
+            <h2 class="panel-title">GEO + AEO Intelligence</h2>
+            <p class="panel-subtitle">AI citations • Prompt visibility • Factual integrity • LLM affinity</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-geo-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-ai-citations"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-llm-affinity"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-geo-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Authority Tab -->
+        <div class="comp-tab-panel" data-comp-panel="authority">
+          <div class="panel-header">
+            <h2 class="panel-title">Authority & Influence</h2>
+            <p class="panel-subtitle">Link velocity • Topical relevance • Influencer graph • Publisher network</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-authority-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-authority-growth"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-influencers"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-authority-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Performance Tab -->
+        <div class="comp-tab-panel" data-comp-panel="performance">
+          <div class="panel-header">
+            <h2 class="panel-title">Performance & Predictive Intelligence</h2>
+            <p class="panel-subtitle">Traffic quality • Engagement loops • ROI • Predictive modeling</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-performance-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-performance-quality"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-predictive"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-performance-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Opportunity Matrix Tab -->
+        <div class="comp-tab-panel" data-comp-panel="opportunity">
+          <div class="panel-header">
+            <h2 class="panel-title">Strategic Opportunity Matrix</h2>
+            <p class="panel-subtitle">Blue ocean opportunities • Weak signals • Competitive moat • 90-day roadmap</p>
+          </div>
+          <div class="comp-metrics-grid" id="comp-opportunity-metrics">
+            <!-- Populated dynamically -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-opportunities"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-moat"></canvas>
+            </div>
+          </div>
+          <div class="comp-roadmap" id="comp-opportunity-roadmap">
+            <!-- 90-day roadmap populated here -->
+          </div>
+          <div class="comp-insights" id="comp-opportunity-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+        <!-- Scoring Engine Tab -->
+        <div class="comp-tab-panel" data-comp-panel="scoring">
+          <div class="panel-header">
+            <h2 class="panel-title">Scoring & Visualization Engine</h2>
+            <p class="panel-subtitle">SEO depth • GEO presence • AEO readiness • Entity trust • Authority momentum</p>
+          </div>
+          <div class="comp-scoring-cards" id="comp-scoring-cards">
+            <!-- Score cards populated here -->
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container-large">
+              <canvas id="chart-comp-scoring-comprehensive"></canvas>
+            </div>
+          </div>
+          <div class="comp-charts-row">
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-momentum"></canvas>
+            </div>
+            <div class="comp-chart-container">
+              <canvas id="chart-comp-trust"></canvas>
+            </div>
+          </div>
+          <div class="comp-insights" id="comp-scoring-insights">
+            <!-- AI insights populated here -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>

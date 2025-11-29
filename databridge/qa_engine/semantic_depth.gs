@@ -1,0 +1,1 @@
+function QA_semanticDepth(text){text=String(text||'');var h2=/\n##\s/.test(text)||/<h2>/i.test(text),code=/```/.test(text),terms=(text.match(/\b[A-Za-z]{8,}\b/g)||[]).length;return Math.min(100,42+(h2?20:0)+(code?6:0)+Math.min(30,Math.floor(terms/18)));}

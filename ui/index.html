@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SerpifAI — Architect of Authority</title>
+  
+  <?!= include('styles_theme'); ?>
+  <?!= include('elite_competitor_styles'); ?>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <?!= include('competitor_charts'); ?>
+  <?!= include('elite_competitor_charts'); ?>
+  <?!= include('intelligent_metrics_engine'); ?>
+  <?!= include('overview_charts_elite'); ?>
+  <?!= include('elite_competitor_renderer'); ?>
+  <?!= include('elite_competitor_integration'); ?>
+</head>
+<body>
+
+  <div class="app-shell">
+    
+    <?!= include('components_sidebar'); ?>
+
+    <div class="main-panel">
+      
+      <?!= include('components_header'); ?>
+
+      <main class="main-content">
+        
+        <?!= include('components_project_manager'); ?> <?!= include('components_overview'); ?>
+        <?!= include('components_workflow'); ?>
+        <?!= include('components_results'); ?>
+        <?!= include('components_qa'); ?>
+        <?!= include('components_competitors'); ?>
+        <?!= include('components_scoring'); ?>
+        
+      </main>
+    </div>
+  </div>
+
+  <?!= include('components_toast'); ?>
+  <?!= include('components_modal'); ?>
+  <?!= include('scripts_app'); ?>
+</body>
+</html>
