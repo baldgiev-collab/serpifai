@@ -6,9 +6,9 @@
 
 // Database credentials
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'u187453795_SrpAIDataGate');
+define('DB_NAME', 'U187453795_SrpAIDataGate');
 define('DB_USER', 'u187453795_Admin');
-define('DB_PASS', 'OoRB1Pz9i@H');
+define('DB_PASS', 'OoRB1Pz9i?H');
 define('DB_CHARSET', 'utf8mb4');
 
 // API Keys
