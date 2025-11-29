@@ -37,12 +37,26 @@ set_exception_handler(function($exception) {
 });
 
 require_once __DIR__ . '/config/db_config.php';
+require_once __DIR__ . '/lib/SecurityLayer.php';
+
+// Initialize security layer
+try {
+    $security = new SecurityLayer($_ENV['HMAC_SECRET'] ?? '', $_ENV['TIMESTAMP_WINDOW'] ?? 60);
+} catch (Exception $e) {
+    error_log("Security layer initialization error: " . $e->getMessage());
+    http_response_code(500);
+    header('Content-Type: application/json');
+    die(json_encode(['success' => false, 'error' => 'Security configuration error']));
+}
 
 // CORS Headers
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
 
 // Handle preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -50,18 +64,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Parse request
+// Parse request with security verification
 $method = $_SERVER['REQUEST_METHOD'];
 $input = null;
 
 if ($method === 'POST') {
-    $rawInput = file_get_contents('php://input');
-    if (!empty($rawInput)) {
-        $input = json_decode($rawInput, true);
+    try {
+        $rawInput = file_get_contents('php://input');
+        if (empty($rawInput)) {
+            sendError('Empty request body', 400);
+        }
+        
+        $signedRequest = json_decode($rawInput, true);
+        
+        // Verify security signature and timestamp
+        if (isset($signedRequest['payload'], $signedRequest['signature'], $signedRequest['timestamp'])) {
+            // Request is signed - verify it
+            $input = $security->verifyRequest(
+                $signedRequest['payload'],
+                $signedRequest['signature'],
+                $signedRequest['timestamp']
+            );
+        } else {
+            // Fallback: Accept unsigned requests (for backward compatibility)
+            $input = $signedRequest;
+        }
+        
         if (json_last_error() !== JSON_ERROR_NONE) {
             error_log("JSON decode error: " . json_last_error_msg());
-            $input = null;
+            sendError('Invalid JSON', 400);
         }
+    } catch (Exception $e) {
+        error_log("Request verification error: " . $e->getMessage());
+        sendError('Request verification failed: ' . $e->getMessage(), 400);
     }
 } else if ($method === 'GET') {
     $input = $_GET;
