@@ -323,8 +323,12 @@ function executeAction($action, $payload, $user, $license) {
                 'email' => $user['email'],
                 'license_key' => $user['license_key'],
                 'credits' => $user['credits'],
-                'total_credits_used' => $user['total_credits_used'],
+                'credits_total' => $user['credits'],
+                'credits_used' => $user['total_credits_used'] ?? 0,
+                'credits_remaining' => $user['credits'],
+                'total_credits_used' => $user['total_credits_used'] ?? 0,
                 'status' => $user['status'],
+                'plan_type' => 'standard',
                 'created_at' => $user['created_at']
             ]
         ];

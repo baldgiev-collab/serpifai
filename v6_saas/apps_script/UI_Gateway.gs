@@ -497,15 +497,40 @@ function showErrorToUser(error) {
  */
 function testGatewayConnection() {
   try {
-    const result = checkUserStatus();
+    // Use test license key if no license key is configured
+    const userProps = PropertiesService.getUserProperties();
+    let licenseKey = userProps.getProperty('SERPIFAI_LICENSE_KEY') || 
+                     userProps.getProperty('serpifai_license_key');
+    
+    if (!licenseKey) {
+      licenseKey = 'SERP-FAI-TEST-KEY-123456';
+      Logger.log('⚠️ No license key found, using test key');
+    }
+    
+    // Test with explicit license key
+    const result = callGateway('check_status', {}, licenseKey);
+    
     Logger.log('Gateway connection test:');
     Logger.log(JSON.stringify(result, null, 2));
-    return result;
+    
+    if (result.success) {
+      return {
+        authenticated: true,
+        user: result.user,
+        message: 'Connection successful'
+      };
+    }
+    
+    return {
+      authenticated: false,
+      error: result.error || 'Unknown error'
+    };
   } catch (e) {
     Logger.log('Gateway connection failed:');
     Logger.log(e.toString());
     return {
       success: false,
+      authenticated: false,
       error: e.toString()
     };
   }
