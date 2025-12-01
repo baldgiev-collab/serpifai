@@ -147,13 +147,16 @@ function getUserSettings() {
  * Save license key
  * SECURE MODE: MUST verify with server - no offline usage allowed
  * SERVER IS THE ONLY VALIDATOR
+ * Works for ANY Google account - server validates the license key
  */
 function saveLicenseKey(licenseKey) {
   try {
     Logger.log('=== saveLicenseKey START (SECURE MODE) ===');
     Logger.log('License key provided: ' + licenseKey);
+    Logger.log('Note: License key will be saved to THIS Google account\'s UserProperties');
     
     if (!licenseKey || licenseKey.trim() === '') {
+      Logger.log('❌ Empty license key provided');
       return {
         success: false,
         message: '❌ License key cannot be empty'
@@ -162,6 +165,7 @@ function saveLicenseKey(licenseKey) {
     
     // Validate license key format
     if (licenseKey.length < 10) {
+      Logger.log('❌ License key too short: ' + licenseKey.length + ' characters');
       return {
         success: false,
         message: '❌ Invalid license key format (too short)'
@@ -169,6 +173,7 @@ function saveLicenseKey(licenseKey) {
     }
     
     const trimmedKey = licenseKey.trim();
+    Logger.log('Trimmed key length: ' + trimmedKey.length);
     
     // CRITICAL: MUST verify with server BEFORE saving locally
     Logger.log('Verifying license key with server (REQUIRED)...');
@@ -182,42 +187,54 @@ function saveLicenseKey(licenseKey) {
     }
     
     Logger.log('Gateway URL: ' + gatewayUrl);
+    Logger.log('Calling server to verify license key...');
     
     // Verify with server - THIS IS MANDATORY
     const response = callGateway('verifyLicenseKey', { licenseKey: trimmedKey });
     
+    Logger.log('Server response received');
+    Logger.log('Response success: ' + (response ? response.success : 'null'));
+    
     if (!response || !response.success) {
-      Logger.log('❌ Server verification FAILED: ' + (response ? response.error : 'No response'));
+      const errorMsg = response ? response.error : 'No response';
+      Logger.log('❌ Server verification FAILED: ' + errorMsg);
       return {
         success: false,
-        message: '❌ License key verification failed: ' + (response ? response.error : 'Cannot connect to server'),
+        message: '❌ License key verification failed:\n\n' + errorMsg + '\n\nPlease check:\n• License key is correct\n• Server is accessible\n• License key is active',
         verified: false
       };
     }
+    
+    Logger.log('✅ Server returned success=true');
+    Logger.log('User data: ' + JSON.stringify(response.user));
     
     // Check if user is active
     if (response.user && response.user.status !== 'active') {
       Logger.log('❌ User account is not active: ' + response.user.status);
       return {
         success: false,
-        message: '❌ License key is ' + response.user.status + '. Please contact support.',
+        message: '❌ License key is ' + response.user.status + '. Please contact support at support@serpifai.com',
         verified: false
       };
     }
     
     Logger.log('✅ Server verification successful');
     Logger.log('✅ License key validated by server');
+    Logger.log('User email: ' + (response.user ? response.user.email : 'unknown'));
+    Logger.log('User status: ' + (response.user ? response.user.status : 'unknown'));
+    Logger.log('User credits: ' + (response.user ? response.user.credits : 'unknown'));
     
-    // Only save to properties AFTER successful server verification AND email validation
+    // Only save to properties AFTER successful server verification
     const properties = PropertiesService.getUserProperties();
     properties.setProperty('SERPIFAI_LICENSE_KEY', trimmedKey);
     properties.setProperty('serpifai_license_key', trimmedKey);
     
-    Logger.log('License key saved to local properties after server verification');
+    Logger.log('✅ License key saved to UserProperties for this Google account');
+    Logger.log('=== saveLicenseKey END - SUCCESS ===');
     
     return {
       success: true,
-      message: '✅ License key verified and activated!\n\nEmail: ' + (response.user ? response.user.email : ''),
+      message: '✅ License key verified and activated!\n\n📧 Email: ' + (response.user ? response.user.email : '') + '\n💎 Credits: ' + (response.user ? response.user.credits : 0) + '\n\nYou can now use all features!',
       verified: true,
       user: response.user
     };
