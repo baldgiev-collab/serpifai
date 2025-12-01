@@ -348,6 +348,18 @@ function handleUserAction($action, $payload, $license) {
         case 'getCredits':
             return UserHandler::getCredits($license);
             
+        case 'check_status':
+        case 'status':
+            // Get user info for status check
+            $user = UserHandler::getUserInfo($license);
+            if ($user['success']) {
+                return [
+                    'success' => true,
+                    'user' => $user['user']
+                ];
+            }
+            return $user;
+            
         case 'user_deduct_credits':
             $amount = $payload['amount'] ?? 1;
             return UserHandler::deductCredits($license, $amount);
