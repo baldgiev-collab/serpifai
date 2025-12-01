@@ -27,7 +27,8 @@ class SecurityLayer {
         $this->timestampWindow = $timestampWindow;
         
         // Enforce HTTPS in production
-        if ($_SERVER['SERVER_ENV'] !== 'development' && empty($_SERVER['HTTPS'])) {
+        $serverEnv = $_ENV['SERVER_ENV'] ?? 'production';
+        if ($serverEnv !== 'development' && empty($_SERVER['HTTPS'])) {
             http_response_code(403);
             die(json_encode([
                 'success' => false,

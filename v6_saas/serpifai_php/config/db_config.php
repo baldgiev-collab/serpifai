@@ -6,11 +6,25 @@
 
 // Load environment variables from .env file
 if (file_exists(__DIR__ . '/.env')) {
-    $env = parse_ini_file(__DIR__ . '/.env');
-    foreach ($env as $key => $value) {
-        $_ENV[$key] = $value;
+    // Safely parse .env; RAW to preserve characters, suppress warnings
+    $env = @parse_ini_file(__DIR__ . '/.env', false, INI_SCANNER_RAW);
+    if ($env && is_array($env)) {
+        foreach ($env as $key => $value) {
+            if (is_string($value)) {
+                $value = trim($value, "'\"");
+            }
+            $_ENV[$key] = $value;
+        }
+    } else {
+        error_log("Failed to parse .env. Ensure each line is KEY=VALUE and quote values with special characters (e.g., DB_PASS=\"OoRB1Pz9i?H\"). Remove any PHP tags or invalid syntax.");
     }
 }
+
+// Fallback to getenv() if values not set
+$_ENV['DB_HOST'] = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: 'localhost';
+$_ENV['DB_NAME'] = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?: '';
+$_ENV['DB_USER'] = $_ENV['DB_USER'] ?? getenv('DB_USER') ?: '';
+$_ENV['DB_PASS'] = $_ENV['DB_PASS'] ?? getenv('DB_PASS') ?: '';
 
 // Database credentials (read from environment)
 define('DB_HOST', $_ENV['DB_HOST'] ?? 'localhost');
@@ -18,6 +32,11 @@ define('DB_NAME', $_ENV['DB_NAME'] ?? '');
 define('DB_USER', $_ENV['DB_USER'] ?? '');
 define('DB_PASS', $_ENV['DB_PASS'] ?? '');
 define('DB_CHARSET', 'utf8mb4');
+
+// Validate required DB envs early to avoid misleading PDO 1045 errors
+if (empty($_ENV['DB_USER']) || $_ENV['DB_PASS'] === '') {
+    throw new Exception("Missing database credentials from .env: DB_USER and/or DB_PASS are empty. Fix /.env (quote passwords with special characters) and redeploy.");
+}
 
 // API Keys (read from environment - NEVER hardcode!)
 define('GEMINI_API_KEY', $_ENV['GEMINI_API_KEY'] ?? '');
