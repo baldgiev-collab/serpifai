@@ -26,20 +26,26 @@ function showSettingsDialog() {
 /**
  * Get current user settings and info
  * SECURE MODE: MUST fetch from server - no local-only mode
+ * NOW WITH GOOGLE ACCOUNT EMAIL VALIDATION
  */
 function getUserSettings() {
   try {
+    // Get currently logged-in Google account email
+    const googleEmail = Session.getActiveUser().getEmail();
+    Logger.log('Google Account: ' + googleEmail);
+    
     const properties = PropertiesService.getUserProperties();
     const licenseKey = properties.getProperty('SERPIFAI_LICENSE_KEY') || 
                        properties.getProperty('serpifai_license_key') || '';
     
     if (!licenseKey) {
-      // No license key - return empty state
+      // No license key - return empty state with Google email
       return {
         licenseKey: '',
         licenseKeyMasked: '',
         hasLicenseKey: false,
         email: 'Not configured',
+        googleEmail: googleEmail,
         credits: 0,
         status: 'inactive',
         createdAt: '',
@@ -67,6 +73,7 @@ function getUserSettings() {
         licenseKeyMasked: '',
         hasLicenseKey: false,
         email: 'Server Error - License Removed',
+        googleEmail: googleEmail,
         credits: 0,
         status: 'error',
         createdAt: '',
@@ -86,7 +93,39 @@ function getUserSettings() {
       lastLogin: response.user.last_login || ''
     };
     
+    // CRITICAL SECURITY CHECK: Validate license key email matches Google account
+    if (userInfo.email && googleEmail && 
+        userInfo.email.toLowerCase() !== googleEmail.toLowerCase()) {
+      Logger.log('❌ SECURITY: License key email mismatch!');
+      Logger.log('   License key belongs to: ' + userInfo.email);
+      Logger.log('   But logged in as: ' + googleEmail);
+      Logger.log('   Removing mismatched license key for security');
+      
+      // Remove mismatched license key
+      properties.deleteProperty('SERPIFAI_LICENSE_KEY');
+      properties.deleteProperty('serpifai_license_key');
+      
+      return {
+        licenseKey: '',
+        licenseKeyMasked: '',
+        hasLicenseKey: false,
+        email: 'Security Error - Wrong User',
+        googleEmail: googleEmail,
+        licenseKeyBelongsTo: userInfo.email,
+        emailMismatch: true,
+        credits: 0,
+        status: 'error',
+        createdAt: '',
+        lastLogin: '',
+        projectsCount: 0,
+        version: 'v6.0.0',
+        apiStatus: 'License key removed (security)',
+        dataSource: 'error'
+      };
+    }
+    
     Logger.log('✅ User info loaded from server');
+    Logger.log('✅ Email validation passed: ' + userInfo.email + ' = ' + googleEmail);
     Logger.log('Credits: ' + userInfo.credits + ' | Status: ' + userInfo.status);
     
     // Get projects count
@@ -103,6 +142,8 @@ function getUserSettings() {
       licenseKeyMasked: maskLicenseKey(licenseKey),
       hasLicenseKey: true,
       email: userInfo.email,
+      googleEmail: googleEmail,
+      emailMismatch: false,
       credits: userInfo.credits,
       status: userInfo.status,
       createdAt: userInfo.createdAt,
@@ -115,6 +156,15 @@ function getUserSettings() {
     
   } catch (e) {
     Logger.log('ERROR getting user settings: ' + e.toString());
+    
+    // Get Google email for display even on error
+    let googleEmail = '';
+    try {
+      googleEmail = Session.getActiveUser().getEmail();
+    } catch (emailError) {
+      Logger.log('Could not get Google email: ' + emailError.toString());
+    }
+    
     // On error, remove license key for security
     try {
       const properties = PropertiesService.getUserProperties();
@@ -129,6 +179,7 @@ function getUserSettings() {
       licenseKeyMasked: '',
       hasLicenseKey: false,
       email: 'Error - License Removed',
+      googleEmail: googleEmail,
       credits: 0,
       status: 'error',
       createdAt: '',
@@ -144,11 +195,16 @@ function getUserSettings() {
 /**
  * Save license key
  * SECURE MODE: MUST verify with server - no offline usage allowed
+ * NOW WITH GOOGLE ACCOUNT EMAIL VALIDATION
  */
 function saveLicenseKey(licenseKey) {
   try {
-    Logger.log('=== saveLicenseKey START (SECURE MODE) ===');
+    Logger.log('=== saveLicenseKey START (SECURE MODE WITH EMAIL VALIDATION) ===');
     Logger.log('License key provided: ' + licenseKey);
+    
+    // Get currently logged-in Google account email
+    const googleEmail = Session.getActiveUser().getEmail();
+    Logger.log('Google Account: ' + googleEmail);
     
     if (!licenseKey || licenseKey.trim() === '') {
       return {
@@ -202,9 +258,31 @@ function saveLicenseKey(licenseKey) {
       };
     }
     
-    Logger.log('✅ Server verification successful');
+    // CRITICAL SECURITY CHECK: Validate email matches Google account
+    const licenseEmail = response.user ? response.user.email : '';
+    if (licenseEmail && googleEmail && 
+        licenseEmail.toLowerCase() !== googleEmail.toLowerCase()) {
+      Logger.log('❌ EMAIL MISMATCH:');
+      Logger.log('   License key belongs to: ' + licenseEmail);
+      Logger.log('   But logged in as: ' + googleEmail);
+      
+      return {
+        success: false,
+        message: '❌ License key email mismatch!\n\n' +
+                 'License key is registered to: ' + licenseEmail + '\n' +
+                 'But you are logged in as: ' + googleEmail + '\n\n' +
+                 'Please use a license key registered to your Google account.',
+        verified: false,
+        emailMismatch: true,
+        licenseEmail: licenseEmail,
+        googleEmail: googleEmail
+      };
+    }
     
-    // Only save to properties AFTER successful server verification
+    Logger.log('✅ Server verification successful');
+    Logger.log('✅ Email validation passed: ' + licenseEmail + ' = ' + googleEmail);
+    
+    // Only save to properties AFTER successful server verification AND email validation
     const properties = PropertiesService.getUserProperties();
     properties.setProperty('SERPIFAI_LICENSE_KEY', trimmedKey);
     properties.setProperty('serpifai_license_key', trimmedKey);
@@ -213,7 +291,7 @@ function saveLicenseKey(licenseKey) {
     
     return {
       success: true,
-      message: '✅ License key verified and activated!',
+      message: '✅ License key verified and activated!\n\nEmail: ' + licenseEmail,
       verified: true,
       user: response.user
     };
@@ -229,20 +307,49 @@ function saveLicenseKey(licenseKey) {
 
 /**
  * Remove license key
+ * Clears ALL related properties for complete cleanup
  */
 function removeLicenseKey() {
   try {
+    Logger.log('=== removeLicenseKey START ===');
+    
     const properties = PropertiesService.getUserProperties();
+    
+    // Get current key before deleting (for logging)
+    const currentKey = properties.getProperty('SERPIFAI_LICENSE_KEY') || 
+                       properties.getProperty('serpifai_license_key') || '';
+    
+    if (currentKey) {
+      Logger.log('Removing license key: ' + currentKey.substring(0, 10) + '...');
+    } else {
+      Logger.log('No license key found to remove');
+    }
+    
+    // Delete ALL possible license key property variations
     properties.deleteProperty('SERPIFAI_LICENSE_KEY');
     properties.deleteProperty('serpifai_license_key');
+    properties.deleteProperty('licenseKey');
+    properties.deleteProperty('license_key');
+    
+    // Also clear any cached user data
+    properties.deleteProperty('SERPIFAI_USER_EMAIL');
+    properties.deleteProperty('SERPIFAI_USER_CREDITS');
+    properties.deleteProperty('SERPIFAI_USER_STATUS');
+    
+    Logger.log('✅ All license key properties cleared');
+    Logger.log('=== removeLicenseKey END ===');
+    
     return {
       success: true,
-      message: 'License key removed successfully'
+      message: '✅ License key removed successfully. All user data cleared.',
+      cleared: true
     };
   } catch (e) {
+    Logger.log('❌ Error in removeLicenseKey: ' + e.toString());
     return {
       success: false,
-      message: 'Error removing license key: ' + e.toString()
+      message: '❌ Error removing license key: ' + e.toString(),
+      cleared: false
     };
   }
 }
@@ -1514,6 +1621,34 @@ function getSettingsHTML() {
     <div class="content">
       <!-- Alert Messages -->
       <div id="alertContainer"></div>
+      
+      <!-- Email Mismatch Warning -->
+      ${settings.emailMismatch && settings.licenseKeyBelongsTo ? `
+      <div class="alert alert-error">
+        <span>🚨</span>
+        <div>
+          <strong>Security Alert: License Key Mismatch</strong><br>
+          You are logged in as <strong>${settings.googleEmail}</strong> but the license key belongs to <strong>${settings.licenseKeyBelongsTo}</strong>.<br>
+          The license key has been removed for security. Please enter the correct license key for your account.
+        </div>
+      </div>
+      ` : ''}
+      
+      <!-- Google Account Info -->
+      ${settings.googleEmail ? `
+      <div class="section">
+        <div class="section-title">👤 Google Account</div>
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
+          <div class="info-label">Logged in as</div>
+          <div style="font-size: 16px; font-weight: 600; color: #495057; margin-top: 8px;">
+            ${settings.googleEmail}
+          </div>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; font-size: 13px; color: #6c757d;">
+            ℹ️ Your license key must be registered to this email address
+          </div>
+        </div>
+      </div>
+      ` : ''}
       
       <!-- Account Overview -->
       <div class="section">
