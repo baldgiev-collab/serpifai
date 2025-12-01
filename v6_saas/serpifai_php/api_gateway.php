@@ -342,12 +342,15 @@ function executeAction($action, $payload, $user, $license) {
 function handleUserAction($action, $payload, $license) {
     require_once __DIR__ . '/handlers/user_handler.php';
     
+    // Extract Google account email from payload (for security binding)
+    $googleAccountEmail = $payload['googleAccountEmail'] ?? null;
+    
     switch($action) {
         case 'verifyLicenseKey':
-            return UserHandler::verifyLicenseKey($payload['licenseKey'] ?? $license);
+            return UserHandler::verifyLicenseKey($payload['licenseKey'] ?? $license, $googleAccountEmail);
             
         case 'getUserInfo':
-            return UserHandler::getUserInfo($payload['licenseKey'] ?? $license);
+            return UserHandler::getUserInfo($payload['licenseKey'] ?? $license, $googleAccountEmail);
             
         case 'getCredits':
             return UserHandler::getCredits($license);
@@ -355,7 +358,7 @@ function handleUserAction($action, $payload, $license) {
         case 'check_status':
         case 'status':
             // Get user info for status check
-            $user = UserHandler::getUserInfo($license);
+            $user = UserHandler::getUserInfo($license, $googleAccountEmail);
             if ($user['success']) {
                 return [
                     'success' => true,

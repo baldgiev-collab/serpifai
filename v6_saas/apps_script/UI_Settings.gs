@@ -55,11 +55,51 @@ function getUserSettings() {
     // CRITICAL: MUST fetch user info from server
     Logger.log('Fetching user info from server (REQUIRED)...');
     
-    const response = callGateway('getUserInfo', { licenseKey: licenseKey });
+    // SECURITY: Send Google account email for validation
+    const googleAccountEmail = Session.getActiveUser().getEmail();
+    Logger.log('Validating Google account: ' + googleAccountEmail);
+    
+    const response = callGateway('getUserInfo', { 
+      licenseKey: licenseKey,
+      googleAccountEmail: googleAccountEmail 
+    });
     
     if (!response || !response.success || !response.user) {
       // Server verification failed - invalidate license key
-      Logger.log('❌ Server verification failed - removing invalid license key');
+      const errorCode = response ? response.error_code : null;
+      const errorMsg = response ? response.error : 'Unknown error';
+      
+      Logger.log('❌ Server verification failed: ' + errorMsg);
+      
+      // Handle Google account mismatch
+      if (errorCode === 'GOOGLE_ACCOUNT_MISMATCH') {
+        Logger.log('🚨 SECURITY: License key bound to different Google account');
+        Logger.log('Removing license key from this Google account...');
+        properties.deleteProperty('SERPIFAI_LICENSE_KEY');
+        properties.deleteProperty('serpifai_license_key');
+        
+        const boundTo = response.bound_to || 'another Google account';
+        
+        return {
+          licenseKey: '',
+          licenseKeyMasked: '',
+          hasLicenseKey: false,
+          email: 'License Registered to: ' + boundTo,
+          credits: 0,
+          status: 'error',
+          createdAt: '',
+          lastLogin: '',
+          projectsCount: 0,
+          version: 'v6.0.0',
+          apiStatus: 'Google Account Mismatch',
+          dataSource: 'error',
+          securityError: true,
+          securityMessage: 'This license is registered to ' + boundTo + '. Please log in with that Google account.'
+        };
+      }
+      
+      // Other errors - remove license key
+      Logger.log('❌ Removing invalid license key');
       properties.deleteProperty('SERPIFAI_LICENSE_KEY');
       properties.deleteProperty('serpifai_license_key');
       
@@ -153,7 +193,19 @@ function saveLicenseKey(licenseKey) {
   try {
     Logger.log('=== saveLicenseKey START (SECURE MODE) ===');
     Logger.log('License key provided: ' + licenseKey);
-    Logger.log('Note: License key will be saved to THIS Google account\'s UserProperties');
+    
+    // SECURITY: Get Google account email for binding
+    const googleAccountEmail = Session.getActiveUser().getEmail();
+    Logger.log('Google Account: ' + googleAccountEmail);
+    Logger.log('Note: License key will be BOUND to this Google account');
+    
+    if (!googleAccountEmail) {
+      Logger.log('❌ Cannot determine Google account email');
+      return {
+        success: false,
+        message: '❌ Error: Cannot determine your Google account. Please try again.'
+      };
+    }
     
     if (!licenseKey || licenseKey.trim() === '') {
       Logger.log('❌ Empty license key provided');
@@ -190,14 +242,39 @@ function saveLicenseKey(licenseKey) {
     Logger.log('Calling server to verify license key...');
     
     // Verify with server - THIS IS MANDATORY
-    const response = callGateway('verifyLicenseKey', { licenseKey: trimmedKey });
+    // SECURITY: Send Google account email for binding/validation
+    const response = callGateway('verifyLicenseKey', { 
+      licenseKey: trimmedKey,
+      googleAccountEmail: googleAccountEmail 
+    });
     
     Logger.log('Server response received');
     Logger.log('Response success: ' + (response ? response.success : 'null'));
     
     if (!response || !response.success) {
       const errorMsg = response ? response.error : 'No response';
+      const errorCode = response ? response.error_code : null;
+      
       Logger.log('❌ Server verification FAILED: ' + errorMsg);
+      
+      // Handle Google account mismatch specifically
+      if (errorCode === 'GOOGLE_ACCOUNT_MISMATCH') {
+        const boundTo = response.bound_to || 'another Google account';
+        return {
+          success: false,
+          message: '❌ SECURITY ERROR: License Key Already Registered\n\n' +
+                   'This license key is registered to: ' + boundTo + '\n\n' +
+                   'You are logged in as: ' + googleAccountEmail + '\n\n' +
+                   '⚠️  Each license key can only be used by ONE Google account.\n\n' +
+                   'Solutions:\n' +
+                   '• Log in with the registered Google account\n' +
+                   '• Contact support@serpifai.com to transfer this license\n' +
+                   '• Purchase a separate license for this account',
+          verified: false,
+          errorCode: 'GOOGLE_ACCOUNT_MISMATCH'
+        };
+      }
+      
       return {
         success: false,
         message: '❌ License key verification failed:\n\n' + errorMsg + '\n\nPlease check:\n• License key is correct\n• Server is accessible\n• License key is active',
@@ -223,6 +300,7 @@ function saveLicenseKey(licenseKey) {
     Logger.log('User email: ' + (response.user ? response.user.email : 'unknown'));
     Logger.log('User status: ' + (response.user ? response.user.status : 'unknown'));
     Logger.log('User credits: ' + (response.user ? response.user.credits : 'unknown'));
+    Logger.log('Bound to Google account: ' + (response.user ? response.user.google_account_email : 'unknown'));
     
     // Only save to properties AFTER successful server verification
     const properties = PropertiesService.getUserProperties();
@@ -230,11 +308,17 @@ function saveLicenseKey(licenseKey) {
     properties.setProperty('serpifai_license_key', trimmedKey);
     
     Logger.log('✅ License key saved to UserProperties for this Google account');
+    Logger.log('🔒 This license is now BOUND to: ' + googleAccountEmail);
     Logger.log('=== saveLicenseKey END - SUCCESS ===');
     
     return {
       success: true,
-      message: '✅ License key verified and activated!\n\n📧 Email: ' + (response.user ? response.user.email : '') + '\n💎 Credits: ' + (response.user ? response.user.credits : 0) + '\n\nYou can now use all features!',
+      message: '✅ License key verified and activated!\n\n' +
+               '📧 Account: ' + (response.user ? response.user.email : '') + '\n' +
+               '💎 Credits: ' + (response.user ? response.user.credits : 0) + '\n' +
+               '🔒 Bound to: ' + googleAccountEmail + '\n\n' +
+               '⚠️  This license can only be used with this Google account.\n\n' +
+               'You can now use all features!',
       verified: true,
       user: response.user
     };
@@ -1564,6 +1648,21 @@ function getSettingsHTML() {
     <div class="content">
       <!-- Alert Messages -->
       <div id="alertContainer"></div>
+      
+      <!-- Security Warning for Google Account Mismatch -->
+      ${settings.securityError ? `
+      <div class="alert alert-error" style="border: 2px solid #dc3545; background: #fff5f5;">
+        <span>🔒</span>
+        <div>
+          <strong>SECURITY ERROR: License Key Mismatch</strong><br>
+          ${settings.securityMessage}<br><br>
+          <strong>What to do:</strong><br>
+          • Log in with the correct Google account<br>
+          • Contact <strong>support@serpifai.com</strong> to transfer license<br>
+          • Purchase a separate license for this account
+        </div>
+      </div>
+      ` : ''}
       
       <!-- Account Overview -->
       <div class="section">
