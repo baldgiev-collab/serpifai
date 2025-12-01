@@ -206,8 +206,25 @@ function saveLicenseKey(licenseKey) {
     
     if (!response || !response.success) {
       const errorMsg = response ? response.error : 'No response';
+      const errorCode = response ? response.error_code : null;
       
       Logger.log('❌ Server verification FAILED: ' + errorMsg);
+      
+      // Handle active session error
+      if (errorCode === 'SESSION_ACTIVE') {
+        return {
+          success: false,
+          message: '🚫 LICENSE KEY IN USE\n\n' +
+                   errorMsg + '\n\n' +
+                   '⚠️  Security: Only ONE user can use a license key at a time.\n\n' +
+                   'Solutions:\n' +
+                   '• Wait 30 minutes for the other session to expire\n' +
+                   '• Ask the other user to close their session\n' +
+                   '• Contact support@serpifai.com if you need multi-user access',
+          verified: false,
+          errorCode: 'SESSION_ACTIVE'
+        };
+      }
       
       return {
         success: false,
@@ -1739,15 +1756,16 @@ function getSettingsHTML() {
         return;
       }
       
-      showAlert('Saving license key...', 'info');
+      showAlert('Verifying license key...', 'info');
       
       scriptRun
         .withSuccessHandler(function(result) {
           if (result.success) {
-            showAlert(result.message, 'success');
+            showAlert('✅ License activated! Refreshing...', 'success');
+            // Reload immediately to show new account info
             setTimeout(function() {
               location.reload();
-            }, 1500);
+            }, 800);
           } else {
             showAlert(result.message, 'error');
           }
@@ -1774,10 +1792,11 @@ function getSettingsHTML() {
       scriptRun
         .withSuccessHandler(function(result) {
           if (result.success) {
-            showAlert(result.message, 'success');
+            showAlert('✅ License removed! Refreshing...', 'success');
+            // Reload immediately to show empty state
             setTimeout(function() {
               location.reload();
-            }, 1500);
+            }, 800);
           } else {
             showAlert(result.message, 'error');
           }
@@ -1800,10 +1819,11 @@ function getSettingsHTML() {
       scriptRun
         .withSuccessHandler(function(result) {
           if (result.success) {
-            showAlert(result.message, 'success');
+            showAlert('✅ Data refreshed!', 'success');
+            // Quick reload to show updated data
             setTimeout(function() {
               location.reload();
-            }, 1000);
+            }, 500);
           } else {
             showAlert(result.message, 'error');
           }

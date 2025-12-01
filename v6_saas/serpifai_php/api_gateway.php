@@ -342,12 +342,18 @@ function executeAction($action, $payload, $user, $license) {
 function handleUserAction($action, $payload, $license) {
     require_once __DIR__ . '/handlers/user_handler.php';
     
+    // Extract client IP for session tracking
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $clientIp = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+    }
+    
     switch($action) {
         case 'verifyLicenseKey':
-            return UserHandler::verifyLicenseKey($payload['licenseKey'] ?? $license);
+            return UserHandler::verifyLicenseKey($payload['licenseKey'] ?? $license, $clientIp);
             
         case 'getUserInfo':
-            return UserHandler::getUserInfo($payload['licenseKey'] ?? $license);
+            return UserHandler::getUserInfo($payload['licenseKey'] ?? $license, $clientIp);
             
         case 'getCredits':
             return UserHandler::getCredits($license);
@@ -355,7 +361,7 @@ function handleUserAction($action, $payload, $license) {
         case 'check_status':
         case 'status':
             // Get user info for status check
-            $user = UserHandler::getUserInfo($license);
+            $user = UserHandler::getUserInfo($license, $clientIp);
             if ($user['success']) {
                 return [
                     'success' => true,
