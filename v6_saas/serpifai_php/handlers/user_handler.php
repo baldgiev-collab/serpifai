@@ -10,17 +10,14 @@ class UserHandler {
     
     /**
      * Verify license key and return user info
-     * Security: Binds license key to specific Google account on first use
-     * 
-     * @param string $licenseKey The license key to verify
-     * @param string|null $googleAccountEmail The Google account email attempting to use this license
+     * Returns the account email from database (support@serpifai.com, etc.)
      */
-    public static function verifyLicenseKey($licenseKey, $googleAccountEmail = null) {
+    public static function verifyLicenseKey($licenseKey) {
         try {
             $db = getDB();
             
             $stmt = $db->prepare("
-                SELECT id, email, license_key, status, credits, created_at, last_login, google_account_email
+                SELECT id, email, license_key, status, credits, created_at, last_login
                 FROM users
                 WHERE license_key = ? AND status = 'active'
                 LIMIT 1
@@ -29,46 +26,22 @@ class UserHandler {
             $stmt->execute([$licenseKey]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if (!$user) {
+            if ($user) {
+                // Update last login
+                $updateStmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+                $updateStmt->execute([$user['id']]);
+                
+                return [
+                    'success' => true,
+                    'message' => 'License key verified',
+                    'user' => $user
+                ];
+            } else {
                 return [
                     'success' => false,
                     'error' => 'Invalid or inactive license key'
                 ];
             }
-            
-            // SECURITY: Google Account Binding
-            if ($googleAccountEmail) {
-                // If license key is already bound to a Google account
-                if ($user['google_account_email']) {
-                    // Check if the requesting Google account matches
-                    if ($user['google_account_email'] !== $googleAccountEmail) {
-                        error_log('SECURITY ALERT: License key ' . $licenseKey . ' attempted by ' . $googleAccountEmail . ' but bound to ' . $user['google_account_email']);
-                        return [
-                            'success' => false,
-                            'error' => 'License key is registered to a different Google account',
-                            'error_code' => 'GOOGLE_ACCOUNT_MISMATCH',
-                            'bound_to' => $user['google_account_email']
-                        ];
-                    }
-                    // Google account matches - proceed
-                } else {
-                    // License key not yet bound - bind it now to this Google account
-                    error_log('Binding license key ' . $licenseKey . ' to Google account: ' . $googleAccountEmail);
-                    $bindStmt = $db->prepare("UPDATE users SET google_account_email = ? WHERE id = ?");
-                    $bindStmt->execute([$googleAccountEmail, $user['id']]);
-                    $user['google_account_email'] = $googleAccountEmail;
-                }
-            }
-            
-            // Update last login
-            $updateStmt = $db->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-            $updateStmt->execute([$user['id']]);
-            
-            return [
-                'success' => true,
-                'message' => 'License key verified',
-                'user' => $user
-            ];
             
         } catch (Exception $e) {
             error_log('UserHandler::verifyLicenseKey error: ' . $e->getMessage());
@@ -81,12 +54,9 @@ class UserHandler {
     
     /**
      * Get user info by license key
-     * 
-     * @param string $licenseKey The license key
-     * @param string|null $googleAccountEmail The Google account email (for validation)
      */
-    public static function getUserInfo($licenseKey, $googleAccountEmail = null) {
-        return self::verifyLicenseKey($licenseKey, $googleAccountEmail);
+    public static function getUserInfo($licenseKey) {
+        return self::verifyLicenseKey($licenseKey);
     }
     
     /**
