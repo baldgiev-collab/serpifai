@@ -348,12 +348,15 @@ function handleUserAction($action, $payload, $license) {
         $clientIp = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
     }
     
+    // Extract userEmail if provided
+    $userEmail = $payload['userEmail'] ?? null;
+    
     switch($action) {
         case 'verifyLicenseKey':
-            return UserHandler::verifyLicenseKey($payload['licenseKey'] ?? $license, $clientIp);
+            return UserHandler::verifyLicenseKey($payload['licenseKey'] ?? $license, $clientIp, $userEmail);
             
         case 'getUserInfo':
-            return UserHandler::getUserInfo($payload['licenseKey'] ?? $license, $clientIp);
+            return UserHandler::getUserInfo($payload['licenseKey'] ?? $license, $clientIp, $userEmail);
             
         case 'getCredits':
             return UserHandler::getCredits($license);
@@ -361,7 +364,7 @@ function handleUserAction($action, $payload, $license) {
         case 'check_status':
         case 'status':
             // Get user info for status check
-            $user = UserHandler::getUserInfo($license, $clientIp);
+            $user = UserHandler::getUserInfo($license, $clientIp, $userEmail);
             if ($user['success']) {
                 return [
                     'success' => true,

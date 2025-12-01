@@ -153,19 +153,40 @@ function getUserSettings() {
  * Save license key
  * SECURE MODE: MUST verify with server - no offline usage allowed
  * SERVER IS THE ONLY VALIDATOR
- * Works for ANY Google account - server validates the license key
+ * Works for ANY Google account - server validates the license key + email combination
+ * @param {string} licenseKey - The license key to validate
+ * @param {string} userEmail - The email address to bind this license to
  */
-function saveLicenseKey(licenseKey) {
+function saveLicenseKey(licenseKey, userEmail) {
   try {
     Logger.log('=== saveLicenseKey START (SECURE MODE) ===');
     Logger.log('License key provided: ' + licenseKey);
-    Logger.log('Note: Server will validate license key and return account email');
+    Logger.log('User email provided: ' + userEmail);
+    Logger.log('Note: Server will validate license key + email combination');
     
     if (!licenseKey || licenseKey.trim() === '') {
       Logger.log('❌ Empty license key provided');
       return {
         success: false,
         message: '❌ License key cannot be empty'
+      };
+    }
+    
+    if (!userEmail || userEmail.trim() === '') {
+      Logger.log('❌ Empty email provided');
+      return {
+        success: false,
+        message: '❌ Email address cannot be empty'
+      };
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userEmail.trim())) {
+      Logger.log('❌ Invalid email format: ' + userEmail);
+      return {
+        success: false,
+        message: '❌ Invalid email address format'
       };
     }
     
@@ -196,9 +217,11 @@ function saveLicenseKey(licenseKey) {
     Logger.log('Calling server to verify license key...');
     
     // Verify with server - THIS IS MANDATORY
-    // Server validates license key and returns account email
+    // Server validates license key + email combination
+    const trimmedEmail = userEmail.trim();
     const response = callGateway('verifyLicenseKey', { 
-      licenseKey: trimmedKey
+      licenseKey: trimmedKey,
+      userEmail: trimmedEmail
     });
     
     Logger.log('Server response received');
@@ -212,17 +235,22 @@ function saveLicenseKey(licenseKey) {
       
       // Handle active session error
       if (errorCode === 'SESSION_ACTIVE') {
+        const activeUser = response.active_user_email || 'another user';
+        const activeSince = response.active_since || 'unknown';
         return {
           success: false,
           message: '🚫 LICENSE KEY IN USE\n\n' +
+                   '📧 Currently used by: ' + activeUser + '\n' +
+                   '⏰ Active since: ' + activeSince + '\n\n' +
                    errorMsg + '\n\n' +
                    '⚠️  Security: Only ONE user can use a license key at a time.\n\n' +
                    'Solutions:\n' +
-                   '• Wait 30 minutes for the other session to expire\n' +
-                   '• Ask the other user to close their session\n' +
-                   '• Contact support@serpifai.com if you need multi-user access',
+                   '• Wait 30 minutes for the session to expire\n' +
+                   '• Ask ' + activeUser + ' to close their session\n' +
+                   '• Contact support@serpifai.com for multi-user licenses',
           verified: false,
-          errorCode: 'SESSION_ACTIVE'
+          errorCode: 'SESSION_ACTIVE',
+          activeUserEmail: activeUser
         };
       }
       
@@ -256,6 +284,8 @@ function saveLicenseKey(licenseKey) {
     const properties = PropertiesService.getUserProperties();
     properties.setProperty('SERPIFAI_LICENSE_KEY', trimmedKey);
     properties.setProperty('serpifai_license_key', trimmedKey);
+    properties.setProperty('SERPIFAI_USER_EMAIL', trimmedEmail);
+    properties.setProperty('serpifai_user_email', trimmedEmail);
     
     Logger.log('✅ License key saved to UserProperties');
     Logger.log('=== saveLicenseKey END - SUCCESS ===');
@@ -1675,21 +1705,38 @@ function getSettingsHTML() {
         ` : `
         <div class="alert alert-info">
           <span>ℹ️</span>
-          No license key configured. Please enter your license key below to activate your account.
+          No license key configured. Please enter your email and license key below to activate your account.
         </div>
         
         <div class="form-group">
-          <label for="licenseKeyInput">Enter License Key</label>
+          <label for="userEmailInput">📧 Your Email Address</label>
+          <input 
+            type="text" 
+            id="userEmailInput" 
+            placeholder="your.email@company.com"
+            autocomplete="email"
+            style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"
+          >
+          <div style="font-size: 12px; color: #6c757d; margin-top: 6px;">
+            Enter the email address you want to use with this license key
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="licenseKeyInput">🔑 License Key</label>
           <input 
             type="text" 
             id="licenseKeyInput" 
             placeholder="SERP-FAI-XXXX-XXXX-XXXX"
             autocomplete="off"
           >
+          <div style="font-size: 12px; color: #6c757d; margin-top: 6px;">
+            License keys are case-sensitive
+          </div>
         </div>
         
         <button class="btn btn-primary" onclick="saveKey()">
-          <span>💾</span> Save License Key
+          <span>💾</span> Activate License
         </button>
         `}
         
@@ -1743,37 +1790,55 @@ function getSettingsHTML() {
     
     // Save License Key
     function saveKey() {
-      const input = document.getElementById('licenseKeyInput');
-      const key = input.value.trim();
+      const emailInput = document.getElementById('userEmailInput');
+      const keyInput = document.getElementById('licenseKeyInput');
+      const email = emailInput ? emailInput.value.trim() : '';
+      const key = keyInput ? keyInput.value.trim() : '';
+      
+      if (!email) {
+        showAlert('⚠️ Please enter your email address', 'error');
+        if (emailInput) emailInput.focus();
+        return;
+      }
       
       if (!key) {
-        showAlert('Please enter a license key', 'error');
+        showAlert('⚠️ Please enter your license key', 'error');
+        if (keyInput) keyInput.focus();
+        return;
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showAlert('❌ Invalid email address format', 'error');
+        if (emailInput) emailInput.focus();
         return;
       }
       
       if (!scriptRun) {
-        showAlert('Error: Cannot connect to Apps Script', 'error');
+        showAlert('❌ Error: Cannot connect to Apps Script', 'error');
         return;
       }
       
-      showAlert('Verifying license key...', 'info');
+      showAlert('🔄 Verifying license key with ' + email + '...', 'info');
       
       scriptRun
         .withSuccessHandler(function(result) {
           if (result.success) {
-            showAlert('✅ License activated! Refreshing...', 'success');
+            showAlert('✅ License activated for ' + email + '! Refreshing...', 'success');
             // Reload immediately to show new account info
             setTimeout(function() {
               location.reload();
             }, 800);
           } else {
-            showAlert(result.message, 'error');
+            // Keep alert visible for errors
+            showAlert(result.message, 'error', true);
           }
         })
         .withFailureHandler(function(error) {
-          showAlert('Error: ' + error.message, 'error');
+          showAlert('❌ Error: ' + error.message, 'error', true);
         })
-        .saveLicenseKey(key);
+        .saveLicenseKey(key, email);
     }
     
     // Remove License Key
@@ -1867,30 +1932,110 @@ function getSettingsHTML() {
     }
     
     // Show Alert
-    function showAlert(message, type) {
+    function showAlert(message, type, persistent) {
       const container = document.getElementById('alertContainer');
       const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info';
       const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
       
       container.innerHTML = '<div class="alert ' + alertClass + '"><span>' + icon + '</span><span>' + message + '</span></div>';
       
-      // Auto-hide after 5 seconds
-      setTimeout(function() {
-        container.innerHTML = '';
-      }, 5000);
+      // Clear any existing timeout
+      if (window.alertTimeout) {
+        clearTimeout(window.alertTimeout);
+      }
+      
+      // Auto-hide after 10 seconds unless persistent
+      if (!persistent) {
+        window.alertTimeout = setTimeout(function() {
+          container.innerHTML = '';
+        }, 10000);
+      }
+    }
+    
+    // Auto-refresh data every 10 seconds
+    var refreshInterval;
+    function startAutoRefresh() {
+      // Only refresh if license key is configured
+      var hasLicense = ${settings.hasLicenseKey ? 'true' : 'false'};
+      if (!hasLicense) return;
+      
+      refreshInterval = setInterval(function() {
+        if (scriptRun) {
+          scriptRun
+            .withSuccessHandler(function(result) {
+              if (result.success && result.data) {
+                // Update UI with new data without full reload
+                updateUIData(result.data);
+              }
+            })
+            .withFailureHandler(function(error) {
+              console.error('Auto-refresh failed:', error);
+            })
+            .refreshUserData();
+        }
+      }, 10000); // Refresh every 10 seconds
+    }
+    
+    // Update UI with new data
+    function updateUIData(userData) {
+      // Update credits
+      var creditsElements = document.querySelectorAll('.info-value');
+      creditsElements.forEach(function(el) {
+        if (el.parentElement && el.parentElement.querySelector('.info-label')?.textContent === 'CREDITS REMAINING') {
+          el.textContent = userData.credits;
+          el.className = 'info-value ' + (userData.credits > 50 ? 'success' : userData.credits > 20 ? 'warning' : 'danger');
+        }
+      });
+      
+      // Update status
+      creditsElements.forEach(function(el) {
+        if (el.parentElement && el.parentElement.querySelector('.info-label')?.textContent === 'ACCOUNT STATUS') {
+          el.textContent = userData.status === 'active' ? 'Active' : 'Inactive';
+          el.className = 'info-value ' + (userData.status === 'active' ? 'success' : 'danger');
+        }
+      });
     }
     
     // Enter key to save
     document.addEventListener('DOMContentLoaded', function() {
-      const input = document.getElementById('licenseKeyInput');
-      if (input) {
-        input.addEventListener('keypress', function(e) {
+      const keyInput = document.getElementById('licenseKeyInput');
+      const emailInput = document.getElementById('userEmailInput');
+      
+      if (keyInput) {
+        keyInput.addEventListener('keypress', function(e) {
           if (e.key === 'Enter') {
             saveKey();
           }
         });
-        input.focus();
       }
+      
+      if (emailInput) {
+        emailInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            saveKey();
+          }
+        });
+        emailInput.focus();
+      }
+      
+      // Start auto-refresh
+      startAutoRefresh();
+      
+      // Refresh on window focus
+      window.addEventListener('focus', function() {
+        if (scriptRun) {
+          scriptRun
+            .withSuccessHandler(function(result) {
+              if (result.success && result.data) {
+                updateUIData(result.data);
+              }
+            })
+            .withFailureHandler(function(error) {
+              console.error('Focus refresh failed:', error);
+            })
+            .refreshUserData();
+        }
+      });
     });
   </script>
 </body>
