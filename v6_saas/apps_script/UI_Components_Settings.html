@@ -1,0 +1,495 @@
+<div id="settingsTab" class="tab-content" style="display:none;">
+  <div class="settings-container">
+    
+    <!-- Loading State -->
+    <div id="settingsLoading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading account settings...</p>
+    </div>
+    
+    <!-- Settings Content -->
+    <div id="settingsContent" style="display:none;">
+      
+      <!-- Account Status Card -->
+      <div class="settings-card account-status-card">
+        <div class="card-header">
+          <h3>
+            <span class="icon">👤</span>
+            Account Status
+          </h3>
+          <span class="status-badge" id="accountStatusBadge">Loading...</span>
+        </div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">📧 Email</span>
+              <span class="info-value" id="accountEmail">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">💎 Credits</span>
+              <span class="info-value highlight" id="accountCredits">—</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">📅 Plan</span>
+              <span class="info-value" id="accountPlan">Monthly</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">🌐 API Status</span>
+              <span class="info-value" id="apiStatus">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- License Key Card -->
+      <div class="settings-card license-card">
+        <div class="card-header">
+          <h3>
+            <span class="icon">🔑</span>
+            License Key
+          </h3>
+        </div>
+        <div class="card-body">
+          
+          <!-- Active License Display -->
+          <div id="activeLicenseDisplay" style="display:none;">
+            <div class="license-info">
+              <div class="license-value" id="licenseKeyDisplay">
+                <span class="masked-key">SERP-FAI-****-****-****</span>
+              </div>
+              <button class="btn btn-danger btn-sm" id="removeLicenseBtn">
+                <span>🗑️</span>
+                Remove License
+              </button>
+            </div>
+          </div>
+
+          <!-- License Activation Form -->
+          <div id="licenseActivationForm">
+            <div class="alert alert-info">
+              <span class="icon">ℹ️</span>
+              <span>Enter your email and license key to activate your account.</span>
+            </div>
+            
+            <div class="form-group">
+              <label for="settingsEmailInput">
+                <span class="icon">📧</span>
+                Your Email Address
+              </label>
+              <input 
+                type="email" 
+                id="settingsEmailInput" 
+                class="form-input" 
+                placeholder="your.email@company.com"
+                autocomplete="email"
+              />
+              <small class="form-help">Use the email address associated with your license</small>
+            </div>
+
+            <div class="form-group">
+              <label for="settingsLicenseInput">
+                <span class="icon">🔑</span>
+                License Key
+              </label>
+              <input 
+                type="text" 
+                id="settingsLicenseInput" 
+                class="form-input" 
+                placeholder="SERP-FAI-XXXX-XXXX-XXXX"
+                autocomplete="off"
+              />
+              <small class="form-help">License keys are case-sensitive</small>
+            </div>
+
+            <button class="btn btn-primary btn-block" id="activateLicenseBtn">
+              <span>💾</span>
+              Activate License
+            </button>
+
+            <div class="form-footer">
+              <small>
+                <span class="icon">💡</span>
+                Need a license key? Contact your administrator or check your email.
+              </small>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Quick Actions Card -->
+      <div class="settings-card actions-card">
+        <div class="card-header">
+          <h3>
+            <span class="icon">⚡</span>
+            Quick Actions
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="action-buttons-grid">
+            <button class="btn btn-outline" id="refreshAccountBtn">
+              <span>🔄</span>
+              Refresh Account
+            </button>
+            <button class="btn btn-outline" id="clearCacheBtn">
+              <span>🧹</span>
+              Clear Cache
+            </button>
+            <button class="btn btn-outline" id="runDiagnosticsBtn">
+              <span>🔍</span>
+              Run Diagnostics
+            </button>
+            <button class="btn btn-outline" id="viewProjectsBtn">
+              <span>📁</span>
+              View Projects
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Info Card -->
+      <div class="settings-card system-info-card">
+        <div class="card-header">
+          <h3>
+            <span class="icon">ℹ️</span>
+            System Information
+          </h3>
+        </div>
+        <div class="card-body">
+          <div class="info-list">
+            <div class="info-row">
+              <span class="info-label">Version</span>
+              <span class="info-value" id="systemVersion">v6.0.0</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Last Updated</span>
+              <span class="info-value" id="systemLastUpdated">—</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Storage</span>
+              <span class="info-value">Google Sheets + MySQL</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Data Source</span>
+              <span class="info-value" id="systemDataSource">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Error State -->
+    <div id="settingsError" style="display:none;" class="error-state">
+      <div class="error-icon">❌</div>
+      <h3>Unable to Load Settings</h3>
+      <p id="settingsErrorMessage">An error occurred while loading your settings.</p>
+      <button class="btn btn-primary" id="retrySettingsBtn">
+        <span>🔄</span>
+        Retry
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.settings-container {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.settings-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 20px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.settings-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-header .icon {
+  font-size: 22px;
+}
+
+.card-body {
+  padding: 24px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 16px;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.info-value.highlight {
+  color: #6366f1;
+  font-size: 20px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.loading {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.license-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.masked-key {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+.form-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.form-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.form-footer small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.alert {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.alert-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.alert-success {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.alert-error {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.action-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-state p {
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.error-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+
+.error-state h3 {
+  margin: 0 0 12px 0;
+  color: #1a1a1a;
+  font-size: 20px;
+}
+
+.error-state p {
+  color: #6b7280;
+  margin-bottom: 24px;
+  max-width: 400px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.btn-outline {
+  background: white;
+  border: 2px solid #e5e7eb;
+  color: #374151;
+}
+
+.btn-outline:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: #f5f3ff;
+}
+
+.account-status-card {
+  border-top: 4px solid #6366f1;
+}
+
+.license-card {
+  border-top: 4px solid #10b981;
+}
+
+</style>

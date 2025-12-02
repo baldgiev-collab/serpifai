@@ -1,0 +1,240 @@
+<script>
+// ================================================================
+// SETTINGS TAB - REAL-TIME LICENSE & CREDIT MANAGEMENT
+// ================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  const settingsTab = document.getElementById('settingsTab');
+  if (settingsTab) {
+    initializeSettingsTab();
+    // Refresh credits every 30 seconds
+    setInterval(refreshCreditDisplay, 30000);
+  }
+});
+
+function initializeSettingsTab() {
+  console.log('⚙️ Initializing Settings tab...');
+  loadSettingsData();
+  
+  const activateLicenseBtn = document.getElementById('activateLicenseBtn');
+  const removeLicenseBtn = document.getElementById('removeLicenseBtn');
+  const refreshAccountBtn = document.getElementById('refreshAccountBtn');
+  const clearCacheBtn = document.getElementById('clearCacheBtn');
+  const runDiagnosticsBtn = document.getElementById('runDiagnosticsBtn');
+  const viewProjectsBtn = document.getElementById('viewProjectsBtn');
+  const retrySettingsBtn = document.getElementById('retrySettingsBtn');
+  const emailInput = document.getElementById('settingsEmailInput');
+  const licenseInput = document.getElementById('settingsLicenseInput');
+  
+  if (activateLicenseBtn) activateLicenseBtn.addEventListener('click', handleActivateLicense);
+  if (removeLicenseBtn) removeLicenseBtn.addEventListener('click', handleRemoveLicense);
+  if (refreshAccountBtn) refreshAccountBtn.addEventListener('click', () => { showToast('🔄 Refreshing...'); loadSettingsData(); });
+  if (clearCacheBtn) clearCacheBtn.addEventListener('click', () => { showToast('🧹 Clearing cache...'); setTimeout(() => showToast('✅ Cleared!'), 1000); });
+  if (runDiagnosticsBtn) runDiagnosticsBtn.addEventListener('click', () => showToast('🔍 Running diagnostics...'));
+  if (viewProjectsBtn) viewProjectsBtn.addEventListener('click', () => { setActiveTab('overview'); showToast('📁 Projects view'); });
+  if (retrySettingsBtn) retrySettingsBtn.addEventListener('click', loadSettingsData);
+  
+  if (emailInput) emailInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') licenseInput.focus(); });
+  if (licenseInput) licenseInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleActivateLicense(); });
+}
+
+function loadSettingsData() {
+  const loadingEl = document.getElementById('settingsLoading');
+  const contentEl = document.getElementById('settingsContent');
+  const errorEl = document.getElementById('settingsError');
+  
+  if (loadingEl) loadingEl.style.display = 'flex';
+  if (contentEl) contentEl.style.display = 'none';
+  if (errorEl) errorEl.style.display = 'none';
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(settings) {
+        console.log('✅ Settings loaded:', settings);
+        displaySettingsData(settings);
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (contentEl) contentEl.style.display = 'block';
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Error loading settings:', error);
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) {
+          errorEl.style.display = 'flex';
+          const errorMsg = document.getElementById('settingsErrorMessage');
+          if (errorMsg) errorMsg.textContent = error.message || 'Unable to connect to server';
+        }
+      })
+      .getUserSettings();
+  }
+}
+
+function displaySettingsData(settings) {
+  // Status badge
+  const statusBadge = document.getElementById('accountStatusBadge');
+  if (statusBadge) {
+    statusBadge.textContent = settings.status || 'inactive';
+    statusBadge.className = 'status-badge ' + (settings.status === 'active' ? 'active' : 'inactive');
+  }
+  
+  // Account info
+  const emailEl = document.getElementById('accountEmail');
+  const creditsEl = document.getElementById('accountCredits');
+  const apiStatusEl = document.getElementById('apiStatus');
+  
+  if (emailEl) emailEl.textContent = settings.email || 'Not configured';
+  if (creditsEl) creditsEl.textContent = settings.credits || 0;
+  if (apiStatusEl) apiStatusEl.textContent = settings.apiStatus || 'Not configured';
+  
+  // License key display
+  const activeLicenseDisplay = document.getElementById('activeLicenseDisplay');
+  const licenseActivationForm = document.getElementById('licenseActivationForm');
+  const licenseKeyDisplay = document.getElementById('licenseKeyDisplay');
+  
+  if (settings.hasLicenseKey) {
+    if (activeLicenseDisplay) activeLicenseDisplay.style.display = 'block';
+    if (licenseActivationForm) licenseActivationForm.style.display = 'none';
+    if (licenseKeyDisplay) {
+      const maskedKey = licenseKeyDisplay.querySelector('.masked-key');
+      if (maskedKey) maskedKey.textContent = settings.licenseKeyMasked || 'SERP-FAI-****-****-****';
+    }
+  } else {
+    if (activeLicenseDisplay) activeLicenseDisplay.style.display = 'none';
+    if (licenseActivationForm) licenseActivationForm.style.display = 'block';
+  }
+  
+  // System info
+  const systemVersionEl = document.getElementById('systemVersion');
+  const systemLastUpdatedEl = document.getElementById('systemLastUpdated');
+  const systemDataSourceEl = document.getElementById('systemDataSource');
+  
+  if (systemVersionEl) systemVersionEl.textContent = settings.version || 'v6.0.0';
+  if (systemLastUpdatedEl) systemLastUpdatedEl.textContent = new Date().toLocaleDateString();
+  if (systemDataSourceEl) systemDataSourceEl.textContent = settings.dataSource || 'server';
+  
+  // Refresh credit display in sidebar
+  refreshCreditDisplay();
+}
+
+function handleActivateLicense() {
+  const emailInput = document.getElementById('settingsEmailInput');
+  const licenseInput = document.getElementById('settingsLicenseInput');
+  const activateBtn = document.getElementById('activateLicenseBtn');
+  
+  if (!emailInput || !licenseInput) return;
+  
+  const email = emailInput.value.trim();
+  const licenseKey = licenseInput.value.trim();
+  
+  // Validation
+  if (!email) {
+    showToast('⚠️ Please enter your email address');
+    emailInput.focus();
+    return;
+  }
+  
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('❌ Invalid email format');
+    emailInput.focus();
+    return;
+  }
+  
+  if (!licenseKey) {
+    showToast('⚠️ Please enter your license key');
+    licenseInput.focus();
+    return;
+  }
+  
+  // Disable button during activation
+  if (activateBtn) {
+    activateBtn.disabled = true;
+    activateBtn.innerHTML = '<span>🔄</span> Activating...';
+  }
+  
+  showToast('🔄 Verifying license key...');
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          showToast('✅ License activated successfully!');
+          emailInput.value = '';
+          licenseInput.value = '';
+          setTimeout(() => loadSettingsData(), 1000);
+        } else {
+          showToast('❌ ' + (result.message || 'Activation failed'));
+        }
+        
+        if (activateBtn) {
+          activateBtn.disabled = false;
+          activateBtn.innerHTML = '<span>💾</span> Activate License';
+        }
+      })
+      .withFailureHandler(function(error) {
+        showToast('❌ Error: ' + error.message);
+        
+        if (activateBtn) {
+          activateBtn.disabled = false;
+          activateBtn.innerHTML = '<span>💾</span> Activate License';
+        }
+      })
+      .saveLicenseKey(licenseKey, email);
+  }
+}
+
+function handleRemoveLicense() {
+  if (!confirm('Are you sure you want to remove your license key? This will deactivate your account.')) {
+    return;
+  }
+  
+  showToast('🔄 Removing license...');
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          showToast('✅ License removed successfully');
+          setTimeout(() => loadSettingsData(), 1000);
+        } else {
+          showToast('❌ ' + (result.message || 'Failed to remove license'));
+        }
+      })
+      .withFailureHandler(function(error) {
+        showToast('❌ Error: ' + error.message);
+      })
+      .removeLicenseKey();
+  }
+}
+
+function refreshCreditDisplay() {
+  const creditValueEl = document.getElementById('creditValue');
+  const creditPlanEl = document.getElementById('creditPlan');
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(settings) {
+        if (creditValueEl) {
+          creditValueEl.textContent = settings.credits || 0;
+        }
+        if (creditPlanEl) {
+          const resetDate = new Date();
+          resetDate.setMonth(resetDate.getMonth() + 1, 1);
+          creditPlanEl.textContent = 'Monthly • Resets ' + resetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        
+        // Also update in Settings tab if visible
+        const accountCreditsEl = document.getElementById('accountCredits');
+        if (accountCreditsEl) {
+          accountCreditsEl.textContent = settings.credits || 0;
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('Failed to refresh credits:', error);
+      })
+      .getUserSettings();
+  }
+}
+
+// Make refreshCreditDisplay available globally for other features to call
+window.refreshCreditDisplay = refreshCreditDisplay;
+
+</script>

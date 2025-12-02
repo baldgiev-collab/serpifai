@@ -76,7 +76,8 @@
         results:'Workflow Results',
         qa:'QA · SEO · E‑E‑A‑T',
         competitors:'Competitor Intelligence',
-        scoring: 'Scoring'
+        scoring: 'Scoring',
+        settings: 'Settings'
       }[name] || 'Overview';
       breadcrumb.textContent = label + ' · ' + activeProject;
     }
@@ -1916,183 +1917,35 @@
     newProjectBtn.addEventListener('click', doNewProject);
     renameProjectBtn.addEventListener('click', doRenameProject);
     deleteProjectBtn.addEventListener('click', doDeleteProject);
-        
-    // Settings button click handler
-    const settingsBtn = document.getElementById('settingsBtn');
-    if(settingsBtn){
-      settingsBtn.addEventListener('click', function(){
-        console.log('⚙️ Opening Settings...');
+    
+    // Save Project button handler
+    if (saveProjectBtn) {
+      saveProjectBtn.addEventListener('click', function() {
+        showToast('💾 Saving project...');
+        // Call saveCurrentProject function
         if (typeof google !== 'undefined' && google.script && google.script.run) {
           google.script.run
-            .withSuccessHandler(function(htmlOutput){
-              console.log('✅ Settings HTML received, creating modal...');
-              showSettingsModal(htmlOutput);
+            .withSuccessHandler(function(result) {
+              if (result && result.success) {
+                showToast('✅ Project saved successfully!');
+                refreshCreditDisplay(); // Refresh credits after save
+              } else {
+                showToast('❌ Failed to save project');
+              }
             })
-            .withFailureHandler(function(error){
-              console.error('❌ Error opening settings:', error);
-              showToast('❌ Error opening settings: ' + error.message);
+            .withFailureHandler(function(error) {
+              showToast('❌ Error saving project: ' + error.message);
             })
-            .showSettingsDialog();
+            .saveCurrentProject();
         } else {
-          showToast('❌ Settings unavailable in preview mode');
+          showToast('❌ Save unavailable in preview mode');
         }
       });
     }
-    
-    // Function to show Settings modal overlay
-    function showSettingsModal(htmlOutput) {
-      // Remove existing modal if any
-      const existingModal = document.getElementById('settingsModalOverlay');
-      if (existingModal) {
-        existingModal.remove();
-      }
-      
-      // Create modal overlay
-      const overlay = document.createElement('div');
-      overlay.id = 'settingsModalOverlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        animation: fadeIn 0.2s ease;
-      `;
-      
-      // Create modal container
-      const modal = document.createElement('div');
-      modal.style.cssText = `
-        background: white;
-        border-radius: 12px;
-        width: 800px;
-        max-width: 95vw;
-        height: 85vh;
-        max-height: 800px;
-        overflow: hidden;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        position: relative;
-        animation: slideUp 0.3s ease;
-      `;
-      
-      // Create close button
-      const closeBtn = document.createElement('button');
-      closeBtn.innerHTML = '✕';
-      closeBtn.style.cssText = `
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: rgba(255,255,255,0.9);
-        border: none;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        font-size: 20px;
-        cursor: pointer;
-        z-index: 10001;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        transition: all 0.2s ease;
-      `;
-      closeBtn.onmouseover = function() {
-        this.style.background = '#f8f9fa';
-        this.style.transform = 'scale(1.1)';
-      };
-      closeBtn.onmouseout = function() {
-        this.style.background = 'rgba(255,255,255,0.9)';
-        this.style.transform = 'scale(1)';
-      };
-      closeBtn.onclick = function() {
-        overlay.style.animation = 'fadeOut 0.2s ease';
-        modal.style.animation = 'slideDown 0.2s ease';
-        setTimeout(() => overlay.remove(), 200);
-      };
-      
-      // Create iframe for settings content
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = `
-        width: 100%;
-        height: 100%;
-        border: none;
-        border-radius: 12px;
-      `;
-      
-      // Get HTML content from htmlOutput
-      let htmlContent = '';
-      if (typeof htmlOutput === 'string') {
-        htmlContent = htmlOutput;
-      } else if (htmlOutput && htmlOutput.getContent) {
-        htmlContent = htmlOutput.getContent();
-      } else {
-        console.error('Invalid HTML output:', htmlOutput);
-        showToast('❌ Error displaying settings');
-        return;
-      }
-      
-      // Set iframe content
-      iframe.onload = function() {
-        try {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-          iframeDoc.open();
-          iframeDoc.write(htmlContent);
-          iframeDoc.close();
-        } catch (e) {
-          console.error('Error loading settings content:', e);
-        }
-      };
-      
-      // Assemble modal
-      modal.appendChild(closeBtn);
-      modal.appendChild(iframe);
-      overlay.appendChild(modal);
-      document.body.appendChild(overlay);
-      
-      // Close on overlay click
-      overlay.onclick = function(e) {
-        if (e.target === overlay) {
-          closeBtn.click();
-        }
-      };
-      
-      // Add animations
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes fadeOut {
-          from { opacity: 1; }
-          to { opacity: 0; }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(30px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes slideDown {
-          from { transform: translateY(0); opacity: 1; }
-          to { transform: translateY(30px); opacity: 0; }
-        }
-      `;
-      document.head.appendChild(style);
-      
-      // Listen for messages from iframe to close modal
-      window.addEventListener('message', function(event) {
-        if (event.data && event.data.action === 'closeSettings') {
-          closeBtn.click();
-        }
-      });
-    }        saveProjectBtn.addEventListener('click', doSaveProject);
         
-        projectSelect.addEventListener('change', function(){
-          loadProject(projectSelect.value);
-        });
+    projectSelect.addEventListener('change', function(){
+      loadProject(projectSelect.value);
+    });
     
         // Auto-save on input after a delay (legacy scoring recalc)
         let saveTimeout;
