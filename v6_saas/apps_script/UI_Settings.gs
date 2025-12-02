@@ -55,9 +55,17 @@ function getUserSettings() {
     // CRITICAL: MUST fetch user info from server
     Logger.log('Fetching user info from server (REQUIRED)...');
     
-    const response = callGateway('getUserInfo', { 
-      licenseKey: licenseKey
-    });
+    // Get saved email if exists
+    const userEmail = properties.getProperty('SERPIFAI_USER_EMAIL') || 
+                      properties.getProperty('serpifai_user_email') || '';
+    
+    const payload = { licenseKey: licenseKey };
+    if (userEmail) {
+      payload.userEmail = userEmail;
+      Logger.log('Using saved email: ' + userEmail);
+    }
+    
+    const response = callGateway('getUserInfo', payload);
     
     if (!response || !response.success || !response.user) {
       // Server verification failed - invalidate license key
@@ -68,6 +76,8 @@ function getUserSettings() {
       
       properties.deleteProperty('SERPIFAI_LICENSE_KEY');
       properties.deleteProperty('serpifai_license_key');
+      properties.deleteProperty('SERPIFAI_USER_EMAIL');
+      properties.deleteProperty('serpifai_user_email');
       
       return {
         licenseKey: '',
@@ -128,6 +138,8 @@ function getUserSettings() {
       const properties = PropertiesService.getUserProperties();
       properties.deleteProperty('SERPIFAI_LICENSE_KEY');
       properties.deleteProperty('serpifai_license_key');
+      properties.deleteProperty('SERPIFAI_USER_EMAIL');
+      properties.deleteProperty('serpifai_user_email');
     } catch (cleanupError) {
       Logger.log('Cleanup error: ' + cleanupError.toString());
     }
@@ -507,25 +519,35 @@ function getNextMonthDate() {
  */
 function TEST_VerifyLicenseKey() {
   const testKey = 'SERP-FAI-TEST-KEY-123456';
+  const testEmail = 'test@serpifai.com';
   
   Logger.log('=== TESTING LICENSE KEY VERIFICATION ===');
   Logger.log('Test key: ' + testKey);
+  Logger.log('Test email: ' + testEmail);
   
   try {
-    // Test callGateway directly
-    Logger.log('\n1. Testing callGateway...');
-    const response = callGateway('verifyLicenseKey', { licenseKey: testKey });
+    // Test callGateway directly with email
+    Logger.log('\n1. Testing callGateway with email...');
+    const response = callGateway('verifyLicenseKey', { 
+      licenseKey: testKey,
+      userEmail: testEmail
+    });
     Logger.log('Response: ' + JSON.stringify(response, null, 2));
     
     // Test saveLicenseKey
-    Logger.log('\n2. Testing saveLicenseKey...');
-    const saveResult = saveLicenseKey(testKey);
+    Logger.log('\n2. Testing saveLicenseKey with email...');
+    const saveResult = saveLicenseKey(testKey, testEmail);
     Logger.log('Save result: ' + JSON.stringify(saveResult, null, 2));
     
     // Test getUserSettings
     Logger.log('\n3. Testing getUserSettings...');
     const settings = getUserSettings();
     Logger.log('Settings: ' + JSON.stringify(settings, null, 2));
+    
+    // Check if email was saved
+    const properties = PropertiesService.getUserProperties();
+    const savedEmail = properties.getProperty('SERPIFAI_USER_EMAIL');
+    Logger.log('\n4. Saved email in properties: ' + savedEmail);
     
     Logger.log('\n=== TEST COMPLETE ===');
     return 'Check execution log for results';
@@ -1690,6 +1712,10 @@ function getSettingsHTML() {
           <div class="info-label">Current License Key</div>
           <div style="font-family: 'Courier New', monospace; font-size: 16px; color: #495057; margin: 10px 0;">
             ${settings.licenseKeyMasked}
+          </div>
+          <div class="info-label" style="margin-top: 15px;">Registered Email</div>
+          <div style="font-size: 14px; color: #495057; margin: 10px 0;">
+            ${settings.email}
           </div>
           <span class="badge badge-success">Active</span>
         </div>
