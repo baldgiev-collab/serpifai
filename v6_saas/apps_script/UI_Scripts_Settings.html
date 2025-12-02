@@ -19,6 +19,7 @@ function initializeSettingsTab() {
   const activateLicenseBtn = document.getElementById('activateLicenseBtn');
   const removeLicenseBtn = document.getElementById('removeLicenseBtn');
   const refreshAccountBtn = document.getElementById('refreshAccountBtn');
+  const settingsRefreshBtn = document.getElementById('settingsRefreshBtn');
   const clearCacheBtn = document.getElementById('clearCacheBtn');
   const runDiagnosticsBtn = document.getElementById('runDiagnosticsBtn');
   const viewProjectsBtn = document.getElementById('viewProjectsBtn');
@@ -29,6 +30,7 @@ function initializeSettingsTab() {
   if (activateLicenseBtn) activateLicenseBtn.addEventListener('click', handleActivateLicense);
   if (removeLicenseBtn) removeLicenseBtn.addEventListener('click', handleRemoveLicense);
   if (refreshAccountBtn) refreshAccountBtn.addEventListener('click', () => { showToast('🔄 Refreshing...'); loadSettingsData(); });
+  if (settingsRefreshBtn) settingsRefreshBtn.addEventListener('click', () => { showToast('🔄 Refreshing...'); loadSettingsData(); });
   if (clearCacheBtn) clearCacheBtn.addEventListener('click', () => { showToast('🧹 Clearing cache...'); setTimeout(() => showToast('✅ Cleared!'), 1000); });
   if (runDiagnosticsBtn) runDiagnosticsBtn.addEventListener('click', () => showToast('🔍 Running diagnostics...'));
   if (viewProjectsBtn) viewProjectsBtn.addEventListener('click', () => { setActiveTab('overview'); showToast('📁 Projects view'); });
