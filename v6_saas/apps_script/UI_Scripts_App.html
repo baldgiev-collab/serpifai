@@ -1970,6 +1970,12 @@
         // Initialize
         refreshProjectList();
         setActiveTab('overview');
+        
+        // Check if we need to open Settings tab (from menu click)
+        if (window.location.hash === '#settings') {
+          setActiveTab('settings');
+          window.location.hash = ''; // Clear hash
+        }
       })();
       
       

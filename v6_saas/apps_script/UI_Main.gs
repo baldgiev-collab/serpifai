@@ -156,11 +156,16 @@ function showHelp() {
 }
 
 /**
- * Show settings dialog (calls the new UI_Settings.gs)
+ * Show settings - opens sidebar and switches to Settings tab
  */
 function showSettingsDialog() {
-  // This now calls the function from UI_Settings.gs
-  showSettingsDialog();
+  // Open the sidebar (will switch to Settings tab via JavaScript)
+  showSidebar();
+  // Note: JavaScript in the sidebar will handle switching to the Settings tab
+  return {
+    success: true,
+    message: 'Open sidebar and navigate to Settings tab'
+  };
 }
 
 /**
