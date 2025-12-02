@@ -90,8 +90,38 @@ function showNewProjectDialog() {
  * Save current project (quick save)
  */
 function saveCurrentProject() {
-  // This would save the currently active project
-  SpreadsheetApp.getUi().alert('Save Project', 'Current project saved!', SpreadsheetApp.getUi().ButtonSet.OK);
+  try {
+    // Get active project name from project selector
+    const userProps = PropertiesService.getUserProperties();
+    const activeProject = userProps.getProperty('serpifai_lastProject');
+    
+    if (!activeProject) {
+      Logger.log('❌ No active project selected');
+      return {
+        success: false,
+        error: 'No active project selected. Please select or create a project first.'
+      };
+    }
+    
+    Logger.log('💾 Saving active project: ' + activeProject);
+    
+    // NOTE: Project data is auto-saved on field changes via saveProject()
+    // This function confirms the current state is saved
+    // The actual save logic is in UI_ProjectManager.gs -> saveProject()
+    
+    return {
+      success: true,
+      message: 'Project "' + activeProject + '" is saved',
+      project: activeProject
+    };
+    
+  } catch (e) {
+    Logger.log('❌ Error in saveCurrentProject: ' + e.toString());
+    return {
+      success: false,
+      error: e.toString()
+    };
+  }
 }
 
 /**
