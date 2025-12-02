@@ -1,177 +1,202 @@
 <div id="settingsTab" class="tab-content" style="display:none;">
+  <div class="settings-header">
+    <div class="settings-header-content">
+      <div class="settings-title-group">
+        <h1 class="settings-title">⚙️ Account Settings</h1>
+        <p class="settings-subtitle">Manage your license, credits, and preferences</p>
+      </div>
+      <button class="btn btn-refresh" id="settingsRefreshBtn">
+        <span>🔄</span>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+  
   <div class="settings-container">
     
     <!-- Loading State -->
     <div id="settingsLoading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading account settings...</p>
+      <div class="spinner-large"></div>
+      <p class="loading-text">Loading your account...</p>
+      <span class="loading-subtext">This will only take a moment</span>
     </div>
     
     <!-- Settings Content -->
     <div id="settingsContent" style="display:none;">
       
-      <!-- Account Status Card -->
-      <div class="settings-card account-status-card">
-        <div class="card-header">
-          <h3>
-            <span class="icon">👤</span>
-            Account Status
-          </h3>
-          <span class="status-badge" id="accountStatusBadge">Loading...</span>
+      <!-- Account Overview - Premium Hero Section -->
+      <div class="account-hero">
+        <div class="hero-status">
+          <span class="status-badge-large" id="accountStatusBadge">Loading...</span>
         </div>
-        <div class="card-body">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">📧 Email</span>
-              <span class="info-value" id="accountEmail">—</span>
+        <div class="hero-content">
+          <div class="hero-main">
+            <div class="hero-label">Account Email</div>
+            <div class="hero-value" id="accountEmail">—</div>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="stat-icon">💎</div>
+              <div class="stat-content">
+                <div class="stat-label">Credits Available</div>
+                <div class="stat-value" id="accountCredits">—</div>
+              </div>
             </div>
-            <div class="info-item">
-              <span class="info-label">💎 Credits</span>
-              <span class="info-value highlight" id="accountCredits">—</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">📅 Plan</span>
-              <span class="info-value" id="accountPlan">Monthly</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">🌐 API Status</span>
-              <span class="info-value" id="apiStatus">—</span>
+            <div class="hero-stat">
+              <div class="stat-icon">🌐</div>
+              <div class="stat-content">
+                <div class="stat-label">API Connection</div>
+                <div class="stat-value" id="apiStatus">—</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- License Key Card -->
-      <div class="settings-card license-card">
-        <div class="card-header">
-          <h3>
-            <span class="icon">🔑</span>
-            License Key
-          </h3>
+      <!-- License Management Section -->
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">🔑 License Management</h2>
         </div>
-        <div class="card-body">
-          
-          <!-- Active License Display -->
-          <div id="activeLicenseDisplay" style="display:none;">
-            <div class="license-info">
-              <div class="license-value" id="licenseKeyDisplay">
-                <span class="masked-key">SERP-FAI-****-****-****</span>
+        
+        <!-- Active License Display -->
+        <div id="activeLicenseDisplay" style="display:none;">
+          <div class="license-active-card">
+            <div class="license-active-header">
+              <div class="license-icon-wrap">
+                <span class="license-icon">✓</span>
               </div>
-              <button class="btn btn-danger btn-sm" id="removeLicenseBtn">
-                <span>🗑️</span>
-                Remove License
-              </button>
+              <div class="license-details">
+                <div class="license-label">Active License Key</div>
+                <div class="license-key-display" id="licenseKeyDisplay">
+                  <span class="masked-key">SERP-FAI-****-****-****</span>
+                </div>
+              </div>
             </div>
+            <button class="btn-remove-license" id="removeLicenseBtn">
+              <span>🗑️</span>
+              <span>Remove License</span>
+            </button>
           </div>
+        </div>
 
-          <!-- License Activation Form -->
-          <div id="licenseActivationForm">
-            <div class="alert alert-info">
-              <span class="icon">ℹ️</span>
-              <span>Enter your email and license key to activate your account.</span>
+        <!-- License Activation Form -->
+        <div id="licenseActivationForm">
+          <div class="activation-card">
+            <div class="activation-header">
+              <div class="activation-icon">🔐</div>
+              <div class="activation-text">
+                <h3>Activate Your License</h3>
+                <p>Enter your credentials to unlock all features</p>
+              </div>
             </div>
             
-            <div class="form-group">
-              <label for="settingsEmailInput">
-                <span class="icon">📧</span>
-                Your Email Address
-              </label>
-              <input 
-                type="email" 
-                id="settingsEmailInput" 
-                class="form-input" 
-                placeholder="your.email@company.com"
-                autocomplete="email"
-              />
-              <small class="form-help">Use the email address associated with your license</small>
+            <div class="activation-form">
+              <div class="form-group-modern">
+                <label for="settingsEmailInput" class="form-label-modern">
+                  <span class="label-icon">📧</span>
+                  <span>Email Address</span>
+                </label>
+                <input 
+                  type="email" 
+                  id="settingsEmailInput" 
+                  class="form-input-modern" 
+                  placeholder="Enter your email address"
+                  autocomplete="email"
+                />
+              </div>
+
+              <div class="form-group-modern">
+                <label for="settingsLicenseInput" class="form-label-modern">
+                  <span class="label-icon">🔑</span>
+                  <span>License Key</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="settingsLicenseInput" 
+                  class="form-input-modern" 
+                  placeholder="SERP-FAI-XXXX-XXXX-XXXX"
+                  autocomplete="off"
+                />
+                <small class="form-hint">License keys are case-sensitive</small>
+              </div>
+
+              <button class="btn-activate" id="activateLicenseBtn">
+                <span class="btn-icon">✨</span>
+                <span class="btn-text">Activate License</span>
+                <span class="btn-arrow">→</span>
+              </button>
             </div>
 
-            <div class="form-group">
-              <label for="settingsLicenseInput">
-                <span class="icon">🔑</span>
-                License Key
-              </label>
-              <input 
-                type="text" 
-                id="settingsLicenseInput" 
-                class="form-input" 
-                placeholder="SERP-FAI-XXXX-XXXX-XXXX"
-                autocomplete="off"
-              />
-              <small class="form-help">License keys are case-sensitive</small>
+            <div class="activation-footer">
+              <span class="footer-icon">💡</span>
+              <span>Need help? Contact <strong>support@serpifai.com</strong></span>
             </div>
-
-            <button class="btn btn-primary btn-block" id="activateLicenseBtn">
-              <span>💾</span>
-              Activate License
-            </button>
-
-            <div class="form-footer">
-              <small>
-                <span class="icon">💡</span>
-                Need a license key? Contact your administrator or check your email.
-              </small>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Quick Actions Card -->
-      <div class="settings-card actions-card">
-        <div class="card-header">
-          <h3>
-            <span class="icon">⚡</span>
-            Quick Actions
-          </h3>
-        </div>
-        <div class="card-body">
-          <div class="action-buttons-grid">
-            <button class="btn btn-outline" id="refreshAccountBtn">
-              <span>🔄</span>
-              Refresh Account
-            </button>
-            <button class="btn btn-outline" id="clearCacheBtn">
-              <span>🧹</span>
-              Clear Cache
-            </button>
-            <button class="btn btn-outline" id="runDiagnosticsBtn">
-              <span>🔍</span>
-              Run Diagnostics
-            </button>
-            <button class="btn btn-outline" id="viewProjectsBtn">
-              <span>📁</span>
-              View Projects
-            </button>
           </div>
         </div>
       </div>
 
-      <!-- System Info Card -->
-      <div class="settings-card system-info-card">
-        <div class="card-header">
-          <h3>
-            <span class="icon">ℹ️</span>
-            System Information
-          </h3>
+      <!-- Quick Actions Grid -->
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">⚡ Quick Actions</h2>
         </div>
-        <div class="card-body">
-          <div class="info-list">
-            <div class="info-row">
-              <span class="info-label">Version</span>
-              <span class="info-value" id="systemVersion">v6.0.0</span>
+        <div class="quick-actions-grid">
+          <button class="action-card" id="refreshAccountBtn">
+            <div class="action-icon">🔄</div>
+            <div class="action-label">Refresh Account</div>
+            <div class="action-desc">Update account data</div>
+          </button>
+          <button class="action-card" id="clearCacheBtn">
+            <div class="action-icon">🧹</div>
+            <div class="action-label">Clear Cache</div>
+            <div class="action-desc">Free up space</div>
+          </button>
+          <button class="action-card" id="runDiagnosticsBtn">
+            <div class="action-icon">🔍</div>
+            <div class="action-label">Run Diagnostics</div>
+            <div class="action-desc">Check system health</div>
+          </button>
+          <button class="action-card" id="viewProjectsBtn">
+            <div class="action-icon">📁</div>
+            <div class="action-label">View Projects</div>
+            <div class="action-desc">Browse all projects</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- System Information -->
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">ℹ️ System Information</h2>
+        </div>
+        <div class="system-info-grid">
+          <div class="info-card">
+            <div class="info-card-icon">📦</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Version</div>
+              <div class="info-card-value" id="systemVersion">v6.0.0</div>
             </div>
-            <div class="info-row">
-              <span class="info-label">Last Updated</span>
-              <span class="info-value" id="systemLastUpdated">—</span>
+          </div>
+          <div class="info-card">
+            <div class="info-card-icon">📅</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Last Updated</div>
+              <div class="info-card-value" id="systemLastUpdated">—</div>
             </div>
-            <div class="info-row">
-              <span class="info-label">Storage</span>
-              <span class="info-value">Google Sheets + MySQL</span>
+          </div>
+          <div class="info-card">
+            <div class="info-card-icon">💾</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Storage</div>
+              <div class="info-card-value">Google Sheets + MySQL</div>
             </div>
-            <div class="info-row">
-              <span class="info-label">Data Source</span>
-              <span class="info-value" id="systemDataSource">—</span>
+          </div>
+          <div class="info-card">
+            <div class="info-card-icon">🔗</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Data Source</div>
+              <div class="info-card-value" id="systemDataSource">—</div>
             </div>
           </div>
         </div>
@@ -181,12 +206,12 @@
 
     <!-- Error State -->
     <div id="settingsError" style="display:none;" class="error-state">
-      <div class="error-icon">❌</div>
-      <h3>Unable to Load Settings</h3>
-      <p id="settingsErrorMessage">An error occurred while loading your settings.</p>
-      <button class="btn btn-primary" id="retrySettingsBtn">
+      <div class="error-icon-large">⚠️</div>
+      <h3 class="error-title">Unable to Load Settings</h3>
+      <p class="error-message" id="settingsErrorMessage">An error occurred while loading your settings.</p>
+      <button class="btn-retry" id="retrySettingsBtn">
         <span>🔄</span>
-        Retry
+        <span>Try Again</span>
       </button>
     </div>
 
@@ -194,10 +219,71 @@
 </div>
 
 <style>
-.settings-container {
-  padding: 24px;
-  max-width: 800px;
+/* ========================================
+   TOP-TIER SETTINGS DESIGN - 0.1% PREMIUM
+   ======================================== */
+
+/* Header Section */
+.settings-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 32px 40px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.settings-header-content {
+  max-width: 1200px;
   margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-title-group {
+  color: white;
+}
+
+.settings-title {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.5px;
+}
+
+.settings-subtitle {
+  margin: 0;
+  font-size: 16px;
+  color: rgba(255,255,255,0.9);
+  font-weight: 400;
+}
+
+.btn-refresh {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.btn-refresh:hover {
+  background: rgba(255,255,255,0.25);
+  transform: translateY(-1px);
+}
+
+/* Main Container */
+.settings-container {
+  padding: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: calc(100vh - 200px);
 }
 
 .settings-card {
