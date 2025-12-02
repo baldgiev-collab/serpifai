@@ -76,11 +76,20 @@ class UserHandler {
             if ($user['active_session_ip']) {
                 $sessionAge = $currentTime - strtotime($user['session_started']);
                 
-                // If someone else is using this license (different IP)
-                if ($user['active_session_ip'] !== $clientIp) {
+                // IMPORTANT: If the same email is trying to log in again, allow it
+                // This handles cases where:
+                // - User's IP changed (VPN, mobile network switch, etc.)
+                // - User closed browser and reopened
+                // - User is logging in from a different device but same email
+                $isSameUserEmail = ($userEmail && $userEmail === $user['email']);
+                
+                // If someone else is using this license (different IP AND different/unknown email)
+                if ($user['active_session_ip'] !== $clientIp && !$isSameUserEmail) {
                     // Check if session is still active (within timeout)
                     if ($sessionAge < $sessionTimeout) {
-                        error_log('SECURITY: License ' . $licenseKey . ' attempted by ' . $clientIp . ' but active session from ' . $user['active_session_ip'] . ' for email ' . $user['email']);
+                        error_log('SECURITY: License ' . $licenseKey . ' attempted by ' . $clientIp . 
+                                 ' (email: ' . ($userEmail ?? 'unknown') . ') but active session from ' . 
+                                 $user['active_session_ip'] . ' for email ' . $user['email']);
                         return [
                             'success' => false,
                             'error' => 'License key is currently in use by another user. Please wait 30 minutes or contact support.',
@@ -91,6 +100,10 @@ class UserHandler {
                     }
                     // Session expired - allow new user
                     error_log('Session expired for license ' . $licenseKey . ', allowing new IP: ' . $clientIp);
+                } else if ($isSameUserEmail && $user['active_session_ip'] !== $clientIp) {
+                    // Same user (email), different IP - allow and log
+                    error_log('INFO: User ' . $userEmail . ' logging in from new IP: ' . $clientIp . 
+                             ' (previous: ' . $user['active_session_ip'] . ') - ALLOWED');
                 }
             }
             
