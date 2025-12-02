@@ -386,7 +386,17 @@ function refreshUserData() {
       };
     }
     
-    const response = callGateway('getUserInfo', { licenseKey: licenseKey });
+    // CRITICAL: Get saved email and pass to server
+    const userEmail = properties.getProperty('SERPIFAI_USER_EMAIL') || 
+                      properties.getProperty('serpifai_user_email') || '';
+    
+    const payload = { licenseKey: licenseKey };
+    if (userEmail) {
+      payload.userEmail = userEmail;
+      Logger.log('Refresh: Using saved email: ' + userEmail);
+    }
+    
+    const response = callGateway('getUserInfo', payload);
     
     if (response.success && response.user) {
       return {
