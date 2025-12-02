@@ -5,10 +5,6 @@
 
 document.addEventListener('DOMContentLoaded', function() {
   const settingsTab = document.getElementById('tab-settings');
-  console.log('🔍 Settings tab element found:', settingsTab);
-  console.log('🔍 Settings tab classList:', settingsTab ? settingsTab.classList.toString() : 'NOT FOUND');
-  console.log('🔍 Settings tab display:', settingsTab ? window.getComputedStyle(settingsTab).display : 'NOT FOUND');
-  
   if (settingsTab) {
     initializeSettingsTab();
     // Refresh credits every 30 seconds
