@@ -60,9 +60,16 @@
     ];
 
     function setActiveTab(name){
+      console.log('🔄 setActiveTab called with name:', name);
+      console.log('🔄 Total tabs found:', tabs.length);
+      console.log('🔄 Tab IDs:', tabs.map(t => t.id));
+      
       tabs.forEach(t=>{
         // The ID of the tab is 'tab-workflow', 'tab-overview', etc.
-        if(t.id === 'tab-'+name){ t.classList.add('active'); }
+        if(t.id === 'tab-'+name){ 
+          console.log('✅ Activating tab:', t.id);
+          t.classList.add('active'); 
+        }
         else{ t.classList.remove('active'); }
       });
       navBtns.forEach(btn=>{
