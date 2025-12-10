@@ -342,6 +342,9 @@
     function refreshProjectList(){
       console.log('🔄 refreshProjectList called');
       
+      // Set flag to prevent auto-loading during refresh
+      window._projectListRefreshing = true;
+      
       if(typeof google === 'undefined' || !google.script || !google.script.run){
         // running locally outside Apps Script
         console.log('⚠️ No google.script.run - local preview mode');
@@ -353,6 +356,7 @@
           opt.textContent = 'Local preview (no Apps Script)';
           selectEl.appendChild(opt);
         }
+        window._projectListRefreshing = false;
         return;
       }
       
@@ -407,15 +411,30 @@
             });
           }
           
+          // Set last project as selected, but DON'T auto-load
+          // (prevents form from changing when user is working)
           if(res.lastProject && projects.find(p => p.name === res.lastProject)){
             selectEl.value = res.lastProject;
-            loadProject(res.lastProject);
+            // Only load on initial page load, not on refresh after save
+            if (!window._initialProjectLoaded && !window._projectListRefreshing) {
+              console.log('🔄 Initial load - loading last project:', res.lastProject);
+              loadProject(res.lastProject);
+              window._initialProjectLoaded = true;
+            } else {
+              console.log('⏭️ Skipping auto-load (user is working)');
+            }
           } else {
-            // No last project, or last project was deleted
-            fillFormData({});
-            if (nameInput) nameInput.value = '';
-            setActiveTab('overview');
+            // No last project - only clear if this is initial load
+            if (!window._initialProjectLoaded) {
+              fillFormData({});
+              if (nameInput) nameInput.value = '';
+              setActiveTab('workflow'); // Start on workflow tab
+              window._initialProjectLoaded = true;
+            }
           }
+          
+          // Clear refreshing flag
+          window._projectListRefreshing = false;
         })
         .withFailureHandler(function(error){
           console.error('❌ listProjects FAILURE handler called');
@@ -428,6 +447,9 @@
           if (selectEl) {
             selectEl.innerHTML = '<option value="">Error loading projects</option>';
           }
+          
+          // Clear refreshing flag even on error
+          window._projectListRefreshing = false;
       }).listProjects();
     }
 
@@ -438,7 +460,8 @@
         console.log('⚠️ No name provided, clearing form');
         fillFormData({});
         recalcScores();
-        setActiveTab('overview');
+        // Don't change tab when clearing
+        // setActiveTab('workflow');
         return;
       }
       
@@ -472,7 +495,8 @@
             }
             
             recalcScores();
-            setActiveTab('overview');
+            // DON'T change tab - let user stay where they are
+            // setActiveTab('overview');
             
             console.log('✅ Form filled successfully');
           } else {
@@ -2217,9 +2241,9 @@
         // Initialize auto-save system
         initAutoSave();
         
-        // Initialize
+        // Initialize - start on workflow tab
         refreshProjectList();
-        setActiveTab('overview');
+        setActiveTab('workflow');
         
         // Check if we need to open Settings tab (from menu click)
         if (window.location.hash === '#settings') {
