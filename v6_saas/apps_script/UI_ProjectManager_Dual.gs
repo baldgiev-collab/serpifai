@@ -303,41 +303,58 @@ function listProjectsDual() {
       Logger.log('   ⚠️  Could not get Sheet projects: ' + e.toString());
     }
     
-    // Get from MySQL
+    // Get from MySQL (with graceful failure)
     try {
       Logger.log('   🗄️  Getting projects from MySQL...');
       const mysqlProjects = listProjectsFromDatabase();
-      if (mysqlProjects.success) {
+      
+      // Check if we got a valid response
+      if (mysqlProjects && mysqlProjects.success && Array.isArray(mysqlProjects.projects)) {
         mysqlProjects.projects.forEach(function(project) {
-          if (allProjects[project.project_name]) {
+          const projectName = project.project_name || project.name;
+          if (allProjects[projectName]) {
             // Already in Sheets, mark as synced
-            allProjects[project.project_name].synced = true;
-            allProjects[project.project_name].mysqlId = project.id;
+            allProjects[projectName].synced = true;
+            allProjects[projectName].mysqlId = project.id;
           } else {
             // Only in MySQL
-            allProjects[project.project_name] = {
-              name: project.project_name,
+            allProjects[projectName] = {
+              name: projectName,
               source: 'mysql',
               mysqlId: project.id,
-              lastModified: project.updated_at
+              lastModified: project.updated_at || new Date().toISOString()
             };
           }
         });
         Logger.log('   ✅ Found ' + mysqlProjects.projects.length + ' projects in MySQL');
+      } else {
+        Logger.log('   ⚠️  MySQL returned no projects or error: ' + (mysqlProjects ? mysqlProjects.error : 'null response'));
       }
     } catch (e) {
       Logger.log('   ⚠️  Could not get MySQL projects: ' + e.toString());
     }
     
+    // Always return a valid response (even if empty)
+    const projectList = Object.values(allProjects);
+    Logger.log('✅ Found ' + projectList.length + ' projects total');
+    Logger.log('   Projects: ' + projectList.map(function(p) { return p.name; }).join(', '));
+    
     return {
       success: true,
-      projects: Object.values(allProjects),
-      count: Object.keys(allProjects).length
+      projects: projectList,
+      count: projectList.length
     };
     
   } catch (e) {
     Logger.log('❌ Error listing projects: ' + e.toString());
-    return { success: false, error: e.toString() };
+    
+    // Return empty list instead of throwing
+    return { 
+      success: true,
+      projects: [],
+      count: 0,
+      error: e.toString()
+    };
   }
 }
 
