@@ -103,6 +103,23 @@
       },2000);
     }
     
+    // Loading indicator functions
+    function showLoadingIndicator(projectName) {
+      const indicator = document.getElementById('projectLoadingIndicator');
+      const nameEl = document.getElementById('loadingProjectName');
+      if (indicator && nameEl) {
+        nameEl.textContent = projectName || '';
+        indicator.classList.add('visible');
+      }
+    }
+    
+    function hideLoadingIndicator() {
+      const indicator = document.getElementById('projectLoadingIndicator');
+      if (indicator) {
+        indicator.classList.remove('visible');
+      }
+    }
+    
     // Collapsible workflow menu
     function initWorkflowMenuCollapse(){
       const toggleBtn = document.getElementById('workflowMenuToggle');
@@ -471,10 +488,16 @@
         return;
       }
       
+      // Show loading indicator
+      showLoadingIndicator(name);
+      
       console.log('📞 Calling google.script.run.loadProject("' + name + '")...');
       
       google.script.run
         .withSuccessHandler(function(res){
+          // Hide loading indicator
+          hideLoadingIndicator();
+          
           console.log('✅ loadProject SUCCESS handler called');
           console.log('📦 Response type:', typeof res);
           console.log('📦 Response:', res);
@@ -505,6 +528,9 @@
           }
         })
         .withFailureHandler(function(error){
+          // Hide loading indicator on error
+          hideLoadingIndicator();
+          
           console.error('❌ loadProject FAILURE handler called');
           console.error('❌ Error:', error);
           showToast('Error loading project: ' + (error ? error.message : 'unknown'));

@@ -42,6 +42,16 @@
 
   <?!= include('UI_Components_Toast'); ?>
   <?!= include('UI_Components_Modal'); ?>
+  
+  <!-- Project Loading Indicator -->
+  <div class="project-loading-indicator" id="projectLoadingIndicator">
+    <div class="project-loading-spinner"></div>
+    <div>
+      <div class="project-loading-text">Loading project...</div>
+      <div class="project-loading-project-name" id="loadingProjectName"></div>
+    </div>
+  </div>
+  
   <?!= include('UI_Scripts_App'); ?>
   <?!= include('UI_Scripts_Settings'); ?>
 </body>

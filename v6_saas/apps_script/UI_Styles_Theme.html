@@ -724,6 +724,60 @@
     to{opacity:1;transform:translateX(-50%) translateY(0);}
   }
 
+  /* Project Loading Indicator - Top-tier SaaS style */
+  .project-loading-indicator {
+    position: fixed;
+    top: 72px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    box-shadow: var(--shadow-medium);
+    opacity: 0;
+    transform: translateX(120%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    pointer-events: none;
+  }
+  
+  .project-loading-indicator.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  
+  .project-loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-subtle);
+    border-top-color: var(--brand-primary);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  .project-loading-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  
+  .project-loading-project-name {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Run Stage Buttons */
   .btn-run-stage{
     padding:6px 14px;
