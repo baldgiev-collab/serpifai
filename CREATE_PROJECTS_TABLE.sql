@@ -2,13 +2,17 @@
 -- SERPIFAI Projects Table Creation
 -- Database: u187453795_SrpAIDataGate
 -- ============================================
+-- STORES: All input fields from ALL stages + Competitor Analysis + Future QA data
+-- FORMAT: One JSON per project in project_data column (LONGTEXT = 4GB capacity)
+-- SYNC: Matches Google Sheets structure exactly
+-- ============================================
 
 CREATE TABLE IF NOT EXISTS `projects` (
   `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id` INT(11) UNSIGNED NOT NULL,
-  `project_id` VARCHAR(100) NOT NULL,
-  `project_name` VARCHAR(255) NOT NULL,
-  `project_data` LONGTEXT NOT NULL,
+  `user_id` INT(11) NOT NULL COMMENT 'Links to users.id (license key owner)',
+  `project_id` VARCHAR(100) NOT NULL COMMENT 'Unique global identifier',
+  `project_name` VARCHAR(255) NOT NULL COMMENT 'User-friendly project name (dropdown menu)',
+  `project_data` LONGTEXT NOT NULL COMMENT 'Complete JSON: all stages + competitor analysis + QA data',
   `status` ENUM('active', 'deleted', 'archived') NOT NULL DEFAULT 'active',
   `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -17,9 +21,27 @@ CREATE TABLE IF NOT EXISTS `projects` (
   UNIQUE KEY `unique_user_project` (`user_id`, `project_name`, `status`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_status` (`status`),
-  KEY `idx_updated_at` (`updated_at`),
-  CONSTRAINT `fk_projects_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `idx_updated_at` (`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Unified project storage: all stages, competitor data, QA data in one JSON';
+
+-- ============================================
+-- WHAT GETS STORED IN project_data:
+-- ============================================
+-- {
+--   "keyword": "best SEO tools 2025",
+--   "targetUrl": "example.com/seo-tools",
+--   "stage1Data": {...all stage 1 inputs...},
+--   "stage2Data": {...all stage 2 inputs...},
+--   "stage3Data": {...all stage 3 inputs...},
+--   "competitorAnalysis": [
+--     {"domain": "competitor1.com", "metrics": {...}},
+--     {"domain": "competitor2.com", "metrics": {...}}
+--   ],
+--   "qaData": {...future QA responses...},
+--   "serpResults": {...SERP API data...},
+--   "eeatData": {...E-E-A-T scores...}
+-- }
+-- ↑ ONE JSON contains EVERYTHING for the project
 
 -- ============================================
 -- INDEXES EXPLANATION:
