@@ -13,7 +13,8 @@
     const renameProjectBtn = document.getElementById('renameProjectBtn');
     const deleteProjectBtn = document.getElementById('deleteProjectBtn');
     const refreshProjectsBtn = document.getElementById('refreshProjectsBtn');
-    const saveProjectBtn = document.getElementById('saveProjectBtn');
+    const saveProjectBtn = document.getElementById('saveProjectBtn'); // Sidebar button
+    const saveProjectBtnTop = document.getElementById('saveProjectBtnTop'); // Top bar button
     const saveStatus = document.getElementById('saveStatus');
     const overviewScore = document.getElementById('overviewScore');
     const metricWorkflow = document.getElementById('metricWorkflow');
@@ -2059,6 +2060,60 @@
           }
         } catch (e) {
           console.error('❌ Exception in save handler:', e);
+          showToast('❌ Error: ' + e.message);
+        }
+      });
+    }
+    
+    // Top bar Save button (same functionality as sidebar button)
+    if (saveProjectBtnTop) {
+      saveProjectBtnTop.addEventListener('click', function() {
+        try {
+          const nameInput = document.getElementById('projectNameInput');
+          const selectEl = document.getElementById('projectSelect');
+          const projectName = (nameInput ? nameInput.value.trim() : '') || (selectEl ? selectEl.value.trim() : '');
+          
+          if (!projectName) {
+            showToast('⚠️ Please name your project first');
+            if (nameInput) nameInput.focus();
+            return;
+          }
+          
+          showToast('💾 Saving project...');
+          console.log('📝 Collecting form data for project:', projectName);
+          
+          const formData = collectFormData();
+          console.log('✅ Collected', Object.keys(formData).length, 'fields');
+          
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler(function(result) {
+                console.log('📥 Save response:', result);
+                if (result && result.ok) {
+                  showToast('✅ Project "' + projectName + '" saved!');
+                  const statusEl = document.getElementById('saveStatus');
+                  if (statusEl) {
+                    statusEl.textContent = '✓ Saved at ' + new Date().toLocaleTimeString();
+                    statusEl.style.display = 'inline';
+                  }
+                  refreshProjectList();
+                  refreshCreditDisplay();
+                } else {
+                  const errorMsg = result ? (result.error || 'Unknown error') : 'No response';
+                  showToast('❌ Save failed: ' + errorMsg);
+                  console.error('Save failed:', result);
+                }
+              })
+              .withFailureHandler(function(error) {
+                showToast('❌ Error: ' + error.message);
+                console.error('Save error:', error);
+              })
+              .saveProject(projectName, formData);
+          } else {
+            showToast('❌ Save unavailable in preview mode');
+          }
+        } catch (e) {
+          console.error('❌ Exception in top save handler:', e);
           showToast('❌ Error: ' + e.message);
         }
       });
