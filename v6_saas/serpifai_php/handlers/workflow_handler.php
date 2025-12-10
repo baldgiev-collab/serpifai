@@ -146,32 +146,6 @@ function failWorkflowTransaction($transactionId, $errorMessage, $licenseKey) {
         ];
     }
 }
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        
-        if ($row) {
-            $stmt = $db->prepare("
-                UPDATE users 
-                SET credits_remaining = credits_remaining + ?
-                WHERE id = ?
-            ");
-            $stmt->bind_param('ii', $row['credit_cost'], $row['user_id']);
-            $stmt->execute();
-        }
-        
-        return [
-            'success' => true,
-            'message' => 'Transaction failed, credits refunded'
-        ];
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'error' => 'Failed to update transaction: ' . $e->getMessage()
-        ];
-    } finally {
-        $db->close();
-    }
-}
 
 /**
  * Get workflow history
@@ -212,16 +186,3 @@ function getWorkflowHistory($licenseKey, $limit = 50) {
     }
 }
 ?>
-        case 'workflow:fail':
-            return failWorkflowTransaction($payload['transactionId'], $payload['error'], $licenseKey);
-            
-        case 'workflow:history':
-            return getWorkflowHistory($licenseKey, $payload['limit'] ?? 50);
-            
-        default:
-            return [
-                'success' => false,
-                'error' => 'Unknown workflow action: ' . $action
-            ];
-    }
-}
