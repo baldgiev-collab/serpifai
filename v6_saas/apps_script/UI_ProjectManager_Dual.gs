@@ -728,10 +728,11 @@ function getProjectSheets() {
     
     while (files.hasNext()) {
       const file = files.next();
+      const lastUpdated = file.getLastUpdated();
       sheets.push({
         name: file.getName().replace(' - SerpifAI v6', ''),
         id: file.getId(),
-        lastModified: file.getLastUpdated()
+        lastModified: lastUpdated ? lastUpdated.toISOString() : new Date().toISOString()
       });
     }
     

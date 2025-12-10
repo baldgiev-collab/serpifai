@@ -71,11 +71,15 @@ function listProjects() {
       count: result.count || 0
     };
     
+    // CRITICAL: Ensure all data is serializable (convert Date objects to strings)
+    const serializedResponse = JSON.parse(JSON.stringify(finalResponse));
+    
     const elapsed = new Date() - startTime;
     Logger.log('⏱️  listProjects completed in ' + elapsed + 'ms');
     Logger.log('📤 Returning successful response with ' + finalResponse.count + ' projects');
+    Logger.log('📤 Serialized response: ' + JSON.stringify(serializedResponse));
     
-    return finalResponse;
+    return serializedResponse;
     
   } catch (e) {
     Logger.log('❌ EXCEPTION in listProjects: ' + e.toString());
