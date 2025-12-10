@@ -24,9 +24,19 @@
 function saveProjectDual(projectName, projectData) {
   try {
     Logger.log('💾 [UNIFIED] Saving project: ' + projectName);
+    Logger.log('   📦 Data keys received: ' + Object.keys(projectData).length);
+    Logger.log('   📦 Sample keys: ' + Object.keys(projectData).slice(0, 10).join(', '));
     
-    // Unify all data into standard project structure
-    const unifiedData = unifyProjectData(projectData);
+    // DON'T TRANSFORM - Save data exactly as received from collectFormData()
+    // Add minimal metadata only
+    const dataToSave = Object.assign({}, projectData);
+    dataToSave.projectName = projectName;
+    dataToSave.updatedAt = new Date().toISOString();
+    if (!dataToSave.createdAt) {
+      dataToSave.createdAt = new Date().toISOString();
+    }
+    
+    Logger.log('   💾 Saving ' + Object.keys(dataToSave).length + ' fields');
     
     const results = {
       sheet: null,
@@ -39,7 +49,7 @@ function saveProjectDual(projectName, projectData) {
     // ============================================================================
     try {
       Logger.log('   📊 Saving to Google Sheets (unified JSON)...');
-      const sheetResult = saveProjectToSheet(projectName, unifiedData);
+      const sheetResult = saveProjectToSheet(projectName, dataToSave);
       results.sheet = sheetResult;
       Logger.log('   ✅ Sheet save: ' + (sheetResult.success ? 'Success' : 'Failed'));
     } catch (e) {
@@ -52,7 +62,7 @@ function saveProjectDual(projectName, projectData) {
     // ============================================================================
     try {
       Logger.log('   🗄️  Syncing to MySQL...');
-      const mysqlResult = saveProjectToDatabase(projectName, unifiedData);
+      const mysqlResult = saveProjectToDatabase(projectName, dataToSave);
       results.mysql = mysqlResult;
       Logger.log('   ✅ MySQL sync: ' + (mysqlResult.success ? 'Success' : 'Failed'));
     } catch (e) {
@@ -70,7 +80,7 @@ function saveProjectDual(projectName, projectData) {
         sheet: results.sheet.sheetId,
         projectId: results.mysql.projectId,
         synced: true,
-        dataSize: JSON.stringify(unifiedData).length,
+        dataSize: JSON.stringify(dataToSave).length,
         updatedAt: new Date().toISOString()
       };
     }
@@ -645,13 +655,13 @@ function populateProjectSheet(sheet, projectData) {
   try {
     Logger.log('📝 Populating unified sheet with project data');
     
-    // Update metadata rows
+    // Update metadata rows (read from flat projectData structure)
     sheet.getRange(2, 2).setValue(projectData.projectName || '');
-    sheet.getRange(3, 2).setValue(projectData.projectId || '');
+    sheet.getRange(3, 2).setValue(projectData.projectId || 'proj_' + Date.now());
     sheet.getRange(4, 2).setValue(projectData.createdAt || new Date().toISOString());
-    sheet.getRange(5, 2).setValue(new Date().toISOString()); // Updated timestamp
-    sheet.getRange(6, 2).setValue(projectData.metadata?.status || 'active');
-    sheet.getRange(7, 2).setValue(projectData.metadata?.creditsUsed || 0);
+    sheet.getRange(5, 2).setValue(projectData.updatedAt || new Date().toISOString());
+    sheet.getRange(6, 2).setValue('active'); // Status
+    sheet.getRange(7, 2).setValue(0); // Credits used
     
     // Prepare JSON data (pretty-printed for readability)
     const jsonData = JSON.stringify(projectData, null, 2);
@@ -665,7 +675,7 @@ function populateProjectSheet(sheet, projectData) {
     const rowHeight = Math.min(3000, estimatedRows * 30);
     sheet.setRowHeight(10, rowHeight);
     
-    Logger.log('✅ Sheet populated with unified JSON data (' + jsonLength + ' bytes)');
+    Logger.log('✅ Sheet populated with unified JSON data (' + jsonLength + ' bytes, ' + Object.keys(projectData).length + ' fields)');
     
   } catch (e) {
     Logger.log('❌ Error populating sheet: ' + e.toString());
