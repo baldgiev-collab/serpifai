@@ -414,27 +414,27 @@ function runWorkflowStage(arg1, arg2, arg3) {
     Logger.log('   🆔 Transaction: ' + authResult.transactionId);
     
     // Now execute the actual workflow stage logic
-    // This is handled by DB_Workflow_StageX.gs files
+    // This is handled by DB_WF_Router.gs files
     const transactionId = authResult.transactionId;
     let stageResult;
     
     try {
-      // Call appropriate stage handler
+      // Call appropriate stage handler from DB_WF_Router.gs
       switch(stageNum) {
         case 1:
-          stageResult = DB_Workflow_Stage1(mergedData, selectedModel);
+          stageResult = DB_WF_runStage1Strategy(mergedData, selectedModel);
           break;
         case 2:
-          stageResult = DB_Workflow_Stage2(mergedData, selectedModel);
+          stageResult = DB_WF_runStage2Keywords(mergedData, selectedModel);
           break;
         case 3:
-          stageResult = DB_Workflow_Stage3(mergedData, selectedModel);
+          stageResult = DB_WF_runStage3Architecture(mergedData, selectedModel);
           break;
         case 4:
-          stageResult = DB_Workflow_Stage4(mergedData, selectedModel);
+          stageResult = DB_WF_runStage4Calendar(mergedData, selectedModel);
           break;
         case 5:
-          stageResult = DB_Workflow_Stage5(mergedData, selectedModel);
+          stageResult = DB_WF_runStage5Generation(mergedData, selectedModel);
           break;
         default:
           throw new Error('Invalid stage number: ' + stageNum);

@@ -185,4 +185,33 @@ function getWorkflowHistory($licenseKey, $limit = 50) {
         ];
     }
 }
+
+/**
+ * Handle workflow action routing
+ */
+function handleWorkflowAction($action, $payload, $licenseKey, $userId) {
+    // Extract stage number from action
+    if (preg_match('/workflow:stage(\d+)/', $action, $matches)) {
+        $stageNum = (int)$matches[1];
+        return executeWorkflowStage($stageNum, $payload, $licenseKey, $userId);
+    }
+    
+    // Handle control actions
+    switch ($action) {
+        case 'workflow:complete':
+            return completeWorkflowTransaction($payload['transactionId'], $payload['result'], $licenseKey);
+            
+        case 'workflow:fail':
+            return failWorkflowTransaction($payload['transactionId'], $payload['error'], $licenseKey);
+            
+        case 'workflow:history':
+            return getWorkflowHistory($licenseKey, $payload['limit'] ?? 50);
+            
+        default:
+            return [
+                'success' => false,
+                'error' => 'Unknown workflow action: ' . $action
+            ];
+    }
+}
 ?>
