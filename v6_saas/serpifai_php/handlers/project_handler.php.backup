@@ -1,18 +1,14 @@
 <?php
 /**
- * Project Handler - FIXED VERSION
+ * Project Handler
  * Replaces Apps Script PropertiesService with MySQL database
  * Manages project CRUD operations
- * 
- * FIXED: Removed duplicate function definitions causing 'Unmatched }' syntax errors
- * FIXED: Changed from license_key to user_id FK matching schema
  */
 
 require_once __DIR__ . '/../config/db_config.php';
 
 /**
  * Save project to database
- * Creates new project or updates existing one
  */
 function saveProject($licenseKey, $projectName, $projectData) {
     error_log('[PROJECT] saveProject called: license=' . $licenseKey . ', name=' . $projectName);
@@ -30,30 +26,10 @@ function saveProject($licenseKey, $projectName, $projectData) {
         
         error_log('[PROJECT] Database connected successfully');
         
-        // First, get user_id from license_key
-        $stmt = $db->prepare("SELECT id FROM users WHERE license_key = ?");
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare user SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('s', $licenseKey);
-        $stmt->execute();
-        $userResult = $stmt->get_result();
-        
-        if ($userResult->num_rows === 0) {
-            error_log('[PROJECT] ERROR: User not found for license key');
-            return ['success' => false, 'error' => 'Invalid license key'];
-        }
-        
-        $user = $userResult->fetch_assoc();
-        $userId = $user['id'];
-        error_log('[PROJECT] Found user ID: ' . $userId);
-        
         // Check if project exists
         $stmt = $db->prepare("
             SELECT id FROM projects 
-            WHERE user_id = ? AND project_name = ?
+            WHERE license_key = ? AND project_name = ?
         ");
         
         if (!$stmt) {
@@ -61,14 +37,11 @@ function saveProject($licenseKey, $projectName, $projectData) {
             return ['success' => false, 'error' => 'Database error: ' . $db->error];
         }
         
-        $stmt->bind_param('is', $userId, $projectName);
+        $stmt->bind_param('ss', $licenseKey, $projectName);
         $stmt->execute();
         $result = $stmt->get_result();
         
         error_log('[PROJECT] SELECT result: ' . $result->num_rows . ' rows found');
-        
-        $jsonData = json_encode($projectData);
-        error_log('[PROJECT] JSON data length: ' . strlen($jsonData) . ' bytes');
         
         if ($result->num_rows > 0) {
             // Update existing project
@@ -87,6 +60,7 @@ function saveProject($licenseKey, $projectName, $projectData) {
                 return ['success' => false, 'error' => 'Database error: ' . $db->error];
             }
             
+            $jsonData = json_encode($projectData);
             $stmt->bind_param('si', $jsonData, $projectId);
             $executeResult = $stmt->execute();
             
@@ -106,13 +80,9 @@ function saveProject($licenseKey, $projectName, $projectData) {
         } else {
             // Insert new project
             error_log('[PROJECT] Project does not exist, creating new...');
-            
-            // Generate unique project_id
-            $projectIdUnique = uniqid('proj_', true);
-            
             $stmt = $db->prepare("
-                INSERT INTO projects (user_id, project_id, project_name, project_data, status)
-                VALUES (?, ?, ?, ?, 'active')
+                INSERT INTO projects (license_key, project_name, project_data)
+                VALUES (?, ?, ?)
             ");
             
             if (!$stmt) {
@@ -120,7 +90,10 @@ function saveProject($licenseKey, $projectName, $projectData) {
                 return ['success' => false, 'error' => 'Database error: ' . $db->error];
             }
             
-            $stmt->bind_param('isss', $userId, $projectIdUnique, $projectName, $jsonData);
+            $jsonData = json_encode($projectData);
+            error_log('[PROJECT] JSON data: ' . $jsonData);
+            
+            $stmt->bind_param('sss', $licenseKey, $projectName, $jsonData);
             $executeResult = $stmt->execute();
             
             if (!$executeResult) {
@@ -164,30 +137,10 @@ function loadProject($licenseKey, $projectName) {
             ];
         }
         
-        // Get user_id from license_key
-        $stmt = $db->prepare("SELECT id FROM users WHERE license_key = ?");
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare user SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('s', $licenseKey);
-        $stmt->execute();
-        $userResult = $stmt->get_result();
-        
-        if ($userResult->num_rows === 0) {
-            error_log('[PROJECT] ERROR: User not found for license key');
-            return ['success' => false, 'error' => 'Invalid license key'];
-        }
-        
-        $user = $userResult->fetch_assoc();
-        $userId = $user['id'];
-        
-        // Load project
         $stmt = $db->prepare("
             SELECT project_data, created_at, updated_at 
             FROM projects 
-            WHERE user_id = ? AND project_name = ? AND status = 'active'
+            WHERE license_key = ? AND project_name = ?
         ");
         
         if (!$stmt) {
@@ -195,7 +148,7 @@ function loadProject($licenseKey, $projectName) {
             return ['success' => false, 'error' => 'Database error: ' . $db->error];
         }
         
-        $stmt->bind_param('is', $userId, $projectName);
+        $stmt->bind_param('ss', $licenseKey, $projectName);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -230,6 +183,33 @@ function loadProject($licenseKey, $projectName) {
         ];
     }
 }
+        
+        if ($result->num_rows === 0) {
+            return [
+                'success' => false,
+                'error' => 'Project not found'
+            ];
+        }
+        
+        $row = $result->fetch_assoc();
+        
+        return [
+            'success' => true,
+            'data' => json_decode($row['project_data'], true),
+            'metadata' => [
+                'created_at' => $row['created_at'],
+                'updated_at' => $row['updated_at']
+            ]
+        ];
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'error' => 'Failed to load project: ' . $e->getMessage()
+        ];
+    } finally {
+        $db->close();
+    }
+}
 
 /**
  * List all projects for a license
@@ -245,30 +225,10 @@ function listProjects($licenseKey) {
             return ['success' => false, 'error' => 'Database connection failed'];
         }
         
-        // Get user_id from license_key
-        $stmt = $db->prepare("SELECT id FROM users WHERE license_key = ?");
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare user SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('s', $licenseKey);
-        $stmt->execute();
-        $userResult = $stmt->get_result();
-        
-        if ($userResult->num_rows === 0) {
-            error_log('[PROJECT] ERROR: User not found for license key');
-            return ['success' => false, 'error' => 'Invalid license key'];
-        }
-        
-        $user = $userResult->fetch_assoc();
-        $userId = $user['id'];
-        
-        // List projects
         $stmt = $db->prepare("
             SELECT id, project_name, created_at, updated_at 
             FROM projects 
-            WHERE user_id = ? AND status = 'active'
+            WHERE license_key = ?
             ORDER BY updated_at DESC
         ");
         
@@ -277,7 +237,42 @@ function listProjects($licenseKey) {
             return ['success' => false, 'error' => 'Database error: ' . $db->error];
         }
         
-        $stmt->bind_param('i', $userId);
+        $stmt->bind_param('s', $licenseKey);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $projects = [];
+        while ($row = $result->fetch_assoc()) {
+            $projects[] = $row;
+        }
+        
+        error_log('[PROJECT] Found ' . count($projects) . ' projects');
+        
+        return [
+            'success' => true,
+            'projects' => $projects
+        ];
+    } catch (Exception $e) {
+        error_log('[PROJECT] EXCEPTION in listProjects: ' . $e->getMessage());
+        return ['success' => false, 'error' => 'Exception: ' . $e->getMessage()];
+    }
+}
+    
+    if (!$db) {
+        return [
+            'success' => false,
+            'error' => 'Database connection failed'
+        ];
+    }
+    
+    try {
+        $stmt = $db->prepare("
+            SELECT project_name, created_at, updated_at 
+            FROM projects 
+            WHERE license_key = ?
+            ORDER BY updated_at DESC
+        ");
+        $stmt->bind_param('s', $licenseKey);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -290,16 +285,18 @@ function listProjects($licenseKey) {
             ];
         }
         
-        error_log('[PROJECT] Found ' . count($projects) . ' projects');
-        
         return [
             'success' => true,
-            'projects' => $projects,
+            'data' => $projects,
             'count' => count($projects)
         ];
     } catch (Exception $e) {
-        error_log('[PROJECT] EXCEPTION in listProjects: ' . $e->getMessage());
-        return ['success' => false, 'error' => 'Exception: ' . $e->getMessage()];
+        return [
+            'success' => false,
+            'error' => 'Failed to list projects: ' . $e->getMessage()
+        ];
+    } finally {
+        $db->close();
     }
 }
 
@@ -307,70 +304,41 @@ function listProjects($licenseKey) {
  * Delete project
  */
 function deleteProject($licenseKey, $projectName) {
-    error_log('[PROJECT] deleteProject called: license=' . $licenseKey . ', name=' . $projectName);
+    $db = getDbConnection();
+    
+    if (!$db) {
+        return [
+            'success' => false,
+            'error' => 'Database connection failed'
+        ];
+    }
     
     try {
-        $db = getDB();
-        
-        if (!$db) {
-            error_log('[PROJECT] ERROR: Database connection failed');
-            return ['success' => false, 'error' => 'Database connection failed'];
-        }
-        
-        // Get user_id from license_key
-        $stmt = $db->prepare("SELECT id FROM users WHERE license_key = ?");
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare user SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('s', $licenseKey);
-        $stmt->execute();
-        $userResult = $stmt->get_result();
-        
-        if ($userResult->num_rows === 0) {
-            error_log('[PROJECT] ERROR: User not found for license key');
-            return ['success' => false, 'error' => 'Invalid license key'];
-        }
-        
-        $user = $userResult->fetch_assoc();
-        $userId = $user['id'];
-        
-        // Soft delete (mark as deleted)
         $stmt = $db->prepare("
-            UPDATE projects 
-            SET status = 'deleted', updated_at = NOW()
-            WHERE user_id = ? AND project_name = ? AND status = 'active'
+            DELETE FROM projects 
+            WHERE license_key = ? AND project_name = ?
         ");
-        
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare UPDATE: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('is', $userId, $projectName);
+        $stmt->bind_param('ss', $licenseKey, $projectName);
         $stmt->execute();
         
         if ($stmt->affected_rows === 0) {
-            error_log('[PROJECT] Project not found or already deleted');
             return [
                 'success' => false,
                 'error' => 'Project not found'
             ];
         }
         
-        error_log('[PROJECT] Project deleted successfully');
-        
         return [
             'success' => true,
             'message' => 'Project deleted successfully'
         ];
     } catch (Exception $e) {
-        error_log('[PROJECT] EXCEPTION in deleteProject: ' . $e->getMessage());
         return [
             'success' => false,
-            'error' => 'Exception: ' . $e->getMessage()
+            'error' => 'Failed to delete project: ' . $e->getMessage()
         ];
+    } finally {
+        $db->close();
     }
 }
 
@@ -378,52 +346,26 @@ function deleteProject($licenseKey, $projectName) {
  * Rename project
  */
 function renameProject($licenseKey, $oldName, $newName) {
-    error_log('[PROJECT] renameProject called: license=' . $licenseKey . ', old=' . $oldName . ', new=' . $newName);
+    $db = getDbConnection();
+    
+    if (!$db) {
+        return [
+            'success' => false,
+            'error' => 'Database connection failed'
+        ];
+    }
     
     try {
-        $db = getDB();
-        
-        if (!$db) {
-            error_log('[PROJECT] ERROR: Database connection failed');
-            return ['success' => false, 'error' => 'Database connection failed'];
-        }
-        
-        // Get user_id from license_key
-        $stmt = $db->prepare("SELECT id FROM users WHERE license_key = ?");
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare user SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('s', $licenseKey);
-        $stmt->execute();
-        $userResult = $stmt->get_result();
-        
-        if ($userResult->num_rows === 0) {
-            error_log('[PROJECT] ERROR: User not found for license key');
-            return ['success' => false, 'error' => 'Invalid license key'];
-        }
-        
-        $user = $userResult->fetch_assoc();
-        $userId = $user['id'];
-        
         // Check if new name already exists
         $stmt = $db->prepare("
             SELECT id FROM projects 
-            WHERE user_id = ? AND project_name = ? AND status = 'active'
+            WHERE license_key = ? AND project_name = ?
         ");
-        
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('is', $userId, $newName);
+        $stmt->bind_param('ss', $licenseKey, $newName);
         $stmt->execute();
         $result = $stmt->get_result();
         
         if ($result->num_rows > 0) {
-            error_log('[PROJECT] New name already exists');
             return [
                 'success' => false,
                 'error' => 'A project with that name already exists'
@@ -434,37 +376,29 @@ function renameProject($licenseKey, $oldName, $newName) {
         $stmt = $db->prepare("
             UPDATE projects 
             SET project_name = ?, updated_at = NOW()
-            WHERE user_id = ? AND project_name = ? AND status = 'active'
+            WHERE license_key = ? AND project_name = ?
         ");
-        
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare UPDATE: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('sis', $newName, $userId, $oldName);
+        $stmt->bind_param('sss', $newName, $licenseKey, $oldName);
         $stmt->execute();
         
         if ($stmt->affected_rows === 0) {
-            error_log('[PROJECT] Project not found for rename');
             return [
                 'success' => false,
                 'error' => 'Project not found'
             ];
         }
         
-        error_log('[PROJECT] Project renamed successfully');
-        
         return [
             'success' => true,
             'message' => 'Project renamed successfully'
         ];
     } catch (Exception $e) {
-        error_log('[PROJECT] EXCEPTION in renameProject: ' . $e->getMessage());
         return [
             'success' => false,
-            'error' => 'Exception: ' . $e->getMessage()
+            'error' => 'Failed to rename project: ' . $e->getMessage()
         ];
+    } finally {
+        $db->close();
     }
 }
 
@@ -472,13 +406,10 @@ function renameProject($licenseKey, $oldName, $newName) {
  * Duplicate project
  */
 function duplicateProject($licenseKey, $sourceName, $targetName) {
-    error_log('[PROJECT] duplicateProject called: source=' . $sourceName . ', target=' . $targetName);
-    
     // Load source project
     $sourceResult = loadProject($licenseKey, $sourceName);
     
     if (!$sourceResult['success']) {
-        error_log('[PROJECT] Failed to load source project');
         return $sourceResult;
     }
     
@@ -490,67 +421,40 @@ function duplicateProject($licenseKey, $sourceName, $targetName) {
  * Get project statistics
  */
 function getProjectStats($licenseKey) {
-    error_log('[PROJECT] getProjectStats called for license=' . $licenseKey);
+    $db = getDbConnection();
+    
+    if (!$db) {
+        return [
+            'success' => false,
+            'error' => 'Database connection failed'
+        ];
+    }
     
     try {
-        $db = getDB();
-        
-        if (!$db) {
-            error_log('[PROJECT] ERROR: Database connection failed');
-            return ['success' => false, 'error' => 'Database connection failed'];
-        }
-        
-        // Get user_id from license_key
-        $stmt = $db->prepare("SELECT id FROM users WHERE license_key = ?");
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare user SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('s', $licenseKey);
-        $stmt->execute();
-        $userResult = $stmt->get_result();
-        
-        if ($userResult->num_rows === 0) {
-            error_log('[PROJECT] ERROR: User not found for license key');
-            return ['success' => false, 'error' => 'Invalid license key'];
-        }
-        
-        $user = $userResult->fetch_assoc();
-        $userId = $user['id'];
-        
-        // Get stats
         $stmt = $db->prepare("
             SELECT 
                 COUNT(*) as total_projects,
                 MIN(created_at) as first_project_date,
                 MAX(updated_at) as last_activity_date
             FROM projects 
-            WHERE user_id = ? AND status = 'active'
+            WHERE license_key = ?
         ");
-        
-        if (!$stmt) {
-            error_log('[PROJECT] ERROR: Failed to prepare SELECT: ' . $db->error);
-            return ['success' => false, 'error' => 'Database error: ' . $db->error];
-        }
-        
-        $stmt->bind_param('i', $userId);
+        $stmt->bind_param('s', $licenseKey);
         $stmt->execute();
         $result = $stmt->get_result();
         $stats = $result->fetch_assoc();
-        
-        error_log('[PROJECT] Stats retrieved successfully');
         
         return [
             'success' => true,
             'data' => $stats
         ];
     } catch (Exception $e) {
-        error_log('[PROJECT] EXCEPTION in getProjectStats: ' . $e->getMessage());
         return [
             'success' => false,
-            'error' => 'Exception: ' . $e->getMessage()
+            'error' => 'Failed to get project stats: ' . $e->getMessage()
         ];
+    } finally {
+        $db->close();
     }
 }
 
@@ -558,8 +462,6 @@ function getProjectStats($licenseKey) {
  * Handle project action routing
  */
 function handleProjectAction($action, $payload, $licenseKey) {
-    error_log('[PROJECT] handleProjectAction: action=' . $action);
-    
     switch ($action) {
         case 'project_save':
         case 'project:save':
@@ -590,7 +492,6 @@ function handleProjectAction($action, $payload, $licenseKey) {
             return getProjectStats($licenseKey);
             
         default:
-            error_log('[PROJECT] ERROR: Unknown action: ' . $action);
             return [
                 'success' => false,
                 'error' => 'Unknown project action: ' . $action
