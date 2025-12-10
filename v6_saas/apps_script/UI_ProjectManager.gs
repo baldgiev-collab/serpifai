@@ -171,7 +171,7 @@ function saveProject(name, data) {
 
 /**
  * Load a project by name
- * UPDATED: Loads from database via PHP gateway
+ * UPDATED: Loads from DUAL sources (Sheets + MySQL)
  * 
  * @param {string} name - Project name
  * @returns {object} {name: string, data: object, updatedAt: string}
@@ -180,33 +180,45 @@ function loadProject(name) {
   try {
     Logger.log('📂 Loading project: ' + name);
     
-    // Call gateway
-    const result = loadProjectFromDatabase(name); // From UI_Gateway.gs
+    // Use DUAL loading (tries Sheets first, then MySQL)
+    const result = loadProjectDual(name); // From UI_ProjectManager_Dual.gs
     
-    if (!result.success) {
-      Logger.log('⚠️ Project not found or error: ' + result.error);
+    Logger.log('📊 loadProjectDual returned: ' + JSON.stringify(result).substring(0, 200) + '...');
+    
+    if (!result || !result.data) {
+      Logger.log('⚠️ Project not found or empty data: ' + (result ? result.error : 'null'));
       
       // Return empty project structure
       return {
         name: name,
         data: {},
         updatedAt: null,
-        error: result.error
+        error: result ? result.error : 'Project not found'
       };
     }
     
     Logger.log('✅ Project loaded successfully');
     Logger.log('   Data fields: ' + Object.keys(result.data || {}).length);
+    Logger.log('   Sample fields: ' + Object.keys(result.data || {}).slice(0, 5).join(', '));
     
-    return {
+    // CRITICAL: Ensure all data is serializable (same fix as listProjects)
+    const serializedResult = {
       name: name,
       data: result.data || {},
-      updatedAt: result.metadata.updated_at,
-      createdAt: result.metadata.created_at
+      updatedAt: result.metadata ? result.metadata.updated_at : new Date().toISOString(),
+      createdAt: result.metadata ? result.metadata.created_at : new Date().toISOString()
     };
+    
+    // Force serialization to catch Date objects
+    const finalResult = JSON.parse(JSON.stringify(serializedResult));
+    
+    Logger.log('📤 Returning serialized project data');
+    
+    return finalResult;
     
   } catch (e) {
     Logger.log('❌ Error loading project: ' + e.toString());
+    Logger.log('   Stack: ' + e.stack);
     
     return {
       name: name,

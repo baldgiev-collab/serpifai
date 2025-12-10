@@ -262,19 +262,32 @@
     }
 
     function fillFormData(data){
+      console.log('📝 fillFormData called');
+      console.log('   Data type:', typeof data);
+      console.log('   Data keys:', data ? Object.keys(data).length : 0);
+      console.log('   Sample keys:', data ? Object.keys(data).slice(0, 10).join(', ') : 'none');
+      
       // Clear all fields first
+      let clearedCount = 0;
       FIELD_IDS.forEach(id => {
         const el = document.getElementById(id);
-        if(el) el.value = '';
+        if(el) {
+          el.value = '';
+          clearedCount++;
+        }
       });
+      console.log('   Cleared ' + clearedCount + ' fields');
       
       // Fill input fields with saved data
+      let filledCount = 0;
       FIELD_IDS.forEach(id=>{
         const el = document.getElementById(id);
         if(el && Object.prototype.hasOwnProperty.call(data,id)){
           el.value = data[id];
+          filledCount++;
         }
       });
+      console.log('   Filled ' + filledCount + ' fields with data');
       
       // Restore competitor analysis data if available
       if (data.competitorAnalysis) {
@@ -302,6 +315,8 @@
         window.qaData = data.qaData;
         console.log('✅ Restored QA data from saved project');
       }
+      
+      console.log('✅ fillFormData complete');
       
       recalcScores();
     }
@@ -417,26 +432,60 @@
     }
 
     function loadProject(name){
+      console.log('📂 loadProject called with name:', name);
+      
       if(!name){
+        console.log('⚠️ No name provided, clearing form');
         fillFormData({});
         recalcScores();
         setActiveTab('overview');
         return;
       }
+      
       if(typeof google === 'undefined' || !google.script || !google.script.run){
+        console.log('⚠️ No google.script.run available');
         showToast('Local preview: cannot load from Apps Script.');
         return;
       }
-      google.script.run.withSuccessHandler(function(res){
-        if(res && res.data){
-          fillFormData(res.data);
-          saveStatus.textContent = 'Loaded · ' + (new Date(res.updatedAt).toLocaleTimeString());
-          recalcScores();
-          setActiveTab('overview'); // Go to overview on load
-        }else{
-          showToast('Project not found.');
-        }
-      }).loadProject(name);
+      
+      console.log('📞 Calling google.script.run.loadProject("' + name + '")...');
+      
+      google.script.run
+        .withSuccessHandler(function(res){
+          console.log('✅ loadProject SUCCESS handler called');
+          console.log('📦 Response type:', typeof res);
+          console.log('📦 Response:', res);
+          console.log('📦 Has data?', res && res.data);
+          console.log('📦 Data type:', res ? typeof res.data : 'N/A');
+          console.log('📦 Data keys:', res && res.data ? Object.keys(res.data).length : 0);
+          
+          if(res && res.data){
+            console.log('✅ Filling form with data...');
+            console.log('📝 Sample data:', Object.keys(res.data).slice(0, 10).join(', '));
+            
+            fillFormData(res.data);
+            
+            if (res.updatedAt) {
+              saveStatus.textContent = 'Loaded · ' + (new Date(res.updatedAt).toLocaleTimeString());
+            } else {
+              saveStatus.textContent = 'Loaded';
+            }
+            
+            recalcScores();
+            setActiveTab('overview');
+            
+            console.log('✅ Form filled successfully');
+          } else {
+            console.error('❌ No data in response:', res);
+            showToast('Project not found or empty.');
+          }
+        })
+        .withFailureHandler(function(error){
+          console.error('❌ loadProject FAILURE handler called');
+          console.error('❌ Error:', error);
+          showToast('Error loading project: ' + (error ? error.message : 'unknown'));
+        })
+        .loadProject(name);
     }
 
     function doSaveProject(){
