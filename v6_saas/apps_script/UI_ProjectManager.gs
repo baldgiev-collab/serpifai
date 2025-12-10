@@ -20,6 +20,8 @@
  * @returns {object} {projects: [{name, source, lastModified}], lastProject: string, count: number}
  */
 function listProjects() {
+  const startTime = new Date();
+  
   try {
     Logger.log('📋 Listing projects from BOTH sources (Sheets + MySQL)...');
     
@@ -31,23 +33,27 @@ function listProjects() {
     
     if (!result) {
       Logger.log('❌ listProjectsDual returned null!');
-      return {
+      const emptyResponse = {
         projects: [],
         lastProject: '',
         count: 0,
         error: 'listProjectsDual returned null'
       };
+      Logger.log('📤 Returning empty response: ' + JSON.stringify(emptyResponse));
+      return emptyResponse;
     }
     
     if (!result.success) {
       Logger.log('⚠️  listProjectsDual failed: ' + result.error);
       // Still return the projects array even on partial failure
-      return {
+      const failedResponse = {
         projects: result.projects || [],
         lastProject: '',
         count: (result.projects || []).length,
         error: result.error
       };
+      Logger.log('📤 Returning failed response: ' + JSON.stringify(failedResponse));
+      return failedResponse;
     }
     
     // Get last selected project from user properties
@@ -59,23 +65,31 @@ function listProjects() {
       Logger.log('   Projects: ' + result.projects.map(function(p) { return p.name; }).join(', '));
     }
     
-    return {
+    const finalResponse = {
       projects: result.projects || [],
       lastProject: lastProject,
       count: result.count || 0
     };
+    
+    const elapsed = new Date() - startTime;
+    Logger.log('⏱️  listProjects completed in ' + elapsed + 'ms');
+    Logger.log('📤 Returning successful response with ' + finalResponse.count + ' projects');
+    
+    return finalResponse;
     
   } catch (e) {
     Logger.log('❌ EXCEPTION in listProjects: ' + e.toString());
     Logger.log('   Stack: ' + e.stack);
     
     // Return empty list on error (NEVER return null)
-    return {
+    const errorResponse = {
       projects: [],
       lastProject: '',
       count: 0,
       error: e.toString()
     };
+    Logger.log('📤 Returning error response: ' + JSON.stringify(errorResponse));
+    return errorResponse;
   }
 }
 

@@ -325,8 +325,11 @@
     }
 
     function refreshProjectList(){
+      console.log('🔄 refreshProjectList called');
+      
       if(typeof google === 'undefined' || !google.script || !google.script.run){
         // running locally outside Apps Script
+        console.log('⚠️ No google.script.run - local preview mode');
         const selectEl = document.getElementById('projectSelect');
         if (selectEl) {
           selectEl.innerHTML = '';
@@ -337,57 +340,79 @@
         }
         return;
       }
-      google.script.run.withSuccessHandler(function(res){
-        const selectEl = document.getElementById('projectSelect');
-        const nameInput = document.getElementById('projectNameInput');
-        
-        if (!selectEl) {
-          console.error('❌ projectSelect element not found');
-          return;
-        }
-        
-        selectEl.innerHTML = '';
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = 'Select project…';
-        selectEl.appendChild(placeholder);
+      
+      console.log('📞 Calling google.script.run.listProjects()...');
+      
+      google.script.run
+        .withSuccessHandler(function(res){
+          console.log('✅ listProjects SUCCESS handler called');
+          console.log('📦 Response type:', typeof res);
+          console.log('📦 Response value:', res);
+          console.log('📦 Response JSON:', JSON.stringify(res));
+          
+          const selectEl = document.getElementById('projectSelect');
+          const nameInput = document.getElementById('projectNameInput');
+          
+          if (!selectEl) {
+            console.error('❌ projectSelect element not found');
+            return;
+          }
+          
+          selectEl.innerHTML = '';
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = 'Select project…';
+          selectEl.appendChild(placeholder);
 
-        // Handle null or malformed response
-        if (!res || typeof res !== 'object') {
-          console.error('❌ Invalid response from listProjects:', res);
-          const errorOpt = document.createElement('option');
-          errorOpt.value = '';
-          errorOpt.textContent = 'Error loading projects';
-          selectEl.appendChild(errorOpt);
-          return;
-        }
+          // Handle null or malformed response
+          if (!res || typeof res !== 'object') {
+            console.error('❌ Invalid response from listProjects:', res);
+            const errorOpt = document.createElement('option');
+            errorOpt.value = '';
+            errorOpt.textContent = 'Error loading projects (invalid response)';
+            selectEl.appendChild(errorOpt);
+            return;
+          }
 
-        const projects = res.projects || [];
-        console.log('📋 Loaded', projects.length, 'projects');
-        
-        projects.forEach(function(p){
-          const o = document.createElement('option');
-          o.value = p.name;
-          o.textContent = p.name;
-          selectEl.appendChild(o);
-        });
-        
-        if(res.lastProject && projects.find(p => p.name === res.lastProject)){
-          selectEl.value = res.lastProject;
-          loadProject(res.lastProject);
-        } else {
-          // No last project, or last project was deleted
-          fillFormData({});
-          if (nameInput) nameInput.value = '';
-          setActiveTab('overview');
-        }
-      }).withFailureHandler(function(error){
-        console.error('❌ Error calling listProjects:', error);
-        showToast('⚠️ Could not load projects: ' + error.message);
-        const selectEl = document.getElementById('projectSelect');
-        if (selectEl) {
-          selectEl.innerHTML = '<option value="">Error loading projects</option>';
-        }
+          const projects = res.projects || [];
+          console.log('📋 Loaded', projects.length, 'projects');
+          
+          if (projects.length === 0) {
+            console.log('ℹ️ No projects found');
+            const noProjectsOpt = document.createElement('option');
+            noProjectsOpt.value = '';
+            noProjectsOpt.textContent = 'No projects yet';
+            selectEl.appendChild(noProjectsOpt);
+          } else {
+            projects.forEach(function(p){
+              const o = document.createElement('option');
+              o.value = p.name;
+              o.textContent = p.name;
+              selectEl.appendChild(o);
+            });
+          }
+          
+          if(res.lastProject && projects.find(p => p.name === res.lastProject)){
+            selectEl.value = res.lastProject;
+            loadProject(res.lastProject);
+          } else {
+            // No last project, or last project was deleted
+            fillFormData({});
+            if (nameInput) nameInput.value = '';
+            setActiveTab('overview');
+          }
+        })
+        .withFailureHandler(function(error){
+          console.error('❌ listProjects FAILURE handler called');
+          console.error('❌ Error object:', error);
+          console.error('❌ Error message:', error ? error.message : 'unknown');
+          console.error('❌ Error stack:', error ? error.stack : 'no stack');
+          
+          showToast('⚠️ Could not load projects: ' + (error ? error.message : 'unknown error'));
+          const selectEl = document.getElementById('projectSelect');
+          if (selectEl) {
+            selectEl.innerHTML = '<option value="">Error loading projects</option>';
+          }
       }).listProjects();
     }
 
