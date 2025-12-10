@@ -26,8 +26,28 @@ function listProjects() {
     // Call UNIFIED dual listing
     const result = listProjectsDual(); // From UI_ProjectManager_Dual.gs
     
+    // Log the result for debugging
+    Logger.log('📊 listProjectsDual returned: ' + JSON.stringify(result));
+    
+    if (!result) {
+      Logger.log('❌ listProjectsDual returned null!');
+      return {
+        projects: [],
+        lastProject: '',
+        count: 0,
+        error: 'listProjectsDual returned null'
+      };
+    }
+    
     if (!result.success) {
-      throw new Error(result.error || 'Failed to list projects');
+      Logger.log('⚠️  listProjectsDual failed: ' + result.error);
+      // Still return the projects array even on partial failure
+      return {
+        projects: result.projects || [],
+        lastProject: '',
+        count: (result.projects || []).length,
+        error: result.error
+      };
     }
     
     // Get last selected project from user properties
@@ -35,21 +55,25 @@ function listProjects() {
     const lastProject = userProps.getProperty('serpifai_lastProject') || '';
     
     Logger.log('✅ Found ' + result.count + ' projects total');
-    Logger.log('   Projects: ' + result.projects.map(function(p) { return p.name; }).join(', '));
+    if (result.projects && result.projects.length > 0) {
+      Logger.log('   Projects: ' + result.projects.map(function(p) { return p.name; }).join(', '));
+    }
     
     return {
-      projects: result.projects,
+      projects: result.projects || [],
       lastProject: lastProject,
-      count: result.count
+      count: result.count || 0
     };
     
   } catch (e) {
-    Logger.log('❌ Error listing projects: ' + e.toString());
+    Logger.log('❌ EXCEPTION in listProjects: ' + e.toString());
+    Logger.log('   Stack: ' + e.stack);
     
-    // Return empty list on error
+    // Return empty list on error (NEVER return null)
     return {
       projects: [],
       lastProject: '',
+      count: 0,
       error: e.toString()
     };
   }
