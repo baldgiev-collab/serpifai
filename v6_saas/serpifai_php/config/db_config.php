@@ -87,6 +87,13 @@ function getDB() {
 }
 
 /**
+ * Alias for backwards compatibility
+ */
+function getDbConnection() {
+    return getDB();
+}
+
+/**
  * Log activity to database
  */
 function logActivity($userId, $action, $details = []) {

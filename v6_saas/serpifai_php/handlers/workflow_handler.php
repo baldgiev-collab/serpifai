@@ -13,18 +13,11 @@ require_once __DIR__ . '/../config/db_config.php';
  * This handler validates and logs, but actual AI logic stays in Apps Script
  */
 function executeWorkflowStage($stageNum, $payload, $licenseKey, $userId) {
-    $db = getDbConnection();
-    
-    if (!$db) {
-        return [
-            'success' => false,
-            'error' => 'Database connection failed'
-        ];
-    }
-    
     try {
+        $db = getDbConnection();
+        
         // Determine action name
-        $action = 'workflow:stage' . $stageNum;
+        $action = 'workflow_stage' . $stageNum;
         
         // Get credit cost
         $creditCost = CREDIT_COSTS[$action] ?? 5; // Default 5 credits
@@ -32,13 +25,18 @@ function executeWorkflowStage($stageNum, $payload, $licenseKey, $userId) {
         // Log transaction start
         $stmt = $db->prepare("
             INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data)
-            VALUES (?, ?, ?, 'processing', ?)
+            (user_id, action_type, credit_cost, status, request_data, created_at)
+            VALUES (:user_id, :action, :cost, 'processing', :request, NOW())
         ");
-        $requestJson = json_encode($payload);
-        $stmt->bind_param('isis', $userId, $action, $creditCost, $requestJson);
-        $stmt->execute();
-        $transactionId = $db->insert_id;
+        
+        $stmt->execute([
+            'user_id' => $userId,
+            'action' => $action,
+            'cost' => $creditCost,
+            'request' => json_encode($payload)
+        ]);
+        
+        $transactionId = $db->lastInsertId();
         
         // Return success - Apps Script will execute the actual workflow
         return [
@@ -51,12 +49,11 @@ function executeWorkflowStage($stageNum, $payload, $licenseKey, $userId) {
         ];
         
     } catch (Exception $e) {
+        error_log("Workflow execution error: " . $e->getMessage());
         return [
             'success' => false,
             'error' => 'Workflow execution failed: ' . $e->getMessage()
         ];
-    } finally {
-        $db->close();
     }
 }
 
@@ -65,38 +62,33 @@ function executeWorkflowStage($stageNum, $payload, $licenseKey, $userId) {
  * Called by Apps Script after successful execution
  */
 function completeWorkflowTransaction($transactionId, $result, $licenseKey) {
-    $db = getDbConnection();
-    
-    if (!$db) {
-        return [
-            'success' => false,
-            'error' => 'Database connection failed'
-        ];
-    }
-    
     try {
+        $db = getDbConnection();
+        
         $stmt = $db->prepare("
             UPDATE api_transactions 
             SET status = 'completed',
-                response_data = ?,
+                response_data = :response,
                 completed_at = NOW()
-            WHERE id = ?
+            WHERE id = :id
         ");
-        $resultJson = json_encode($result);
-        $stmt->bind_param('si', $resultJson, $transactionId);
-        $stmt->execute();
+        
+        $stmt->execute([
+            'response' => json_encode($result),
+            'id' => $transactionId
+        ]);
         
         return [
             'success' => true,
             'message' => 'Transaction completed'
         ];
+        
     } catch (Exception $e) {
+        error_log("Complete transaction error: " . $e->getMessage());
         return [
             'success' => false,
             'error' => 'Failed to complete transaction: ' . $e->getMessage()
         ];
-    } finally {
-        $db->close();
     }
 }
 
@@ -105,32 +97,55 @@ function completeWorkflowTransaction($transactionId, $result, $licenseKey) {
  * Called by Apps Script if execution fails
  */
 function failWorkflowTransaction($transactionId, $errorMessage, $licenseKey) {
-    $db = getDbConnection();
-    
-    if (!$db) {
-        return [
-            'success' => false,
-            'error' => 'Database connection failed'
-        ];
-    }
-    
     try {
+        $db = getDbConnection();
+        
+        // Update transaction status
         $stmt = $db->prepare("
             UPDATE api_transactions 
             SET status = 'failed',
-                error_message = ?,
+                error_message = :error,
                 completed_at = NOW()
-            WHERE id = ?
+            WHERE id = :id
         ");
-        $stmt->bind_param('si', $errorMessage, $transactionId);
-        $stmt->execute();
         
-        // Refund credits
+        $stmt->execute([
+            'error' => $errorMessage,
+            'id' => $transactionId
+        ]);
+        
+        // Get transaction details to refund credits
         $stmt = $db->prepare("
-            SELECT user_id, credit_cost FROM api_transactions WHERE id = ?
+            SELECT user_id, credit_cost FROM api_transactions WHERE id = :id
         ");
-        $stmt->bind_param('i', $transactionId);
-        $stmt->execute();
+        $stmt->execute(['id' => $transactionId]);
+        $row = $stmt->fetch();
+        
+        if ($row) {
+            $stmt = $db->prepare("
+                UPDATE users 
+                SET credits_remaining = credits_remaining + :credits
+                WHERE id = :user_id
+            ");
+            $stmt->execute([
+                'credits' => $row['credit_cost'],
+                'user_id' => $row['user_id']
+            ]);
+        }
+        
+        return [
+            'success' => true,
+            'message' => 'Transaction failed, credits refunded'
+        ];
+        
+    } catch (Exception $e) {
+        error_log("Fail transaction error: " . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => 'Failed to update transaction: ' . $e->getMessage()
+        ];
+    }
+}
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
         
@@ -162,70 +177,41 @@ function failWorkflowTransaction($transactionId, $errorMessage, $licenseKey) {
  * Get workflow history
  */
 function getWorkflowHistory($licenseKey, $limit = 50) {
-    $db = getDbConnection();
-    
-    if (!$db) {
-        return [
-            'success' => false,
-            'error' => 'Database connection failed'
-        ];
-    }
-    
     try {
+        $db = getDbConnection();
+        
         $stmt = $db->prepare("
             SELECT t.*, u.license_key
             FROM api_transactions t
             JOIN users u ON t.user_id = u.id
-            WHERE u.license_key = ?
-            AND t.action_type LIKE 'workflow:%'
+            WHERE u.license_key = :license
+            AND t.action_type LIKE 'workflow%'
             ORDER BY t.created_at DESC
-            LIMIT ?
+            LIMIT :limit
         ");
-        $stmt->bind_param('si', $licenseKey, $limit);
-        $stmt->execute();
-        $result = $stmt->get_result();
         
-        $history = [];
-        while ($row = $result->fetch_assoc()) {
-            $history[] = [
-                'id' => $row['id'],
-                'action' => $row['action_type'],
-                'credits' => $row['credit_cost'],
-                'status' => $row['status'],
-                'created_at' => $row['created_at'],
-                'completed_at' => $row['completed_at']
-            ];
-        }
+        $stmt->execute([
+            'license' => $licenseKey,
+            'limit' => (int)$limit
+        ]);
+        
+        $history = $stmt->fetchAll();
         
         return [
             'success' => true,
-            'data' => $history
+            'history' => $history,
+            'count' => count($history)
         ];
+        
     } catch (Exception $e) {
+        error_log("Get workflow history error: " . $e->getMessage());
         return [
             'success' => false,
-            'error' => 'Failed to get workflow history: ' . $e->getMessage()
+            'error' => 'Failed to fetch history: ' . $e->getMessage()
         ];
-    } finally {
-        $db->close();
     }
 }
-
-/**
- * Handle workflow action routing
- */
-function handleWorkflowAction($action, $payload, $licenseKey, $userId) {
-    // Extract stage number from action
-    if (preg_match('/workflow:stage(\d+)/', $action, $matches)) {
-        $stageNum = (int)$matches[1];
-        return executeWorkflowStage($stageNum, $payload, $licenseKey, $userId);
-    }
-    
-    // Handle workflow control actions
-    switch ($action) {
-        case 'workflow:complete':
-            return completeWorkflowTransaction($payload['transactionId'], $payload['result'], $licenseKey);
-            
+?>
         case 'workflow:fail':
             return failWorkflowTransaction($payload['transactionId'], $payload['error'], $licenseKey);
             
