@@ -326,34 +326,66 @@
     function refreshProjectList(){
       if(typeof google === 'undefined' || !google.script || !google.script.run){
         // running locally outside Apps Script
-        projectSelect.innerHTML = '';
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = 'Local preview (no Apps Script)';
-        projectSelect.appendChild(opt);
+        const selectEl = document.getElementById('projectSelect');
+        if (selectEl) {
+          selectEl.innerHTML = '';
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'Local preview (no Apps Script)';
+          selectEl.appendChild(opt);
+        }
         return;
       }
       google.script.run.withSuccessHandler(function(res){
-        projectSelect.innerHTML = '';
+        const selectEl = document.getElementById('projectSelect');
+        const nameInput = document.getElementById('projectNameInput');
+        
+        if (!selectEl) {
+          console.error('❌ projectSelect element not found');
+          return;
+        }
+        
+        selectEl.innerHTML = '';
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.textContent = 'Select project…';
-        projectSelect.appendChild(placeholder);
+        selectEl.appendChild(placeholder);
 
-        (res.projects || []).forEach(function(p){
+        // Handle null or malformed response
+        if (!res || typeof res !== 'object') {
+          console.error('❌ Invalid response from listProjects:', res);
+          const errorOpt = document.createElement('option');
+          errorOpt.value = '';
+          errorOpt.textContent = 'Error loading projects';
+          selectEl.appendChild(errorOpt);
+          return;
+        }
+
+        const projects = res.projects || [];
+        console.log('📋 Loaded', projects.length, 'projects');
+        
+        projects.forEach(function(p){
           const o = document.createElement('option');
           o.value = p.name;
           o.textContent = p.name;
-          projectSelect.appendChild(o);
+          selectEl.appendChild(o);
         });
-        if(res.lastProject && res.projects.find(p => p.name === res.lastProject)){
-          projectSelect.value = res.lastProject;
+        
+        if(res.lastProject && projects.find(p => p.name === res.lastProject)){
+          selectEl.value = res.lastProject;
           loadProject(res.lastProject);
         } else {
           // No last project, or last project was deleted
           fillFormData({});
-          projectNameInput.value = '';
+          if (nameInput) nameInput.value = '';
           setActiveTab('overview');
+        }
+      }).withFailureHandler(function(error){
+        console.error('❌ Error calling listProjects:', error);
+        showToast('⚠️ Could not load projects: ' + error.message);
+        const selectEl = document.getElementById('projectSelect');
+        if (selectEl) {
+          selectEl.innerHTML = '<option value="">Error loading projects</option>';
         }
       }).listProjects();
     }
@@ -1977,48 +2009,57 @@
     // Save Project button handler (UNIFIED - saves all 5 stages + competitor data)
     if (saveProjectBtn) {
       saveProjectBtn.addEventListener('click', function() {
-        // Get project name from input or selector
-        const projectName = projectNameInput.value.trim() || projectSelect.value.trim();
-        
-        if (!projectName) {
-          showToast('⚠️ Please name your project first');
-          projectNameInput.focus();
-          return;
-        }
-        
-        showToast('💾 Saving project...');
-        
-        // Collect ALL form data from all 5 stages
-        const formData = collectFormData();
-        
-        // Add competitor analysis data if exists
-        if (typeof getCompetitorData === 'function') {
-          formData.competitorAnalysis = getCompetitorData();
-        }
-        
-        // Save via backend (dual storage: Sheets + MySQL)
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run
-            .withSuccessHandler(function(result) {
-              if (result && result.ok) {
-                showToast('✅ Project "' + projectName + '" saved!');
-                if (saveStatus) {
-                  saveStatus.textContent = '✓ Saved at ' + new Date().toLocaleTimeString();
+        try {
+          // Get project name from input or selector
+          const nameInput = document.getElementById('projectNameInput');
+          const selectEl = document.getElementById('projectSelect');
+          const projectName = (nameInput ? nameInput.value.trim() : '') || (selectEl ? selectEl.value.trim() : '');
+          
+          if (!projectName) {
+            showToast('⚠️ Please name your project first');
+            if (nameInput) nameInput.focus();
+            return;
+          }
+          
+          showToast('💾 Saving project...');
+          console.log('📝 Collecting form data for project:', projectName);
+          
+          // Collect ALL form data from all 5 stages
+          const formData = collectFormData();
+          console.log('✅ Collected', Object.keys(formData).length, 'fields');
+          console.log('   Has competitor data:', !!formData.competitorAnalysis);
+          
+          // Save via backend (dual storage: Sheets + MySQL)
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler(function(result) {
+                console.log('📥 Save response:', result);
+                if (result && result.ok) {
+                  showToast('✅ Project "' + projectName + '" saved!');
+                  const statusEl = document.getElementById('saveStatus');
+                  if (statusEl) {
+                    statusEl.textContent = '✓ Saved at ' + new Date().toLocaleTimeString();
+                  }
+                  refreshProjectList(); // Refresh dropdown to show saved project
+                  refreshCreditDisplay(); // Refresh credits
+                } else {
+                  const errorMsg = result ? (result.error || 'Unknown error') : 'No response from server';
+                  showToast('❌ Save failed: ' + errorMsg);
+                  console.error('Save failed:', result);
                 }
-                refreshProjectList(); // Refresh dropdown to show saved project
-                refreshCreditDisplay(); // Refresh credits
-              } else {
-                showToast('❌ Save failed: ' + (result.error || 'Unknown error'));
-              }
-            })
-            .withFailureHandler(function(error) {
-              showToast('❌ Error: ' + error.message);
-              console.error('Save error:', error);
-            })
-            .saveProject(projectName, formData);
-        } else {
-          showToast('❌ Save unavailable in preview mode');
-          console.log('Preview mode - would save:', projectName, formData);
+              })
+              .withFailureHandler(function(error) {
+                showToast('❌ Error: ' + error.message);
+                console.error('Save error:', error);
+              })
+              .saveProject(projectName, formData);
+          } else {
+            showToast('❌ Save unavailable in preview mode');
+            console.log('Preview mode - would save:', projectName, formData);
+          }
+        } catch (e) {
+          console.error('❌ Exception in save handler:', e);
+          showToast('❌ Error: ' + e.message);
         }
       });
     }
