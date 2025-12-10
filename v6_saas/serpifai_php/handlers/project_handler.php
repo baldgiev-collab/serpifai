@@ -119,13 +119,6 @@ function saveProject($licenseKey, $projectName, $projectData) {
         ];
     }
 }
-            'success' => false,
-            'error' => 'Failed to save project: ' . $e->getMessage()
-        ];
-    } finally {
-        $db->close();
-    }
-}
 
 /**
  * Load project from database

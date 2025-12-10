@@ -75,7 +75,7 @@ function TEST_ALL_UI_FEATURES() {
   console.log('\n🆕 TEST 4: Create New Project');
   const testProjectName = 'TEST_' + new Date().getTime();
   try {
-    const createResult = createProject(testProjectName);
+    const createResult = saveProject(testProjectName, {brandName: testProjectName, createdAt: new Date().toISOString()});
     if (createResult && createResult.ok) {
       console.log('✅ createProject() works - Created: ' + testProjectName);
       results.passed++;
@@ -128,7 +128,7 @@ function TEST_ALL_UI_FEATURES() {
   const renamedName = renameTestName + '_RENAMED';
   try {
     // Create test project
-    const createResult = createProject(renameTestName);
+    const createResult = saveProject(renameTestName, {brandName: renameTestName, createdAt: new Date().toISOString()});
     if (createResult && createResult.ok) {
       // Rename it
       const renameResult = renameProject(renameTestName, renamedName);
@@ -161,7 +161,7 @@ function TEST_ALL_UI_FEATURES() {
   const deleteTestName = 'TEST_DELETE_' + new Date().getTime();
   try {
     // Create test project
-    const createResult = createProject(deleteTestName);
+    const createResult = saveProject(deleteTestName, {brandName: deleteTestName, createdAt: new Date().toISOString()});
     if (createResult && createResult.ok) {
       // Delete it
       const deleteResult = deleteProject(deleteTestName);

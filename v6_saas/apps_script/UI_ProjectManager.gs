@@ -56,8 +56,26 @@ function listProjects() {
 }
 
 /**
+ * Create a new project with default data
+ * Wrapper around saveProject() for convenience
+ * 
+ * @param {string} name - Project name
+ * @returns {object} {ok: boolean, name: string, updatedAt: string}
+ */
+function createProject(name) {
+  const defaultData = {
+    brandName: name,
+    coreTopic: '',
+    targetAudience: '',
+    createdAt: new Date().toISOString()
+  };
+  
+  return saveProject(name, defaultData);
+}
+
+/**
  * Save/update a project (UNIFIED DUAL STORAGE)
- * UPDATED: Uses unified saveProjec tDual() to save to BOTH Google Sheets and MySQL
+ * UPDATED: Uses unified saveProjectDual() to save to BOTH Google Sheets and MySQL
  * 
  * @param {string} name - Project name
  * @param {object} data - Project data
