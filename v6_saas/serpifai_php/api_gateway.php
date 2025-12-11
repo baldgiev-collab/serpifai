@@ -163,8 +163,8 @@ try {
     $result = executeAction($action, $payload, $user, $license);
     
     // Update credits
-    $newCredits = $user['credits_remaining'] - $cost;
-    updateUserCredits($license, $newCredits);
+    $newCredits = $user['credits'] - $cost;
+    updateUserCredits($license, $newCredits, $cost);
     
     // Log transaction
     logTransaction($user['id'], $action, $cost, $result);
@@ -322,10 +322,10 @@ function executeAction($action, $payload, $user, $license) {
             'user' => [
                 'email' => $user['email'],
                 'license_key' => $user['license_key'],
-                'credits' => $user['credits_remaining'] ?? 0,
-                'credits_total' => $user['credits_remaining'] ?? 0,
-                'credits_used' => 0,  // Not tracked
-                'credits_remaining' => $user['credits_remaining'] ?? 0,
+                'credits' => $user['credits'] ?? 0,
+                'credits_total' => $user['total_credits_purchased'] ?? 0,
+                'credits_used' => $user['total_credits_used'] ?? 0,
+                'credits_remaining' => $user['credits'] ?? 0,
                 'status' => $user['status'],
                 'plan_type' => 'standard',
                 'created_at' => $user['created_at']
@@ -392,14 +392,15 @@ function handleUserAction($action, $payload, $license) {
     }
 }
 
-function updateUserCredits($license, $newCredits) {
+function updateUserCredits($license, $newCredits, $creditCost = 0) {
     try {
         $db = getDB();
         
-        // Simple credit update - don't track total_credits_used if column doesn't exist
+        // Update credits and total_credits_used
         $stmt = $db->prepare("
             UPDATE users 
-            SET credits_remaining = ?,
+            SET credits = ?,
+                total_credits_used = total_credits_used + ?,
                 updated_at = NOW() 
             WHERE license_key = ?
         ");
@@ -408,7 +409,7 @@ function updateUserCredits($license, $newCredits) {
             throw new Exception("Prepare failed: " . $db->errorInfo()[2]);
         }
         
-        $stmt->execute([$newCredits, $license]);
+        $stmt->execute([$newCredits, $creditCost, $license]);
     } catch (Exception $e) {
         error_log("updateUserCredits error: " . $e->getMessage());
         throw $e;
