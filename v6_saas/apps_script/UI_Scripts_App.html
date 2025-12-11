@@ -809,36 +809,45 @@
       reportEl.innerHTML = formatMarkdownReport(cleanedReport);
 
       // Generate charts for Stage 1
-      const jsonData = result.json || result.jsonData || {}; // Support both field names for backwards compatibility
-      console.log('Stage 1 JSON Data:', jsonData); // Debug logging
+      let jsonData = result.json || result.jsonData || result.data || {}; // Support multiple field names
       
-      // CRITICAL DIAGNOSTIC: Check why charts aren't generating
-      console.log('=== CHART GENERATION CHECK ===');
+      console.log('=== CHART GENERATION DIAGNOSTIC ===');
       console.log('stageNum:', stageNum, 'type:', typeof stageNum);
-      console.log('stageNum === 1:', stageNum === 1);
-      console.log('stageNum == 1:', stageNum == 1);
-      console.log('jsonData exists:', !!jsonData);
-      console.log('jsonData keys:', Object.keys(jsonData));
-      console.log('jsonData keys length:', Object.keys(jsonData).length);
+      console.log('result structure:', Object.keys(result));
+      console.log('jsonData before extraction:', jsonData);
+      
+      // CRITICAL FIX: Extract dashboardCharts if nested
+      // Backend returns: {success: true, stage: 1, json: {dashboardCharts: {...}, jtbdScenarios: [...], ...}}
+      // UI needs: {dashboardCharts: {...}, jtbdScenarios: [...], ...}
+      if(jsonData && jsonData.dashboardCharts){
+        console.log('✅ dashboardCharts found in jsonData - data is already at correct level');
+      } else if(result.json && typeof result.json === 'object'){
+        console.log('🔧 Using result.json directly (dashboardCharts should be inside)');
+        jsonData = result.json;
+      } else if(result.data && typeof result.data === 'object' && result.data.dashboardCharts){
+        console.log('🔧 Extracting from result.data.dashboardCharts');
+        jsonData = result.data;
+      }
+      
+      console.log('jsonData after extraction:', jsonData);
+      console.log('dashboardCharts exists?', !!(jsonData && jsonData.dashboardCharts));
+      console.log('dashboardCharts keys:', jsonData && jsonData.dashboardCharts ? Object.keys(jsonData.dashboardCharts) : 'N/A');
       
       // Use loose comparison to handle string/number mismatch
       if(stageNum == 1){
         console.log('✅ Stage 1 condition passed');
-        if(jsonData && Object.keys(jsonData).length > 0){
-          console.log('✅ JSON data validation passed - calling generateStage1Charts()');
+        if(jsonData && jsonData.dashboardCharts && Object.keys(jsonData.dashboardCharts).length > 0){
+          console.log('✅ JSON data validation PASSED - calling generateStage1Charts()');
+          console.log('   Chart count:', Object.keys(jsonData.dashboardCharts).length);
           generateStage1Charts(jsonData);
         } else {
           console.error('❌ JSON data validation FAILED');
-          console.log('No JSON data available for charts. Result structure:', result);
+          console.log('   Expected: jsonData.dashboardCharts with chart data');
+          console.log('   Received:', jsonData);
+          showToast('⚠️ No chart data received. Check console for details.');
         }
       } else {
-        console.log('❌ Not Stage 1 - skipping chart generation');
-      }
-      
-      // FAILSAFE: If we have dashboardCharts data, always try to render charts
-      if(jsonData && jsonData.dashboardCharts){
-        console.log('🔥 FAILSAFE: dashboardCharts detected - forcing chart generation');
-        generateStage1Charts(jsonData);
+        console.log('ℹ️ Not Stage 1 - chart generation skipped');
       }
     }
     
