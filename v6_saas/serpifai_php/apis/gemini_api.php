@@ -21,6 +21,7 @@ function callGeminiAPI($action, $payload) {
         return [
             'success' => true,
             'data' => $cached,
+            'text' => $cached,
             'cached' => true,
             'api_service' => 'gemini'
         ];
@@ -39,14 +40,34 @@ function callGeminiAPI($action, $payload) {
         ]
     ];
     
-    // Add generation config if provided
-    if (isset($payload['temperature']) || isset($payload['maxTokens'])) {
+    // Add generation config from options
+    $options = $payload['options'] ?? [];
+    if (!empty($options) || isset($payload['temperature']) || isset($payload['maxTokens']) || isset($payload['maxOutputTokens'])) {
         $requestBody['generationConfig'] = [];
+        
+        // Handle options object (from Apps Script)
+        if (isset($options['temperature'])) {
+            $requestBody['generationConfig']['temperature'] = floatval($options['temperature']);
+        }
+        if (isset($options['topK'])) {
+            $requestBody['generationConfig']['topK'] = intval($options['topK']);
+        }
+        if (isset($options['topP'])) {
+            $requestBody['generationConfig']['topP'] = floatval($options['topP']);
+        }
+        if (isset($options['maxOutputTokens'])) {
+            $requestBody['generationConfig']['maxOutputTokens'] = intval($options['maxOutputTokens']);
+        }
+        
+        // Handle direct parameters
         if (isset($payload['temperature'])) {
             $requestBody['generationConfig']['temperature'] = floatval($payload['temperature']);
         }
         if (isset($payload['maxTokens'])) {
             $requestBody['generationConfig']['maxOutputTokens'] = intval($payload['maxTokens']);
+        }
+        if (isset($payload['maxOutputTokens'])) {
+            $requestBody['generationConfig']['maxOutputTokens'] = intval($payload['maxOutputTokens']);
         }
     }
     
@@ -81,10 +102,32 @@ function callGeminiAPI($action, $payload) {
     return [
         'success' => true,
         'data' => $generatedText,
+        'text' => $generatedText,  // Apps Script expects 'text' field
         'model' => $model,
         'cached' => false,
         'api_service' => 'gemini'
     ];
+}
+
+/**
+ * Handle Gemini API actions
+ * Routes different Gemini-related actions
+ */
+function handleGeminiAction($action, $payload) {
+    // Extract action type (e.g., 'gemini_generate' or 'gemini:generate')
+    $actionType = str_replace(['gemini_', 'gemini:', 'ai_'], '', $action);
+    
+    switch ($actionType) {
+        case 'generate':
+            return callGeminiAPI($action, $payload);
+            
+        case 'list_models':
+        case 'models':
+            return getGeminiModels();
+            
+        default:
+            throw new Exception('Unknown Gemini action: ' . $action);
+    }
 }
 
 /**

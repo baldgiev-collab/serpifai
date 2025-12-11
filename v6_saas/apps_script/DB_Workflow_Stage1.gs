@@ -472,66 +472,38 @@ Start with the JSON block (\`\`\`json...\`\`\`), then the markdown report. Be cl
 }
 
 /**
- * Call Gemini API DIRECTLY (not through gateway)
- * Used for workflow stages that execute in Apps Script
+ * Call Gemini API through PHP Gateway (uses server-side API key)
+ * This avoids storing API keys in Apps Script
  */
 function callStage1GeminiAPI(prompt, selectedModel) {
   try {
-    const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-    
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY not configured in Script Properties. Go to Settings to add your Gemini API key.');
-    }
+    Logger.log('📡 Calling Gemini API through PHP Gateway...');
     
     // Ensure Gemini 2.5 model
     const model = (selectedModel && selectedModel.indexOf('gemini-2.5') === 0) ? selectedModel : 'gemini-2.5-flash';
-    Logger.log('🤖 Calling Gemini directly with model: ' + model);
+    Logger.log('🤖 Using model: ' + model);
     
-    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+    // Call through gateway (API key is on the server)
+    const result = callGeminiAPI(model, prompt, {
+      temperature: 0.7,
+      topK: 40,
+      topP: 0.95,
+      maxOutputTokens: 16384  // Increased for long strategic reports
+    });
     
-    const payload = {
-      contents: [{
-        parts: [{
-          text: prompt
-        }]
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 16384  // Increased for long strategic reports
-      }
-    };
-    
-    const options = {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    };
-    
-    Logger.log('📡 Calling Gemini API directly...');
-    
-    const response = UrlFetchApp.fetch(url, options);
-    const responseCode = response.getResponseCode();
-    
-    if (responseCode !== 200) {
-      throw new Error('Gemini API Error (' + responseCode + '): ' + response.getContentText());
+    if (!result || !result.success) {
+      throw new Error('Gemini API call failed: ' + (result.error || 'Unknown error'));
     }
-    
-    const json = JSON.parse(response.getContentText());
     
     // Extract text from response
-    if (json.candidates && json.candidates[0] && json.candidates[0].content) {
-      const content = json.candidates[0].content;
-      if (content.parts && content.parts[0] && content.parts[0].text) {
-        Logger.log('✅ Gemini response received: ' + content.parts[0].text.length + ' chars');
-        return content.parts[0].text;
-      }
-      throw new Error('Gemini response missing parts[0].text');
+    const responseText = result.data || result.text || '';
+    
+    if (!responseText) {
+      throw new Error('Gemini API returned empty response');
     }
     
-    throw new Error('Invalid Gemini API response structure');
+    Logger.log('✅ Gemini response received: ' + responseText.length + ' chars');
+    return responseText;
     
   } catch (error) {
     Logger.log('❌ Gemini API Error: ' + error.toString());
