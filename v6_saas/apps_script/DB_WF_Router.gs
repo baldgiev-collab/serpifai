@@ -44,12 +44,23 @@ function handleRequest(e) {
 
 /**
  * Run Stage 1: Strategy & Market Research
+ * NOW EXECUTES DIRECTLY IN APPS SCRIPT (not through PHP gateway)
  */
-function DB_WF_runStage1Strategy(data) {
-  return callGateway({
-    action: 'workflow:stage1',
-    data: data
-  });
+function DB_WF_runStage1Strategy(data, selectedModel) {
+  try {
+    Logger.log('🚀 DB_WF_runStage1Strategy called - routing to DB_Workflow_Stage1');
+    
+    // Call the new elite Stage 1 implementation directly
+    return DB_Workflow_Stage1(data, selectedModel);
+    
+  } catch (error) {
+    Logger.log('❌ Stage 1 routing error: ' + error.toString());
+    return {
+      success: false,
+      error: error.toString(),
+      stage: 1
+    };
+  }
 }
 
 /**
