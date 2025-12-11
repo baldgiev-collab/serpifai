@@ -61,7 +61,8 @@ function DB_Workflow_Stage1(projectData, selectedModel) {
 
 /**
  * Build the Strategic Insights Engine Prompt for Stage 1
- * Generates dashboard-ready JSON + narrative report
+ * ELITE VERSION: Includes ALL 81+ input fields mapped as variables
+ * Generates comprehensive dashboard-ready JSON + narrative report
  */
 function buildStage1Prompt(data) {
   // Helper function to safely get field value
@@ -71,96 +72,401 @@ function buildStage1Prompt(data) {
     return (value && String(value).trim()) ? String(value).trim() : 'Not provided';
   }
 
-  // Build mega prompt (same as databridge version)
+  // Build ELITE mega prompt with ALL fields mapped
   const prompt = `**ROLE / IDENTITY**
-You are a senior brand strategist and research analyst who makes complex strategy simple and actionable. You combine the clarity of great teachers with the depth of elite consultants.
+You are an elite brand strategist and market research analyst with 20+ years experience. You combine:
+- The strategic depth of McKinsey consultants
+- The clarity of world-class teachers like Seth Godin
+- The actionable frameworks of growth marketers
+- The audience psychology of Robert Cialdini
 
-You're building **Serpifai's Strategic Insights Engine** for the **Authority Engine Blueprint (AEB)**.
-
-**YOUR AUDIENCE**
-SEO professionals and business owners who:
-- Understand the basics but need strategic direction
-- Feel overwhelmed by too many tools and conflicting advice
-- Want clear systems that actually work, not trendy tactics
-- Fear: Wasting time on strategies that don't deliver results
-- Desire: Predictable growth and authority they can defend
-
-**YOUR JOB**
-Translate strategic insights into plain language that busy professionals can understand and act on immediately. No marketing fluff. No academic jargon. Just clear thinking and practical direction.
+You're building the **Strategic Insights Engine** for ${getField(data, 'brandName')}'s content marketing strategy.
 
 ---
 
-**CONTEXT (Brand Input)**
+**YOUR MISSION**
+Transform raw business inputs into actionable strategic intelligence. You will:
+1. Analyze market positioning and competitive dynamics
+2. Map customer psychology (pains, desires, beliefs)
+3. Design content pillars and formats that drive business outcomes
+4. Create prioritized action plans with clear ROI
+
+**CRITICAL**: Every insight must be grounded in the provided context. NO generic marketing speak. NO placeholder data.
+
+---
+
+## 📊 COMPLETE CONTEXT (ALL INPUT FIELDS MAPPED)
+
+### STAGE 1: BRAND FOUNDATION & STRATEGY
+
+**Core Brand Identity:**
 - **Brand Name:** ${getField(data, 'brandName')}
-- **Product/Service:** ${getField(data, 'productOrService') || getField(data, 'coreTopic')}
-- **Primary Audience:** ${getField(data, 'targetAudience') || getField(data, 'primaryAudience')}
+- **Brand Archetype:** ${getField(data, 'brandArchetype')}
+- **Brand Ideology:** ${getField(data, 'brandIdeology')}
+- **Brand Lexicon & Voice:** ${getField(data, 'brandLexicon')}
+- **UVP (Unique Value Proposition):** ${getField(data, 'uvp')}
+- **Existing Messaging:** ${getField(data, 'existingMessaging')}
+- **Core Topic:** ${getField(data, 'coreTopic')}
+- **Product/Service:** ${getField(data, 'productOrService')}
+
+**Target Audience Intelligence:**
+- **Primary Audience:** ${getField(data, 'targetAudience')}
 - **Secondary Audience:** ${getField(data, 'secondaryAudience')}
-- **Audience Pains:** ${getField(data, 'audiencePains')}
-- **Desired Transformation:** ${getField(data, 'audienceDesired')}
-- **Quarterly Objectives:** ${getField(data, 'quarterlyObjective') || getField(data, 'quarterlyObjectives')}
-- **Key Competitors:** ${getField(data, 'keyCompetitors') || getField(data, 'competitors')}
-- **Existing Messaging:** ${getField(data, 'uvp') || getField(data, 'existingMessaging')}
-- **Brand Voice/Lexicon:** ${getField(data, 'brandLexicon') || getField(data, 'brandArchetype')}
-- **Distribution Channels:** ${getField(data, 'primaryChannels')}
+- **Customer Demographics:** ${getField(data, 'customerDemographics')}
+- **Geographic Focus:** ${getField(data, 'geographicFocus')}
+- **Industry Vertical:** ${getField(data, 'industryVertical')}
+
+**Customer Psychology (CRITICAL for JTBD & Charts):**
+- **Current Pains:** ${getField(data, 'audiencePains')}
+- **Desired State:** ${getField(data, 'audienceDesired')}
+- **Core Market Problem:** ${getField(data, 'coreMarketProblem')}
+
+**Business Objectives:**
+- **Quarterly Objective:** ${getField(data, 'quarterlyObjective')}
 - **North Star KPIs:** ${getField(data, 'northStarKpis')}
+- **Content Goals:** ${getField(data, 'contentGoals')}
+- **Future Vision:** ${getField(data, 'futureVision')}
+
+**Competitive Context:**
+- **Key Competitors:** ${getField(data, 'keyCompetitors')}
+- **Competitive Advantages:** ${getField(data, 'competitiveAdvantages')}
+
+**Distribution Strategy:**
+- **Primary Channels:** ${getField(data, 'primaryChannels')}
+- **Content Formats:** ${getField(data, 'contentFormats')}
+- **Seasonality:** ${getField(data, 'seasonality')}
+
+**Offer & Monetization:**
+- **Offer Matrix:** ${getField(data, 'offerMatrix')}
+- **Primary Offer Name:** ${getField(data, 'primaryOfferName')}
+- **Primary Offer Price:** ${getField(data, 'primaryOfferPrice')}
+- **Upsell Offer:** ${getField(data, 'upsellOffer')}
+- **Upsell Price:** ${getField(data, 'upsellPrice')}
+
+### STAGE 2: KEYWORD & MARKET INTELLIGENCE
+
+**Strategic Positioning:**
+- **Core Strategic Question:** ${getField(data, 'coreStrategicQuestion')}
+- **Thesis (Pro Angle):** ${getField(data, 'thesis')}
+- **Antithesis (Con Angle):** ${getField(data, 'antithesis')}
+- **Key Market Data:** ${getField(data, 'keyMarketData')}
+- **Category Definition:** ${getField(data, 'categoryDefinition')}
+
+**Keyword Research:**
+- **Primary Keyword:** ${getField(data, 'primaryKeyword')}
+- **Secondary Keywords:** ${getField(data, 'secondaryKeywords')}
+- **Full Keyword List:** ${getField(data, 'keywordsEntities')}
+
+### STAGE 3: CONTENT ARCHITECTURE
+
+**Content Structure:**
+- **Asset Title:** ${getField(data, 'assetTitle')}
+- **Foundational Pillars:** ${getField(data, 'foundationalPillars')}
+- **Campaign Narrative:** ${getField(data, 'campaignNarrative')}
+- **Pillar Context:** ${getField(data, 'pillarContext')}
+- **Parent Pillar URL:** ${getField(data, 'parentPillarUrl')}
+- **Child Spoke URLs:** ${getField(data, 'childSpokeUrls')}
+- **Internal Linking Strategy:** ${getField(data, 'internalLinkingStrategy')}
+- **Funnel Stage:** ${getField(data, 'funnelStage')}
+- **Content Type:** ${getField(data, 'contentType')}
+- **Timeframe Plan:** ${getField(data, 'timeframePlan')}
+
+### STAGE 4: CALENDAR & PUBLISHING
+
+**Publishing Strategy:**
+- **Calendar Horizon:** ${getField(data, 'calendarHorizon')}
+- **Posts per Week:** ${getField(data, 'postsPerWeek')}
+- **Visual Hooks:** ${getField(data, 'visualHooks')}
+
+### STAGE 5: CREDIBILITY & E-E-A-T
+
+**Authority Signals:**
+- **Author Bio:** ${getField(data, 'authorBio')}
+- **Primary Source 1:** ${getField(data, 'primarySource1')}
+- **Primary Source 2:** ${getField(data, 'primarySource2')}
+- **Expert Quote 1:** ${getField(data, 'expertQuote1')}
+- **Expert Quote 2:** ${getField(data, 'expertQuote2')}
+- **Proprietary Data:** ${getField(data, 'proprietaryData')}
+
+**Case Studies & Social Proof:**
+- **Case Study 1:** ${getField(data, 'caseStudy1')}
+- **Case Study 2:** ${getField(data, 'caseStudy2')}
+- **Case Study 3:** ${getField(data, 'caseStudy3')}
+- **Trust Anchors:** ${getField(data, 'trustAnchors')}
+- **Social Proof:** ${getField(data, 'socialProof')}
+- **Testimonial 1:** ${getField(data, 'testimonial1')}
+- **Testimonial 2:** ${getField(data, 'testimonial2')}
+
+**Bundle Components:**
+- **Lead Magnet:** ${getField(data, 'leadMagnetName')}
+- **Bundle 1:** ${getField(data, 'bundle1Name')} (${getField(data, 'bundle1Value')})
+- **Bundle 2:** ${getField(data, 'bundle2Name')} (${getField(data, 'bundle2Value')})
+- **Bundle 3:** ${getField(data, 'bundle3Name')} (${getField(data, 'bundle3Value')})
+- **Bundle 4:** ${getField(data, 'bundle4Name')} (${getField(data, 'bundle4Value')})
+
+**Generation Preferences:**
+- **Content Format:** ${getField(data, 'contentFormat')}
+- **Subcategory:** ${getField(data, 'contentSubcategory')}
+- **Persuasion Framework:** ${getField(data, 'persuasionFramework')}
+- **Unique Mechanism:** ${getField(data, 'uniqueMechanism')}
+- **Readability:** ${getField(data, 'readabilityDirectives')}
+- **Platform Context:** ${getField(data, 'platformContext')}
+- **Forbidden Terms:** ${getField(data, 'forbiddenTerms')}
+- **AI Persona Context:** ${getField(data, 'aiPersonaContext')}
 
 ---
 
-**YOUR OUTPUT MUST CONTAIN TWO PARTS:**
+## 🎯 YOUR OUTPUT REQUIREMENTS
 
-**PART 1: JSON (strategicData)**
-Return a single, valid JSON object with comprehensive dashboard charts. This JSON will power the UI visualizations.
-ALL numeric values MUST be based on analysis of the provided context, not random numbers.
+You will generate **TWO PARTS** in a single response:
 
-[Full JSON schema with all chart structures - customerFrustrationsChart, hiddenAspirationsChart, mindsetTransformationChart, customerJobPriorityChart, competitiveAdvantageMapChart, contentFormatStrategyChart, brandPositioningChart, valuePropositionMixChart, strategicContentPillarsChart, priorityFocusMatrixChart, marketOpportunityAnalysisChart, jtbdScenarios, contentPillars, competitiveGaps, uniqueMechanism, audienceProfile]
+### PART 1: STRATEGIC DATA (JSON)
 
-**PART 2: MARKDOWN REPORT (strategicReport)**
+Return a single, valid JSON object. This powers the dashboard visualizations.
 
-## 📈 Strategic Insights Dashboard (Narrative View)
+**CRITICAL JSON RULES:**
+- Valid JSON syntax (double quotes, no trailing commas)
+- ALL numeric scores (1-10) MUST be based on the context above, NOT random
+- Chart data MUST reflect actual strategic analysis
+- NO placeholder values like "8" without reasoning
+- Use specific segment names: "In-House SEO", "Agency SEO", "Content Lead", "Solo Consultant"
+- JTBD scenarios: Minimum 5, using When/Help/So format
+- Content pillars: 3-5 with detailed strategic rationale
+
+\`\`\`json
+{
+  "dashboardCharts": {
+    "customerFrustrationsChart": [
+      {
+        "label": "Specific frustration from audiencePains",
+        "intensity": 1-10,
+        "segment": "Audience segment name",
+        "shortDescription": "1-2 sentence elaboration"
+      }
+      // 5-7 items based on audiencePains and coreMarketProblem
+    ],
+    "hiddenAspirationsChart": [
+      {
+        "label": "Secret ambition from audienceDesired",
+        "intensity": 1-10,
+        "segment": "Audience segment",
+        "shortDescription": "What they really want"
+      }
+      // 5-7 items based on audienceDesired and futureVision
+    ],
+    "mindsetTransformationChart": [
+      {
+        "fromBelief": "Old limiting belief",
+        "toBelief": "New empowering belief",
+        "importance": 1-10,
+        "segment": "Audience segment"
+      }
+      // 3-5 transformations that support brand positioning
+    ],
+    "customerJobPriorityChart": [
+      {
+        "jobTitle": "Job To Be Done title",
+        "urgency": 1-10,
+        "importance": 1-10,
+        "frequency": 1-10,
+        "segment": "Audience segment",
+        "outcome": "Specific desired result"
+      }
+      // 5-7 items from quarterlyObjective and contentGoals
+    ],
+    "competitiveAdvantageMapChart": [
+      {
+        "dimension": "Strategic dimension name",
+        "yourBrand": 1-10,
+        "competitor1": 1-10,
+        "competitor2": 1-10,
+        "marketAverage": 1-10,
+        "explanation": "Why this matters"
+      }
+      // 5-7 dimensions based on competitiveAdvantages and brandArchetype
+    ],
+    "contentFormatStrategyChart": [
+      {
+        "format": "Content format name",
+        "fitScore": 1-10,
+        "competitiveGap": 1-10,
+        "audienceDemand": 1-10,
+        "feasibility": 1-10,
+        "priority": 1-3,
+        "rationale": "Why this format works"
+      }
+      // 4-6 formats from contentFormats and primaryChannels
+    ],
+    "brandPositioningChart": [
+      {
+        "axis": "Positioning spectrum (e.g., Tactical vs Strategic)",
+        "position": 1-10,
+        "marketPosition": 1-10,
+        "note": "What this means"
+      }
+      // 4-5 axes based on brandIdeology and competitiveAdvantages
+    ],
+    "valuePropositionMixChart": [
+      {
+        "proposition": "Micro value prop",
+        "appeal": 1-10,
+        "differentiation": 1-10,
+        "credibility": 1-10,
+        "clarity": 1-10
+      }
+      // 4-5 props from uvp and existingMessaging
+    ],
+    "strategicContentPillarsChart": [
+      {
+        "pillar": "Pillar name",
+        "audienceFit": 1-10,
+        "competitiveGap": 1-10,
+        "businessImpact": 1-10,
+        "feasibility": 1-10,
+        "priority": 1-3
+      }
+      // 3-5 pillars from foundationalPillars or create based on strategy
+    ],
+    "priorityFocusMatrixChart": [
+      {
+        "initiative": "Specific initiative",
+        "impact": 1-10,
+        "effort": 1-10,
+        "speed": 1-10,
+        "priority": 1-3,
+        "timeline": "Days/weeks"
+      }
+      // 3-5 initiatives based on quarterlyObjective
+    ],
+    "marketOpportunityAnalysisChart": [
+      {
+        "opportunity": "Market gap or opportunity",
+        "marketSize": 1-10,
+        "competitionLevel": 1-10,
+        "timingSensitivity": 1-10,
+        "fitScore": 1-10,
+        "priority": 1-3
+      }
+      // 3-5 opportunities from coreStrategicQuestion and keyMarketData
+    ]
+  },
+  "jtbdScenarios": [
+    {
+      "id": "JTBD_1",
+      "title": "Job title",
+      "whenSituation": "Specific trigger situation",
+      "helpMeDo": "What they're hiring your solution to do",
+      "soICan": "Ultimate desired outcome",
+      "segment": "Audience segment",
+      "priority": 1-5,
+      "painIntensity": 1-10,
+      "frequencyPerMonth": 1-30
+    }
+    // 5 scenarios from audiencePains and quarterlyObjective
+  ],
+  "contentPillars": [
+    {
+      "name": "Pillar name",
+      "description": "What this pillar covers",
+      "strategicRationale": [
+        "Solves: [pain]",
+        "Challenges: [belief]",
+        "Instills: [new belief]",
+        "Fills gap: [competitive gap]"
+      ],
+      "primaryFormats": ["Format 1", "Format 2"],
+      "businessAlignment": "How this drives business goals",
+      "audienceSegments": ["Segment 1", "Segment 2"],
+      "competitiveDifferentiation": "What makes this unique"
+    }
+    // 3-5 pillars
+  ],
+  "competitiveGaps": {
+    "topicGap": "Topics competitors miss",
+    "angleVoiceGap": "How your voice differs",
+    "formatGap": "Formats they don't use",
+    "audienceGap": "Audiences they underserve",
+    "outcomeGap": "Outcomes they don't deliver"
+  },
+  "uniqueMechanism": {
+    "name": "Your proprietary system/framework",
+    "tagline": "One-line description",
+    "oneParagraphDefinition": "Detailed explanation",
+    "keyPromises": [
+      "Promise 1",
+      "Promise 2",
+      "Promise 3"
+    ],
+    "visualIdentity": {
+      "primaryMetaphor": "Core metaphor",
+      "secondaryMetaphor": "Supporting metaphor",
+      "colorTheme": "Brand color direction"
+    }
+  },
+  "audienceProfile": {
+    "emotionalPains": ["Pain 1", "Pain 2"],
+    "hiddenDesires": ["Desire 1", "Desire 2"],
+    "limitingBeliefs": ["Belief 1", "Belief 2"],
+    "empoweringBeliefs": ["Belief 1", "Belief 2"]
+  }
+}
+\`\`\`
+
+### PART 2: STRATEGIC REPORT (MARKDOWN)
+
+After the JSON, provide a narrative report with this EXACT structure:
+
+## 📈 Strategic Insights Dashboard
 
 ### 1. Customer Frustrations
-[3-7 bullets, each with core frustration + 1-2 sentence elaboration]
+[Based on audiencePains and coreMarketProblem - 5-7 bullets with elaboration]
 
-### 2. Hidden Aspirations
-[3-7 bullets on secret ambitions/desired identity]
+### 2. Hidden Aspirations  
+[Based on audienceDesired and futureVision - 5-7 bullets on secret ambitions]
 
 ### 3. Mindset Transformation
-[Short intro + 3-5 bullet lines: FROM/TO beliefs]
+[FROM: old belief → TO: new belief - 3-5 transformations with why it matters]
 
 ### 4. Customer Job Priority (JTBD Summary)
-[Brief intro + numbered list of 5 JTBDs in When/Help/So format]
+[Brief intro + 5 JTBDs in When/Help/So format from quarterlyObjective]
 
 ### 5. Competitive Advantage Map
-[Comparison vs competitors: gaps and opportunities]
+[Based on keyCompetitors and competitiveAdvantages - where you win, language to own]
 
 ### 6. Content Format Strategy
-[Bullet list of formats with JTBD connections]
+[Based on contentFormats and primaryChannels - connect formats to JTBDs and pains]
 
 ### 7. Brand Positioning & Value Proposition Mix
-[1 paragraph positioning + 3-5 micro-value-props]
+[Based on brandArchetype, uvp, brandIdeology - positioning + 3-5 micro-props]
 
 ### 8. Strategic Content Pillars
-[1-2 sentence intro + subsections for each pillar]
+[Based on foundationalPillars or created from strategy - subsections for each pillar]
 
 ### 9. Priority Focus Matrix (Next 90 Days)
-[3-5 initiatives: what → why → which pain it solves]
+[Based on quarterlyObjective - 3-5 initiatives: what → why → which pain it solves]
 
 ### 10. Market Opportunity Analysis
-[Overview: competitor gaps, differentiation, timing]
+[Based on coreStrategicQuestion and keyMarketData - competitor gaps, differentiation, timing]
 
 ### ⚡ Key Takeaways
-[3-5 actionable sentences]
+[3-5 actionable sentences: what to focus on, how audience will feel, what to do next]
 
 ---
 
-**WRITING GUIDELINES:**
-- Use clear, direct language - explain complex ideas simply
-- Write for smart people who don't have time for jargon
-- Short paragraphs (2-3 sentences max) and bullet points
-- Be specific and actionable, not vague or theoretical
+## ✍️ WRITING GUIDELINES
+
+- **Clear, Direct Language**: Explain complex ideas simply
+- **Smart & Busy Audience**: No jargon, no fluff
+- **Short Paragraphs**: 2-3 sentences max, bullet points
+- **Specific & Actionable**: Every insight answers "so what?" or "what do I do?"
+- **Grounded in Context**: Reference specific fields (brandName, audiencePains, etc.)
+
+**EXAMPLES**:
+❌ BAD: "Leverage synergistic paradigms"
+✅ GOOD: "Focus on solving the exact problems ${getField(data, 'targetAudience')} mentions: ${getField(data, 'audiencePains').substring(0, 100)}..."
 
 **NOW GENERATE YOUR OUTPUT:**
-Start with the JSON block, then the markdown report.`;
+Start with the JSON block (\`\`\`json...\`\`\`), then the markdown report. Be clear, useful, and grounded in the provided context.`;
 
   return prompt;
 }
