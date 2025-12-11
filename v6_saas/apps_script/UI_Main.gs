@@ -356,6 +356,14 @@ function runWorkflowStage(arg1, arg2, arg3) {
     // ============================================================================
     // VALIDATION
     // ============================================================================
+    
+    // CRITICAL: Ensure stageNum is an integer (not string "1")
+    stageNum = parseInt(stageNum, 10);
+    
+    if (isNaN(stageNum) || stageNum < 1 || stageNum > 5) {
+      throw new Error('Invalid stage number: ' + stageNum + ' (must be 1-5)');
+    }
+    
     if (!projectId || projectId.trim() === '') {
       throw new Error('❌ No project selected. Please select a project from the dropdown.');
     }
