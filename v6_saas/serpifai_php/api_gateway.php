@@ -324,7 +324,7 @@ function executeAction($action, $payload, $user, $license) {
                 'license_key' => $user['license_key'],
                 'credits' => $user['credits'] ?? 0,
                 'credits_total' => $user['total_credits_purchased'] ?? 0,
-                'credits_used' => $user['total_credits_used'] ?? 0,
+                'credits_used' => isset($user['total_credits_used']) ? $user['total_credits_used'] : 0,
                 'credits_remaining' => $user['credits'] ?? 0,
                 'status' => $user['status'],
                 'plan_type' => 'standard',
@@ -396,20 +396,41 @@ function updateUserCredits($license, $newCredits, $creditCost = 0) {
     try {
         $db = getDB();
         
-        // Update credits and total_credits_used
-        $stmt = $db->prepare("
-            UPDATE users 
-            SET credits = ?,
-                total_credits_used = total_credits_used + ?,
-                updated_at = NOW() 
-            WHERE license_key = ?
-        ");
-        
-        if (!$stmt) {
-            throw new Exception("Prepare failed: " . $db->errorInfo()[2]);
+        // Try to update with total_credits_used first
+        try {
+            $stmt = $db->prepare("
+                UPDATE users 
+                SET credits = ?,
+                    total_credits_used = total_credits_used + ?,
+                    updated_at = NOW() 
+                WHERE license_key = ?
+            ");
+            
+            if (!$stmt) {
+                throw new Exception("Prepare failed: " . $db->errorInfo()[2]);
+            }
+            
+            $stmt->execute([$newCredits, $creditCost, $license]);
+        } catch (Exception $innerException) {
+            // If total_credits_used column doesn't exist, update without it
+            if (strpos($innerException->getMessage(), 'total_credits_used') !== false) {
+                error_log("total_credits_used column doesn't exist, updating without it");
+                $stmt = $db->prepare("
+                    UPDATE users 
+                    SET credits = ?,
+                        updated_at = NOW() 
+                    WHERE license_key = ?
+                ");
+                
+                if (!$stmt) {
+                    throw new Exception("Prepare failed: " . $db->errorInfo()[2]);
+                }
+                
+                $stmt->execute([$newCredits, $license]);
+            } else {
+                throw $innerException;
+            }
         }
-        
-        $stmt->execute([$newCredits, $creditCost, $license]);
     } catch (Exception $e) {
         error_log("updateUserCredits error: " . $e->getMessage());
         throw $e;
