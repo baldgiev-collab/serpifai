@@ -278,7 +278,8 @@ function renderTrafficDistributionChart(competitors) {
     }
     
     // Priority 2: Calculate from PageRank if available using SEMrush v4.0 formula
-    const pageRank = pm.pageRank || comp.apiData?.openPageRank?.page_rank_decimal || 0;
+    // v28.4: Handle both pageRank and page_rank_decimal naming conventions
+    const pageRank = pm.pageRank || comp.apiData?.openPageRank?.pageRank || comp.apiData?.openPageRank?.page_rank_decimal || 0;
     if (pageRank > 0) {
       // SEMrush-calibrated formula v4.0: traffic = e^(0.179 * auth + 2.68)
       const authorityScore = pageRank * 10;
@@ -365,8 +366,9 @@ function renderAuthorityKeywordsScatter(competitors) {
     const apiData = comp.apiData || {};
     
     // Authority: Use PageRank * 10 to get 0-100 scale (PR 6.4 = 64 authority)
+    // v28.4: Handle both pageRank and page_rank_decimal naming conventions
     let authority = pm.pageRank ? pm.pageRank * 10 : 
-                   (apiData.openPageRank?.page_rank_decimal || 0) * 10;
+                   ((apiData.openPageRank?.pageRank ?? apiData.openPageRank?.page_rank_decimal ?? 0) * 10);
     if (!authority || authority === 0) {
       authority = pm.authorityMomentum || 50;
     }
@@ -471,7 +473,8 @@ function renderBacklinkProfileChart(competitors) {
     }
     
     // Priority 2: Calculate from PageRank
-    const pageRank = pm.pageRank || comp.apiData?.openPageRank?.page_rank_decimal || 0;
+    // v28.4: Handle both pageRank and page_rank_decimal naming conventions
+    const pageRank = pm.pageRank || comp.apiData?.openPageRank?.pageRank || comp.apiData?.openPageRank?.page_rank_decimal || 0;
     if (pageRank > 0) {
       // SEMrush-calibrated formula: 500 * 10^(PR-2)
       return Math.round(500 * Math.pow(10, pageRank - 2));

@@ -572,18 +572,19 @@
         console.log(`      apiData keys: ${Object.keys(compWithDomain.apiData).join(', ')}`);
 
         // Authority Score from OpenPageRank (handle 0 as valid value)
-        // FIXED: Use page_rank_decimal (not pageRank) and rank
+        // v28.4: API returns pageRank/domainRank (not page_rank_decimal/rank)
         if (compWithDomain.apiData.openPageRank) {
           const opr = compWithDomain.apiData.openPageRank;
           console.log(`      openPageRank structure: ${JSON.stringify(opr)}`);
-          const pageRankDecimal = opr.page_rank_decimal;
-          const domainRank = opr.rank;
-          // Use page_rank_decimal as authority score (0-10 scale, convert to 0-100 for display)
+          // v28.4: Handle both naming conventions - try new names first, then fallback to old
+          const pageRankDecimal = opr.pageRank ?? opr.page_rank_decimal;
+          const domainRank = opr.domainRank ?? opr.rank;
+          // Use pageRank as authority score (0-10 scale, convert to 0-100 for display)
           authorityScore = (pageRankDecimal !== undefined && pageRankDecimal !== null && pageRankDecimal !== 0) ?
             Math.round(parseFloat(pageRankDecimal) * 10) :
             (domainRank !== undefined && domainRank !== null) ? parseInt(domainRank) :
               'N/A';
-          console.log(`      Authority: ${authorityScore} (from page_rank_decimal=${pageRankDecimal}, rank=${domainRank})`);
+          console.log(`      Authority: ${authorityScore} (from pageRank=${pageRankDecimal}, domainRank=${domainRank})`);
         }
 
         // Traffic & Keywords from Serper (handle 0 as valid value)

@@ -271,7 +271,8 @@
     }
     
     // Check OpenPageRank data (8 points)
-    if (apiData?.openPageRank?.page_rank_decimal > 0) {
+    // v28.4: Handle both pageRank and page_rank_decimal naming conventions
+    if ((apiData?.openPageRank?.pageRank ?? apiData?.openPageRank?.page_rank_decimal ?? 0) > 0) {
       completenessScore += 8;
       sources.push({ name: 'OpenPageRank', status: 'available', icon: '✅' });
     } else {
@@ -373,7 +374,8 @@
     if (!apiData?.serper?.organic?.length) {
       validation.recommendations.push('Enable Serper API for accurate SERP data');
     }
-    if (!apiData?.openPageRank?.page_rank_decimal) {
+    // v28.4: Handle both pageRank and page_rank_decimal naming conventions
+    if (!(apiData?.openPageRank?.pageRank ?? apiData?.openPageRank?.page_rank_decimal)) {
       validation.recommendations.push('Add OpenPageRank for authority signals');
     }
     if (validation.variance.differencePercent > 50) {

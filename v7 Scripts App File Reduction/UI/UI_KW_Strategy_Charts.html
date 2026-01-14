@@ -35,7 +35,8 @@ function renderKeywordStrategyCharts(competitors, kwData) {
       paaCount: (serper.peopleAlsoAsk || []).length,
       relatedCount: (serper.relatedSearches || []).length,
       difficulty: 50,
-      domainAuthority: opr.page_rank_decimal || pm.domainAuthority || 0
+      // v28.5: API returns pageRank (camelCase), fallback to page_rank_decimal
+      domainAuthority: opr.pageRank ?? opr.page_rank_decimal ?? pm.domainAuthority ?? 0
     };
   });
 

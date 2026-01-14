@@ -15,7 +15,11 @@
 window.generateExecutiveInsightConfig = function(category, competitors, gemini) {
   // Extract key metrics from competitors
   const compCount = competitors?.length || 0;
-  const avgAuthority = competitors?.reduce((sum, c) => sum + (c.stages?.openPageRank?.data?.page_rank_decimal || 0), 0) / (compCount || 1);
+  // v28.5: API returns pageRank (camelCase), fallback to page_rank_decimal
+  const avgAuthority = competitors?.reduce((sum, c) => {
+    const opr = c.stages?.openPageRank?.data || {};
+    return sum + (opr.pageRank ?? opr.page_rank_decimal ?? 0);
+  }, 0) / (compCount || 1);
   const avgPerformance = competitors?.reduce((sum, c) => sum + (c.stages?.pageSpeed?.data?.scores?.performance || 0), 0) / (compCount || 1);
   
   // Find leader

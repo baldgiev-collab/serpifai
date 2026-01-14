@@ -91,13 +91,14 @@ window.extractAllEvidence = function(competitors) {
       },
       
       // === AUTHORITY EVIDENCE ===
+      // v28.5: API returns pageRank/domainRank (camelCase), fallback to old names
       authority: {
-        pageRank: opr.page_rank_decimal || 0,
-        pageRankInteger: opr.page_rank_integer || 0,
-        globalRank: parseInt(opr.rank) || 0,
-        domainAuthority: Math.round((opr.page_rank_decimal || 0) * 10),
-        referringDomains: Math.round((opr.page_rank_decimal || 0) * 50),
-        backlinks: Math.round((opr.page_rank_decimal || 0) * 5000),
+        pageRank: opr.pageRank ?? opr.page_rank_decimal ?? 0,
+        pageRankInteger: opr.pageRankInteger ?? opr.page_rank_integer ?? 0,
+        globalRank: parseInt(opr.domainRank ?? opr.rank) || 0,
+        domainAuthority: Math.round((opr.pageRank ?? opr.page_rank_decimal ?? 0) * 10),
+        referringDomains: Math.round((opr.pageRank ?? opr.page_rank_decimal ?? 0) * 50),
+        backlinks: Math.round((opr.pageRank ?? opr.page_rank_decimal ?? 0) * 5000),
         source: 'OpenPageRank API'
       },
       
@@ -165,11 +166,12 @@ window.extractAllEvidence = function(competitors) {
       },
       
       // === BACKLINKS & REFERRING DOMAINS EVIDENCE (V8.5) ===
+      // v28.5: API returns pageRank/domainRank (camelCase), fallback to old names
       backlinksEvidence: {
-        pageRankScore: opr.page_rank_decimal || 0,
-        estimatedBacklinks: Math.round((opr.page_rank_decimal || 0) * 5000),
-        estimatedReferringDomains: Math.round((opr.page_rank_decimal || 0) * 50),
-        globalRank: opr.rank || 'Unknown',
+        pageRankScore: opr.pageRank ?? opr.page_rank_decimal ?? 0,
+        estimatedBacklinks: Math.round((opr.pageRank ?? opr.page_rank_decimal ?? 0) * 5000),
+        estimatedReferringDomains: Math.round((opr.pageRank ?? opr.page_rank_decimal ?? 0) * 50),
+        globalRank: opr.domainRank ?? opr.rank ?? 'Unknown',
         calculationMethod: 'PageRank-based estimation (PageRank × multiplier)',
         source: 'OpenPageRank API',
         topBacklinks: (comp.processedMetrics?.topBacklinks || synth.authority?.topBacklinks || []).slice(0, 20),
@@ -257,7 +259,8 @@ function extractLinkList(links, domain, type) {
  */
 function calculateEEATEvidence(comp, oracle, website, opr) {
   const fullText = JSON.stringify(comp.synthesized || {}).toLowerCase();
-  const pageRank = opr.page_rank_decimal || 0;
+  // v28.5: API returns pageRank (camelCase), fallback to page_rank_decimal
+  const pageRank = opr.pageRank ?? opr.page_rank_decimal ?? 0;
   const schemaTypes = oracle.schemaTypes || website.schemaTypes || [];
   
   const experienceSignals = [];

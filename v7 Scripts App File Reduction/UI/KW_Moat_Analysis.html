@@ -118,8 +118,9 @@
     let weightedX = 0, weightedY = 0;
 
     competitors.forEach((comp, idx) => {
+      // v28.4: Handle both pageRank and page_rank_decimal naming conventions
       const authority = comp.processedMetrics?.domainAuthority ||
-        comp.apiData?.openPageRank?.page_rank_decimal * 10 || 50;
+        (comp.apiData?.openPageRank?.pageRank ?? comp.apiData?.openPageRank?.page_rank_decimal ?? 0) * 10 || 50;
       const estKeywords = comp.processedMetrics?.geminiEstimates?.organicKeywords ||
         comp.processedMetrics?.estimatedKeywords || 1000;
 

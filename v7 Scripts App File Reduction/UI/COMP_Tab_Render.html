@@ -369,7 +369,7 @@
         if (typeof renderDistributionCharts === 'function') {
           const distData = competitors.map(c => ({
             domain: c.domain,
-            pageRank: c.apiData?.openPageRank?.page_rank_decimal || c.processedMetrics?.domainAuthority || 0,
+            pageRank: c.apiData?.openPageRank?.pageRank ?? c.apiData?.openPageRank?.page_rank_decimal ?? c.processedMetrics?.domainAuthority ?? 0,
             domainAuthority: c.processedMetrics?.domainAuthority || 50,
             serpResults: (c.apiData?.serper?.organic || []).length,
             serpVisibility: c.processedMetrics?.serpVisibility || 50,
@@ -411,7 +411,7 @@
         if (typeof renderAuthorityCharts === 'function') {
           const authorityData = competitors.map(c => ({
             domain: c.domain,
-            pageRank: c.apiData?.openPageRank?.page_rank_decimal || 0,
+            pageRank: c.apiData?.openPageRank?.pageRank ?? c.apiData?.openPageRank?.page_rank_decimal ?? 0,
             topicalRelevance: c.processedMetrics?.topicalRelevance || 50,
             internalLinks: c.processedMetrics?.internalLinks || 10,
             externalLinks: c.processedMetrics?.externalLinks || 5
@@ -428,7 +428,7 @@
             seo: c.apiData?.pageSpeed?.scores?.seo || c.processedMetrics?.seoScore || 50,
             accessibility: c.apiData?.pageSpeed?.scores?.accessibility || 50,
             bestPractices: c.apiData?.pageSpeed?.scores?.bestPractices || 50,
-            pageRank: c.apiData?.openPageRank?.page_rank_decimal || 0
+            pageRank: c.apiData?.openPageRank?.pageRank ?? c.apiData?.openPageRank?.page_rank_decimal ?? 0
           }));
           renderPredictiveCharts(perfData);
         }

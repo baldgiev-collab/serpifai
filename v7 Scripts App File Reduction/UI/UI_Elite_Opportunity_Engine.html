@@ -52,7 +52,9 @@ Window Exports:
     }
     
     // 2. OPENPAGERANK SCORE (30% weight) - Algorithmic authority
-    const pageRank = pm.pageRank || apiData?.openPageRank?.page_rank_decimal || 0;
+    // v28.5: API returns pageRank (camelCase), fallback to page_rank_decimal
+    const oprData = apiData?.openPageRank || {};
+    const pageRank = pm.pageRank || oprData.pageRank || oprData.page_rank_decimal || 0;
     if (pageRank > 0) {
       // PageRank is 0-10, convert to 0-100 with logarithmic scaling for higher accuracy
       // Top sites like semrush.com have PR ~6.2-6.5, should map to 80-90 authority

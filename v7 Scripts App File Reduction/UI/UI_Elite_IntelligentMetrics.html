@@ -65,10 +65,22 @@ window.intelligentMetrics = {
     console.log('🧠 Calculating Authority Score for:', comp.domain);
     
     // TIER 1: Use OpenPageRank if available (most accurate)
-    if (comp.apiData && comp.apiData.openPageRank && comp.apiData.openPageRank.rank) {
-      const oprScore = Math.round(comp.apiData.openPageRank.rank);
-      console.log('   ✅ Using OpenPageRank API:', oprScore);
+    // v28.5: API returns pageRank/domainRank (camelCase), fallback to old names
+    const opr = comp.apiData?.openPageRank || {};
+    const oprRank = opr.domainRank ?? opr.rank;
+    const oprPageRank = opr.pageRank ?? opr.page_rank_decimal;
+    
+    if (oprRank) {
+      const oprScore = Math.round(oprRank);
+      console.log('   ✅ Using OpenPageRank API (domainRank):', oprScore);
       return oprScore;
+    }
+    
+    if (oprPageRank) {
+      // PageRank is 0-10, convert to 0-100 score
+      const prScore = Math.round(oprPageRank * 10);
+      console.log('   ✅ Using OpenPageRank API (pageRank):', prScore);
+      return prScore;
     }
     
     // TIER 2: Domain-specific known values (high-confidence)
