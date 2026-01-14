@@ -1,0 +1,454 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ELITE FORENSICS MODULE
+ * Deep dive forensics, tooltips, score breakdowns, Phase 3/4 cards
+ * Requires: ELITE_Config.html, ELITE_Helpers.html
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Render Deep Dive Forensics with expandable sections
+ */
+function renderDeepDiveForensics(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const forensicTabs = [
+    { id: 'content', label: '📝 Content', icon: '📝' },
+    { id: 'technical', label: '⚙️ Technical', icon: '⚙️' },
+    { id: 'authority', label: '🏛️ Authority', icon: '🏛️' },
+    { id: 'keywords', label: '🔑 Keywords', icon: '🔑' },
+    { id: 'performance', label: '📈 Performance', icon: '📈' }
+  ];
+
+  let html = `
+  <div class="elite-deep-dive-forensics" style="margin-top: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h3 style="margin: 0; color: #0f172a; font-size: 22px; font-weight: 800;">🔬 Deep Dive Forensics</h3>
+        <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Competitor-by-competitor analysis with expandable proof data</p>
+      </div>
+      <span style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: 700;">FORENSIC DETAIL</span>
+    </div>
+    
+    <!-- Forensic Tab Navigation -->
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;">
+      ${forensicTabs.map((tab, idx) => `
+        <button onclick="switchForensicTab('${tab.id}')" 
+                id="forensic-tab-${tab.id}"
+                class="forensic-tab-btn ${idx === 0 ? 'active' : ''}"
+                style="padding: 10px 20px; background: ${idx === 0 ? 'linear-gradient(135deg, #1e40af, #3b82f6)' : '#f1f5f9'}; 
+                       color: ${idx === 0 ? 'white' : '#475569'}; border: none; border-radius: 12px; 
+                       font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.3s;">
+          ${tab.label}
+        </button>
+      `).join('')}
+    </div>
+    
+    <!-- Forensic Content Panels -->
+    <div id="forensic-content-container">
+      ${forensicTabs.map((tab, idx) => `
+        <div id="forensic-panel-${tab.id}" class="forensic-panel" style="display: ${idx === 0 ? 'block' : 'none'};">
+          ${renderForensicSection(data[tab.id] || data, tab.id)}
+        </div>
+      `).join('')}
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * Switch between forensic tabs
+ */
+function switchForensicTab(tabId) {
+  document.querySelectorAll('.forensic-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.forensic-tab-btn').forEach(b => {
+    b.style.background = '#f1f5f9';
+    b.style.color = '#475569';
+    b.classList.remove('active');
+  });
+  
+  const panel = document.getElementById('forensic-panel-' + tabId);
+  const btn = document.getElementById('forensic-tab-' + tabId);
+  
+  if (panel) panel.style.display = 'block';
+  if (btn) {
+    btn.style.background = 'linear-gradient(135deg, #1e40af, #3b82f6)';
+    btn.style.color = 'white';
+    btn.classList.add('active');
+  }
+}
+window.switchForensicTab = switchForensicTab;
+
+/**
+ * Render a forensic section with competitor cards
+ */
+function renderForensicSection(sectionData, sectionId) {
+  if (!sectionData) return '<p style="color: #64748b; text-align: center; padding: 40px;">No forensic data available</p>';
+  
+  const competitors = sectionData.competitors || sectionData.rankings || sectionData || [];
+  if (!Array.isArray(competitors) || competitors.length === 0) {
+    return '<p style="color: #64748b; text-align: center; padding: 40px;">No competitor data for this section</p>';
+  }
+
+  return `
+  <div class="forensic-section-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px;">
+    ${competitors.slice(0, 6).map((comp, idx) => `
+      <div class="forensic-competitor-card" style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <!-- Card Header -->
+        <div style="padding: 16px 20px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="width: 32px; height: 32px; background: linear-gradient(135deg, #1e40af, #3b82f6); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 14px;">${idx + 1}</span>
+            <div>
+              <div style="font-weight: 700; color: #0f172a; font-size: 14px;">${comp.domain || 'Unknown'}</div>
+              <div style="font-size: 11px; color: #64748b;">${sectionId} analysis</div>
+            </div>
+          </div>
+          <span style="padding: 6px 12px; background: ${getScoreColor(comp.score || comp.overallScore || 50)}15; color: ${getScoreColor(comp.score || comp.overallScore || 50)}; border-radius: 20px; font-size: 12px; font-weight: 700;">
+            ${comp.score || comp.overallScore || '—'}
+          </span>
+        </div>
+        
+        <!-- Card Body - Metrics Grid -->
+        <div style="padding: 16px 20px;">
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+            ${Object.entries(comp).slice(0, 8).filter(([key]) => 
+              !['domain', 'score', 'overallScore', 'rank', 'proof', 'dataSource'].includes(key)
+            ).map(([key, value]) => `
+              <div style="padding: 10px; background: #f8fafc; border-radius: 8px;">
+                <div style="font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">${formatMetricLabel(key)}</div>
+                <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${renderForensicColumnValue(value, key)}</div>
+              </div>
+            `).join('')}
+          </div>
+          
+          ${comp.proof ? `
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+              ${renderDataSourceBadge(comp.proof.dataSource || comp.dataSource)}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `).join('')}
+  </div>
+  `;
+}
+
+/**
+ * Format forensic column values for display
+ */
+function renderForensicColumnValue(value, key) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? '✓' : '✗';
+  if (typeof value === 'number') {
+    if (key.toLowerCase().includes('score') || key.toLowerCase().includes('percent')) {
+      return `<span style="color: ${getScoreColor(value)};">${value}%</span>`;
+    }
+    return value.toLocaleString();
+  }
+  if (Array.isArray(value)) return value.slice(0, 3).join(', ') + (value.length > 3 ? '...' : '');
+  if (typeof value === 'object') return JSON.stringify(value).substring(0, 50) + '...';
+  return String(value).substring(0, 60);
+}
+
+/**
+ * Render Elite Tooltip with hover content
+ */
+function renderEliteTooltip(triggerContent, tooltipContent, options = {}) {
+  const { position = 'top', width = '280px' } = options;
+  const tooltipId = 'tooltip-' + Math.random().toString(36).substr(2, 9);
+  
+  return `
+  <span class="elite-tooltip-trigger" style="position: relative; cursor: help;" 
+        onmouseenter="document.getElementById('${tooltipId}').style.display='block'"
+        onmouseleave="document.getElementById('${tooltipId}').style.display='none'">
+    ${triggerContent}
+    <div id="${tooltipId}" class="elite-tooltip-content" style="display: none; position: absolute; ${position === 'top' ? 'bottom: 100%; left: 50%; transform: translateX(-50%);' : 'top: 100%; left: 50%; transform: translateX(-50%);'} width: ${width}; background: #0f172a; color: white; padding: 12px 16px; border-radius: 12px; font-size: 12px; line-height: 1.5; z-index: 1000; box-shadow: 0 10px 40px rgba(0,0,0,0.3); margin-${position === 'top' ? 'bottom' : 'top'}: 8px;">
+      <div style="position: absolute; ${position === 'top' ? 'bottom: -6px;' : 'top: -6px;'} left: 50%; transform: translateX(-50%) ${position === 'top' ? '' : 'rotate(180deg)'}; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid #0f172a;"></div>
+      ${tooltipContent}
+    </div>
+  </span>
+  `;
+}
+
+/**
+ * Render Score Breakdown with expandable details
+ */
+function renderScoreBreakdown(score, breakdown, metricName) {
+  if (!breakdown || typeof breakdown !== 'object') return '';
+  
+  const breakdownId = 'breakdown-' + Math.random().toString(36).substr(2, 9);
+  const entries = Object.entries(breakdown).filter(([k]) => !['total', 'score', 'raw'].includes(k));
+  
+  return `
+  <div class="elite-score-breakdown" style="margin-top: 8px;">
+    <button onclick="toggleBreakdown('${breakdownId}')" style="display: flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font-size: 11px; color: #64748b; padding: 4px 0;">
+      <span id="${breakdownId}-icon" style="transition: transform 0.2s;">▶</span>
+      <span>Score Breakdown</span>
+    </button>
+    <div id="${breakdownId}" style="display: none; margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+      ${entries.map(([key, val]) => {
+        const numVal = typeof val === 'number' ? val : (val?.value || val?.score || 0);
+        const isPositive = numVal >= 0;
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #e2e8f0;">
+            <span style="font-size: 11px; color: #475569;">${formatBreakdownLabel(key)}</span>
+            <span style="font-size: 12px; font-weight: 600; color: ${isPositive ? '#10b981' : '#ef4444'};">
+              ${isPositive ? '+' : ''}${numVal}
+            </span>
+          </div>
+        `;
+      }).join('')}
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0 0; margin-top: 8px; border-top: 2px solid #cbd5e1;">
+        <span style="font-size: 12px; font-weight: 700; color: #0f172a;">Total</span>
+        <span style="font-size: 14px; font-weight: 800; color: ${getScoreColor(score)};">${score}</span>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+function toggleBreakdown(id) {
+  const el = document.getElementById(id);
+  const icon = document.getElementById(id + '-icon');
+  if (el) {
+    const isHidden = el.style.display === 'none';
+    el.style.display = isHidden ? 'block' : 'none';
+    if (icon) icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+  }
+}
+window.toggleBreakdown = toggleBreakdown;
+
+/**
+ * Render Enhanced Score Breakdown with raw data proof
+ */
+function renderEnhancedScoreBreakdown(score, breakdown, rawData, metricName) {
+  if (!breakdown) return '';
+  
+  const breakdownId = 'enh-breakdown-' + Math.random().toString(36).substr(2, 9);
+  
+  return `
+  <div class="elite-enhanced-breakdown" style="margin-top: 12px;">
+    <button onclick="toggleBreakdown('${breakdownId}')" style="display: flex; align-items: center; gap: 8px; width: 100%; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #7dd3fc; border-radius: 8px; cursor: pointer; font-size: 11px; color: #0369a1; padding: 10px 14px; font-weight: 600;">
+      <span id="${breakdownId}-icon" style="transition: transform 0.2s;">▶</span>
+      <span>🔍 View Proof Data & Calculation</span>
+    </button>
+    <div id="${breakdownId}" style="display: none; margin-top: 12px; background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+      <!-- Score Components -->
+      <div style="padding: 16px; border-bottom: 1px solid #e2e8f0;">
+        <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">📐 Score Components</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px;">
+          ${Object.entries(breakdown).filter(([k]) => !['total'].includes(k)).map(([key, val]) => {
+            const numVal = typeof val === 'number' ? val : (val?.value || 0);
+            return `
+              <div style="padding: 10px; background: #f8fafc; border-radius: 8px; text-align: center;">
+                <div style="font-size: 16px; font-weight: 700; color: ${numVal >= 0 ? '#10b981' : '#ef4444'};">${numVal >= 0 ? '+' : ''}${numVal}</div>
+                <div style="font-size: 9px; color: #64748b; margin-top: 2px;">${formatBreakdownLabel(key)}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      
+      ${rawData ? `
+      <!-- Raw Data Proof -->
+      <div style="padding: 16px; background: #fefce8;">
+        <div style="font-size: 10px; font-weight: 700; color: #854d0e; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">📊 Raw Data Proof</div>
+        <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 11px; color: #1e293b; background: white; padding: 12px; border-radius: 8px; border: 1px solid #fde68a; max-height: 150px; overflow-y: auto;">
+          ${typeof rawData === 'object' ? Object.entries(rawData).map(([k, v]) => 
+            `<div style="margin-bottom: 4px;"><span style="color: #64748b;">${k}:</span> <span style="color: #0f172a; font-weight: 600;">${typeof v === 'object' ? JSON.stringify(v) : v}</span></div>`
+          ).join('') : rawData}
+        </div>
+      </div>
+      ` : ''}
+      
+      <!-- Total -->
+      <div style="padding: 12px 16px; background: linear-gradient(135deg, #0f172a, #1e3a5f); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8);">Final Score</span>
+        <span style="font-size: 24px; font-weight: 900; color: white;">${score}</span>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+/**
+ * Render Elite Phase 3 Section - Dynamic card types
+ */
+function renderElitePhase3Section(data, sectionType) {
+  if (!data) return '';
+  
+  const sectionConfigs = {
+    channelAuthority: { title: '📡 Channel Authority', icon: '📡', renderer: renderChannelAuthorityCard },
+    semanticGap: { title: '🎯 Semantic Gap Analysis', icon: '🎯', renderer: renderSemanticGapCard },
+    technicalDebt: { title: '⚙️ Technical Debt', icon: '⚙️', renderer: renderTechnicalDebtCard },
+    behavioralSegment: { title: '👥 Behavioral Segments', icon: '👥', renderer: renderBehavioralSegmentCard },
+    revenueLeakage: { title: '💰 Revenue Leakage', icon: '💰', renderer: renderRevenueLeakageCard },
+    ragExtraction: { title: '🤖 RAG/LLM Affinity', icon: '🤖', renderer: renderRAGExtractionCard }
+  };
+  
+  const config = sectionConfigs[sectionType] || { title: sectionType, icon: '📊', renderer: (d) => JSON.stringify(d) };
+  
+  return `
+  <div class="elite-phase3-section" style="margin: 24px 0; padding: 24px; background: white; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h4 style="margin: 0; font-size: 18px; font-weight: 800; color: #0f172a;">${config.title}</h4>
+      <span style="padding: 6px 14px; background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase;">Phase 3</span>
+    </div>
+    ${config.renderer(data)}
+  </div>
+  `;
+}
+
+function renderChannelAuthorityCard(data) {
+  const tiers = data.tiers || data.channels || [];
+  return `
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+    ${(Array.isArray(tiers) ? tiers : Object.entries(tiers)).slice(0, 4).map((item) => {
+      const [channel, score] = Array.isArray(item) ? item : [item.name || item.channel, item.score || item.authority || 0];
+      return `
+        <div style="padding: 16px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border-radius: 12px; border: 1px solid #7dd3fc;">
+          <div style="font-size: 12px; font-weight: 700; color: #0369a1; margin-bottom: 8px;">${channel}</div>
+          <div style="font-size: 28px; font-weight: 900; color: #0c4a6e;">${score}%</div>
+          <div style="height: 6px; background: #bae6fd; border-radius: 3px; margin-top: 8px; overflow: hidden;">
+            <div style="height: 100%; width: ${score}%; background: linear-gradient(90deg, #0ea5e9, #0284c7); border-radius: 3px;"></div>
+          </div>
+        </div>
+      `;
+    }).join('')}
+  </div>
+  `;
+}
+
+function renderSemanticGapCard(data) {
+  const gaps = data.gaps || data.semanticGaps || [];
+  return `
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    ${(Array.isArray(gaps) ? gaps : []).slice(0, 5).map(gap => `
+      <div style="padding: 14px 18px; background: #fef2f2; border-radius: 10px; border-left: 4px solid #ef4444; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 13px; font-weight: 600; color: #991b1b;">${gap.topic || gap.keyword || gap}</div>
+          <div style="font-size: 11px; color: #dc2626; margin-top: 2px;">${gap.description || 'Content gap identified'}</div>
+        </div>
+        <span style="padding: 6px 12px; background: #fecaca; color: #991b1b; border-radius: 20px; font-size: 11px; font-weight: 700;">Gap: ${gap.score || gap.severity || 'High'}</span>
+      </div>
+    `).join('')}
+  </div>
+  `;
+}
+
+function renderTechnicalDebtCard(data) {
+  const items = data.debtItems || data.issues || [];
+  return `
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+    ${(Array.isArray(items) ? items : []).slice(0, 4).map(item => {
+      const severity = item.severity || 'medium';
+      const colors = { critical: '#dc2626', high: '#ea580c', medium: '#d97706', low: '#65a30d' };
+      return `
+        <div style="padding: 16px; background: white; border-radius: 12px; border: 1px solid #e2e8f0; border-left: 4px solid ${colors[severity] || '#d97706'};">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+            <span style="font-size: 13px; font-weight: 700; color: #1e293b;">${item.name || item.issue || 'Technical Issue'}</span>
+            <span style="padding: 4px 10px; background: ${colors[severity]}15; color: ${colors[severity]}; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;">${severity}</span>
+          </div>
+          <div style="font-size: 11px; color: #64748b; line-height: 1.5;">${item.description || item.impact || 'Impacts site performance'}</div>
+        </div>
+      `;
+    }).join('')}
+  </div>
+  `;
+}
+
+function renderBehavioralSegmentCard(data) {
+  const segments = data.segments || [];
+  return `
+  <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+    ${(Array.isArray(segments) ? segments : []).slice(0, 6).map(seg => `
+      <div style="flex: 1; min-width: 150px; padding: 16px; background: linear-gradient(135deg, #faf5ff, #ede9fe); border-radius: 12px; border: 1px solid #c4b5fd; text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">${seg.icon || '👤'}</div>
+        <div style="font-size: 12px; font-weight: 700; color: #5b21b6;">${seg.name || seg.segment || 'Segment'}</div>
+        <div style="font-size: 20px; font-weight: 900; color: #7c3aed; margin-top: 4px;">${seg.percentage || seg.share || '0'}%</div>
+      </div>
+    `).join('')}
+  </div>
+  `;
+}
+
+function renderRevenueLeakageCard(data) {
+  const leakages = data.leakagePoints || data.opportunities || [];
+  return `
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    ${(Array.isArray(leakages) ? leakages : []).slice(0, 4).map(leak => `
+      <div style="padding: 16px 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; border: 1px solid #f59e0b; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: #92400e;">${leak.area || leak.name || 'Revenue Opportunity'}</div>
+          <div style="font-size: 11px; color: #b45309; margin-top: 2px;">${leak.description || 'Potential revenue recovery'}</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 18px; font-weight: 900; color: #78350f;">${leak.amount || leak.value || '$0'}</div>
+          <div style="font-size: 10px; color: #92400e;">${leak.period || 'monthly'}</div>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+  `;
+}
+
+function renderRAGExtractionCard(data) {
+  const metrics = data.metrics || data.affinity || {};
+  return `
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+    <div style="padding: 20px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 12px; text-align: center;">
+      <div style="font-size: 10px; font-weight: 700; color: #047857; text-transform: uppercase; margin-bottom: 8px;">LLM Affinity Score</div>
+      <div style="font-size: 36px; font-weight: 900; color: #065f46;">${metrics.affinityScore || data.affinityScore || 0}</div>
+    </div>
+    <div style="padding: 20px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border-radius: 12px; text-align: center;">
+      <div style="font-size: 10px; font-weight: 700; color: #0369a1; text-transform: uppercase; margin-bottom: 8px;">Citation Probability</div>
+      <div style="font-size: 36px; font-weight: 900; color: #0c4a6e;">${metrics.citationProb || data.citationProbability || 0}%</div>
+    </div>
+    <div style="padding: 20px; background: linear-gradient(135deg, #faf5ff, #ede9fe); border-radius: 12px; text-align: center;">
+      <div style="font-size: 10px; font-weight: 700; color: #6d28d9; text-transform: uppercase; margin-bottom: 8px;">RAG Optimization</div>
+      <div style="font-size: 36px; font-weight: 900; color: #5b21b6;">${metrics.ragScore || data.ragOptimization || 0}%</div>
+    </div>
+  </div>
+  `;
+}
+
+/**
+ * Inject Elite Forensics into legacy UI
+ */
+function injectEliteForensicsToLegacyUI(containerId, forensicData) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  const forensicsDiv = document.createElement('div');
+  forensicsDiv.id = 'elite-forensics-container';
+  container.appendChild(forensicsDiv);
+  
+  renderDeepDiveForensics(forensicData, 'elite-forensics-container');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderDeepDiveForensics = renderDeepDiveForensics;
+window.switchForensicTab = switchForensicTab;
+window.renderForensicSection = renderForensicSection;
+window.renderForensicColumnValue = renderForensicColumnValue;
+window.renderEliteTooltip = renderEliteTooltip;
+window.renderScoreBreakdown = renderScoreBreakdown;
+window.toggleBreakdown = toggleBreakdown;
+window.renderEnhancedScoreBreakdown = renderEnhancedScoreBreakdown;
+window.renderElitePhase3Section = renderElitePhase3Section;
+window.renderChannelAuthorityCard = renderChannelAuthorityCard;
+window.renderSemanticGapCard = renderSemanticGapCard;
+window.renderTechnicalDebtCard = renderTechnicalDebtCard;
+window.renderBehavioralSegmentCard = renderBehavioralSegmentCard;
+window.renderRevenueLeakageCard = renderRevenueLeakageCard;
+window.renderRAGExtractionCard = renderRAGExtractionCard;
+window.injectEliteForensicsToLegacyUI = injectEliteForensicsToLegacyUI;
+
+console.log('✅ ELITE_Forensics.html loaded');
+</script>

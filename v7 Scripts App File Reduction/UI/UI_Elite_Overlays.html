@@ -1,0 +1,375 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Elite_Overlays.html - Elite 0.1% Strategic Overlays (JTBD, Loss Leader, etc) -->
+<!-- Builds JTBD, Loss Leader, Emotional Debt, Time-to-Value, and SEO Moat sections  -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Build Elite Overlays HTML (JTBD, Loss Leader, Emotional Debt, Time-to-Value, SEO Moat)
+   */
+  function buildEliteOverlaysHTML(brief) {
+    let html = '';
+
+    // 2a. JOBS-TO-BE-DONE (JTBD) OVERLAY
+    if (brief.jobsToBeDone) {
+      html += buildJTBDOverlayHTML(brief.jobsToBeDone);
+    }
+
+    // 2b. LOSS LEADER & PROFIT CENTER ANALYSIS
+    if (brief.lossLeaderAnalysis) {
+      html += buildLossLeaderHTML(brief.lossLeaderAnalysis);
+    }
+
+    // 2c. EMOTIONAL DEBT AUDIT
+    if (brief.emotionalDebtAudit) {
+      html += buildEmotionalDebtHTML(brief.emotionalDebtAudit);
+    }
+
+    // 2d. TIME-TO-VALUE COMPARISON
+    if (brief.timeToValueComparison) {
+      html += buildTimeToValueHTML(brief.timeToValueComparison);
+    }
+
+    // 2e. PROGRAMMATIC SEO MOAT
+    if (brief.programmaticSEOMoat) {
+      html += buildSEOMoatHTML(brief.programmaticSEOMoat);
+    }
+
+    return html;
+  }
+
+  /**
+   * Build JTBD Overlay section
+   */
+  function buildJTBDOverlayHTML(jtbd) {
+    let html = `
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(245,158,11,0.15); border-left: 4px solid #f59e0b;">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #92400e; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">🎯</span>
+                Jobs-to-be-Done (JTBD) Overlay
+              </h4>
+              <p style="margin: 0 0 20px; font-size: 14px; color: #a16207;">Competitors don't just compete on features—they compete to solve specific struggles.</p>
+          `;
+
+    if (jtbd.unmetJobs && jtbd.unmetJobs.length > 0) {
+      html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">`;
+
+      jtbd.unmetJobs.forEach(job => {
+        html += `
+                <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                  <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 10px;">🏢 ${job.competitor}</div>
+                  <div style="margin-bottom: 10px;">
+                    <div style="font-size: 11px; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Unmet Job</div>
+                    <p style="margin: 0; font-size: 14px; font-weight: 600; color: #1f2937; line-height: 1.5;">"${job.unmetJob}"</p>
+                  </div>
+                  <div style="margin-bottom: 10px;">
+                    <div style="font-size: 11px; color: #9ca3af; text-transform: uppercase; margin-bottom: 4px;">Frustration</div>
+                    <p style="margin: 0; font-size: 13px; color: #dc2626;">${job.frustration}</p>
+                  </div>
+                  ${job.ourSolution ? `
+                    <div style="background: #ecfdf5; padding: 12px; border-radius: 8px; margin-top: 10px;">
+                      <div style="font-size: 11px; color: #059669; font-weight: 600; margin-bottom: 4px;">✅ OUR SOLUTION</div>
+                      <p style="margin: 0; font-size: 13px; color: #047857;">${job.ourSolution}</p>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+      });
+
+      html += `</div>`;
+    }
+
+    if (jtbd.jtbdOpportunity) {
+      html += `
+              <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 20px; border-radius: 12px;">
+                <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">🏆 BIGGEST JTBD OPPORTUNITY</div>
+                <p style="margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5;">"${jtbd.jtbdOpportunity}"</p>
+              </div>
+            `;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  /**
+   * Build Loss Leader Analysis section
+   */
+  function buildLossLeaderHTML(lossLeader) {
+    let html = `
+            <div style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(59,130,246,0.15); border-left: 4px solid #3b82f6;">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #1e40af; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">💰</span>
+                Loss Leader & Profit Center Analysis
+              </h4>
+              <p style="margin: 0 0 20px; font-size: 14px; color: #3b82f6;">Elite SaaS companies give something away free to capture leads, then charge for high-value work.</p>
+          `;
+
+    if (lossLeader.competitorStrategies && lossLeader.competitorStrategies.length > 0) {
+      html += `
+              <div style="margin-bottom: 20px; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: white; border-radius: 12px; overflow: hidden;">
+                  <thead>
+                    <tr style="background: #f8fafc;">
+                      <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Competitor</th>
+                      <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Loss Leader</th>
+                      <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Profit Center</th>
+                      <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">CAC Impact</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+            `;
+
+      lossLeader.competitorStrategies.forEach(strat => {
+        html += `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 12px; font-weight: 500;">${strat.competitor}</td>
+                  <td style="padding: 12px; color: #6b7280;">${strat.lossLeader}</td>
+                  <td style="padding: 12px; color: #059669; font-weight: 500;">${strat.profitCenter}</td>
+                  <td style="padding: 12px; font-size: 12px; color: #6b7280;">${strat.cacImpact}</td>
+                </tr>
+              `;
+      });
+
+      html += `</tbody></table></div>`;
+    }
+
+    if (lossLeader.suggestedLossLeader) {
+      const tool = lossLeader.suggestedLossLeader;
+      html += `
+              <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 24px; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                  <span style="font-size: 20px;">🚀</span>
+                  <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; opacity: 0.9;">RECOMMENDED LOSS LEADER TOOL</span>
+                </div>
+                <h5 style="margin: 0 0 8px; font-size: 18px; font-weight: 700;">${tool.tool}</h5>
+                <p style="margin: 0 0 12px; opacity: 0.9; font-size: 14px; line-height: 1.5;">${tool.description}</p>
+                ${tool.targetKeywords && tool.targetKeywords.length > 0 ? `
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+                    ${tool.targetKeywords.map(kw => `<span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 12px;">${kw}</span>`).join('')}
+                  </div>
+                ` : ''}
+                ${tool.competitorDisruption ? `
+                  <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-top: 8px;">
+                    <span style="font-size: 11px; opacity: 0.8;">🎯 DISRUPTION TARGET</span>
+                    <p style="margin: 4px 0 0; font-size: 13px;">${tool.competitorDisruption}</p>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  /**
+   * Build Emotional Debt Audit section
+   */
+  function buildEmotionalDebtHTML(emotionalDebt) {
+    let html = `
+            <div style="background: linear-gradient(135deg, #fce7f3 0%, #fff1f2 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(236,72,153,0.15); border-left: 4px solid #ec4899;">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #9d174d; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">💔</span>
+                Emotional Debt Audit
+              </h4>
+              <p style="margin: 0 0 20px; font-size: 14px; color: #be185d;">Large incumbents often have "emotional debt"—perceived as "too big to care" or "bureaucratic".</p>
+          `;
+
+    if (emotionalDebt.competitorDebts && emotionalDebt.competitorDebts.length > 0) {
+      html += `
+              <div style="margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 600; color: #ec4899; margin-bottom: 12px;">😤 COMPETITOR PAIN POINTS (G2/Reddit Patterns)</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+            `;
+
+      emotionalDebt.competitorDebts.forEach(debt => {
+        html += `
+                <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                  <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px;">${debt.competitor}</div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;">
+                    ${(debt.negativePatterns || []).map(pattern => `
+                      <span style="background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 4px; font-size: 11px;">❌ ${pattern}</span>
+                    `).join('')}
+                  </div>
+                  <div style="background: #fef2f2; padding: 8px; border-radius: 6px;">
+                    <span style="font-size: 11px; color: #b91c1c; font-weight: 600;">EMOTIONAL DEBT:</span>
+                    <p style="margin: 4px 0 0; font-size: 12px; color: #7f1d1d;">"${debt.emotionalDebt}"</p>
+                  </div>
+                </div>
+              `;
+      });
+
+      html += `</div></div>`;
+    }
+
+    if (emotionalDebt.brandPromises && emotionalDebt.brandPromises.length > 0) {
+      html += `
+              <div>
+                <div style="font-size: 12px; font-weight: 600; color: #059669; margin-bottom: 12px;">✨ YOUR COUNTER-POSITIONING BRAND PROMISES</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+            `;
+
+      emotionalDebt.brandPromises.forEach(promise => {
+        html += `
+                <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 16px; border-radius: 12px; border: 1px solid #a7f3d0;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="font-size: 12px; color: #6b7280;">vs. ${promise.againstCompetitor}</span>
+                    <span style="font-size: 16px;">→</span>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                      <span style="font-size: 10px; color: #b91c1c; text-transform: uppercase;">Their Weakness</span>
+                      <p style="margin: 4px 0; font-size: 13px; color: #dc2626; font-weight: 500;">"${promise.theirWeakness}"</p>
+                    </div>
+                    <div>
+                      <span style="font-size: 10px; color: #059669; text-transform: uppercase;">Your Promise</span>
+                      <p style="margin: 4px 0; font-size: 13px; color: #047857; font-weight: 600;">"${promise.ourPromise}"</p>
+                    </div>
+                  </div>
+                </div>
+              `;
+      });
+
+      html += `</div></div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  /**
+   * Build Time-to-Value Comparison section
+   */
+  function buildTimeToValueHTML(ttv) {
+    let html = `
+            <div style="background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(34,197,94,0.15); border-left: 4px solid #22c55e;">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">⚡</span>
+                Time-to-Value Comparison
+              </h4>
+              <p style="margin: 0 0 20px; font-size: 14px; color: #15803d;">Define the "Aha Moment" speed for each competitor—how can we be 10x faster?</p>
+          `;
+
+    if (ttv.competitors && ttv.competitors.length > 0) {
+      html += `
+              <div style="margin-bottom: 20px; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: white; border-radius: 12px; overflow: hidden;">
+                  <thead>
+                    <tr style="background: #f8fafc;">
+                      <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Competitor</th>
+                      <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Speed</th>
+                      <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Key Friction</th>
+                      <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Time to Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+            `;
+
+      ttv.competitors.forEach(comp => {
+        const speedColor = comp.onboardingSpeed === 'Fast' ? '#22c55e' : comp.onboardingSpeed === 'Slow' ? '#ef4444' : '#f59e0b';
+        const speedIcon = comp.onboardingSpeed === 'Fast' ? '🚀' : comp.onboardingSpeed === 'Slow' ? '🐢' : '🚶';
+
+        html += `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 12px; font-weight: 500;">${comp.competitor}</td>
+                  <td style="padding: 12px; text-align: center;">
+                    <span style="background: ${speedColor}20; color: ${speedColor}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${speedIcon} ${comp.onboardingSpeed}</span>
+                  </td>
+                  <td style="padding: 12px; color: #6b7280; font-size: 12px;">${comp.friction}</td>
+                  <td style="padding: 12px; font-weight: 500; color: #374151;">${comp.timeToValue}</td>
+                </tr>
+              `;
+      });
+
+      html += `</tbody></table></div>`;
+    }
+
+    html += `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              ${ttv.ourAdvantage ? `
+                <div style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 20px; border-radius: 12px;">
+                  <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">⚡ OUR 10X ADVANTAGE</div>
+                  <p style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5;">${ttv.ourAdvantage}</p>
+                </div>
+              ` : ''}
+              ${ttv.ahaOptimization ? `
+                <div style="background: white; border: 2px solid #22c55e; padding: 20px; border-radius: 12px;">
+                  <div style="font-size: 12px; color: #22c55e; margin-bottom: 8px; font-weight: 600;">💡 "AHA MOMENT" OPTIMIZATION</div>
+                  <p style="margin: 0; font-size: 14px; color: #1f2937; line-height: 1.5;">${ttv.ahaOptimization}</p>
+                </div>
+              ` : ''}
+            </div>
+          `;
+
+    html += `</div>`;
+    return html;
+  }
+
+  /**
+   * Build Programmatic SEO Moat section
+   */
+  function buildSEOMoatHTML(seoMoat) {
+    const opp = seoMoat.opportunity || {};
+
+    let html = `
+            <div style="background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(139,92,246,0.15); border-left: 4px solid #8b5cf6;">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #5b21b6; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">🏰</span>
+                Programmatic SEO Moat
+              </h4>
+              <p style="margin: 0 0 20px; font-size: 14px; color: #7c3aed;">Instead of writing one blog post, elite companies build 1,000 automated pages to out-index competitors.</p>
+              
+              <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                  <div>
+                    <span style="font-size: 11px; color: #8b5cf6; text-transform: uppercase; font-weight: 600;">PAGE ARCHITECTURE</span>
+                    <h5 style="margin: 8px 0; font-size: 18px; font-weight: 700; color: #1f2937;">"${opp.pageArchitecture || 'Hire [Skill] in [City]'}"</h5>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                      ${(opp.variables || []).map(v => `
+                        <span style="background: #8b5cf620; color: #8b5cf6; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">[${v}]</span>
+                      `).join('')}
+                    </div>
+                  </div>
+                  <div style="text-align: center; border-left: 1px solid #e5e7eb; padding-left: 20px;">
+                    <div style="font-size: 36px; font-weight: 700; color: #8b5cf6;">${opp.estimatedPages || '500'}+</div>
+                    <div style="font-size: 12px; color: #6b7280;">Automated Pages</div>
+                    ${opp.expectedTrafficLift ? `
+                      <div style="margin-top: 12px; background: #ecfdf5; padding: 8px; border-radius: 6px;">
+                        <span style="font-size: 11px; color: #059669;">📈 ${opp.expectedTrafficLift}</span>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                ${opp.targetKeywordGap ? `
+                  <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+                    <span style="font-size: 11px; color: #6b7280;">🎯 TARGET KEYWORD GAP:</span>
+                    <p style="margin: 4px 0 0; font-size: 13px; color: #374151;">${opp.targetKeywordGap}</p>
+                  </div>
+                ` : ''}
+              </div>
+              
+              ${seoMoat.competitorVulnerability ? `
+                <div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 16px; border-radius: 12px;">
+                  <span style="font-size: 11px; opacity: 0.9;">🛡️ WHY COMPETITORS CAN'T REPLICATE</span>
+                  <p style="margin: 8px 0 0; font-size: 14px; line-height: 1.5;">${seoMoat.competitorVulnerability}</p>
+                </div>
+              ` : ''}
+            </div>
+          `;
+
+    return html;
+  }
+
+  // Export functions globally
+  window.buildEliteOverlaysHTML = buildEliteOverlaysHTML;
+  window.buildJTBDOverlayHTML = buildJTBDOverlayHTML;
+  window.buildLossLeaderHTML = buildLossLeaderHTML;
+  window.buildEmotionalDebtHTML = buildEmotionalDebtHTML;
+  window.buildTimeToValueHTML = buildTimeToValueHTML;
+  window.buildSEOMoatHTML = buildSEOMoatHTML;
+
+})();
+</script>

@@ -1,0 +1,786 @@
+<!--
+  ELITE_Charts_Enhanced.html
+  ===========================
+  Category E: Enhanced Chart Configurations & Interactions
+  
+  Enhancements:
+  - Animated hover effects
+  - Click drill-down handlers
+  - Gradient fills
+  - Trend arrows
+  - Interactive legends
+  - Scatter plots for positioning
+  - Heatmaps for gap analysis
+  
+  Dependencies: 
+  - Chart.js
+  - UI_Elite_Charts_Core.html
+  
+  Version: 1.0.0 (January 2025)
+  Part of: Elite Intelligence System Implementation
+-->
+
+<style>
+  /* ========================================
+     E: ENHANCED CHART STYLES
+     ======================================== */
+  
+  /* Chart Container Enhancement */
+  .elite-chart-container {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+  }
+  
+  .elite-chart-container:hover {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  }
+  
+  .elite-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .elite-chart-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .elite-chart-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .elite-chart-action {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .elite-chart-action:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+  
+  .elite-chart-action.active {
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: white;
+    border-color: transparent;
+  }
+  
+  /* Trend Indicator */
+  .elite-chart-trend {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  
+  .elite-chart-trend.up {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #15803d;
+  }
+  
+  .elite-chart-trend.down {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #dc2626;
+  }
+  
+  .elite-chart-trend.neutral {
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    color: #475569;
+  }
+  
+  /* Interactive Legend */
+  .elite-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+  
+  .elite-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #f8fafc;
+  }
+  
+  .elite-legend-item:hover {
+    background: #e2e8f0;
+  }
+  
+  .elite-legend-item.hidden {
+    opacity: 0.4;
+    text-decoration: line-through;
+  }
+  
+  .elite-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+  
+  /* Drill-down Modal Trigger */
+  .elite-chart-drilldown {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: white;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+  }
+  
+  .elite-chart-container:hover .elite-chart-drilldown {
+    opacity: 1;
+  }
+  
+  /* Heatmap Styles */
+  .elite-heatmap {
+    display: grid;
+    gap: 2px;
+  }
+  
+  .elite-heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .elite-heatmap-cell:hover {
+    transform: scale(1.1);
+    z-index: 10;
+  }
+  
+  .elite-heatmap-row-label {
+    font-size: 11px;
+    color: #64748b;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .elite-heatmap-col-label {
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+    padding: 4px;
+    transform: rotate(-45deg);
+    white-space: nowrap;
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  // ==========================================
+  // E1: ENHANCED CHART CONFIGURATIONS
+  // ==========================================
+  
+  /**
+   * Elite gradient configurations for charts
+   */
+  const ELITE_GRADIENTS = {
+    purple: ['#8b5cf6', '#a78bfa', '#c4b5fd'],
+    blue: ['#3b82f6', '#60a5fa', '#93c5fd'],
+    green: ['#10b981', '#34d399', '#6ee7b7'],
+    orange: ['#f59e0b', '#fbbf24', '#fcd34d'],
+    red: ['#ef4444', '#f87171', '#fca5a5'],
+    pink: ['#ec4899', '#f472b6', '#f9a8d4']
+  };
+  
+  /**
+   * Create gradient for Chart.js
+   * @param {CanvasRenderingContext2D} ctx 
+   * @param {string} colorKey - Gradient key
+   * @param {string} direction - 'vertical' | 'horizontal'
+   * @returns {CanvasGradient}
+   */
+  function createEliteGradient(ctx, colorKey, direction = 'vertical') {
+    const colors = ELITE_GRADIENTS[colorKey] || ELITE_GRADIENTS.purple;
+    const gradient = direction === 'vertical' 
+      ? ctx.createLinearGradient(0, 0, 0, 400)
+      : ctx.createLinearGradient(0, 0, 400, 0);
+    
+    gradient.addColorStop(0, colors[0]);
+    gradient.addColorStop(0.5, colors[1]);
+    gradient.addColorStop(1, colors[2]);
+    
+    return gradient;
+  }
+  
+  /**
+   * Elite bar chart configuration
+   * @param {object} options - Chart options
+   * @returns {object} Chart.js configuration
+   */
+  function getEliteBarConfig(options = {}) {
+    const { 
+      labels = [], 
+      datasets = [], 
+      title = 'Chart',
+      stacked = false,
+      horizontal = false,
+      onClick = null
+    } = options;
+    
+    return {
+      type: horizontal ? 'bar' : 'bar',
+      data: { labels, datasets },
+      options: {
+        indexAxis: horizontal ? 'y' : 'x',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: datasets.length > 1,
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20,
+              font: { size: 12, weight: '600' }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            titleFont: { size: 13, weight: '700' },
+            bodyFont: { size: 12 },
+            padding: 12,
+            cornerRadius: 8,
+            displayColors: true
+          }
+        },
+        scales: {
+          x: {
+            stacked,
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          },
+          y: {
+            stacked,
+            grid: { color: '#f1f5f9' },
+            ticks: { font: { size: 11 } }
+          }
+        },
+        onClick: onClick,
+        animation: {
+          duration: 800,
+          easing: 'easeOutQuart'
+        },
+        hover: {
+          animationDuration: 200
+        }
+      }
+    };
+  }
+  
+  /**
+   * Elite doughnut chart configuration
+   * @param {object} options - Chart options
+   * @returns {object} Chart.js configuration
+   */
+  function getEliteDoughnutConfig(options = {}) {
+    const {
+      labels = [],
+      data = [],
+      colors = Object.values(ELITE_GRADIENTS).map(g => g[0]),
+      cutout = '65%',
+      onClick = null
+    } = options;
+    
+    return {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors,
+          borderWidth: 0,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              usePointStyle: true,
+              padding: 16,
+              font: { size: 12, weight: '500' }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        onClick,
+        animation: {
+          animateRotate: true,
+          animateScale: true
+        }
+      }
+    };
+  }
+  
+  /**
+   * Elite line chart configuration with gradient fill
+   * @param {object} options - Chart options
+   * @returns {object} Chart.js configuration
+   */
+  function getEliteLineConfig(options = {}) {
+    const {
+      labels = [],
+      datasets = [],
+      fill = true,
+      tension = 0.4,
+      onClick = null
+    } = options;
+    
+    return {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: datasets.length > 1,
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } }
+          },
+          y: {
+            grid: { color: '#f1f5f9' },
+            ticks: { font: { size: 11 } }
+          }
+        },
+        elements: {
+          line: { tension },
+          point: {
+            radius: 4,
+            hoverRadius: 6,
+            hitRadius: 10
+          }
+        },
+        interaction: {
+          mode: 'nearest',
+          axis: 'x',
+          intersect: false
+        },
+        onClick,
+        animation: {
+          duration: 1000,
+          easing: 'easeOutQuart'
+        }
+      }
+    };
+  }
+  
+  /**
+   * Elite radar chart configuration
+   * @param {object} options - Chart options
+   * @returns {object} Chart.js configuration
+   */
+  function getEliteRadarConfig(options = {}) {
+    const {
+      labels = [],
+      datasets = [],
+      suggestedMax = 100
+    } = options;
+    
+    return {
+      type: 'radar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 20
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          r: {
+            beginAtZero: true,
+            suggestedMax,
+            grid: { color: '#e2e8f0' },
+            pointLabels: {
+              font: { size: 11, weight: '600' },
+              color: '#64748b'
+            },
+            ticks: {
+              display: false
+            }
+          }
+        },
+        animation: {
+          duration: 800
+        }
+      }
+    };
+  }
+  
+  // ==========================================
+  // E2: SCATTER PLOT FOR COMPETITIVE POSITIONING
+  // ==========================================
+  
+  /**
+   * Elite scatter plot for competitive positioning
+   * @param {object} options - { competitors, xMetric, yMetric, xLabel, yLabel }
+   * @returns {object} Chart.js configuration
+   */
+  function getEliteScatterConfig(options = {}) {
+    const {
+      data = [],
+      xLabel = 'Authority',
+      yLabel = 'Traffic',
+      onClick = null
+    } = options;
+    
+    return {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Competitors',
+          data,
+          backgroundColor: data.map((_, i) => 
+            i === 0 ? '#8b5cf6' : '#94a3b8'
+          ),
+          pointRadius: data.map((_, i) => i === 0 ? 12 : 8),
+          pointHoverRadius: 14
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            padding: 12,
+            cornerRadius: 8,
+            callbacks: {
+              label: (context) => {
+                const point = context.raw;
+                return [
+                  `${point.label || 'Competitor'}`,
+                  `${xLabel}: ${point.x}`,
+                  `${yLabel}: ${point.y.toLocaleString()}`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: xLabel },
+            grid: { color: '#f1f5f9' }
+          },
+          y: {
+            title: { display: true, text: yLabel },
+            grid: { color: '#f1f5f9' }
+          }
+        },
+        onClick
+      }
+    };
+  }
+  
+  // ==========================================
+  // E3: HEATMAP FOR GAP ANALYSIS
+  // ==========================================
+  
+  /**
+   * Render a heatmap for keyword/content gap analysis
+   * @param {object} options - { rows, columns, data, onClick }
+   * @returns {string} HTML string
+   */
+  function renderEliteHeatmap(options = {}) {
+    const {
+      rows = [],
+      columns = [],
+      data = [], // 2D array [row][col] of values
+      title = 'Gap Analysis Heatmap',
+      onClick = null
+    } = options;
+    
+    // Calculate color based on value (0-100)
+    function getHeatColor(value) {
+      if (value >= 80) return '#10b981';
+      if (value >= 60) return '#84cc16';
+      if (value >= 40) return '#fbbf24';
+      if (value >= 20) return '#f97316';
+      return '#ef4444';
+    }
+    
+    const gridCols = `40px repeat(${columns.length}, 1fr)`;
+    
+    return `
+      <div class="elite-chart-container">
+        <div class="elite-chart-header">
+          <span class="elite-chart-title">
+            🗺️ ${title}
+          </span>
+        </div>
+        
+        <!-- Column Headers -->
+        <div style="display: grid; grid-template-columns: ${gridCols}; gap: 2px; margin-bottom: 4px;">
+          <div></div>
+          ${columns.map(col => `
+            <div class="elite-heatmap-col-label">${col}</div>
+          `).join('')}
+        </div>
+        
+        <!-- Heatmap Grid -->
+        <div class="elite-heatmap" style="grid-template-columns: ${gridCols};">
+          ${rows.map((row, rowIndex) => `
+            <div class="elite-heatmap-row-label">${row}</div>
+            ${columns.map((_, colIndex) => {
+              const value = data[rowIndex]?.[colIndex] || 0;
+              return `
+                <div class="elite-heatmap-cell" 
+                     style="background: ${getHeatColor(value)};"
+                     title="${row} × ${columns[colIndex]}: ${value}%"
+                     onclick="${onClick ? onClick + '(' + rowIndex + ',' + colIndex + ')' : ''}">
+                  ${value > 0 ? value : ''}
+                </div>
+              `;
+            }).join('')}
+          `).join('')}
+        </div>
+        
+        <!-- Legend -->
+        <div style="display: flex; justify-content: center; gap: 16px; margin-top: 16px; font-size: 11px; color: #64748b;">
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <span style="width: 16px; height: 16px; border-radius: 3px; background: #ef4444;"></span>
+            Low (0-20)
+          </span>
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <span style="width: 16px; height: 16px; border-radius: 3px; background: #fbbf24;"></span>
+            Medium (40-60)
+          </span>
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <span style="width: 16px; height: 16px; border-radius: 3px; background: #10b981;"></span>
+            High (80-100)
+          </span>
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // E4: CHART CONTAINER WITH INTERACTIONS
+  // ==========================================
+  
+  /**
+   * Wrap a chart in an elite container with interactions
+   * @param {object} options - { chartId, title, icon, trend, onDrilldown }
+   * @returns {string} HTML string
+   */
+  function renderEliteChartContainer(options = {}) {
+    const {
+      chartId,
+      title = 'Chart',
+      icon = '📊',
+      trend = null,
+      actions = [],
+      height = '300px',
+      onDrilldown = null
+    } = options;
+    
+    let trendHtml = '';
+    if (trend) {
+      const trendClass = trend.direction === 'up' ? 'up' : trend.direction === 'down' ? 'down' : 'neutral';
+      const trendArrow = trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→';
+      trendHtml = `
+        <div class="elite-chart-trend ${trendClass}">
+          ${trendArrow} ${trend.value}%
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="elite-chart-container">
+        <div class="elite-chart-header">
+          <span class="elite-chart-title">
+            ${icon} ${title}
+          </span>
+          <div class="elite-chart-actions">
+            ${actions.map(action => `
+              <button class="elite-chart-action ${action.active ? 'active' : ''}"
+                      onclick="${action.onClick || ''}">
+                ${action.label}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+        
+        ${trendHtml}
+        
+        <div style="height: ${height}; position: relative;">
+          <canvas id="${chartId}"></canvas>
+        </div>
+        
+        ${onDrilldown ? `
+          <div class="elite-chart-drilldown" onclick="${onDrilldown}">
+            🔍 View Details
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // E5: INTERACTIVE LEGEND
+  // ==========================================
+  
+  /**
+   * Create interactive legend that toggles chart datasets
+   * @param {Chart} chart - Chart.js instance
+   * @param {string} containerId - Container element ID
+   */
+  function createInteractiveLegend(chart, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container || !chart) return;
+    
+    const datasets = chart.data.datasets;
+    
+    let html = '<div class="elite-chart-legend">';
+    datasets.forEach((dataset, index) => {
+      const color = Array.isArray(dataset.backgroundColor) 
+        ? dataset.backgroundColor[0] 
+        : dataset.backgroundColor;
+      
+      html += `
+        <div class="elite-legend-item" data-index="${index}" onclick="toggleDataset(${chart.id}, ${index})">
+          <span class="elite-legend-color" style="background: ${color};"></span>
+          <span>${dataset.label}</span>
+        </div>
+      `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+  }
+  
+  /**
+   * Toggle dataset visibility
+   * @param {number} chartId - Chart ID
+   * @param {number} datasetIndex - Dataset index
+   */
+  function toggleDataset(chartId, datasetIndex) {
+    const chart = Chart.getChart(chartId);
+    if (!chart) return;
+    
+    const meta = chart.getDatasetMeta(datasetIndex);
+    meta.hidden = !meta.hidden;
+    chart.update();
+    
+    // Update legend styling
+    const legendItem = document.querySelector(`[data-index="${datasetIndex}"]`);
+    if (legendItem) {
+      legendItem.classList.toggle('hidden', meta.hidden);
+    }
+  }
+  
+  // ==========================================
+  // EXPORT TO WINDOW
+  // ==========================================
+  
+  // Gradient utilities
+  window.ELITE_GRADIENTS = ELITE_GRADIENTS;
+  window.createEliteGradient = createEliteGradient;
+  
+  // Chart configurations
+  window.getEliteBarConfig = getEliteBarConfig;
+  window.getEliteDoughnutConfig = getEliteDoughnutConfig;
+  window.getEliteLineConfig = getEliteLineConfig;
+  window.getEliteRadarConfig = getEliteRadarConfig;
+  window.getEliteScatterConfig = getEliteScatterConfig;
+  
+  // Heatmap
+  window.renderEliteHeatmap = renderEliteHeatmap;
+  
+  // Container and interactions
+  window.renderEliteChartContainer = renderEliteChartContainer;
+  window.createInteractiveLegend = createInteractiveLegend;
+  window.toggleDataset = toggleDataset;
+  
+  console.log('✅ ELITE_Charts_Enhanced.html loaded - Category E Chart Improvements v1.0');
+  
+})();
+</script>

@@ -1,0 +1,110 @@
+<!--
+  UI_Gemini_Models.html
+  Gemini Model Loading & Selection System
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.loadGeminiModels() - Load available Gemini models
+  - window.saveGeminiModel() - Save model selection
+  - window.initGeminiModelSelect() - Initialize model dropdown
+  
+  Dependencies:
+  - UI_Core_Utils.html (for showToast)
+-->
+<script>
+  console.log('🤖 UI_Gemini_Models.html loading...');
+
+  /**
+   * Load available Gemini models from backend
+   */
+  window.loadGeminiModels = function() {
+    const geminiModelSelect = document.getElementById('geminiModelSelect');
+    if (!geminiModelSelect) {
+      console.warn('⚠️ geminiModelSelect element not found');
+      return;
+    }
+
+    geminiModelSelect.innerHTML = '<option value="">Loading models...</option>';
+    geminiModelSelect.disabled = true;
+
+    if (typeof google === 'undefined' || !google.script?.run) {
+      geminiModelSelect.innerHTML = '<option value="">Local preview mode</option>';
+      geminiModelSelect.disabled = true;
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          geminiModelSelect.innerHTML = '';
+          response.models.forEach(function(model) {
+            const option = document.createElement('option');
+            option.value = model.name;
+            option.textContent = model.displayName;
+            if (model.name === response.currentModel) {
+              option.selected = true;
+            }
+            geminiModelSelect.appendChild(option);
+          });
+          geminiModelSelect.disabled = false;
+          window.showToast?.('✅ Loaded ' + response.models.length + ' Gemini models');
+        } else {
+          geminiModelSelect.innerHTML = '<option value="">Error loading models</option>';
+          window.showToast?.('⚠️ Unable to load: ' + response.error);
+        }
+      })
+      .withFailureHandler(function(error) {
+        geminiModelSelect.innerHTML = '<option value="">Unable to load models</option>';
+        window.showToast?.('⚠️ Could not load AI models. Please refresh the page.');
+      })
+      .getGeminiModels();
+  };
+
+  /**
+   * Save selected Gemini model to backend
+   * @param {string} modelName - Model identifier
+   */
+  window.saveGeminiModel = function(modelName) {
+    if (typeof google === 'undefined' || !google.script?.run) {
+      console.log('Local preview: cannot save model selection');
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          window.showToast?.('✅ Model updated: ' + modelName);
+        } else {
+          window.showToast?.('⚠️ Unable to save: ' + response.error);
+        }
+      })
+      .withFailureHandler(function(error) {
+        window.showToast?.('⚠️ Could not save model selection. Please try again.');
+      })
+      .setGeminiModel(modelName);
+  };
+
+  /**
+   * Initialize Gemini model dropdown with event listeners
+   */
+  window.initGeminiModelSelect = function() {
+    const geminiModelSelect = document.getElementById('geminiModelSelect');
+    if (!geminiModelSelect) return;
+
+    geminiModelSelect.addEventListener('change', function() {
+      if (this.value) {
+        window.saveGeminiModel?.(this.value);
+      }
+    });
+
+    // Load models on initialization
+    if (typeof google !== 'undefined' && google.script?.run) {
+      window.loadGeminiModels?.();
+    } else {
+      geminiModelSelect.innerHTML = '<option value="">Local preview mode</option>';
+      geminiModelSelect.disabled = true;
+    }
+  };
+
+  console.log('✅ UI_Gemini_Models.html loaded');
+</script>

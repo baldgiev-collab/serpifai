@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      padding: 24px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .summary-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .summary-value {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .summary-label { font-size: 11px; color: #888; margin-top: 4px; }
+    .section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title { font-weight: 600; font-size: 14px; margin-bottom: 12px; }
+    .competitor-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-left: 3px solid #667eea;
+    }
+    .comp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .comp-domain {
+      font-weight: 600;
+      font-size: 14px;
+      color: #667eea;
+    }
+    .comp-score {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .comp-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      font-size: 11px;
+    }
+    .comp-metric {
+      text-align: center;
+      padding: 6px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+    }
+    .comp-metric-value { font-weight: 600; font-size: 13px; }
+    .comp-metric-label { color: #888; margin-top: 2px; }
+    .gap-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 12px;
+    }
+    .gap-kw { flex: 1; }
+    .gap-comp { color: #667eea; margin-left: 8px; }
+    .gap-vol { color: #22c55e; margin-left: 8px; }
+    .strength-bar {
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 4px;
+    }
+    .strength-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #22c55e, #667eea, #764ba2);
+    }
+    .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #e0e0e0; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+    #error { color: #f87171; padding: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <h2>🏆 Competitor Intelligence Report</h2>
+  <p class="subtitle" id="report-title">Loading analysis...</p>
+  
+  <div id="error"></div>
+  <div id="loading" class="loading">⏳ Loading competitor data...</div>
+  
+  <div id="content" style="display:none">
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-value" id="comp-count">0</div>
+        <div class="summary-label">Competitors Analyzed</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="gap-count">0</div>
+        <div class="summary-label">Keyword Gaps Found</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="overlap-pct">0%</div>
+        <div class="summary-label">Keyword Overlap</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="your-rank">#0</div>
+        <div class="summary-label">Your Position</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">🎯 Competitor Rankings</div>
+      <div id="competitor-list"></div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">🔍 Top Keyword Gaps</div>
+      <div id="gap-list"></div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">📊 Competitive Strength</div>
+      <div id="strength-analysis"></div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn btn-primary" onclick="exportReport()">📥 Export Report</button>
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Close</button>
+    </div>
+  </div>
+  
+  <script>
+    function loadReport() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (data.error) {
+            showError(data.error);
+            return;
+          }
+          renderReport(data);
+        })
+        .withFailureHandler(function(err) {
+          showError(err.message);
+        })
+        .UI_getCompetitorReport();
+    }
+    
+    function renderReport(data) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      
+      document.getElementById('report-title').textContent = 
+        'vs ' + (data.competitors || []).length + ' competitors - ' + data.date;
+      document.getElementById('comp-count').textContent = (data.competitors || []).length;
+      document.getElementById('gap-count').textContent = data.gapCount || 0;
+      document.getElementById('overlap-pct').textContent = (data.overlapPct || 0) + '%';
+      document.getElementById('your-rank').textContent = '#' + (data.yourRank || '-');
+      
+      renderCompetitors(data.competitors || []);
+      renderGaps(data.gaps || []);
+      renderStrength(data.strengthAnalysis || {});
+    }
+    
+    function renderCompetitors(competitors) {
+      var html = '';
+      competitors.forEach(function(c, i) {
+        html += '<div class="competitor-card">' +
+          '<div class="comp-header">' +
+          '<span class="comp-domain">' + (i + 1) + '. ' + c.domain + '</span>' +
+          '<span class="comp-score">' + (c.score || 0) + '</span>' +
+          '</div>' +
+          '<div class="comp-metrics">' +
+          '<div class="comp-metric"><div class="comp-metric-value">' + (c.keywords || 0) + '</div><div class="comp-metric-label">Keywords</div></div>' +
+          '<div class="comp-metric"><div class="comp-metric-value">' + (c.pagerank || '-') + '</div><div class="comp-metric-label">PageRank</div></div>' +
+          '<div class="comp-metric"><div class="comp-metric-value">' + (c.aioCount || 0) + '</div><div class="comp-metric-label">AIO Wins</div></div>' +
+          '<div class="comp-metric"><div class="comp-metric-value">' + (c.overlap || 0) + '%</div><div class="comp-metric-label">Overlap</div></div>' +
+          '</div></div>';
+      });
+      document.getElementById('competitor-list').innerHTML = html || 'No competitors found';
+    }
+    
+    function renderGaps(gaps) {
+      var html = '';
+      gaps.slice(0, 10).forEach(function(g) {
+        html += '<div class="gap-item">' +
+          '<span class="gap-kw">' + g.keyword + '</span>' +
+          '<span class="gap-comp">' + g.competitor + '</span>' +
+          '<span class="gap-vol">' + (g.volume || '-') + ' vol</span>' +
+          '</div>';
+      });
+      document.getElementById('gap-list').innerHTML = html || 'No gaps found';
+    }
+    
+    function renderStrength(analysis) {
+      var categories = ['Content', 'Authority', 'Technical', 'Keywords'];
+      var html = '';
+      categories.forEach(function(cat) {
+        var score = analysis[cat.toLowerCase()] || 0;
+        html += '<div style="margin-bottom:12px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px">' +
+          '<span>' + cat + '</span><span>' + score + '/100</span></div>' +
+          '<div class="strength-bar">' +
+          '<div class="strength-fill" style="width:' + score + '%"></div>' +
+          '</div></div>';
+      });
+      document.getElementById('strength-analysis').innerHTML = html;
+    }
+    
+    function exportReport() {
+      google.script.run
+        .withSuccessHandler(function(r) {
+          alert(r.success ? 'Exported to sheet!' : 'Export failed');
+        })
+        .UI_exportCompetitors();
+    }
+    
+    function showError(msg) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = 'Error: ' + msg;
+    }
+    
+    loadReport();
+  </script>
+</body>
+</html>

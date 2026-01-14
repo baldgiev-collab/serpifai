@@ -1,0 +1,683 @@
+<script>
+  // ===========================================================================
+  // UI_Tab_ContentSystems.html
+  // Content Systems & Operations Tab - Elite v9.0
+  // Extracted from UI_Scripts_App.html for modular architecture
+  // 
+  // Contains:
+  // - populateContentSystemsTab() - Main tab population with workflow detection
+  // - renderEliteContentOperations() - Elite v9.0 renderer for content ops
+  //
+  // Dependencies:
+  // - extractRealMetrics() from DATA_Real_Metrics.html
+  // - renderExecutiveGeminiInsight() from UI_Executive_Renderer.html
+  // - renderRawDataComparisonTable() from UI_Raw_Data_Tables.html
+  // - renderOnePercentStrategyPanel() from UI_Strategy_Panel.html
+  // - getDataSourceBadge() from UI_Core_Utils.html
+  // - renderContentSystemsCharts() from UI_Chart_Generator.html
+  // ===========================================================================
+
+  // ---------------------------------------------------------------------------
+  // VI. CONTENT SYSTEMS & OPERATIONS TAB - Elite v9.0
+  // Uses: FT_GenerateEliteTabIntelligence → Production Velocity, Semantic Clusters,
+  //       E-E-A-T Integration, Schema Depth, Framework Maturity, Kill Moves
+  // ---------------------------------------------------------------------------
+  function populateContentSystemsTab(data) {
+    console.log('📊 Populating Content Systems Tab (Elite v9.0 - WORKFLOW DETECTION)...');
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-systems-metrics') ||
+      document.getElementById('comp-content-systems-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="systems"]') ||
+        document.getElementById('panel-contentSystems');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside systems panel');
+        metricsDiv = panel.querySelector('#comp-systems-metrics') || (() => {
+          const c = document.createElement('div'); c.id = 'comp-systems-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+          const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+          return c;
+        })();
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Content Systems tab containers not found - check UI_Components_Competitors.html has data-comp-panel="systems"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+    const gemini = data.geminiAnalysis || data.analysis || {};
+    const contentSystems = gemini.contentSystems || {};
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // ---------------------------------------------------------------------------
+    // ELITE TAB INTELLIGENCE v9.0 - Check for enhanced data
+    // ---------------------------------------------------------------------------
+    const eliteData = data.eliteTabIntelligence || window._eliteTabIntelligence;
+    const contentOps = eliteData?.contentOperations;
+
+    if (contentOps) {
+      console.log('🎯 Using ELITE Tab Intelligence v9.0 for Content Systems Tab');
+      console.log('   Workflow Detection:', contentOps.workflowDetection?.length || 0);
+      console.log('   Semantic Clusters:', contentOps.semanticClusterMapping?.length || 0);
+      console.log('   E-E-A-T Integration:', contentOps.eeatIntegration?.length || 0);
+      console.log('   Kill Moves:', contentOps.killMoves?.length || 0);
+
+      renderEliteContentOperations(metricsDiv, contentOps, competitors, eliteData);
+      return;
+    }
+
+    // FALLBACK: Original content systems analysis
+    console.log('📈 Using standard content systems analysis mode...');
+
+    // Extract REAL content system metrics using helper
+    const systemsData = competitors.map(comp => {
+      const metrics = extractRealMetrics(comp);
+      const synth = comp.synthesized || {};
+      const content = synth.content || {};
+      const website = synth.website || {};
+      const snapshot = comp.snapshot || {};
+      const phpFetcher = comp.stages?.phpFetcher?.data || {};
+
+      // Real link counts from PHP Fetcher
+      const internalLinks = content.internalLinks?.length || phpFetcher.links?.filter(l => l.internal)?.length || 0;
+      const externalLinks = content.externalLinks?.length || phpFetcher.links?.filter(l => !l.internal)?.length || 0;
+
+      // Real schema detection
+      const schemaTypes = website.schemaTypes || snapshot.schema?.types || [];
+      const schemaCount = schemaTypes.length;
+
+      // Calculate REAL framework maturity from actual signals
+      let frameworkMaturity = 20; // Base
+      if (schemaCount >= 3) frameworkMaturity += 25;
+      else if (schemaCount >= 1) frameworkMaturity += 15;
+      if (metrics.content.wordCount >= 2000) frameworkMaturity += 20;
+      else if (metrics.content.wordCount >= 1000) frameworkMaturity += 10;
+      if (internalLinks >= 20) frameworkMaturity += 20;
+      else if (internalLinks >= 10) frameworkMaturity += 10;
+      if (metrics.content.hasHTTPS) frameworkMaturity += 10;
+      if (metrics.technical.performance >= 70) frameworkMaturity += 5;
+      frameworkMaturity = Math.min(100, frameworkMaturity);
+
+      // Calculate REAL E-E-A-T score from schema + authority
+      let eeatScore = 30; // Base
+      if (schemaTypes.includes('Organization') || schemaTypes.includes('LocalBusiness')) eeatScore += 15;
+      if (schemaTypes.includes('Person') || schemaTypes.includes('Author')) eeatScore += 20;
+      if (schemaTypes.includes('Article') || schemaTypes.includes('BlogPosting')) eeatScore += 10;
+      if (schemaTypes.includes('FAQPage') || schemaTypes.includes('HowTo')) eeatScore += 15;
+      if (metrics.authority.pageRank >= 5) eeatScore += 10;
+      eeatScore = Math.min(100, eeatScore);
+
+      // Calculate link equity flow from real link ratios
+      const totalLinks = internalLinks + externalLinks;
+      const linkEquityFlow = totalLinks > 0 ? Math.min(100, Math.round((internalLinks / totalLinks) * 100)) : 50;
+
+      // Detect AI workflow signals from content patterns (basic heuristic)
+      const contentStr = JSON.stringify(synth).toLowerCase();
+      const hasAISignals = contentStr.includes('ai') || contentStr.includes('generated') || contentStr.includes('automated');
+      const aiWorkflowRatio = hasAISignals ? 60 : (metrics.content.wordCount > 2000 ? 40 : 25);
+
+      const hasRealData = metrics.content.source === 'PHP Fetcher' || schemaCount > 0 || internalLinks > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        frameworkMaturity,
+        aiWorkflowRatio,
+        schemaCount,
+        schemaTypes,
+        eeatIntegration: eeatScore,
+        linkEquityFlow,
+        internalLinks,
+        externalLinks,
+        wordCount: metrics.content.wordCount,
+        editorialConsistency: Math.min(100, Math.round(frameworkMaturity * 0.7 + eeatScore * 0.3)),
+        dataSource: hasRealData ? 'PHP Fetcher' : 'Pending'
+      };
+    });
+
+    // Generate executive insight for content systems
+    const avgFramework = Math.round(systemsData.reduce((a, b) => a + b.frameworkMaturity, 0) / systemsData.length);
+    const avgEEAT = Math.round(systemsData.reduce((a, b) => a + b.eeatIntegration, 0) / systemsData.length);
+    const totalSchemas = systemsData.reduce((a, b) => a + b.schemaCount, 0);
+    const totalInternalLinks = systemsData.reduce((a, b) => a + b.internalLinks, 0);
+    
+    const systemsExecConfig = {
+      title: 'Content Operations Executive Brief',
+      icon: '⚙️',
+      executiveSummary: `Content systems analysis reveals average framework maturity of ${avgFramework}% and E-E-A-T integration of ${avgEEAT}%. ${totalSchemas} schema types detected across ${competitors.length} competitors with ${totalInternalLinks} total internal links mapped.`,
+      ceoInsight: `Content operations ${avgFramework >= 70 ? 'are mature - focus on optimization and scaling' : avgFramework >= 50 ? 'need targeted improvement in workflow automation' : 'require significant investment in content infrastructure'}. Expected efficiency gain: ${avgFramework >= 70 ? '10-15%' : '25-40%'}.`,
+      cmoInsight: `E-E-A-T signals are ${avgEEAT >= 60 ? 'strong across competitors' : 'underutilized opportunity'}. Recommend author attribution schema and expertise demonstration content.`,
+      ctoInsight: `Technical content architecture: ${totalInternalLinks > 100 ? 'Healthy internal linking' : 'Internal link structure needs work'}. Schema implementation is ${totalSchemas >= competitors.length * 3 ? 'competitive' : 'below industry standard'}.`,
+      strategicImperative: `Build systematic content operations with ${avgFramework < 60 ? 'automated workflows and structured publishing cadence' : 'optimization focus on E-E-A-T signals and AI-ready content'}.`,
+      investmentPriority: avgFramework < 50 ? 'Critical' : avgFramework < 70 ? 'High' : 'Medium',
+      timelineToImpact: '2-4 months',
+      riskLevel: avgFramework < 50 ? 'High' : 'Medium',
+      marketOpportunity: avgEEAT < 60 ? 'Large' : 'Moderate',
+      competitiveThreats: [
+        `Competitors have ${avgFramework}% average content maturity`,
+        'AI content tools increasing production velocity',
+        'E-E-A-T becoming critical ranking factor',
+        'Schema markup driving rich result visibility'
+      ],
+      actionItems: [
+        'Implement comprehensive schema markup',
+        'Build internal linking strategy',
+        'Add author attribution and expertise signals',
+        'Create content workflow automation',
+        'Establish publishing cadence',
+        'Monitor content performance metrics'
+      ],
+      kpis: ['Content Velocity', 'Schema Coverage', 'Internal Link Ratio', 'E-E-A-T Score', 'Publishing Consistency', 'Content ROI'],
+      dataProofs: ['PHP Fetcher', 'Schema.org Detection', 'Link Analysis', 'Content Audit']
+    };
+
+    let html = `
+          <!-- EXECUTIVE INTELLIGENCE BRIEF -->
+          ${renderExecutiveGeminiInsight(systemsExecConfig)}
+          
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">⚙️ Content Systems & Operations Analysis</h3>
+          
+          <!-- HEADER METRICS -->
+          <div style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: PHP Fetcher, Schema.org Detection, Link Analysis</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Framework Maturity</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(systemsData.reduce((a, b) => a + b.frameworkMaturity, 0) / systemsData.length)}%</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Total Schema Types</div>
+                <div style="font-size: 24px; font-weight: 700;">${systemsData.reduce((a, b) => a + b.schemaCount, 0)}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">E-E-A-T Integration</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(systemsData.reduce((a, b) => a + b.eeatIntegration, 0) / systemsData.length)}%</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Total Internal Links</div>
+                <div style="font-size: 24px; font-weight: 700;">${systemsData.reduce((a, b) => a + b.internalLinks, 0)}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CONTENT SYSTEMS TABLE WITH DATA SOURCES -->
+          <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700;">📋 Content Operations Comparison</h4>
+          <div style="overflow-x: auto;">
+          <table class="comp-table" style="margin-bottom: 30px;">
+            <thead>
+              <tr>
+                <th>Competitor</th>
+                <th>Framework Score</th>
+                <th>Schema Types</th>
+                <th>Internal Links</th>
+                <th>E-E-A-T Score</th>
+                <th>Link Equity</th>
+                <th>Word Count</th>
+                <th>Data Source</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+    systemsData.forEach(sys => {
+      html += `
+            <tr>
+              <td><strong>${sys.domain}</strong></td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div style="width: ${sys.frameworkMaturity}%; height: 100%; background: linear-gradient(90deg, #0ea5e9, #0284c7); border-radius: 4px;"></div>
+                  </div>
+                  <span style="font-size: 12px; font-weight: 600;">${sys.frameworkMaturity}</span>
+                </div>
+              </td>
+              <td style="text-align: center;">
+                ${sys.schemaCount > 0 ?
+          `<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 11px;">${sys.schemaCount} types</span>` :
+          `<span style="color: #9ca3af;">None</span>`
+        }
+              </td>
+              <td style="text-align: center;"><span style="font-weight: 600;">${sys.internalLinks}</span></td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div style="width: ${sys.eeatIntegration}%; height: 100%; background: linear-gradient(90deg, #22c55e, #16a34a); border-radius: 4px;"></div>
+                  </div>
+                  <span style="font-size: 12px; font-weight: 600;">${sys.eeatIntegration}</span>
+                </div>
+              </td>
+              <td><span style="color: ${sys.linkEquityFlow > 60 ? '#22c55e' : '#f59e0b'}; font-weight: 600;">${sys.linkEquityFlow}%</span></td>
+              <td style="text-align: center;">${sys.wordCount > 0 ? sys.wordCount.toLocaleString() : 'N/A'}</td>
+              <td style="text-align: center;">${getDataSourceBadge(sys.dataSource)}</td>
+            </tr>
+          `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          </div>
+          
+          <!-- SCHEMA TYPES BREAKDOWN -->
+          <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px;">
+            <h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">⚡ Schema.org Implementation (from PHP Fetcher)</h5>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              ${(() => {
+        const allSchemas = systemsData.flatMap(s => s.schemaTypes);
+        const uniqueSchemas = [...new Set(allSchemas)];
+        if (uniqueSchemas.length === 0) return '<span style="color: #9ca3af; font-size: 12px;">No schema types detected - consider implementing structured data</span>';
+        return uniqueSchemas.map(s => `<span style="background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 8px; font-size: 12px;">${s}</span>`).join('');
+      })()}
+            </div>
+          </div>
+          
+          <!-- CHARTS ROW -->
+          <div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                📊 Content Framework Comparison
+                <span class="info-tooltip" title="[i] Radar comparing CMS, Schema, Heading structure, Internal linking, and Technical SEO implementation across competitors." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-content-systems-radar" style="width: 100% !important;"></canvas></div>
+            </div>
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                🔗 Link Architecture Analysis
+                <span class="info-tooltip" title="[i] Internal linking structure breakdown: Navigation links, Content links, Footer links. Strong architecture = better PageRank distribution." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-content-systems-bar" style="width: 100% !important;"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- AI INSIGHTS -->
+          <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 24px; border-radius: 16px; color: white; margin-top: 24px;">
+            <h5 style="margin: 0 0 16px; font-size: 16px; font-weight: 700;">🤖 Content Systems Intelligence</h5>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+              <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px;">
+                <div style="font-size: 11px; opacity: 0.8; margin-bottom: 8px;">WORKFLOW LEADER</div>
+                <div style="font-size: 18px; font-weight: 700;">${systemsData.sort((a, b) => b.frameworkMaturity - a.frameworkMaturity)[0]?.domain || 'N/A'}</div>
+                <div style="font-size: 12px; opacity: 0.7; margin-top: 4px;">Score: ${systemsData[0]?.frameworkMaturity || 0}</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 12px;">
+                <div style="font-size: 11px; opacity: 0.8; margin-bottom: 8px;">HIGHEST AI ADOPTION</div>
+                <div style="font-size: 18px; font-weight: 700;">${systemsData.sort((a, b) => b.aiWorkflowRatio - a.aiWorkflowRatio)[0]?.domain || 'N/A'}</div>
+                <div style="font-size: 12px; opacity: 0.7; margin-top: 4px;">${systemsData.sort((a, b) => b.aiWorkflowRatio - a.aiWorkflowRatio)[0]?.aiWorkflowRatio || 0}% automated</div>
+              </div>
+              <div style="background: rgba(34,197,94,0.2); padding: 16px; border-radius: 12px; border: 1px solid rgba(34,197,94,0.4);">
+                <div style="font-size: 11px; color: #86efac; margin-bottom: 8px;">💡 RECOMMENDATION</div>
+                <div style="font-size: 13px; line-height: 1.5;">Implement structured content workflows with AI assistance to match top performers while maintaining E-E-A-T signals.</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+    // ---------------------------------------------------------------------------
+    // ELITE RAW DATA COMPARISON - Content Systems (Ahrefs/SEMrush Level)
+    // ---------------------------------------------------------------------------
+    html += `
+          <h4 style="margin: 30px 0 20px; font-size: 20px; font-weight: 800; color: #202124;">
+            📊 Raw Content Systems Data (Ahrefs/SEMrush Level)
+          </h4>
+        `;
+
+    // Content Framework Comparison
+    const frameworkLeader = systemsData.reduce((best, s) => s.frameworkMaturity > (best?.frameworkMaturity || 0) ? s : best, null);
+    const geminiFrameworkInsight = frameworkLeader
+      ? `${frameworkLeader.domain} leads with ${frameworkLeader.frameworkMaturity}% framework maturity. Strong content systems (Schema + Internal Links + E-E-A-T) correlate with 40% higher organic visibility.`
+      : 'Analyze content system maturity to identify operational advantages.';
+
+    html += renderRawDataComparisonTable({
+      title: 'Content Framework Metrics',
+      icon: '🏗️',
+      description: 'CMS maturity, AI workflow adoption, and editorial consistency scores',
+      competitors: competitors,
+      geminiInsight: geminiFrameworkInsight,
+      dataExtractor: (c, idx, realMetrics) => {
+        const sys = systemsData[idx] || {};
+        const rm = realMetrics || {};
+        const schemaCount = rm.content?.schemaTypes?.length || sys.schemaCount || 0;
+        const wordCount = rm.content?.wordCount || sys.wordCount || 0;
+        const headings = rm.content?.headingStructure?.length || 0;
+        const calcMaturity = sys.frameworkMaturity || Math.min(100, schemaCount * 10 + (wordCount > 2000 ? 30 : 10) + headings * 2);
+        return {
+          frameworkMaturity: calcMaturity,
+          aiWorkflowRatio: sys.aiWorkflowRatio || Math.min(100, Math.round(calcMaturity * 0.6)),
+          editorialConsistency: sys.editorialConsistency || Math.min(100, Math.round(calcMaturity * 0.7)),
+          schemaCount: schemaCount,
+          eeatIntegration: sys.eeatIntegration || rm.content?.eeatScore || Math.min(100, schemaCount * 12),
+          dataSource: rm.technical?.performance ? 'Real-time' : sys.dataSource || 'Pending'
+        };
+      },
+      fields: [
+        { key: 'frameworkMaturity', label: 'Framework Maturity', icon: '🏗️', type: 'score', compareMode: 'highest' },
+        { key: 'aiWorkflowRatio', label: 'AI Workflow %', icon: '🤖', type: 'score', compareMode: 'highest' },
+        { key: 'editorialConsistency', label: 'Editorial Score', icon: '📝', type: 'score', compareMode: 'highest' },
+        { key: 'schemaCount', label: 'Schema Types', icon: '📋', type: 'number', compareMode: 'highest' },
+        { key: 'eeatIntegration', label: 'E-E-A-T Score', icon: '✅', type: 'score', compareMode: 'highest' },
+        { key: 'dataSource', label: 'Data Source', icon: '📡', type: 'text' }
+      ]
+    });
+
+    // Internal Linking Structure
+    html += renderRawDataComparisonTable({
+      title: 'Link Architecture Analysis',
+      icon: '🔗',
+      description: 'Internal and external link distribution patterns',
+      competitors: competitors,
+      geminiInsight: 'Strong internal linking (50+ links) with strategic anchor text distribution improves PageRank flow and topic cluster signals. Balance external links for E-E-A-T credibility.',
+      dataExtractor: (c, idx, realMetrics) => {
+        const sys = systemsData[idx] || {};
+        const rm = realMetrics || {};
+        const internalLinks = rm.content?.internalLinks || sys.internalLinks || 0;
+        const externalLinks = rm.content?.externalLinks || sys.externalLinks || 0;
+        const wordCount = rm.content?.wordCount || sys.wordCount || 0;
+        const pageRank = rm.authority?.pageRank || 0;
+        return {
+          internalLinks: internalLinks,
+          externalLinks: externalLinks,
+          linkRatio: internalLinks > 0 ? Math.round((externalLinks / internalLinks) * 100) + '%' : 'N/A',
+          linkEquityFlow: pageRank >= 7 ? 'High' : pageRank >= 4 ? 'Medium' : internalLinks > 20 ? 'Medium' : 'Low',
+          wordCount: wordCount
+        };
+      },
+      fields: [
+        { key: 'internalLinks', label: 'Internal Links', icon: '🔗', type: 'number', compareMode: 'highest' },
+        { key: 'externalLinks', label: 'External Links', icon: '🌐', type: 'number' },
+        { key: 'linkRatio', label: 'Ext/Int Ratio', icon: '📊', type: 'text' },
+        { key: 'linkEquityFlow', label: 'Link Equity', icon: '💎', type: 'text' },
+        { key: 'wordCount', label: 'Word Count', icon: '📝', type: 'number', compareMode: 'highest' }
+      ]
+    });
+
+    // Schema Types Deep Dive
+    html += renderRawDataComparisonTable({
+      title: 'Schema Implementation Details',
+      icon: '📋',
+      description: 'Specific schema types detected on each competitor',
+      competitors: competitors,
+      geminiInsight: 'FAQPage, HowTo, and Article schemas increase AI citation probability by 40%. Organization schema establishes entity authority.',
+      dataExtractor: (c, idx, realMetrics) => {
+        const sys = systemsData[idx] || {};
+        const rm = realMetrics || {};
+        const schemas = rm.content?.schemaTypes || sys.schemaTypes || [];
+        return {
+          allSchemas: schemas.length > 0 ? schemas.slice(0, 5).join(', ') : 'None',
+          schemaCount: schemas.length,
+          hasFAQ: schemas.some(s => s.toLowerCase().includes('faq')) ? '✅' : '❌',
+          hasHowTo: schemas.some(s => s.toLowerCase().includes('howto')) ? '✅' : '❌',
+          hasArticle: schemas.some(s => s.toLowerCase().includes('article')) ? '✅' : '❌',
+          hasOrg: schemas.some(s => s.toLowerCase().includes('organization')) ? '✅' : '❌'
+        };
+      },
+      fields: [
+        { key: 'schemaCount', label: 'Total Schemas', icon: '📊', type: 'number', compareMode: 'highest' },
+        { key: 'hasFAQ', label: 'FAQPage', icon: '❓', type: 'text' },
+        { key: 'hasHowTo', label: 'HowTo', icon: '🔧', type: 'text' },
+        { key: 'hasArticle', label: 'Article', icon: '📰', type: 'text' },
+        { key: 'hasOrg', label: 'Organization', icon: '🏢', type: 'text' },
+        { key: 'allSchemas', label: 'All Types', icon: '📋', type: 'text-long' }
+      ]
+    });
+
+    // ---------------------------------------------------------------------------
+    // 1% STRATEGY EXECUTION PANEL - Content Systems Tab
+    // ---------------------------------------------------------------------------
+    html += (() => {
+      // Extract PAA questions from any available source
+      const paaQuestions = gemini?.paaQuestions || gemini?.peopleAlsoAsk ||
+        competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || c.apiData?.serper?.peopleAlsoAsk || []).slice(0, 10);
+      
+      // Extract keywords related to content systems
+      const systemsKeywords = gemini?.keywords || gemini?.targetKeywords ||
+        competitors.flatMap(c => c.processedMetrics?.topKeywords || []).slice(0, 20);
+      
+      // Brand entity
+      const brandEntity = {
+        name: data.projectName || data.domain || 'Your Brand',
+        url: data.url || data.domain || '',
+        id: '#organization'
+      };
+      
+      return renderOnePercentStrategyPanel({
+        paaQuestions: paaQuestions,
+        keywords: systemsKeywords,
+        brandEntity: brandEntity,
+        competitors: competitors,
+        tabName: 'systems'
+      });
+    })();
+
+    metricsDiv.innerHTML = html;
+
+    // Render charts
+    setTimeout(() => {
+      renderContentSystemsCharts(systemsData);
+    }, 100);
+  }
+
+  // ---------------------------------------------------------------------------
+  // VI-B. ELITE CONTENT OPERATIONS RENDERER v9.0
+  // Renders: Workflow Detection, Semantic Cluster Mapping, E-E-A-T Integration,
+  //          Schema Depth, Framework Maturity, Kill Moves
+  // ---------------------------------------------------------------------------
+  function renderEliteContentOperations(container, contentOps, competitors, eliteData) {
+    console.log('🎯 Rendering Elite Content Operations v9.0...');
+
+    const workflowDetection = contentOps.workflowDetection || [];
+    const semanticClusters = contentOps.semanticClusterMapping || [];
+    const eeatIntegration = contentOps.eeatIntegration || [];
+    const schemaDepth = contentOps.schemaDepth || [];
+    const frameworkMaturity = contentOps.frameworkMaturity || [];
+    const killMoves = contentOps.killMoves || [];
+    const hoverInsights = eliteData?.hoverInsights?.contentOperations || {};
+
+    let html = `
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">⚙️ Content Operations <span style="font-size: 12px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 4px 12px; border-radius: 12px; margin-left: 8px;">Elite v9.0</span></h3>
+          
+          <!-- ELITE HEADER -->
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">🔬 Workflow Detection → Semantic Clusters → E-E-A-T Integration → RAG Readiness</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+              <div title="${hoverInsights?.workflow || 'AI adoption and production model analysis'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg AI Adoption</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(workflowDetection.reduce((a, b) => a + (b.aiAdoption || 0), 0) / Math.max(1, workflowDetection.length))}%</div>
+              </div>
+              <div title="${hoverInsights?.velocity || 'Content pages published per week'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg Pages/Week</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(workflowDetection.reduce((a, b) => a + (b.velocity?.pagesPerWeek || 0), 0) / Math.max(1, workflowDetection.length))}</div>
+              </div>
+              <div title="${hoverInsights?.eeat || 'E-E-A-T signal density'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg E-E-A-T Score</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(eeatIntegration.reduce((a, b) => a + (b.eeatScore || 0), 0) / Math.max(1, eeatIntegration.length))}</div>
+              </div>
+              <div title="${hoverInsights?.ragReadiness || 'Answer Engine optimization score'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg RAG Readiness</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(schemaDepth.reduce((a, b) => a + (b.ragExtractionReadiness || 0), 0) / Math.max(1, schemaDepth.length))}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- WORKFLOW DETECTION -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🤖 Workflow & Production Model Detection</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Competitor</th>
+                  <th>AI Adoption</th>
+                  <th>Production Model</th>
+                  <th>Pages/Week</th>
+                  <th>Scalability</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${workflowDetection.map(wf => `
+                  <tr>
+                    <td><strong>${wf.domain}</strong></td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                          <div style="width: ${wf.aiAdoption}%; height: 100%; background: ${wf.aiAdoption >= 60 ? '#22c55e' : '#3b82f6'};"></div>
+                        </div>
+                        <span style="font-weight: 600;">${wf.aiAdoption}%</span>
+                      </div>
+                    </td>
+                    <td><span style="background: ${wf.productionModel?.includes('AI') ? '#dbeafe' : wf.productionModel?.includes('Human') ? '#dcfce7' : '#fef3c7'}; color: ${wf.productionModel?.includes('AI') ? '#1e40af' : wf.productionModel?.includes('Human') ? '#166534' : '#92400e'}; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${wf.productionModel}</span></td>
+                    <td style="font-weight: 700; font-size: 18px;">${wf.velocity?.pagesPerWeek}</td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                          <div style="width: ${wf.scalabilityScore}%; height: 100%; background: #8b5cf6;"></div>
+                        </div>
+                        <span style="font-size: 11px;">${wf.scalabilityScore}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- SEMANTIC CLUSTER MAPPING -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🕸️ Semantic Cluster Architecture</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${semanticClusters.slice(0, 4).map(cluster => `
+              <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid ${cluster.architecture === 'Hub-and-Spoke' ? '#22c55e' : cluster.architecture === 'Siloed' ? '#3b82f6' : '#f59e0b'};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <span style="font-weight: 700;">${cluster.domain}</span>
+                  <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 6px; font-size: 11px;">${cluster.architecture}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                  <div>
+                    <div style="color: #6b7280;">Power Hubs</div>
+                    <div style="font-size: 20px; font-weight: 700;">${cluster.powerHubs}</div>
+                  </div>
+                  <div>
+                    <div style="color: #6b7280;">Link Density</div>
+                    <div style="font-size: 20px; font-weight: 700;">${cluster.internalLinkDensity}</div>
+                  </div>
+                </div>
+                <div style="margin-top: 12px;">
+                  <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">HP → Money Flow: ${cluster.linkEquityFlow?.homepageToMoney}%</div>
+                  ${cluster.linkEquityFlow?.orphanedContentRisk ?
+        `<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-size: 11px;">⚠️ ${cluster.linkEquityFlow?.orphanedPages} orphaned pages</span>` :
+        '<span style="color: #22c55e; font-size: 11px;">✓ No orphaned content</span>'
+      }
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <!-- E-E-A-T INTEGRATION -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">✅ E-E-A-T Authoritativeness Graph</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Competitor</th>
+                  <th>Author Bios</th>
+                  <th>LinkedIn Links</th>
+                  <th>Expert Boards</th>
+                  <th>Fact Checks</th>
+                  <th>Reg. Footers</th>
+                  <th>E-E-A-T Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${eeatIntegration.map(eeat => `
+                  <tr>
+                    <td><strong>${eeat.domain}</strong></td>
+                    <td style="text-align: center;">${eeat.authoritativenessGraph?.authorBios ? '✅' : '❌'}</td>
+                    <td style="text-align: center;">${eeat.authoritativenessGraph?.linkedInLinks ? '✅' : '❌'}</td>
+                    <td style="text-align: center;">${eeat.authoritativenessGraph?.expertReviewBoards ? '✅' : '❌'}</td>
+                    <td style="text-align: center;">${eeat.authoritativenessGraph?.factCheckDates ? '✅' : '❌'}</td>
+                    <td style="text-align: center;">${eeat.authoritativenessGraph?.regulatoryFooters ? '✅' : '❌'}</td>
+                    <td>
+                      <span style="background: ${eeat.eeatScore >= 70 ? '#dcfce7' : eeat.eeatScore >= 50 ? '#fef3c7' : '#fee2e2'}; color: ${eeat.eeatScore >= 70 ? '#166534' : eeat.eeatScore >= 50 ? '#92400e' : '#991b1b'}; padding: 4px 12px; border-radius: 12px; font-weight: 700;">${eeat.eeatScore}</span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- SCHEMA DEPTH & RAG READINESS -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">📋 Schema Depth & RAG Extraction Readiness</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${schemaDepth.slice(0, 4).map(schema => `
+              <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 16px; border-radius: 12px;">
+                <div style="font-weight: 700; margin-bottom: 12px;">${schema.domain}</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px;">
+                  ${(schema.detectedSchemas || []).map(s => `<span style="background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 4px; font-size: 10px;">${s}</span>`).join('') || '<span style="opacity: 0.6; font-size: 11px;">No schema detected</span>'}
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                  <div>
+                    <div style="opacity: 0.7;">RAG Readiness</div>
+                    <div style="font-size: 18px; font-weight: 700;">${schema.ragExtractionReadiness}%</div>
+                  </div>
+                  <div>
+                    <div style="opacity: 0.7;">AI Overview</div>
+                    <div style="font-size: 14px; font-weight: 600;">${schema.aiOverviewOptimized ? '✅ Optimized' : '❌ Not Ready'}</div>
+                  </div>
+                </div>
+                ${(schema.missingCriticalSchema || []).length > 0 ? `
+                  <div style="margin-top: 12px; font-size: 11px; color: #fbbf24;">
+                    ⚠️ Missing: ${schema.missingCriticalSchema.join(', ')}
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+          
+          <!-- KILL MOVES -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🎯 Kill Moves: Content Operations Domination</h4>
+          <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+            ${killMoves.map((move, i) => `
+              <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); color: white; padding: 20px; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                  <span style="font-size: 24px;">${['🎯', '⚡', '🚀'][i % 3]}</span>
+                  <div>
+                    <div style="font-size: 16px; font-weight: 700;">${move.name}</div>
+                    <div style="font-size: 12px; opacity: 0.7;">${move.logic}</div>
+                  </div>
+                </div>
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;"><strong>Action:</strong> ${move.action}</div>
+                <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; font-size: 12px;">
+                  <strong style="color: #22c55e;">📈 Impact:</strong> ${move.impact}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+    container.innerHTML = html;
+
+    // Render charts
+    setTimeout(() => {
+      if (typeof renderContentSystemsCharts === 'function') {
+        const chartData = workflowDetection.map(w => ({
+          domain: w.domain,
+          frameworkMaturity: w.scalabilityScore || 50,
+          eeatIntegration: 50,
+          linkEquityFlow: 50,
+          aiWorkflowRatio: w.aiAdoption,
+          internalLinks: w.velocity?.pagesPerWeek * 5
+        }));
+        renderContentSystemsCharts(chartData);
+      }
+    }, 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // WINDOW EXPORTS
+  // ---------------------------------------------------------------------------
+  window.populateContentSystemsTab = populateContentSystemsTab;
+  window.renderEliteContentOperations = renderEliteContentOperations;
+
+</script>

@@ -1,0 +1,183 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Strategy_HubSpoke.html - Hub & Spoke Semantic Architecture Engine           -->
+<!-- Part of 1% Strategy Engine - Phase 2: Semantic Keyword Mapping                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * PHASE 2: HUB & SPOKE SEMANTIC MAPPING ENGINE
+   * Creates Entity Nodes and internal linking architecture
+   */
+  function generateHubSpokeArchitecture(keywords, existingContent) {
+    if (!keywords || keywords.length === 0) {
+      return { hubs: [], spokes: [], html: '' };
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SAFE KEYWORD TEXT EXTRACTION HELPER
+    // Handles: PAA (question), Related (query), SERP (keyword/text), strings
+    // ═══════════════════════════════════════════════════════════════════════════
+    const getKwText = (kw) => {
+      if (typeof kw === 'string') return kw;
+      if (!kw) return 'unknown keyword';
+      return kw.keyword || kw.text || kw.query || kw.question || kw.title || String(kw);
+    };
+    
+    // Identify pillar (hub) keywords - highest volume, broadest topics
+    const sortedKW = [...keywords].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+    
+    // Top 3-5 become hubs, rest become spokes
+    const hubs = sortedKW.slice(0, Math.min(5, Math.ceil(keywords.length / 4))).map((kw, idx) => {
+      const kwText = getKwText(kw);
+      return {
+        id: `hub-${idx + 1}`,
+        keyword: kwText,
+        volume: kw.volume || kw.searchVolume || 0,
+        intent: kw.intent || 'informational',
+        type: 'pillar',
+        suggestedUrl: `/guides/${kwText.toLowerCase().replace(/\s+/g, '-')}/`,
+        suggestedTitle: `The Complete Guide to ${kwText}`,
+        contentType: 'Comprehensive Pillar Page (3,000-5,000 words)',
+        spokes: []
+      };
+    });
+    
+    // Assign remaining keywords as spokes to appropriate hubs
+    const spokes = sortedKW.slice(hubs.length).map((kw, idx) => {
+      // Find most semantically related hub (simple: first word match or default to first hub)
+      const kwText = getKwText(kw).toLowerCase();
+      let assignedHub = hubs[0];
+      
+      for (const hub of hubs) {
+        const hubText = (hub.keyword || '').toLowerCase();
+        if (kwText.includes(hubText.split(' ')[0]) || hubText.includes(kwText.split(' ')[0])) {
+          assignedHub = hub;
+          break;
+        }
+      }
+      
+      const spoke = {
+        id: `spoke-${idx + 1}`,
+        keyword: getKwText(kw),
+        volume: kw.volume || kw.searchVolume || 0,
+        intent: kw.intent || 'informational',
+        parentHubId: assignedHub.id,
+        suggestedUrl: `/${kwText.replace(/\s+/g, '-')}/`,
+        anchorText: getKwText(kw),
+        linkToHub: assignedHub.suggestedUrl,
+        linkFromHub: true
+      };
+      
+      assignedHub.spokes.push(spoke);
+      return spoke;
+    });
+    
+    return {
+      hubs: hubs,
+      spokes: spokes,
+      totalNodes: hubs.length + spokes.length,
+      html: renderHubSpokeCard(hubs, spokes)
+    };
+  }
+  
+  /**
+   * Render Hub & Spoke Visualization Card
+   */
+  function renderHubSpokeCard(hubs, spokes) {
+    if (!hubs || hubs.length === 0) {
+      return '<div style="color: #9ca3af; padding: 20px; text-align: center;">No keywords available for Hub & Spoke mapping</div>';
+    }
+    
+    const escapeHtmlLocal = (str) => {
+      if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
+      return String(str || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+    
+    return `
+      <div style="background: linear-gradient(135deg, #064e3b 0%, #047857 100%); border-radius: 16px; padding: 24px; margin: 20px 0; box-shadow: 0 10px 40px -10px rgba(16,185,129,0.4);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+          <span style="font-size: 28px;">🕸️</span>
+          <div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: white;">P5: Hub & Spoke Semantic Architecture</h3>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #6ee7b7;">${hubs.length} Pillar Hubs • ${spokes.length} Spoke Pages • Entity-Based Linking</p>
+          </div>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">AI CRAWLER STRATEGY</span>
+          </div>
+          <p style="color: #d1fae5; font-size: 13px; line-height: 1.6; margin: 0;">
+            <strong style="color: #fbbf24;">Tell Gemini/GPT exactly how your concepts relate.</strong> This Hub & Spoke structure creates explicit semantic relationships that AI crawlers use to understand your site's topical authority. Each spoke links TO its hub with exact-match anchors, and each hub links OUT to all spokes, creating a knowledge graph within your domain.
+          </p>
+        </div>
+        
+        <!-- Visual Hub Map -->
+        <div style="display: grid; gap: 16px; margin-bottom: 20px;">
+          ${hubs.map((hub, idx) => `
+            <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; border-left: 4px solid ${['#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#06b6d4'][idx % 5]};">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="background: ${['#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#06b6d4'][idx % 5]}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;">🎯 HUB ${idx + 1}</span>
+                  <span style="color: white; font-size: 14px; font-weight: 600;">${escapeHtmlLocal(hub.keyword)}</span>
+                </div>
+                <span style="color: #6ee7b7; font-size: 11px;">${hub.spokes.length} spokes</span>
+              </div>
+              
+              <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                <div style="font-size: 11px; color: #6ee7b7;">📄 Suggested Pillar:</div>
+                <div style="color: white; font-size: 12px; font-weight: 500;">${escapeHtmlLocal(hub.suggestedTitle)}</div>
+                <div style="color: #9ca3af; font-size: 10px; margin-top: 4px;">URL: ${escapeHtmlLocal(hub.suggestedUrl)} • ${hub.contentType}</div>
+              </div>
+              
+              ${hub.spokes.length > 0 ? `
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  ${hub.spokes.slice(0, 8).map(spoke => `
+                    <div style="background: rgba(255,255,255,0.15); padding: 6px 10px; border-radius: 6px; font-size: 10px; color: #d1fae5; display: flex; align-items: center; gap: 4px;">
+                      <span style="color: #6ee7b7;">→</span>
+                      ${escapeHtmlLocal(spoke.keyword)}
+                    </div>
+                  `).join('')}
+                  ${hub.spokes.length > 8 ? `<span style="color: #6ee7b7; font-size: 10px; padding: 6px;">+${hub.spokes.length - 8} more</span>` : ''}
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+        
+        <!-- Internal Linking Matrix -->
+        <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px;">
+          <div style="font-size: 12px; font-weight: 600; color: #6ee7b7; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <span>🔗</span> Internal Linking Blueprint
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 11px;">
+            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 8px;">
+              <div style="color: #fbbf24; font-weight: 600; margin-bottom: 6px;">From Each Spoke:</div>
+              <ul style="margin: 0; padding-left: 16px; color: #d1fae5; line-height: 1.8;">
+                <li>Link to parent Hub with <strong>exact-match anchor text</strong></li>
+                <li>Link to 2-3 sibling spokes with related terms</li>
+                <li>Include contextual paragraph explaining relationship</li>
+              </ul>
+            </div>
+            <div style="background: rgba(255,255,255,0.08); padding: 12px; border-radius: 8px;">
+              <div style="color: #fbbf24; font-weight: 600; margin-bottom: 6px;">From Each Hub:</div>
+              <ul style="margin: 0; padding-left: 16px; color: #d1fae5; line-height: 1.8;">
+                <li>Link to ALL child spokes from intro paragraph</li>
+                <li>Create "Related Topics" section with all spokes</li>
+                <li>Use semantic variations of anchor text</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Export functions globally
+  window.generateHubSpokeArchitecture = generateHubSpokeArchitecture;
+  window.renderHubSpokeCard = renderHubSpokeCard;
+
+})();
+</script>

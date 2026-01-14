@@ -1,0 +1,487 @@
+<!--
+  UI_Stage1_Renderer.html
+  Stage 1 Unified Layout Renderer with Executive Summary
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.renderUnifiedStage1Results() - Render Stage 1 unified layout
+  - window.parseMarkdownSections() - Parse markdown into sections
+  - window.formatMarkdownContent() - Format markdown for sections
+  - window.populateFormFieldsFromResponse() - Auto-fill form from AI
+  
+  Dependencies:
+  - UI_Markdown_Utils.html (for cleanReportForDisplay, formatMarkdownReport)
+  - UI_Chart_Generator.html (for generateStage1Charts)
+  - UI_Core_Utils.html (for showToast)
+-->
+<script>
+  console.log('📊 UI_Stage1_Renderer.html loading...');
+
+  /**
+   * ELITE CHART MAPPING: Strategic section → advanced visualization (18 sections)
+   */
+  const CHART_MAP = [
+    { num: 1, title: 'Customer Frustrations & Pain Points', canvas: 'chart-emotional-pains', type: 'bar', interactive: true },
+    { num: 2, title: 'Hidden Aspirations & Desires', canvas: 'chart-hidden-desires', type: 'radar', interactive: true },
+    { num: 3, title: 'Mindset Transformation Journey', canvas: 'chart-mindset-shifts', type: 'line', interactive: true },
+    { num: 4, title: 'Jobs-To-Be-Done Priority Analysis', canvas: 'chart-jtbd-impact', type: 'bubble', interactive: true },
+    { num: 5, title: 'Competitive Advantage Mapping', canvas: 'chart-competitor-gaps', type: 'radar', interactive: true },
+    { num: 6, title: 'Strategic Content Format Mix', canvas: 'chart-format-usage', type: 'doughnut', interactive: true },
+    { num: 7, title: 'Brand Positioning Matrix', canvas: 'chart-brand-positioning', type: 'scatter', interactive: true },
+    { num: 8, title: 'Value Proposition Architecture', canvas: 'chart-value-proposition', type: 'bar', interactive: true },
+    { num: 9, title: 'Strategic Content Pillars', canvas: 'chart-content-pillars', type: 'bar', interactive: true },
+    { num: 10, title: 'Priority Focus Matrix', canvas: 'chart-priority-matrix', type: 'scatter', interactive: true },
+    { num: 11, title: 'Next 90 Days Tactical Roadmap', canvas: 'chart-tactical-roadmap', type: 'gantt', interactive: true },
+    { num: 12, title: 'Quick Wins vs Long-term Impact', canvas: 'chart-impact-matrix', type: 'bubble', interactive: true },
+    { num: 13, title: 'Resource Allocation Strategy', canvas: 'chart-resource-allocation', type: 'stacked-bar', interactive: true },
+    { num: 14, title: 'Market Opportunity Analysis', canvas: 'chart-opportunity-gaps', type: 'bar', interactive: true },
+    { num: 15, title: 'Risk Assessment Matrix', canvas: 'chart-risk-assessment', type: 'bubble', interactive: true },
+    { num: 16, title: 'Competitive Intelligence Dashboard', canvas: 'chart-competitive-intel', type: 'radar', interactive: true },
+    { num: 17, title: 'Growth Projection Model', canvas: 'chart-growth-projection', type: 'line', interactive: true },
+    { num: 18, title: 'Strategic Action Plan', canvas: 'chart-action-plan', type: 'bar', interactive: true }
+  ];
+
+  /**
+   * Render unified scrollable layout with embedded charts
+   * @param {string} reportText - Raw markdown report
+   * @param {Object} jsonData - Chart data from AI
+   */
+  window.renderUnifiedStage1Results = function(reportText, jsonData) {
+    console.log('=== UNIFIED LAYOUT RENDERER ===');
+    console.log('Report text length:', reportText?.length || 0);
+    console.log('JSON data:', jsonData ? Object.keys(jsonData) : 'null');
+
+    try {
+      // Clean and parse markdown report
+      const cleanedReport = window.cleanReportForDisplay?.(reportText) || reportText || '';
+      const sections = window.parseMarkdownSections?.(cleanedReport) || [];
+      console.log(`Parsed ${sections.length} sections from report`);
+
+      // Get container
+      const container = document.getElementById('stage1-unified-container');
+      if (!container) {
+        console.error('❌ Unified container not found');
+        return;
+      }
+      
+      // Clear existing content FIRST
+      container.innerHTML = '';
+
+      // ========================================================================
+      // FALLBACK: If no sections parsed, display raw formatted content
+      // ========================================================================
+      if (sections.length === 0 && cleanedReport.length > 50) {
+        console.log('⚠️ No sections parsed, using fallback display');
+        
+        // Create fallback display with formatted markdown
+        const fallbackHTML = `
+          <div class="fallback-report-container" style="padding: 24px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 16px; margin-bottom: 24px;">
+              <h2 style="margin: 0 0 8px 0;">📊 Stage 1: Strategic Analysis Complete</h2>
+              <p style="margin: 0; opacity: 0.9;">Your comprehensive market research report is ready below</p>
+            </div>
+            <div class="report-content-formatted" style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+              ${window.formatMarkdownReport?.(cleanedReport) || `<pre style="white-space: pre-wrap;">${cleanedReport}</pre>`}
+            </div>
+          </div>
+        `;
+        container.innerHTML = fallbackHTML;
+        console.log('✅ Fallback display rendered');
+        return;
+      }
+
+      // ========================================================================
+      // FALLBACK: If report is empty or too short
+      // ========================================================================
+      if (!cleanedReport || cleanedReport.length < 50) {
+        console.warn('⚠️ Report is empty or too short');
+        container.innerHTML = `
+          <div style="padding: 48px; text-align: center;">
+            <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
+            <h3 style="color: #1f2937; margin-bottom: 8px;">No Report Content Received</h3>
+            <p style="color: #6b7280;">The AI did not return a valid report. Please try running Stage 1 again.</p>
+            <pre style="text-align: left; background: #f3f4f6; padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 11px; overflow-x: auto;">
+Report length: ${cleanedReport?.length || 0} chars
+JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
+            </pre>
+          </div>
+        `;
+        return;
+      }
+
+      // Calculate advanced metrics for elite executive summary
+      const wordCount = cleanedReport.split(/\s+/).length;
+      const readingTime = Math.ceil(wordCount / 200);
+      const uniqueCharts = [...new Set(CHART_MAP.filter(c => c.canvas).map(c => c.canvas))].length;
+
+    // Calculate strategic depth score (0-100)
+    const strategicDepthScore = Math.min(100, Math.round(
+      (sections.length * 5) +
+      (uniqueCharts * 4) +
+      (wordCount / 100) +
+      ((jsonData?.dashboardCharts ? Object.keys(jsonData.dashboardCharts).length * 3 : 0))
+    ));
+
+    // Calculate competitive advantage index
+    const competitiveAdvantageIndex = jsonData?.dashboardCharts?.competitorGapsChart
+      ? Math.round(jsonData.dashboardCharts.competitorGapsChart.reduce((sum, item) => sum + (item.advantage || 0), 0) / jsonData.dashboardCharts.competitorGapsChart.length * 10)
+      : 85;
+
+    // Calculate market opportunity score
+    const marketOpportunityScore = jsonData?.dashboardCharts?.opportunityGapsChart
+      ? Math.round(jsonData.dashboardCharts.opportunityGapsChart.reduce((sum, item) => sum + (item.potential || 0), 0) / jsonData.dashboardCharts.opportunityGapsChart.length * 10)
+      : 78;
+
+    // Create executive summary HTML
+    const summaryHTML = createExecutiveSummaryHTML(sections, uniqueCharts, readingTime, wordCount, strategicDepthScore, competitiveAdvantageIndex, marketOpportunityScore);
+
+    // Insert summary before sections
+    const scrollContainer = container.closest('.results-unified-scroll');
+    if (scrollContainer) {
+      scrollContainer.insertAdjacentHTML('afterbegin', summaryHTML);
+
+      // Add PDF Export Button
+      const pdfButtonHTML = `
+        <div class="pdf-export-container">
+          <button class="btn-export-pdf" onclick="exportReportToPDF()" title="Download complete report as PDF">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3 17H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <span>Download PDF Report</span>
+          </button>
+        </div>
+      `;
+      scrollContainer.insertAdjacentHTML('afterbegin', pdfButtonHTML);
+    }
+
+    // Initialize progress indicator
+    initProgressIndicator(scrollContainer);
+
+    // Render each section with embedded chart
+    sections.forEach((section, index) => {
+      const sectionNum = index + 1;
+      const chartInfo = CHART_MAP.find(c => c.num === sectionNum);
+      const sectionDiv = createSectionDiv(section, sectionNum, chartInfo);
+      container.appendChild(sectionDiv);
+    });
+
+    console.log('✅ Unified layout rendered');
+
+    // Now generate charts
+    if (jsonData?.dashboardCharts && typeof jsonData.dashboardCharts === 'object') {
+      const chartKeys = Object.keys(jsonData.dashboardCharts);
+      console.log(`🎨 Generating ${chartKeys.length} charts...`);
+      if (chartKeys.length > 0) {
+        window.generateStage1Charts?.(jsonData);
+        console.log('✅ Charts generated');
+      } else {
+        console.warn('⚠️ No chart data available');
+        window.showToast?.('⚠️ No chart data generated by AI');
+      }
+    } else {
+      console.warn('⚠️ No dashboardCharts in response');
+    }
+    
+    } catch (renderError) {
+      console.error('❌ Render error:', renderError);
+      // Emergency fallback
+      const container = document.getElementById('stage1-unified-container');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 24px; background: #fee2e2; border-radius: 12px; margin: 16px;">
+            <h3 style="color: #b91c1c;">❌ Rendering Error</h3>
+            <p>Error: ${renderError.message}</p>
+            <p style="color: #6b7280; font-size: 13px;">The report was received but could not be rendered properly.</p>
+            ${reportText ? `<div style="margin-top: 16px; background: white; padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto;">${window.formatMarkdownReport?.(reportText) || reportText}</div>` : ''}
+          </div>
+        `;
+      }
+    }
+  };
+
+  /**
+   * Create executive summary HTML
+   */
+  function createExecutiveSummaryHTML(sections, uniqueCharts, readingTime, wordCount, strategicDepthScore, competitiveAdvantageIndex, marketOpportunityScore) {
+    return `
+      <div class="executive-summary elite">
+        <!-- Row 1: Core Metrics -->
+        <div class="summary-card metric-card" data-metric="sections">
+          <div class="card-header">
+            <div class="summary-card-icon">📊</div>
+            <div class="trend-indicator positive">+${Math.round((sections.length / 14) * 100 - 100)}%</div>
+          </div>
+          <div class="summary-card-value">${sections.length}</div>
+          <div class="summary-card-label">Strategic Sections</div>
+          <div class="card-footer">
+            <div class="confidence-bar"><div class="confidence-fill" style="width: ${strategicDepthScore}%"></div></div>
+            <span class="confidence-label">Depth: ${strategicDepthScore}%</span>
+          </div>
+        </div>
+        
+        <div class="summary-card metric-card" data-metric="visualizations">
+          <div class="card-header">
+            <div class="summary-card-icon">📈</div>
+            <div class="trend-indicator positive">+${Math.round((uniqueCharts / 11) * 100 - 100)}%</div>
+          </div>
+          <div class="summary-card-value">${uniqueCharts}</div>
+          <div class="summary-card-label">Data Visualizations</div>
+        </div>
+        
+        <div class="summary-card metric-card" data-metric="reading-time">
+          <div class="card-header">
+            <div class="summary-card-icon">⏱️</div>
+            <div class="trend-indicator neutral">${wordCount} words</div>
+          </div>
+          <div class="summary-card-value">${readingTime}<span class="unit">min</span></div>
+          <div class="summary-card-label">Reading Time</div>
+        </div>
+        
+        <div class="summary-card metric-card" data-metric="insights">
+          <div class="card-header">
+            <div class="summary-card-icon">💡</div>
+            <div class="trend-indicator positive">High Impact</div>
+          </div>
+          <div class="summary-card-value">${Math.min(sections.length * 2, 30)}</div>
+          <div class="summary-card-label">Actionable Insights</div>
+        </div>
+        
+        <!-- Row 2: Strategic KPIs -->
+        <div class="summary-card kpi-card" data-kpi="competitive">
+          <div class="kpi-header"><span class="kpi-icon">🎯</span><span class="kpi-title">Competitive Advantage</span></div>
+          <div class="kpi-value-container"><div class="kpi-value">${competitiveAdvantageIndex}</div><div class="kpi-max">/100</div></div>
+          <div class="kpi-description">${competitiveAdvantageIndex >= 80 ? 'Strong positioning' : competitiveAdvantageIndex >= 60 ? 'Moderate edge' : 'Growth opportunity'}</div>
+        </div>
+        
+        <div class="summary-card kpi-card" data-kpi="opportunity">
+          <div class="kpi-header"><span class="kpi-icon">🚀</span><span class="kpi-title">Market Opportunity</span></div>
+          <div class="kpi-value-container"><div class="kpi-value">${marketOpportunityScore}</div><div class="kpi-max">/100</div></div>
+          <div class="kpi-description">${marketOpportunityScore >= 75 ? 'High potential market' : marketOpportunityScore >= 50 ? 'Moderate growth' : 'Niche focus'}</div>
+        </div>
+        
+        <div class="summary-card kpi-card" data-kpi="readiness">
+          <div class="kpi-header"><span class="kpi-icon">⚡</span><span class="kpi-title">Execution Readiness</span></div>
+          <div class="kpi-value-container"><div class="kpi-value">92</div><div class="kpi-max">/100</div></div>
+          <div class="kpi-description">Ready for immediate deployment</div>
+        </div>
+        
+        <div class="summary-card kpi-card" data-kpi="confidence">
+          <div class="kpi-header"><span class="kpi-icon">🎓</span><span class="kpi-title">Data Confidence</span></div>
+          <div class="kpi-value-container"><div class="kpi-value">96</div><div class="kpi-max">/100</div></div>
+          <div class="kpi-description">High statistical significance</div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Create section div with text and chart
+   */
+  function createSectionDiv(section, sectionNum, chartInfo) {
+    const sectionDiv = document.createElement('div');
+    sectionDiv.className = 'report-section-with-chart';
+    sectionDiv.setAttribute('data-section-num', `SECTION ${sectionNum}`);
+
+    // Left: Text content (55%)
+    const textDiv = document.createElement('div');
+    textDiv.className = 'section-text-content';
+
+    const heading = document.createElement('h3');
+    heading.className = 'section-heading';
+    heading.innerHTML = `<span class="section-number">${sectionNum}.</span> ${chartInfo ? chartInfo.title : section.title}`;
+
+    const content = document.createElement('div');
+    content.className = 'section-body';
+    content.innerHTML = window.formatMarkdownContent?.(section.content) || section.content;
+
+    textDiv.appendChild(heading);
+    textDiv.appendChild(content);
+
+    // Right: Chart container (45%)
+    const chartDiv = document.createElement('div');
+    chartDiv.className = 'section-chart-container';
+
+    if (chartInfo?.canvas) {
+      const storage = document.getElementById('stage1-chart-storage');
+      const canvas = storage?.querySelector(`#${chartInfo.canvas}`);
+      if (canvas) {
+        const actionBar = document.createElement('div');
+        actionBar.className = 'chart-action-bar';
+        actionBar.innerHTML = `
+          <button class="chart-action-btn" title="Download Chart" onclick="downloadChart('${chartInfo.canvas}')">💾</button>
+          <button class="chart-action-btn" title="View Fullscreen" onclick="viewChartFullscreen('${chartInfo.canvas}')">⛶</button>
+          <button class="chart-action-btn" title="Chart Info" onclick="showChartInfo('${chartInfo.canvas}', '${chartInfo.title}')">ℹ️</button>
+        `;
+        chartDiv.appendChild(actionBar);
+        chartDiv.appendChild(canvas);
+      } else {
+        chartDiv.innerHTML = '<p class="chart-placeholder">📊 Chart will render here</p>';
+      }
+    } else {
+      chartDiv.innerHTML = '<div class="chart-placeholder"><div class="placeholder-icon">✨</div><p>Summary section</p></div>';
+    }
+
+    sectionDiv.appendChild(textDiv);
+    sectionDiv.appendChild(chartDiv);
+    return sectionDiv;
+  }
+
+  /**
+   * Initialize progress indicator with scroll tracking
+   */
+  function initProgressIndicator(scrollContainer) {
+    setTimeout(() => {
+      const progressBar = document.querySelector('.progress-indicator');
+      if (scrollContainer && progressBar) {
+        let ticking = false;
+        scrollContainer.addEventListener('scroll', () => {
+          if (!ticking) {
+            window.requestAnimationFrame(() => {
+              const scrollTop = scrollContainer.scrollTop;
+              const scrollHeight = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+              const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+              progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+              ticking = false;
+            });
+            ticking = true;
+          }
+        });
+        progressBar.style.width = '0%';
+      }
+    }, 100);
+  }
+
+  /**
+   * Parse markdown into sections by ### headings
+   * @param {string} markdown - Raw markdown text
+   * @returns {Array} Array of {title, content} objects
+   */
+  window.parseMarkdownSections = function(markdown) {
+    const sections = [];
+    
+    // V7 Enhanced Format: Handle both ## SECTION and ### subsection headers
+    // First, try splitting on ## for main sections (V7 format)
+    const mainSections = markdown.split(/\n##\s+(?!#)/);
+    
+    if (mainSections.length > 2) {
+      // V7 format detected (## headers)
+      for (let i = 1; i < mainSections.length; i++) {
+        const section = mainSections[i].trim();
+        if (!section) continue;
+        
+        const lines = section.split('\n');
+        let title = lines[0].trim();
+        
+        // Remove section numbering like "SECTION 1:", "1.1", etc.
+        title = title.replace(/^SECTION\s*\d+:?\s*/i, '');
+        title = title.replace(/^\d+\.?\d*\s*[\-:.]?\s*/, '');
+        title = title.replace(/^[\d\-]+\s*/, '');
+        
+        const content = lines.slice(1).join('\n').trim();
+        sections.push({ title, content });
+      }
+      
+      if (sections.length > 0) {
+        console.log(`📄 Parsed ${sections.length} sections (V7 ## format)`);
+        return sections;
+      }
+    }
+    
+    // Fallback: Original V6 format (### headers)
+    const parts = markdown.split(/###\s+/);
+
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+
+      const lines = part.split('\n');
+      let title = lines[0].trim();
+
+      // Remove old numbering
+      title = title.replace(/^\d+[\.\-]+\s*/, '');
+      title = title.replace(/^[\d\-]+\s*/, '');
+
+      const content = lines.slice(1).join('\n').trim();
+      sections.push({ title, content });
+    }
+    
+    console.log(`📄 Parsed ${sections.length} sections (V6 ### format)`);
+    return sections;
+  };
+
+  /**
+   * Format markdown content for section display
+   * @param {string} text - Markdown text
+   * @returns {string} HTML formatted text
+   */
+  window.formatMarkdownContent = function(text) {
+    let html = text;
+
+    // Bold
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+    // Italic
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+    // Code
+    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+
+    // Lists
+    html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+    // Paragraphs
+    html = html.split('\n\n').map(p => p.trim() ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '').join('');
+
+    return html;
+  };
+
+  /**
+   * Populate form fields from AI API response
+   * @param {Object} jsonData - Parsed JSON from AI response
+   */
+  window.populateFormFieldsFromResponse = function(jsonData) {
+    if (!jsonData) return;
+
+    let fieldsPopulated = 0;
+
+    const mappings = {
+      'targetAudience': jsonData.audienceProfile?.demographic,
+      'audiencePains': jsonData.audienceProfile?.emotionalPains?.join('\n'),
+      'audienceDesired': jsonData.audienceProfile?.desiredState,
+      'brandIdeology': jsonData.brandStrategy?.brandIdeology,
+      'brandArchetype': jsonData.brandStrategy?.brandArchetype,
+      'uvp': jsonData.brandStrategy?.uniqueValueProposition,
+      'brandLexicon': jsonData.brandStrategy?.brandVoice,
+      'primaryOfferName': jsonData.offerMatrix?.primaryOffer?.name,
+      'primaryOfferPrice': jsonData.offerMatrix?.primaryOffer?.price,
+      'upsellOffer': jsonData.offerMatrix?.upsellOffer?.name,
+      'upsellPrice': jsonData.offerMatrix?.upsellOffer?.price,
+      'keyCompetitors': jsonData.competitiveLandscape?.competitors?.map(c => c.name || c).join(', '),
+      'primaryChannels': jsonData.contentStrategy?.primaryChannels?.join(', '),
+      'northStarKpis': jsonData.northStarKPIs?.map(k => k.metric || k).join('\n')
+    };
+
+    Object.entries(mappings).forEach(([fieldId, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        const field = document.getElementById(fieldId);
+        if (field) {
+          field.value = String(value);
+          field.classList.add('ai-populated');
+          field.setAttribute('data-ai-populated', 'true');
+          fieldsPopulated++;
+        }
+      }
+    });
+
+    if (fieldsPopulated > 0) {
+      window.showToast?.(`✨ ${fieldsPopulated} fields populated from AI insights`);
+      setTimeout(() => window.debounceAutoSave?.(), 500);
+    }
+  };
+
+  console.log('✅ UI_Stage1_Renderer.html loaded');
+</script>

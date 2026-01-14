@@ -1,0 +1,531 @@
+<!--
+  UI_Chart_Generator.html
+  Stage 1 Chart Generation System - 14 Elite Charts
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.generateStage1Charts() - Main chart generation entry point
+  - All 14 Stage 1 dashboard charts
+  
+  Dependencies:
+  - UI_Chart_Config.html (must be loaded first)
+  - Chart.js library
+-->
+<script>
+  console.log('📈 UI_Chart_Generator.html loading...');
+
+  /**
+   * Generate all 14 Stage 1 Dashboard Charts
+   * @param {Object} data - JSON data containing dashboardCharts
+   */
+  window.generateStage1Charts = function(data) {
+    console.log('=== generateStage1Charts called ===');
+    
+    const chartInstances = window.chartInstances;
+    const commonAnimation = window.getCommonAnimation();
+
+    // Verify Chart.js
+    if (typeof Chart === 'undefined') {
+      console.error('❌ Chart.js not loaded');
+      window.showToast?.('⚠️ Chart library not loaded');
+      return;
+    }
+
+    // Configure defaults
+    window.configureChartDefaults?.();
+
+    // Destroy existing charts
+    Object.values(chartInstances).forEach(chart => {
+      try { if (chart?.destroy) chart.destroy(); } catch (e) {}
+    });
+    Object.keys(chartInstances).forEach(k => delete chartInstances[k]);
+
+    // Ensure canvas elements exist
+    ensureCanvasElements();
+
+    const charts = data?.dashboardCharts;
+    if (!charts) {
+      console.error('❌ No dashboardCharts data');
+      return;
+    }
+    
+    // FALLBACK: Look for data at both root level and in dashboardCharts
+    // This handles both V6 structure (root level) and V7 structure (dashboardCharts)
+    const jtbdData = data.jtbdScenarios || charts.jtbdScenarios || [];
+    const contentPillarsData = data.contentPillars || charts.contentPillars || [];
+    const competitiveGapsData = data.competitiveGaps || charts.competitiveGaps || {};
+    const uniqueMechanismData = data.uniqueMechanism || charts.uniqueMechanism || null;
+
+    let created = 0, failed = 0;
+
+    // Chart 1: Customer Frustrations
+    try {
+      if (charts.customerFrustrationsChart?.length) {
+        const result = createFrustrationsChart(charts.customerFrustrationsChart, commonAnimation);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 1 error:', e); failed++; }
+
+    // Chart 2: Hidden Aspirations
+    try {
+      if (charts.hiddenAspirationsChart?.length) {
+        const result = createAspirationsChart(charts.hiddenAspirationsChart, commonAnimation);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 2 error:', e); failed++; }
+
+    // Chart 3: Mindset Transformation
+    try {
+      if (charts.mindsetTransformationChart?.length) {
+        const result = createMindsetChart(charts.mindsetTransformationChart, commonAnimation);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 3 error:', e); failed++; }
+
+    // Chart 4: JTBD Scenarios
+    try {
+      if (jtbdData?.length) {
+        const result = createJTBDChart(jtbdData, commonAnimation);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 4 error:', e); failed++; }
+
+    // Chart 5: Competitive Gaps (Radar)
+    try {
+      if (competitiveGapsData && Object.keys(competitiveGapsData).length > 0) {
+        const result = createCompetitiveGapsChart(competitiveGapsData);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 5 error:', e); failed++; }
+
+    // Chart 6: Format Usage (Doughnut)
+    try {
+      if (competitiveGapsData?.formatGap) {
+        const result = createFormatUsageChart();
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 6 error:', e); failed++; }
+
+    // Chart 7: Brand Positioning (Scatter)
+    try {
+      if (uniqueMechanismData) {
+        const result = createBrandPositioningChart(uniqueMechanismData);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 7 error:', e); failed++; }
+
+    // Chart 8: Value Proposition (Pie)
+    try {
+      if (contentPillarsData?.length) {
+        const result = createValuePropositionChart(contentPillarsData);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 8 error:', e); failed++; }
+
+    // Chart 9: Content Pillars (Bar)
+    try {
+      if (contentPillarsData?.length) {
+        const result = createContentPillarsChart(contentPillarsData);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 9 error:', e); failed++; }
+
+    // Chart 10: Priority Matrix (Polar Area)
+    try {
+      if (contentPillarsData?.length) {
+        const result = createPriorityMatrixChart(contentPillarsData);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 10 error:', e); failed++; }
+
+    // Chart 11: Market Opportunity (Bubble)
+    try {
+      if (contentPillarsData?.length) {
+        const result = createOpportunityChart(contentPillarsData);
+        result ? created++ : failed++;
+      }
+    } catch (e) { console.error('Chart 11 error:', e); failed++; }
+
+    // Chart 12: Tactical Roadmap (Horizontal Bar)
+    try {
+      const result = createTacticalRoadmapChart(commonAnimation);
+      result ? created++ : failed++;
+    } catch (e) { console.error('Chart 12 error:', e); failed++; }
+
+    // Chart 13: Impact Matrix (Bubble)
+    try {
+      const result = createImpactMatrixChart(commonAnimation);
+      result ? created++ : failed++;
+    } catch (e) { console.error('Chart 13 error:', e); failed++; }
+
+    // Chart 14: Resource Allocation (Stacked Bar)
+    try {
+      const result = createResourceAllocationChart(commonAnimation);
+      result ? created++ : failed++;
+    } catch (e) { console.error('Chart 14 error:', e); failed++; }
+
+    console.log(`Charts: ${created} created, ${failed} failed`);
+    if (created > 0) window.showToast?.(`✅ ${created} charts rendered`);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HELPER: Ensure Canvas Elements Exist
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  function ensureCanvasElements() {
+    const ids = ['chart-tactical-roadmap', 'chart-impact-matrix', 'chart-resource-allocation'];
+    const container = document.getElementById('stage1-chart-storage') || 
+                      document.getElementById('stage1-unified-container');
+    if (!container) return;
+    
+    ids.forEach(id => {
+      if (!document.getElementById(id)) {
+        const canvas = document.createElement('canvas');
+        canvas.id = id;
+        canvas.width = 720;
+        canvas.height = 360;
+        canvas.style.cssText = 'width:100%;height:360px;';
+        container.appendChild(canvas);
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CHART CREATORS (Charts 1-7)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function createFrustrationsChart(data, animation) {
+    const canvas = document.getElementById('chart-emotional-pains');
+    if (!canvas) return false;
+    
+    window.chartInstances.frustrations = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: data.map(f => f.label),
+        datasets: [{
+          label: 'Intensity',
+          data: data.map(f => f.intensity),
+          backgroundColor: 'rgba(239, 68, 68, 0.7)',
+          borderColor: 'rgb(239, 68, 68)',
+          borderWidth: 2, borderRadius: 8, borderSkipped: false
+        }]
+      },
+      options: getBarChartOptions('Customer Frustrations', 'Intensity (1-10)', data, animation)
+    });
+    return true;
+  }
+
+  function createAspirationsChart(data, animation) {
+    const canvas = document.getElementById('chart-hidden-desires');
+    if (!canvas) return false;
+    
+    window.chartInstances.aspirations = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: data.map(a => a.label),
+        datasets: [{
+          label: 'Intensity',
+          data: data.map(a => a.intensity),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)',
+          borderColor: 'rgb(34, 197, 94)',
+          borderWidth: 2, borderRadius: 8, borderSkipped: false
+        }]
+      },
+      options: { ...getBarChartOptions('Hidden Aspirations', 'Intensity (1-10)', data, animation), indexAxis: 'y' }
+    });
+    return true;
+  }
+
+  function createMindsetChart(data, animation) {
+    const canvas = document.getElementById('chart-mindset-shifts');
+    if (!canvas) return false;
+    
+    window.chartInstances.mindset = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: data.map((t, i) => `Shift ${i + 1}`),
+        datasets: [{
+          label: 'Importance',
+          data: data.map(t => t.importance),
+          backgroundColor: 'rgba(99, 102, 241, 0.7)',
+          borderColor: 'rgb(99, 102, 241)',
+          borderWidth: 2, borderRadius: 8, borderSkipped: false
+        }]
+      },
+      options: getBarChartOptions('Mindset Transformations', 'Importance (1-10)', data, animation)
+    });
+    return true;
+  }
+
+  function createJTBDChart(data, animation) {
+    const canvas = document.getElementById('chart-jtbd-impact');
+    if (!canvas) return false;
+    
+    window.chartInstances.jtbd = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: data.map((j, i) => j.title || `JTBD ${i + 1}`),
+        datasets: [{
+          label: 'Priority',
+          data: data.map(j => j.priority),
+          backgroundColor: 'rgba(168, 85, 247, 0.7)',
+          borderColor: 'rgb(168, 85, 247)',
+          borderWidth: 1
+        }]
+      },
+      options: window.getSimpleChartOptions('JTBD Priority', 'Priority (1-10)', 'bar')
+    });
+    return true;
+  }
+
+  function createCompetitiveGapsChart(gaps) {
+    const canvas = document.getElementById('chart-competitor-gaps');
+    if (!canvas) return false;
+    
+    window.chartInstances.competitorGaps = new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: ['Topic Gap', 'Voice/Angle Gap', 'Format Gap'],
+        datasets: [{
+          label: 'Opportunity Score',
+          data: [gaps.topicGap ? 85 : 0, gaps.angleVoiceGap ? 90 : 0, gaps.formatGap ? 80 : 0],
+          backgroundColor: 'rgba(168, 85, 247, 0.3)',
+          borderColor: 'rgb(168, 85, 247)',
+          borderWidth: 2
+        }]
+      },
+      options: window.getSimpleChartOptions('Competitive Gaps', null, 'radar')
+    });
+    return true;
+  }
+
+  function createFormatUsageChart() {
+    const canvas = document.getElementById('chart-format-usage');
+    if (!canvas) return false;
+    
+    window.chartInstances.formatUsage = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Articles', 'Videos', 'Infographics', 'Podcasts', 'Tools'],
+        datasets: [{
+          data: [40, 25, 15, 10, 10],
+          backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(251,146,60,0.7)', 'rgba(34,197,94,0.7)', 'rgba(59,130,246,0.7)', 'rgba(168,85,247,0.7)']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Recommended Format Distribution', font: { size: 16, weight: 'bold' } } } }
+    });
+    return true;
+  }
+
+  function createBrandPositioningChart(mechanism) {
+    const canvas = document.getElementById('chart-brand-positioning');
+    if (!canvas) return false;
+    
+    window.chartInstances.brandPositioning = new Chart(canvas, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          { label: 'Your Brand', data: [{ x: 80, y: 85 }], backgroundColor: 'rgba(34, 197, 94, 0.8)', pointRadius: 12 },
+          { label: 'Competitors', data: [{ x: 40, y: 50 }, { x: 60, y: 45 }, { x: 50, y: 60 }], backgroundColor: 'rgba(239, 68, 68, 0.5)', pointRadius: 8 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Brand Positioning Map', font: { size: 16, weight: 'bold' } } },
+        scales: { x: { title: { display: true, text: 'Innovation' }, min: 0, max: 100 }, y: { title: { display: true, text: 'Effectiveness' }, min: 0, max: 100 } }
+      }
+    });
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CHART CREATORS (Charts 8-14)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function createValuePropositionChart(pillars) {
+    const canvas = document.getElementById('chart-value-proposition');
+    if (!canvas) return false;
+    
+    const equalWeight = Math.floor(100 / pillars.length);
+    window.chartInstances.valueProposition = new Chart(canvas, {
+      type: 'pie',
+      data: {
+        labels: pillars.map(p => p.theme || p.name || 'Pillar'),
+        datasets: [{ data: pillars.map(() => equalWeight), backgroundColor: ['rgba(239,68,68,0.7)', 'rgba(251,146,60,0.7)', 'rgba(34,197,94,0.7)', 'rgba(59,130,246,0.7)', 'rgba(168,85,247,0.7)'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Content Pillar Distribution', font: { size: 16, weight: 'bold' } } } }
+    });
+    return true;
+  }
+
+  function createContentPillarsChart(pillars) {
+    const canvas = document.getElementById('chart-content-pillars');
+    if (!canvas) return false;
+    
+    window.chartInstances.contentPillars = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: pillars.map(p => p.theme || p.name || 'Pillar'),
+        datasets: [{ label: 'Strategic Priority', data: pillars.map((_, i) => 100 - (i * 10)), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: 'rgb(59, 130, 246)', borderWidth: 1 }]
+      },
+      options: window.getSimpleChartOptions('Content Pillar Strategic Priority', 'Priority Score', 'bar')
+    });
+    return true;
+  }
+
+  function createPriorityMatrixChart(pillars) {
+    const canvas = document.getElementById('chart-priority-matrix');
+    if (!canvas) return false;
+    
+    window.chartInstances.priorityMatrix = new Chart(canvas, {
+      type: 'polarArea',
+      data: {
+        labels: pillars.map(p => p.theme || p.name || 'Pillar'),
+        datasets: [{ data: pillars.map((_, i) => 85 - (i * 15)), backgroundColor: ['rgba(239,68,68,0.6)', 'rgba(251,146,60,0.6)', 'rgba(34,197,94,0.6)', 'rgba(59,130,246,0.6)', 'rgba(168,85,247,0.6)'] }]
+      },
+      options: window.getSimpleChartOptions('Content Focus Areas', null, 'polarArea')
+    });
+    return true;
+  }
+
+  function createOpportunityChart(pillars) {
+    const canvas = document.getElementById('chart-opportunity-gaps');
+    if (!canvas) return false;
+    
+    const colors = ['rgba(239,68,68,0.6)', 'rgba(251,146,60,0.6)', 'rgba(34,197,94,0.6)', 'rgba(59,130,246,0.6)', 'rgba(168,85,247,0.6)'];
+    window.chartInstances.opportunityGaps = new Chart(canvas, {
+      type: 'bubble',
+      data: {
+        datasets: pillars.map((p, i) => ({
+          label: p.theme || p.name || `Pillar ${i + 1}`,
+          data: [{ x: 70 - (i * 10), y: 30 + (i * 10), r: 20 - (i * 3) }],
+          backgroundColor: colors[i]
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Market Opportunity Analysis', font: { size: 16, weight: 'bold' } } },
+        scales: { x: { title: { display: true, text: 'Market Demand' }, min: 0, max: 100 }, y: { title: { display: true, text: 'Competition' }, min: 0, max: 100 } }
+      }
+    });
+    return true;
+  }
+
+  function createTacticalRoadmapChart(animation) {
+    const canvas = document.getElementById('chart-tactical-roadmap');
+    if (!canvas) return false;
+    
+    const initiatives = [
+      { name: 'Content Foundation', start: 0, duration: 15, priority: 'high' },
+      { name: 'SEO Infrastructure', start: 10, duration: 20, priority: 'high' },
+      { name: 'Authority Building', start: 25, duration: 30, priority: 'medium' },
+      { name: 'Conversion Optimization', start: 35, duration: 25, priority: 'high' },
+      { name: 'Brand Positioning', start: 45, duration: 25, priority: 'medium' },
+      { name: 'Strategic Partnerships', start: 60, duration: 30, priority: 'low' },
+      { name: 'Scale & Automation', start: 70, duration: 20, priority: 'low' }
+    ];
+    
+    window.chartInstances.tacticalRoadmap = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: initiatives.map(i => i.name),
+        datasets: [{
+          label: 'Timeline (Days)',
+          data: initiatives.map(i => [i.start, i.start + i.duration]),
+          backgroundColor: initiatives.map(i => i.priority === 'high' ? 'rgba(239,68,68,0.8)' : i.priority === 'medium' ? 'rgba(251,146,60,0.8)' : 'rgba(34,197,94,0.8)'),
+          borderRadius: 6
+        }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation,
+        plugins: { legend: { display: false }, title: { display: true, text: 'Next 90 Days: Tactical Roadmap', font: { size: 18, weight: '700' } } },
+        scales: { x: { title: { display: true, text: 'Days' }, min: 0, max: 90 }, y: { grid: { display: false } } }
+      }
+    });
+    return true;
+  }
+
+  function createImpactMatrixChart(animation) {
+    const canvas = document.getElementById('chart-impact-matrix');
+    if (!canvas) return false;
+    
+    const initiatives = [
+      { name: 'Fix Technical SEO', effort: 25, impact: 85, size: 15, quadrant: 'Quick Wins' },
+      { name: 'Optimize Meta Tags', effort: 15, impact: 75, size: 12, quadrant: 'Quick Wins' },
+      { name: 'Content Hub Creation', effort: 75, impact: 90, size: 22, quadrant: 'Major Projects' },
+      { name: 'Authority Link Building', effort: 80, impact: 85, size: 20, quadrant: 'Major Projects' },
+      { name: 'Social Media Posts', effort: 20, impact: 30, size: 8, quadrant: 'Fill Ins' },
+      { name: 'Blog Redesign', effort: 70, impact: 35, size: 11, quadrant: 'Avoid' }
+    ];
+    
+    const colors = { 'Quick Wins': 'rgba(34,197,94,0.7)', 'Major Projects': 'rgba(59,130,246,0.7)', 'Fill Ins': 'rgba(251,146,60,0.7)', 'Avoid': 'rgba(239,68,68,0.7)' };
+    
+    window.chartInstances.impactMatrix = new Chart(canvas, {
+      type: 'bubble',
+      data: {
+        datasets: Object.keys(colors).map(q => ({
+          label: q,
+          data: initiatives.filter(i => i.quadrant === q).map(i => ({ x: i.effort, y: i.impact, r: i.size })),
+          backgroundColor: colors[q]
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation,
+        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Quick Wins vs Long-term Impact', font: { size: 18, weight: '700' } } },
+        scales: { x: { title: { display: true, text: 'Effort Required →' }, min: 0, max: 100 }, y: { title: { display: true, text: '← Business Impact' }, min: 0, max: 100 } }
+      }
+    });
+    return true;
+  }
+
+  function createResourceAllocationChart(animation) {
+    const canvas = document.getElementById('chart-resource-allocation');
+    if (!canvas) return false;
+    
+    const phases = ['Foundation (0-30d)', 'Growth (31-60d)', 'Scale (61-90d)'];
+    const resources = {
+      'Content Creation': [40, 35, 25],
+      'SEO & Technical': [30, 25, 15],
+      'Paid Advertising': [10, 20, 35],
+      'Brand Building': [15, 15, 20],
+      'Analytics': [5, 5, 5]
+    };
+    const colors = ['rgba(59,130,246,0.8)', 'rgba(34,197,94,0.8)', 'rgba(251,146,60,0.8)', 'rgba(168,85,247,0.8)', 'rgba(239,68,68,0.8)'];
+    
+    window.chartInstances.resourceAllocation = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: phases,
+        datasets: Object.keys(resources).map((r, i) => ({ label: r, data: resources[r], backgroundColor: colors[i] }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation,
+        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Resource Allocation Strategy', font: { size: 18, weight: '700' } } },
+        scales: { x: { stacked: true }, y: { stacked: true, title: { display: true, text: 'Budget %' }, max: 100 } }
+      }
+    });
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SHARED OPTIONS BUILDER
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  function getBarChartOptions(title, yAxisTitle, data, animation) {
+    return {
+      responsive: true, maintainAspectRatio: false, animation,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title, font: { size: 18, weight: '700', family: "'Inter', sans-serif" }, color: '#111827', padding: { top: 8, bottom: 16 } },
+        tooltip: { backgroundColor: 'rgba(0,0,0,0.9)', titleFont: { size: 14, weight: '600' }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8, callbacks: { afterLabel: (ctx) => data[ctx.dataIndex]?.shortDescription || '' } }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 10, ticks: { stepSize: 1, font: { size: 12 }, color: '#6b7280' }, title: { display: true, text: yAxisTitle, font: { size: 13, weight: '600' }, color: '#374151' }, grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false } },
+        x: { ticks: { font: { size: 12 }, color: '#6b7280', maxRotation: 45, minRotation: 0 }, grid: { display: false } }
+      }
+    };
+  }
+
+  console.log('✅ UI_Chart_Generator.html loaded');
+</script>

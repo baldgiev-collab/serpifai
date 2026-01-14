@@ -1,0 +1,250 @@
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════════
+// COMP_Export_Sort.html
+// Export & Sorting Functions for Competitor Data Tables
+// Extracted from UI_Scripts_App.html - Phase 9 Refactoring
+// ═══════════════════════════════════════════════════════════════════════════════════
+// Functions: exportCompetitorData, sortCompetitorTable, renderDataSourceBadge,
+//            refreshCompetitorMetric, competitorSortState
+// Dependencies: showToast (from main app), google.script.run (for refresh)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ * EXPORT COMPETITOR DATA - CSV/Excel Export (Task 30)
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+window.exportCompetitorData = function() {
+  try {
+    const competitors = window.serpifaiCompetitorData?.competitors || [];
+    if (!competitors || competitors.length === 0) {
+      showToast('No competitor data to export', 'error');
+      return;
+    }
+    
+    // CSV headers
+    const headers = [
+      'Domain',
+      'Authority Score',
+      'Organic Traffic',
+      'Traffic Value ($)',
+      'Backlinks',
+      'Ref Domains',
+      'Keywords',
+      'Relative KD',
+      'Site Health (%)',
+      'Performance Score (%)',
+      'Data Quality'
+    ];
+    
+    // Build CSV rows
+    const rows = competitors.map(comp => {
+      const pm = comp.processedMetrics || {};
+      const domain = comp.domain || comp.url || 'unknown';
+      
+      return [
+        domain,
+        pm.authorityScore || pm.pageRank * 10 || 'N/A',
+        pm.estimatedTraffic || pm.organicTraffic || 0,
+        pm.trafficValue || 0,
+        pm.backlinks || pm.estimatedBacklinks || 0,
+        pm.refDomains || pm.estimatedRefDomains || 0,
+        pm.organicKeywords || 0,
+        pm.relativeKD || 50,
+        pm.siteHealth || pm.seoScore || 0,
+        pm.performanceScore || pm.pageSpeed || 0,
+        pm.dataQuality || 'estimated'
+      ].map(val => {
+        // Escape quotes and wrap in quotes if contains comma
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }).join(',');
+    });
+    
+    // Combine into CSV
+    const csv = [headers.join(','), ...rows].join('\n');
+    
+    // Create download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `competitor_analysis_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast(`✅ Exported ${competitors.length} competitors to CSV`);
+  } catch (e) {
+    console.error('Export error:', e);
+    showToast('Failed to export data', 'error');
+  }
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ * SORTABLE TABLE COLUMNS (Task 29)
+ * Click column headers to sort ascending/descending
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+window.competitorSortState = { key: null, direction: 'asc' };
+
+window.sortCompetitorTable = function(sortKey) {
+  try {
+    const table = document.getElementById('competitor-table');
+    if (!table) {
+      console.warn('Competitor table not found');
+      return;
+    }
+    
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (rows.length === 0) return;
+    
+    // Toggle direction if same key
+    if (window.competitorSortState.key === sortKey) {
+      window.competitorSortState.direction = window.competitorSortState.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      window.competitorSortState.key = sortKey;
+      window.competitorSortState.direction = 'desc'; // Default to descending for metrics
+    }
+    
+    const direction = window.competitorSortState.direction;
+    
+    // Update header classes
+    table.querySelectorAll('th').forEach(th => {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      if (th.dataset.sortKey === sortKey) {
+        th.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      }
+    });
+    
+    // Extract sort values from rows
+    const extractValue = (row, key) => {
+      const cells = row.querySelectorAll('td');
+      switch (key) {
+        case 'domain':
+          return cells[0]?.textContent?.trim()?.toLowerCase() || '';
+        case 'authority':
+          return parseFloat(cells[1]?.textContent?.replace(/[^\d.]/g, '')) || 0;
+        case 'traffic':
+          return parseNumericValue(cells[2]?.textContent);
+        case 'trafficValue':
+          return parseNumericValue(cells[3]?.textContent?.replace('$', ''));
+        case 'backlinks':
+          return parseNumericValue(cells[4]?.textContent);
+        case 'keywords':
+          return parseNumericValue(cells[6]?.textContent);
+        case 'kd':
+          return parseFloat(cells[7]?.textContent?.replace(/[^\d.]/g, '')) || 0;
+        case 'opportunity':
+          return parseFloat(cells[9]?.textContent?.replace(/[^\d.]/g, '')) || 0;
+        case 'health':
+          return parseFloat(cells[10]?.textContent?.replace(/[^\d.%]/g, '')) || 0;
+        default:
+          return 0;
+      }
+    };
+    
+    // Parse K/M numeric values
+    function parseNumericValue(str) {
+      if (!str) return 0;
+      str = str.trim().toUpperCase();
+      if (str === 'N/A') return 0;
+      
+      let multiplier = 1;
+      if (str.includes('M')) {
+        multiplier = 1000000;
+        str = str.replace('M', '');
+      } else if (str.includes('K')) {
+        multiplier = 1000;
+        str = str.replace('K', '');
+      }
+      return (parseFloat(str.replace(/[^\d.]/g, '')) || 0) * multiplier;
+    }
+    
+    // Sort rows
+    rows.sort((a, b) => {
+      const valA = extractValue(a, sortKey);
+      const valB = extractValue(b, sortKey);
+      
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return direction === 'asc' ? valA - valB : valB - valA;
+    });
+    
+    // Re-append sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+    
+    console.log(`✅ Sorted by ${sortKey} (${direction})`);
+  } catch (e) {
+    console.error('Sort error:', e);
+  }
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ * DATA SOURCE BADGES (Task 28)
+ * Show visual indicators for data source: API, Estimated, Gemini
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+window.renderDataSourceBadge = function(source) {
+  const badges = {
+    'api': { label: 'API', color: '#10b981', icon: '✅' },
+    'estimated': { label: 'Est.', color: '#f59e0b', icon: '🟡' },
+    'gemini': { label: 'AI', color: '#8b5cf6', icon: '🤖' },
+    'cached': { label: 'Cache', color: '#6b7280', icon: '💾' },
+    'fallback': { label: 'Fallback', color: '#ef4444', icon: '⚠️' }
+  };
+  const b = badges[source] || badges.estimated;
+  return `<span style="display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px; background: ${b.color}15; color: ${b.color}; border-radius: 4px; font-size: 9px; font-weight: 600;">${b.icon} ${b.label}</span>`;
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ * REFRESH BUTTON (Task 27)
+ * Add refresh buttons for individual metrics
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+window.refreshCompetitorMetric = async function(domain, metricType) {
+  try {
+    showToast(`🔄 Refreshing ${metricType} for ${domain}...`);
+    
+    const result = await new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler((e) => resolve({ success: false, error: e.message }))
+        .callGatewayFromClient({
+          action: 'comp:refresh_metric',
+          domain: domain,
+          metricType: metricType
+        });
+    });
+    
+    if (result && result.success) {
+      showToast(`✅ ${metricType} updated for ${domain}`);
+      // Trigger UI update
+      if (window.lastCompetitorAnalysisResult) {
+        const comp = window.lastCompetitorAnalysisResult.competitors?.find(c => c.domain === domain);
+        if (comp && result.data) {
+          comp.processedMetrics = { ...comp.processedMetrics, ...result.data };
+        }
+      }
+    } else {
+      showToast(`❌ Failed to refresh: ${result?.error || 'Unknown error'}`, 'error');
+    }
+  } catch (e) {
+    console.error('Refresh error:', e);
+    showToast('Refresh failed', 'error');
+  }
+};
+
+console.log('✅ COMP_Export_Sort.html loaded - Export and sorting functions available');
+</script>

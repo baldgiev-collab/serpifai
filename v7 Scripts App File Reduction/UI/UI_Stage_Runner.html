@@ -1,0 +1,249 @@
+<!--
+  UI_Stage_Runner.html
+  Workflow Stage Execution & Results Display
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.runStage() - Execute a workflow stage
+  - window.displayStageResults() - Display stage output
+  
+  Dependencies:
+  - CORE_Form_Data.html (for collectFormData)
+  - UI_Core_Utils.html (for showToast, setActiveTab, showStageInSidebar, updateStageStatus)
+  - UI_Stage1_Renderer.html (for renderUnifiedStage1Results)
+  - UI_Chart_Generator.html (for generateStage1Charts)
+-->
+<script>
+  console.log('🚀 UI_Stage_Runner.html loading...');
+
+  /**
+   * Run a workflow stage via Apps Script backend
+   * @param {number} stageNum - Stage number (1-5)
+   * @param {HTMLElement} buttonEl - The run button element
+   */
+  window.runStage = function(stageNum, buttonEl) {
+    if (typeof google === 'undefined' || !google.script?.run) {
+      window.showToast?.('Local preview: cannot run workflow on Apps Script.');
+      return;
+    }
+
+    // ============================================================================
+    // MANDATORY VALIDATION: Project and Model MUST be selected
+    // ============================================================================
+    const projectSelect = document.getElementById('projectSelect');
+    const geminiModelSelect = document.getElementById('geminiModelSelect');
+    const projectName = projectSelect?.value;
+
+    if (!projectName || projectName.trim() === '') {
+      console.warn('❌ No project selected');
+      window.showToast?.('❌ MANDATORY: Select a project from the dropdown menu first!');
+      projectSelect?.focus();
+      return;
+    }
+
+    const selectedModel = geminiModelSelect?.value || null;
+    if (!selectedModel || selectedModel.trim() === '') {
+      console.warn('❌ No AI model selected');
+      window.showToast?.('❌ MANDATORY: Select an AI model from the dropdown menu first!');
+      geminiModelSelect?.focus();
+      return;
+    }
+
+    // Validate model is Gemini 2.5 or Gemini 3 (latest generations)
+    const isValidModel = selectedModel.startsWith('gemini-2.5') || selectedModel.startsWith('gemini-3');
+    if (!isValidModel) {
+      console.warn('⚠️ Legacy model selected:', selectedModel);
+      window.showToast?.('⚠️ WARNING: Please select a Gemini 2.5 or Gemini 3 model (latest generation).');
+      geminiModelSelect?.focus();
+      return;
+    }
+
+    console.log('✅ MANDATORY checks passed');
+    console.log('   📁 Project:', projectName);
+    console.log('   🤖 Model:', selectedModel);
+
+    // Collect form data
+    const formData = window.collectFormData?.() || {};
+
+    // Build single payload object
+    const payload = {
+      action: "runWorkflowStage",
+      stageNum: stageNum,
+      projectId: projectName,
+      model: selectedModel,
+      ...formData
+    };
+
+    // Update button state
+    buttonEl.classList.add('running');
+    buttonEl.textContent = '⏳ Running...';
+    buttonEl.disabled = true;
+
+    window.showToast?.(`Running Stage ${stageNum}...`);
+
+    // Call backend
+    google.script.run
+      .withSuccessHandler(function(result) {
+        console.log('✅ Backend response received:', result);
+
+        buttonEl.classList.remove('running');
+        buttonEl.textContent = `▶ Run Stage ${stageNum}`;
+        buttonEl.disabled = false;
+
+        if (result.success) {
+          console.log('✅ Stage ' + stageNum + ' completed successfully');
+          window.showToast?.(`Stage ${stageNum} complete!`);
+
+          // Auto-switch to results tab FIRST
+          window.setActiveTab?.('results');
+
+          // Activate the specific stage results
+          document.querySelectorAll('.results-tab-btn').forEach(b => b.classList.remove('active'));
+          const targetTab = document.querySelector(`[data-results-stage="${stageNum}"]`);
+          if (targetTab) targetTab.classList.add('active');
+
+          document.querySelectorAll('.results-panel').forEach(p => p.classList.remove('active'));
+          const targetPanel = document.querySelector(`[data-results-panel="${stageNum}"]`);
+          if (targetPanel) targetPanel.classList.add('active');
+
+          // Highlight submenu item
+          document.querySelectorAll('.nav-subbtn').forEach(b => b.classList.remove('active'));
+          const targetSubBtn = document.querySelector(`.nav-subbtn[data-stage="${stageNum}"]`);
+          if (targetSubBtn) targetSubBtn.classList.add('active');
+
+          // CRITICAL: Delay results display to allow DOM to settle
+          setTimeout(() => {
+            window.displayStageResults?.(stageNum, result);
+            window.showStageInSidebar?.(stageNum);
+            window.updateStageStatus?.(stageNum, 'completed');
+
+            // Populate form fields from response (Stage 1 only)
+            if (stageNum === 1 && result.json) {
+              window.populateFormFieldsFromResponse?.(result.json);
+            }
+          }, 300);
+        } else {
+          console.error('❌ Stage ' + stageNum + ' failed:', result.error || 'Unknown error');
+          window.showToast?.(`⚠️ Stage ${stageNum} failed: ${result.error || 'Unknown error'}`);
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Backend call failed:', error);
+
+        buttonEl.classList.remove('running');
+        buttonEl.textContent = `▶ Run Stage ${stageNum}`;
+        buttonEl.disabled = false;
+        window.showToast?.('⚠️ Unable to process request: ' + error);
+      })
+      .runWorkflowStage(payload);
+  };
+
+  /**
+   * Display stage results in the Results tab
+   * @param {number} stageNum - Stage number
+   * @param {Object} result - Result object from backend
+   */
+  window.displayStageResults = function(stageNum, result) {
+    console.log('=== RESULT STRUCTURE DIAGNOSTIC ===');
+    console.log('Full result object:', result);
+    console.log('Result keys:', Object.keys(result));
+    console.log('result.data exists?', !!result.data);
+    console.log('result.data keys:', result.data ? Object.keys(result.data) : 'N/A');
+
+    try {
+      // Update timestamp
+      const timestamp = new Date(result.timestamp || Date.now()).toLocaleString();
+      const timestampEl = document.getElementById(`stage${stageNum}-timestamp`);
+      if (timestampEl) timestampEl.textContent = timestamp;
+
+      // ========================================================================
+      // ENHANCED EXTRACTION: Handle all possible response structures
+      // ========================================================================
+      
+      // Extract report text - check all possible locations
+      let reportText = '';
+      if (result.data?.report && typeof result.data.report === 'string') {
+        reportText = result.data.report;
+        console.log('✅ Report from result.data.report:', reportText.length, 'chars');
+      } else if (result.report && typeof result.report === 'string') {
+        reportText = result.report;
+        console.log('✅ Report from result.report:', reportText.length, 'chars');
+      } else if (result.data?.fullResponse && typeof result.data.fullResponse === 'string') {
+        reportText = result.data.fullResponse;
+        console.log('✅ Report from result.data.fullResponse:', reportText.length, 'chars');
+      } else if (result.fullResponse && typeof result.fullResponse === 'string') {
+        reportText = result.fullResponse;
+        console.log('✅ Report from result.fullResponse:', reportText.length, 'chars');
+      } else {
+        console.warn('⚠️ No report text found in any expected location');
+        reportText = 'No report content received from AI. Please check the Gemini API connection.';
+      }
+
+      // Extract JSON data for charts - check all possible locations
+      let jsonData = null;
+      if (result.data?.json && typeof result.data.json === 'object') {
+        jsonData = result.data.json;
+        console.log('✅ JSON from result.data.json');
+      } else if (result.json && typeof result.json === 'object') {
+        jsonData = result.json;
+        console.log('✅ JSON from result.json');
+      } else if (result.data?.dashboardCharts) {
+        jsonData = result.data;
+        console.log('✅ JSON from result.data (has dashboardCharts)');
+      } else if (result.dashboardCharts) {
+        jsonData = result;
+        console.log('✅ JSON from result (has dashboardCharts)');
+      } else {
+        jsonData = { dashboardCharts: {} };
+        console.warn('⚠️ No JSON data found, using empty structure');
+      }
+
+      console.log('Report text preview:', reportText.substring(0, 200));
+      console.log('JSON data keys:', Object.keys(jsonData));
+      console.log('dashboardCharts keys:', jsonData.dashboardCharts ? Object.keys(jsonData.dashboardCharts) : 'N/A');
+
+      // Render unified layout for Stage 1
+      if (stageNum == 1) {
+        console.log('✅ Stage 1 - Calling renderUnifiedStage1Results...');
+        if (typeof window.renderUnifiedStage1Results === 'function') {
+          window.renderUnifiedStage1Results(reportText, jsonData);
+          console.log('✅ renderUnifiedStage1Results completed');
+        } else {
+          console.error('❌ renderUnifiedStage1Results function not found!');
+          // Fallback: Display raw content
+          const container = document.getElementById('stage1-unified-container');
+          if (container) {
+            const cleanedReport = window.cleanReportForDisplay?.(reportText) || reportText;
+            container.innerHTML = `
+              <div style="padding: 24px; background: #fef3c7; border-radius: 12px; margin: 16px;">
+                <h3 style="color: #92400e;">⚠️ Renderer Not Available</h3>
+                <p>Displaying raw report content:</p>
+                <pre style="background: white; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap;">${cleanedReport}</pre>
+              </div>
+            `;
+          }
+        }
+      } else {
+        // For other stages, use standard display
+        const reportEl = document.getElementById(`stage${stageNum}-report`);
+        if (reportEl) {
+          const cleanedReport = window.cleanReportForDisplay?.(reportText) || reportText;
+          reportEl.innerHTML = window.formatMarkdownReport?.(cleanedReport) || cleanedReport;
+        }
+        console.log('ℹ️ Not Stage 1 - using standard display');
+      }
+    } catch (err) {
+      console.error('❌ Error displaying stage results:', err);
+      window.showToast?.('⚠️ Error displaying results: ' + err.message);
+      
+      // Emergency fallback
+      const container = document.getElementById('stage1-unified-container');
+      if (container && stageNum == 1) {
+        container.innerHTML = `
+          <div style="padding: 24px; background: #fee2e2; border-radius: 12px; margin: 16px;">
+            <h3 style="color: #b91c1c;">❌ Display Error</h3>
+            <p>Error: ${err.message}</p>
+            <pre style="font-size: 12px; background: white; padding: 12px; border-radius: 8px;">${JSON.stringify(result, null, 2).substring(0, 2000)}</pre>
+          </div>
+        `;
+      }

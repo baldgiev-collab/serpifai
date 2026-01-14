@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      padding: 24px;
+    }
+    h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .step {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-left: 3px solid #667eea;
+    }
+    .step-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .step-num {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .step-content { font-size: 13px; color: #a0a0a0; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; margin-bottom: 6px; color: #a0a0a0; }
+    input, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 14px;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #e0e0e0; }
+    .competitor-list { margin: 12px 0; }
+    .competitor-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .competitor-item input {
+      flex: 1;
+      background: transparent;
+      border: none;
+    }
+    .remove-btn {
+      background: rgba(239,68,68,0.2);
+      color: #f87171;
+      border: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .add-btn {
+      background: rgba(102,126,234,0.2);
+      color: #667eea;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .actions { margin-top: 20px; display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+  <h2>🎯 Start New Analysis</h2>
+  <p class="subtitle">Configure and launch forensic keyword analysis</p>
+  
+  <div class="step">
+    <div class="step-title"><span class="step-num">1</span> Enter Your Website</div>
+    <div class="step-content">
+      <div class="form-group">
+        <label>Your Domain</label>
+        <input type="text" id="domain" placeholder="example.com">
+      </div>
+      <div class="form-group">
+        <label>Business Niche</label>
+        <input type="text" id="niche" placeholder="e.g., SEO tools, marketing software">
+      </div>
+    </div>
+  </div>
+  
+  <div class="step">
+    <div class="step-title"><span class="step-num">2</span> Add Competitors</div>
+    <div class="step-content">
+      <div class="competitor-list" id="competitors">
+        <div class="competitor-item">
+          <input type="text" placeholder="competitor1.com" class="comp-input">
+          <button class="remove-btn" onclick="removeCompetitor(this)">×</button>
+        </div>
+      </div>
+      <button class="add-btn" onclick="addCompetitor()">+ Add Competitor</button>
+    </div>
+  </div>
+  
+  <div class="step">
+    <div class="step-title"><span class="step-num">3</span> Analysis Options</div>
+    <div class="step-content">
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="opt-forensic" checked> Full Forensic Analysis (450 keywords)
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="opt-aio" checked> AI Overview Detection
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="opt-pagerank" checked> PageRank Analysis
+        </label>
+      </div>
+    </div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-primary" onclick="startAnalysis()">🚀 Start Analysis</button>
+    <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+  </div>
+  
+  <script>
+    function addCompetitor() {
+      const list = document.getElementById('competitors');
+      if (list.children.length >= 6) {
+        alert('Maximum 6 competitors allowed');
+        return;
+      }
+      const item = document.createElement('div');
+      item.className = 'competitor-item';
+      item.innerHTML = '<input type="text" placeholder="competitor.com" class="comp-input">' +
+        '<button class="remove-btn" onclick="removeCompetitor(this)">×</button>';
+      list.appendChild(item);
+    }
+    
+    function removeCompetitor(btn) {
+      const list = document.getElementById('competitors');
+      if (list.children.length > 1) {
+        btn.parentElement.remove();
+      }
+    }
+    
+    function startAnalysis() {
+      const domain = document.getElementById('domain').value.trim();
+      const niche = document.getElementById('niche').value.trim();
+      
+      if (!domain) {
+        alert('Please enter your domain');
+        return;
+      }
+      
+      const compInputs = document.querySelectorAll('.comp-input');
+      const competitors = [];
+      compInputs.forEach(input => {
+        const val = input.value.trim();
+        if (val) competitors.push({ domain: val });
+      });
+      
+      if (competitors.length === 0) {
+        alert('Please add at least one competitor');
+        return;
+      }
+      
+      const options = {
+        domain: domain,
+        niche: niche,
+        competitors: competitors,
+        forensic: document.getElementById('opt-forensic').checked,
+        aio: document.getElementById('opt-aio').checked,
+        pagerank: document.getElementById('opt-pagerank').checked
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            alert('Analysis started! Check the dashboard for progress.');
+            google.script.host.close();
+          } else {
+            alert('Failed to start: ' + (result.message || result.error));
+          }
+        })
+        .withFailureHandler(function(err) {
+          alert('Error: ' + err.message);
+        })
+        .UI_startAnalysis(options);
+    }
+  </script>
+</body>
+</html>

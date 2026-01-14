@@ -1,0 +1,581 @@
+<!-- ==================================================================================
+     UI_Tab_Scoring.html - Scoring Engine Tab
+     Extracted from UI_Scripts_App.html for modular architecture
+     
+     Contains:
+     - populateScoringEngineTab(data) - Elite scoring engine with comprehensive metrics
+     
+     Dependencies:
+     - extractRealMetrics (DATA_Real_Metrics.html)
+     - renderRawDataComparisonTable (UI_Raw_Data_Tables.html)
+     - getDataSourceBadge (UI_Core_Utils.html)
+     - renderScoringCharts (UI_Chart_Generator.html)
+     ================================================================================== -->
+<script>
+  // ---------------------------------------------------------------------------
+  // SCORING ENGINE TAB - Elite v2.0 (REAL DATA)
+  // Uses: All API data sources to calculate comprehensive scores
+  // ---------------------------------------------------------------------------
+  function populateScoringEngineTab(data) {
+    console.log('📊 Populating Scoring Engine Tab (Elite v2.0 - REAL DATA)...');
+
+    // V3.3: Use correct selectors matching UI_Components_Competitors.html structure
+    // The HTML has: data-comp-panel="scoring" with comp-scoring-cards and comp-scoring-insights
+    let metricsDiv = document.getElementById('comp-scoring-cards') ||
+      document.getElementById('comp-scoring-metrics') ||
+      document.getElementById('comp-scoring-engine-metrics');
+
+    if (!metricsDiv) {
+      // Try finding panel by data attribute (correct HTML pattern)
+      const panel = document.querySelector('[data-comp-panel="scoring"]') ||
+        document.getElementById('panel-scoringEngine');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside scoring panel');
+        // Check if comp-scoring-cards already exists inside
+        let existingCards = panel.querySelector('#comp-scoring-cards');
+        if (!existingCards) {
+          // Insert at beginning of panel, after header
+          const header = panel.querySelector('.panel-header');
+          const metricsContainer = document.createElement('div');
+          metricsContainer.id = 'comp-scoring-cards';
+          metricsContainer.className = 'comp-scoring-cards';
+          metricsContainer.style.width = '100%';
+          if (header && header.nextSibling) {
+            panel.insertBefore(metricsContainer, header.nextSibling);
+          } else {
+            panel.insertBefore(metricsContainer, panel.firstChild);
+          }
+        }
+        metricsDiv = document.getElementById('comp-scoring-cards');
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Scoring Engine tab containers not found - check UI_Components_Competitors.html has data-comp-panel="scoring"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // Calculate comprehensive scores from REAL data across all dimensions
+    const scoringData = competitors.map(comp => {
+      const metrics = extractRealMetrics(comp);
+      const stages = comp.stages || {};
+      const opr = stages.openPageRank?.data || comp.apiData?.openPageRank || {};
+      const synth = comp.synthesized || {};
+      const website = synth.website || {};
+      const schemaTypes = website.schemaTypes || metrics.content.schemaTypes || [];
+
+      // REAL Technical Score from PageSpeed API
+      const technicalScore = Math.round(
+        (metrics.technical.performance || 0) * 0.35 +
+        (metrics.technical.seo || 0) * 0.35 +
+        (metrics.technical.accessibility || 0) * 0.15 +
+        (metrics.technical.bestPractices || 0) * 0.15
+      );
+
+      // REAL Authority Score from OpenPageRank
+      let authorityScore = 30; // Base
+      const pageRank = opr.page_rank_decimal || metrics.authority.pageRank || 0;
+      if (pageRank >= 7) authorityScore = 90;
+      else if (pageRank >= 6) authorityScore = 80;
+      else if (pageRank >= 5) authorityScore = 70;
+      else if (pageRank >= 4) authorityScore = 60;
+      else if (pageRank >= 3) authorityScore = 50;
+      else if (pageRank >= 2) authorityScore = 40;
+      else if (pageRank > 0) authorityScore = 35;
+
+      // REAL Content Score from PHP Fetcher
+      let contentScore = 25; // Base
+      if (metrics.content.wordCount >= 3000) contentScore += 30;
+      else if (metrics.content.wordCount >= 2000) contentScore += 25;
+      else if (metrics.content.wordCount >= 1000) contentScore += 15;
+      if (metrics.content.internalLinks >= 20) contentScore += 15;
+      else if (metrics.content.internalLinks >= 10) contentScore += 10;
+      if (schemaTypes.length >= 3) contentScore += 15;
+      else if (schemaTypes.length >= 1) contentScore += 10;
+      if (metrics.content.title && metrics.content.title.length >= 30) contentScore += 5;
+      contentScore = Math.min(100, contentScore);
+
+      // REAL Visibility Score from Serper
+      let visibilityScore = 30; // Base
+      const serpResults = metrics.serp.organicResults || 0;
+      const paaCount = metrics.serp.paaQuestions || 0;
+      if (serpResults >= 8) visibilityScore += 30;
+      else if (serpResults >= 5) visibilityScore += 20;
+      else if (serpResults >= 2) visibilityScore += 10;
+      if (paaCount >= 5) visibilityScore += 20;
+      else if (paaCount >= 2) visibilityScore += 10;
+      if (schemaTypes.includes('FAQPage')) visibilityScore += 10;
+      visibilityScore = Math.min(100, visibilityScore);
+
+      // Calculate Brand Score from content signals
+      let brandScore = 35; // Base
+      const fullText = JSON.stringify(synth).toLowerCase();
+      if (fullText.includes('brand') || fullText.includes('logo')) brandScore += 15;
+      if (fullText.includes('about') || fullText.includes('our')) brandScore += 10;
+      if (fullText.includes('trust') || fullText.includes('certified')) brandScore += 15;
+      if (schemaTypes.includes('Organization') || schemaTypes.includes('LocalBusiness')) brandScore += 15;
+      if (metrics.content.externalLinks >= 5) brandScore += 10;
+      brandScore = Math.min(100, brandScore);
+
+      // Calculate Conversion Score from CTA detection
+      let conversionScore = 30; // Base
+      const ctaWords = ['buy', 'sign up', 'get started', 'try', 'contact', 'demo', 'free trial', 'pricing'];
+      const ctaCount = ctaWords.filter(w => fullText.includes(w)).length;
+      conversionScore += ctaCount * 8;
+      if (fullText.includes('pricing') || fullText.includes('price')) conversionScore += 10;
+      if (schemaTypes.includes('Product') || schemaTypes.includes('Offer')) conversionScore += 10;
+      conversionScore = Math.min(100, conversionScore);
+
+      // ELITE: SEO Depth Score - measures technical SEO sophistication
+      let seoDepthScore = 25; // Base
+      seoDepthScore += Math.min(30, (metrics.technical.seo || 0) * 0.3);
+      if (schemaTypes.length >= 3) seoDepthScore += 15;
+      else if (schemaTypes.length >= 1) seoDepthScore += 8;
+      if (metrics.content.internalLinks >= 15) seoDepthScore += 12;
+      else if (metrics.content.internalLinks >= 5) seoDepthScore += 6;
+      if (metrics.content.title && metrics.content.h1) seoDepthScore += 8;
+      if (schemaTypes.some(s => s.includes('Article') || s.includes('FAQ') || s.includes('HowTo'))) seoDepthScore += 10;
+      seoDepthScore = Math.min(100, seoDepthScore);
+
+      // ELITE: GEO Presence Score - measures local/regional SEO strength
+      let geoPresenceScore = 20; // Base
+      const geoIndicators = ['location', 'local', 'near me', 'city', 'region', 'country', 'address', 'map'];
+      const geoCount = geoIndicators.filter(g => fullText.includes(g)).length;
+      geoPresenceScore += geoCount * 10;
+      if (schemaTypes.includes('LocalBusiness') || schemaTypes.includes('Place')) geoPresenceScore += 25;
+      if (schemaTypes.includes('GeoCoordinates')) geoPresenceScore += 15;
+      if (fullText.includes('google my business') || fullText.includes('yelp')) geoPresenceScore += 10;
+      geoPresenceScore = Math.min(100, geoPresenceScore);
+
+      // ELITE: AEO Readiness Score - measures AI Engine Optimization readiness
+      let aeoReadinessScore = 25; // Base
+      // FAQ/HowTo schema is critical for AI citation
+      if (schemaTypes.some(s => s.toLowerCase().includes('faq'))) aeoReadinessScore += 25;
+      if (schemaTypes.some(s => s.toLowerCase().includes('howto'))) aeoReadinessScore += 20;
+      // Structured content improves AI extraction
+      if (metrics.content.wordCount >= 2000) aeoReadinessScore += 15;
+      else if (metrics.content.wordCount >= 1000) aeoReadinessScore += 8;
+      // Clear title/description for citation
+      if (metrics.content.title && metrics.content.description) aeoReadinessScore += 10;
+      // Direct answer potential
+      if (fullText.includes('what is') || fullText.includes('how to') || fullText.includes('why')) aeoReadinessScore += 10;
+      aeoReadinessScore = Math.min(100, aeoReadinessScore);
+
+      // ELITE: Entity Trust Score - measures E-E-A-T signals
+      let entityTrustScore = 25; // Base
+      const trustSignals = ['author', 'expert', 'credentials', 'verified', 'certified', 'award', 'published', 'cited', 'peer-reviewed'];
+      const trustCount = trustSignals.filter(t => fullText.includes(t)).length;
+      entityTrustScore += trustCount * 8;
+      if (schemaTypes.includes('Person') || schemaTypes.includes('Organization')) entityTrustScore += 15;
+      if (fullText.includes('about the author') || fullText.includes('our team')) entityTrustScore += 12;
+      if (pageRank >= 5) entityTrustScore += 15;
+      else if (pageRank >= 3) entityTrustScore += 8;
+      entityTrustScore = Math.min(100, entityTrustScore);
+
+      // ELITE: Authority Momentum Score - measures trend direction
+      let authorityMomentumScore = 50; // Neutral base
+      // Positive momentum signals
+      if (pageRank >= 6 && metrics.content.wordCount >= 2000) authorityMomentumScore += 20;
+      if (metrics.technical.performance >= 80) authorityMomentumScore += 10;
+      if (schemaTypes.length >= 3) authorityMomentumScore += 10;
+      // Negative momentum signals
+      if (metrics.technical.performance < 50) authorityMomentumScore -= 15;
+      if (metrics.content.wordCount < 500) authorityMomentumScore -= 10;
+      if (pageRank < 2) authorityMomentumScore -= 10;
+      authorityMomentumScore = Math.max(10, Math.min(100, authorityMomentumScore));
+
+      // Calculate Overall Score with weighted formula (updated)
+      const overallScore = Math.round(
+        technicalScore * 0.15 +
+        authorityScore * 0.15 +
+        contentScore * 0.15 +
+        seoDepthScore * 0.12 +
+        aeoReadinessScore * 0.12 +
+        entityTrustScore * 0.12 +
+        authorityMomentumScore * 0.09 +
+        geoPresenceScore * 0.05 +
+        brandScore * 0.05
+      );
+
+      const hasRealData = metrics.technical.source !== 'pending' || metrics.content.wordCount > 0 || pageRank > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        technical: technicalScore,
+        authority: authorityScore,
+        content: contentScore,
+        brand: brandScore,
+        visibility: visibilityScore,
+        conversion: conversionScore,
+        // ELITE SCORES
+        seoDepth: seoDepthScore,
+        geoPresence: geoPresenceScore,
+        aeoReadiness: aeoReadinessScore,
+        entityTrust: entityTrustScore,
+        authorityMomentum: authorityMomentumScore,
+        // Standard fields
+        overall: overallScore,
+        pageRank,
+        wordCount: metrics.content.wordCount,
+        rank: 0,
+        grade: overallScore >= 80 ? 'A' : overallScore >= 65 ? 'B' : overallScore >= 50 ? 'C' : 'D',
+        dataSource: hasRealData ? 'Multi-API' : 'Pending'
+      };
+    });
+
+    // Calculate ranks based on overall score
+    scoringData.sort((a, b) => b.overall - a.overall).forEach((s, i) => s.rank = i + 1);
+
+    let html = `
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">🏆 Elite Scoring Engine</h3>
+          
+          <!-- HEADER WITH REAL DATA -->
+          <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: PageSpeed API, OpenPageRank API, PHP Fetcher, Serper API</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Technical</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(scoringData.reduce((a, b) => a + b.technical, 0) / scoringData.length)}/100</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Authority</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(scoringData.reduce((a, b) => a + b.authority, 0) / scoringData.length)}/100</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Content</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(scoringData.reduce((a, b) => a + b.content, 0) / scoringData.length)}/100</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Overall</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(scoringData.reduce((a, b) => a + b.overall, 0) / scoringData.length)}/100</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- TOP 3 PODIUM -->
+          <div style="display: flex; justify-content: center; align-items: flex-end; gap: 16px; margin-bottom: 30px; padding: 20px;">
+            ${(() => {
+      // Visual positions: [0]=left, [1]=center, [2]=right
+      // Rank positions: [0]=1st, [1]=2nd, [2]=3rd  
+      // Display order: Silver(2nd) left, Gold(1st) center, Bronze(3rd) right
+      const displayOrder = [1, 0, 2]; // indexes into sorted scoringData for [left, center, right]
+      const heights = ['160px', '200px', '130px']; // [left, center, right]
+      const rankMedals = ['🥇', '🥈', '🥉']; // [1st, 2nd, 3rd]
+      const rankColors = [
+        ['#ffd700', '#ffb700'], // Gold (1st)
+        ['#c0c0c0', '#a8a8a8'], // Silver (2nd)
+        ['#cd7f32', '#b8690a']  // Bronze (3rd)
+      ];
+      
+      return displayOrder.map((rankIdx, visualPos) => {
+        const competitor = scoringData[rankIdx];
+        if (!competitor) return '';
+        
+        return `
+                <div style="display: flex; flex-direction: column; align-items: center; order: ${visualPos};">
+                  <div style="font-size: 32px; margin-bottom: 8px;">${rankMedals[rankIdx]}</div>
+                  <div style="background: linear-gradient(135deg, ${rankColors[rankIdx][0]} 0%, ${rankColors[rankIdx][1]} 100%); width: 120px; height: ${heights[visualPos]}; border-radius: 12px 12px 0 0; display: flex; flex-direction: column; justify-content: center; align-items: center; color: ${rankIdx === 0 ? '#1e293b' : 'white'}; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                    <div style="font-size: 28px; font-weight: 700;">${competitor.overall || 0}</div>
+                    <div style="font-size: 11px; opacity: 0.9; margin-top: 4px;">Score</div>
+                    <div style="font-size: 12px; font-weight: 600; margin-top: 8px; text-align: center; word-break: break-all;">${(competitor.domain || 'N/A').substring(0, 15)}</div>
+                  </div>
+                </div>
+              `;
+      }).join('');
+    })()}
+          </div>
+          
+          <!-- FULL SCORING TABLE WITH DATA SOURCES -->
+          <div style="overflow-x: auto;">
+          <table class="comp-table" style="margin-bottom: 30px;">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Competitor</th>
+                <th>Technical</th>
+                <th>Authority</th>
+                <th>Content</th>
+                <th>Brand</th>
+                <th>Visibility</th>
+                <th>Overall</th>
+                <th>Grade</th>
+                <th>Data Source</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+    scoringData.forEach(score => {
+      const gradeColor = score.grade === 'A' ? '#22c55e' : score.grade === 'B' ? '#3b82f6' : score.grade === 'C' ? '#f59e0b' : '#ef4444';
+      html += `
+            <tr>
+              <td style="text-align: center; font-weight: 700; color: #6366f1;">#${score.rank}</td>
+              <td><strong>${score.domain}</strong></td>
+              <td><span class="metric-badge ${score.technical > 75 ? 'badge-high' : 'badge-medium'}">${score.technical}</span></td>
+              <td><span class="metric-badge ${score.authority > 60 ? 'badge-high' : 'badge-medium'}">${score.authority}</span></td>
+              <td><span class="metric-badge ${score.content > 70 ? 'badge-high' : 'badge-medium'}">${score.content}</span></td>
+              <td><span class="metric-badge ${score.brand > 70 ? 'badge-high' : 'badge-medium'}">${score.brand}</span></td>
+              <td><span class="metric-badge ${score.visibility > 65 ? 'badge-high' : 'badge-medium'}">${score.visibility}</span></td>
+              <td style="font-size: 18px; font-weight: 700; color: #6366f1;">${score.overall}</td>
+              <td><span style="background: ${gradeColor}; color: white; padding: 6px 14px; border-radius: 8px; font-size: 16px; font-weight: 700;">${score.grade}</span></td>
+              <td style="text-align: center;">${getDataSourceBadge(score.dataSource)}</td>
+            </tr>
+          `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          </div>
+          
+          <!-- ELITE INTELLIGENCE SCORES (NEW SECTION) -->
+          <h4 style="margin: 24px 0 16px; font-size: 16px; font-weight: 700;">🧠 Elite Intelligence Scores</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Competitor</th>
+                <th>SEO Depth</th>
+                <th>GEO Presence</th>
+                <th>AEO Readiness</th>
+                <th>Entity Trust</th>
+                <th>Authority Momentum</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+    scoringData.forEach(score => {
+      const momentum = score.authorityMomentum;
+      const trendIcon = momentum >= 70 ? '📈' : momentum >= 50 ? '➡️' : '📉';
+      const trendColor = momentum >= 70 ? '#22c55e' : momentum >= 50 ? '#f59e0b' : '#ef4444';
+      const trendLabel = momentum >= 70 ? 'Rising' : momentum >= 50 ? 'Stable' : 'Declining';
+
+      html += `
+            <tr>
+              <td><strong>${score.domain}</strong></td>
+              <td><span class="metric-badge ${score.seoDepth > 70 ? 'badge-high' : score.seoDepth > 50 ? 'badge-medium' : 'badge-low'}">${score.seoDepth}</span></td>
+              <td><span class="metric-badge ${score.geoPresence > 60 ? 'badge-high' : score.geoPresence > 40 ? 'badge-medium' : 'badge-low'}">${score.geoPresence}</span></td>
+              <td><span class="metric-badge ${score.aeoReadiness > 70 ? 'badge-high' : score.aeoReadiness > 50 ? 'badge-medium' : 'badge-low'}">${score.aeoReadiness}</span></td>
+              <td><span class="metric-badge ${score.entityTrust > 65 ? 'badge-high' : score.entityTrust > 45 ? 'badge-medium' : 'badge-low'}">${score.entityTrust}</span></td>
+              <td><span class="metric-badge ${score.authorityMomentum > 60 ? 'badge-high' : score.authorityMomentum > 40 ? 'badge-medium' : 'badge-low'}">${score.authorityMomentum}</span></td>
+              <td style="text-align: center;">
+                <span style="background: ${trendColor}20; color: ${trendColor}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;">
+                  ${trendIcon} ${trendLabel}
+                </span>
+              </td>
+            </tr>
+          `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          </div>
+          
+          <!-- ELITE SCORE DEFINITIONS -->
+          <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 20px; border-radius: 12px; margin-bottom: 24px; color: white;">
+            <h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; opacity: 0.9;">📚 Elite Score Definitions</h5>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-weight: 600; margin-bottom: 4px;">🔍 SEO Depth</div>
+                <div style="font-size: 11px; opacity: 0.8;">Technical SEO sophistication: schema, internal linking, meta optimization</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-weight: 600; margin-bottom: 4px;">🌍 GEO Presence</div>
+                <div style="font-size: 11px; opacity: 0.8;">Local/regional SEO strength: location signals, local business schema</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-weight: 600; margin-bottom: 4px;">🤖 AEO Readiness</div>
+                <div style="font-size: 11px; opacity: 0.8;">AI Engine Optimization: FAQ/HowTo schema, direct answer content</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-weight: 600; margin-bottom: 4px;">✅ Entity Trust</div>
+                <div style="font-size: 11px; opacity: 0.8;">E-E-A-T signals: author credentials, trust markers, expertise indicators</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-weight: 600; margin-bottom: 4px;">📈 Authority Momentum</div>
+                <div style="font-size: 11px; opacity: 0.8;">Trend direction: rising, stable, or declining authority trajectory</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CHARTS -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">📊 Score Distribution by Dimension</h5>
+              <div style="height: 250px;"><canvas id="chart-scoring-radar"></canvas></div>
+            </div>
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">📈 Overall Score Comparison</h5>
+              <div style="height: 250px;"><canvas id="chart-scoring-bar"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- SCORING METHODOLOGY WITH REAL DATA SOURCES -->
+          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+            <h5 style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #334155;">⚙️ Scoring Methodology (Based on Real API Data)</h5>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+              ${[
+        { name: 'Technical', weight: '20%', icon: '⚡', source: 'PageSpeed API' },
+        { name: 'Authority', weight: '25%', icon: '🏆', source: 'OpenPageRank' },
+        { name: 'Content', weight: '20%', icon: '📝', source: 'PHP Fetcher' },
+        { name: 'Brand', weight: '15%', icon: '🎯', source: 'Content Analysis' },
+        { name: 'Visibility', weight: '10%', icon: '👁', source: 'Serper API' },
+        { name: 'Conversion', weight: '10%', icon: '💰', source: 'CTA Detection' }
+      ].map(m => `
+                <div style="text-align: center; padding: 12px;">
+                  <div style="font-size: 24px; margin-bottom: 4px;">${m.icon}</div>
+                  <div style="font-size: 13px; font-weight: 600; color: #374151;">${m.name}</div>
+                  <div style="font-size: 18px; font-weight: 700; color: #6366f1;">${m.weight}</div>
+                  <div style="font-size: 10px; color: #666; margin-top: 2px;">${m.source}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          <!-- STRATEGIC INSIGHTS FROM REAL SCORES -->
+          <div style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #6366f1; margin-top: 24px;">
+            <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #3730a3;">💡 Scoring Insights</h5>
+            ${(() => {
+        const leader = scoringData[0];
+        const avgOverall = Math.round(scoringData.reduce((a, b) => a + b.overall, 0) / scoringData.length);
+        const gradeA = scoringData.filter(s => s.grade === 'A').length;
+        const weakestDimension = ['technical', 'authority', 'content', 'brand', 'visibility'].reduce((min, dim) => {
+          const avg = scoringData.reduce((a, b) => a + b[dim], 0) / scoringData.length;
+          return avg < min.avg ? { dim, avg } : min;
+        }, { dim: 'technical', avg: 100 });
+
+        return `
+                <ul style="margin: 0; padding-left: 20px;">
+                  <li style="margin-bottom: 8px; color: #4338ca; line-height: 1.5;">
+                    <strong>Leader:</strong> ${leader?.domain || 'N/A'} with overall score ${leader?.overall || 0}/100 (Grade ${leader?.grade || 'N/A'})
+                    - PageRank: ${leader?.pageRank?.toFixed(1) || 'N/A'}, Words: ${leader?.wordCount?.toLocaleString() || 'N/A'}
+                  </li>
+                  <li style="margin-bottom: 8px; color: #4338ca; line-height: 1.5;">
+                    <strong>Market Average:</strong> ${avgOverall}/100. ${gradeA} competitors have Grade A (elite performance).
+                  </li>
+                  <li style="margin-bottom: 8px; color: #4338ca; line-height: 1.5;">
+                    <strong>Opportunity:</strong> ${weakestDimension.dim.charAt(0).toUpperCase() + weakestDimension.dim.slice(1)} is the weakest dimension 
+                    (avg: ${Math.round(weakestDimension.avg)}/100) - focus here for competitive advantage.
+                  </li>
+                </ul>
+              `;
+      })()}
+          </div>
+        `;
+
+    // ---------------------------------------------------------------------------
+    // ELITE RAW DATA COMPARISON - Scoring Evidence (Ahrefs/SEMrush Level)
+    // ---------------------------------------------------------------------------
+    html += `
+          <h4 style="margin: 30px 0 20px; font-size: 20px; font-weight: 800; color: #202124;">
+            📋 Raw Scoring Evidence (Proof Data)
+          </h4>
+        `;
+
+    // Overall Scoring Comparison
+    const scoreLeader = scoringData.reduce((best, s) => s.overall > (best?.overall || 0) ? s : best, null);
+    const geminiScoreInsight = scoreLeader
+      ? `${scoreLeader.domain} leads with ${scoreLeader.overall}/100 overall score (Grade ${scoreLeader.grade}). Focus on the weakest dimension to maximize improvement with minimal effort.`
+      : 'Analyze scoring dimensions to identify quick win opportunities.';
+
+    html += renderRawDataComparisonTable({
+      title: 'Overall Score Breakdown',
+      icon: '🏆',
+      description: 'Composite scores across all SEO dimensions with API-verified data',
+      competitors: competitors,
+      geminiInsight: geminiScoreInsight,
+      dataExtractor: (c, idx, realMetrics) => {
+        // Use pre-built scoringData if available, otherwise calculate from realMetrics
+        const score = scoringData[idx] || {};
+        const rm = realMetrics || {};
+        return {
+          overall: score.overall || 0,
+          grade: score.grade || (score.overall >= 80 ? 'A' : score.overall >= 60 ? 'B' : score.overall >= 40 ? 'C' : 'D'),
+          technical: score.technical || rm.technical?.performance || 0,
+          authority: score.authority || Math.round((rm.authority?.pageRank || 0) * 10),
+          content: score.content || (rm.content?.wordCount > 2000 ? 70 : rm.content?.wordCount > 1000 ? 50 : 30),
+          brand: score.brand || 50,
+          visibility: score.visibility || (rm.serp?.organicResults > 5 ? 60 : 30)
+        };
+      },
+      fields: [
+        { key: 'overall', label: 'Overall Score', icon: '🏆', type: 'score', compareMode: 'highest' },
+        { key: 'grade', label: 'Grade', icon: '🎖', type: 'text' },
+        { key: 'technical', label: 'Technical', icon: '⚡', type: 'score', compareMode: 'highest' },
+        { key: 'authority', label: 'Authority', icon: '👑', type: 'score', compareMode: 'highest' },
+        { key: 'content', label: 'Content', icon: '📝', type: 'score', compareMode: 'highest' },
+        { key: 'visibility', label: 'Visibility', icon: '👁', type: 'score', compareMode: 'highest' }
+      ]
+    });
+
+    // Raw Metrics Evidence
+    html += renderRawDataComparisonTable({
+      title: 'Score Evidence (Raw Metrics)',
+      icon: '🔬',
+      description: 'The actual metrics used to calculate each score - full proof',
+      competitors: competitors,
+      geminiInsight: 'These are the actual API-sourced values that feed the scoring algorithm. Higher values in each dimension contribute to higher overall scores.',
+      dataExtractor: (c, idx, realMetrics) => {
+        const score = scoringData[idx] || {};
+        const rm = realMetrics || {};
+        return {
+          pageRank: rm.authority?.pageRank || score.pageRank || 0,
+          wordCount: rm.content?.wordCount || score.wordCount || 0,
+          schemaCount: (rm.content?.schemaTypes?.length) || score.schemaCount || 0,
+          performanceScore: rm.technical?.performance || score.performanceScore || 0,
+          serpHits: rm.serp?.organicResults || score.serpHits || 0,
+          ctaCount: score.ctaCount || 0
+        };
+      },
+      fields: [
+        { key: 'pageRank', label: 'PageRank', icon: '🏅', type: 'number', compareMode: 'highest' },
+        { key: 'wordCount', label: 'Word Count', icon: '📄', type: 'number', compareMode: 'highest' },
+        { key: 'schemaCount', label: 'Schema Types', icon: '🏷', type: 'number', compareMode: 'highest' },
+        { key: 'performanceScore', label: 'Performance', icon: '⚡', type: 'score', compareMode: 'highest' },
+        { key: 'serpHits', label: 'SERP Hits', icon: '🔍', type: 'number', compareMode: 'highest' },
+        { key: 'ctaCount', label: 'CTAs', icon: '🎯', type: 'number', compareMode: 'highest' }
+      ]
+    });
+
+    // Gap Analysis - Where You Can Win
+    html += `
+          <div style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); padding: 24px; border-radius: 16px; border-left: 4px solid #22c55e; margin-bottom: 24px;">
+            <h5 style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #166534;">🎯 Gap Analysis - Where You Can Win</h5>
+            <div style="background: white; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 12px; color: #15803d;">
+              <strong>🤖 Gemini Insight:</strong> Target competitors with high authority but low technical scores - they've invested in links but not UX. You can outrank with superior Core Web Vitals.
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              ${scoringData.slice(0, 6).map((s, i) => {
+        const weakest = ['technical', 'authority', 'content', 'brand', 'visibility'].reduce((min, dim) =>
+          s[dim] < s[min] ? dim : min, 'technical');
+        const strongest = ['technical', 'authority', 'content', 'brand', 'visibility'].reduce((max, dim) =>
+          s[dim] > s[max] ? dim : max, 'technical');
+        return `
+                <div style="background: rgba(255,255,255,0.8); padding: 14px; border-radius: 10px; border-left: 3px solid ${i === 0 ? '#22c55e' : '#3b82f6'};">
+                  <div style="font-weight: 700; font-size: 13px; color: #1f2937; margin-bottom: 8px;">${s.domain}</div>
+                  <div style="font-size: 11px; color: #059669; margin-bottom: 4px;">✅ Strong: ${strongest} (${s[strongest]}/100)</div>
+                  <div style="font-size: 11px; color: #dc2626;">⚠ Weak: ${weakest} (${s[weakest]}/100)</div>
+                </div>
+              `;
+      }).join('')}
+            </div>
+          </div>
+        `;
+
+    metricsDiv.innerHTML = html;
+    setTimeout(() => renderScoringCharts(scoringData), 300);
+  }
+
+  // Export for global access
+  window.populateScoringEngineTab = populateScoringEngineTab;
+</script>

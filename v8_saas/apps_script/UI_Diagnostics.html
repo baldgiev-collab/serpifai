@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .check-list { list-style: none; }
+    .check-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .check-item:last-child { border-bottom: none; }
+    .check-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .check-icon.pass { background: #e6f4ea; color: var(--success); }
+    .check-icon.fail { background: #fce8e6; color: var(--danger); }
+    .check-icon.warn { background: #fef7e0; color: var(--warning); }
+    .check-name { font-weight: 500; flex: 1; }
+    .check-msg { color: var(--muted); font-size: 13px; }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .stat-item { background: var(--bg); padding: 14px; border-radius: 8px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 600; color: var(--primary); }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    .btn-danger { background: var(--danger); color: white; border: none; }
+    .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+    
+    .btn-group { display: flex; gap: 10px; margin-top: 16px; }
+    
+    .log-item { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .log-item:last-child { border-bottom: none; }
+    .log-level { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-right: 8px; }
+    .log-level.error { background: #fce8e6; color: var(--danger); }
+    .log-level.warn { background: #fef7e0; color: #e37400; }
+    .log-level.info { background: #e8f0fe; color: var(--primary); }
+    .log-time { color: var(--muted); font-size: 11px; margin-left: 8px; }
+    
+    .status-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg); border-radius: 8px; margin-bottom: 16px; }
+    .status-indicator { display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status-dot.healthy { background: var(--success); }
+    .status-dot.unhealthy { background: var(--danger); }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .env-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .env-item { background: var(--bg); padding: 12px; border-radius: 8px; }
+    .env-label { font-size: 12px; color: var(--muted); }
+    .env-value { font-size: 14px; margin-top: 4px; word-break: break-all; }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .scroll-box { max-height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>System Diagnostics</h1>
+    <p class="subtitle">Health checks and debugging tools</p>
+  </div>
+  
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Running diagnostics...</p>
+  </div>
+  
+  <div id="content" style="display: none;">
+    <div class="status-bar">
+      <div class="status-indicator">
+        <div class="status-dot" id="healthDot"></div>
+        <span id="healthText">System Status</span>
+      </div>
+      <span id="lastCheck" style="color: var(--muted); font-size: 13px;">Last checked: --</span>
+    </div>
+    
+    <div class="card">
+      <h3>Health Checks</h3>
+      <ul class="check-list" id="checkList"></ul>
+    </div>
+    
+    <div class="card">
+      <h3>Table Statistics</h3>
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+    
+    <div class="card">
+      <h3>Environment</h3>
+      <div class="env-grid" id="envGrid"></div>
+    </div>
+    
+    <div class="card">
+      <h3>Recent Logs</h3>
+      <div class="scroll-box" id="logsList"></div>
+    </div>
+    
+    <div class="btn-group">
+      <button class="btn-primary" onclick="runDiagnostics()">Refresh</button>
+      <button class="btn-danger" onclick="clearOldLogs()">Clear Old Logs</button>
+    </div>
+  </div>
+  
+  <script>
+    function init() {
+      runDiagnostics();
+    }
+    
+    function runDiagnostics() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('content').style.display = 'none';
+      
+      // Run all diagnostics in parallel
+      Promise.all([
+        runHealthCheck(),
+        runTableStats(),
+        runEnvCheck(),
+        runLogsFetch()
+      ]).then(function() {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        document.getElementById('lastCheck').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+      });
+    }
+    
+    function runHealthCheck() {
+      return new Promise(function(resolve) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            renderHealthChecks(data);
+            resolve();
+          })
+          .withFailureHandler(function(err) {
+            console.error('Health check failed:', err);
+            resolve();
+          })
+          .CORE_healthCheck();
+      });
+    }
+    
+    function renderHealthChecks(data) {
+      if (!data || !data.ok) return;
+      
+      const dot = document.getElementById('healthDot');
+      const text = document.getElementById('healthText');
+      
+      dot.className = 'status-dot ' + (data.healthy ? 'healthy' : 'unhealthy');
+      text.textContent = data.healthy ? 'All Systems Operational' : 'Issues Detected';
+      
+      const list = document.getElementById('checkList');
+      list.innerHTML = (data.checks || []).map(function(check) {
+        const icon = check.status === 'pass' ? '✓' : (check.status === 'fail' ? '✗' : '!');
+        return '<li class="check-item">' +
+          '<div class="check-icon ' + check.status + '">' + icon + '</div>' +
+          '<span class="check-name">' + check.name + '</span>' +
+          '<span class="check-msg">' + check.message + '</span>' +
+          '</li>';
+      }).join('');
+    }
+    
+    function runTableStats() {
+      return new Promise(function(resolve) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            renderTableStats(data);
+            resolve();
+          })
+          .withFailureHandler(function(err) {
+            console.error('Table stats failed:', err);
+            resolve();
+          })
+          .CORE_debug({ action: 'tableStats' });
+      });
+    }
+    
+    function renderTableStats(data) {
+      if (!data || !data.stats) return;
+      
+      const grid = document.getElementById('statsGrid');
+      grid.innerHTML = Object.keys(data.stats).map(function(table) {
+        const val = data.stats[table];
+        return '<div class="stat-item">' +
+          '<div class="stat-value">' + (typeof val === 'number' ? val.toLocaleString() : val) + '</div>' +
+          '<div class="stat-label">' + table + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function runEnvCheck() {
+      return new Promise(function(resolve) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            renderEnv(data);
+            resolve();
+          })
+          .withFailureHandler(function(err) {
+            console.error('Env check failed:', err);
+            resolve();
+          })
+          .CORE_debug({ action: 'diagnostics' });
+      });
+    }
+    
+    function renderEnv(data) {
+      if (!data || !data.diagnostics) return;
+      
+      const env = data.diagnostics.environment || {};
+      const conn = data.diagnostics.connectivity || {};
+      
+      const items = [
+        { label: 'Gateway URL', value: env.hasGatewayUrl ? 'Configured' : 'Not Set' },
+        { label: 'API Keys', value: env.hasApiKeys ? 'Configured' : 'Not Set' },
+        { label: 'Script ID', value: env.scriptId || '--' },
+        { label: 'Timezone', value: env.timezone || '--' },
+        { label: 'Gateway Status', value: conn.gateway || '--' },
+        { label: 'Gateway Latency', value: conn.gatewayLatency || '--' }
+      ];
+      
+      const grid = document.getElementById('envGrid');
+      grid.innerHTML = items.map(function(item) {
+        return '<div class="env-item">' +
+          '<div class="env-label">' + item.label + '</div>' +
+          '<div class="env-value">' + item.value + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function runLogsFetch() {
+      return new Promise(function(resolve) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            renderLogs(data);
+            resolve();
+          })
+          .withFailureHandler(function(err) {
+            console.error('Logs fetch failed:', err);
+            document.getElementById('logsList').innerHTML = '<div class="empty">Could not load logs</div>';
+            resolve();
+          })
+          .CORE_debug({ action: 'recentLogs', limit: 20 });
+      });
+    }
+    
+    function renderLogs(data) {
+      const list = document.getElementById('logsList');
+      
+      if (!data || !data.logs || data.logs.length === 0) {
+        list.innerHTML = '<div class="empty">No logs found</div>';
+        return;
+      }
+      
+      list.innerHTML = data.logs.map(function(log) {
+        const level = log.level || 'info';
+        return '<div class="log-item">' +
+          '<span class="log-level ' + level + '">' + level.toUpperCase() + '</span>' +
+          '<span>' + (log.message || '') + '</span>' +
+          '<span class="log-time">' + (log.created_at || '') + '</span>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function clearOldLogs() {
+      if (!confirm('Clear logs older than 7 days?')) return;
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (data && data.ok) {
+            alert('Deleted ' + (data.deleted || 0) + ' logs');
+            runLogsFetch();
+          }
+        })
+        .withFailureHandler(function(err) {
+          alert('Failed to clear logs: ' + err.message);
+        })
+        .CORE_debug({ action: 'clearLogs', olderThanDays: 7 });
+    }
+    
+    init();
+  </script>
+</body>
+</html>

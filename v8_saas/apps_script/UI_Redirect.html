@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"] { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus { outline: none; border-color: var(--primary); }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    
+    .summary-row { display: flex; gap: 16px; margin-bottom: 20px; }
+    .summary-item { flex: 1; padding: 16px; border-radius: 8px; background: var(--bg); text-align: center; }
+    .summary-value { font-size: 24px; font-weight: 600; }
+    .summary-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    
+    .chain-visual { position: relative; padding: 20px 0; }
+    .chain-step { display: flex; align-items: center; gap: 12px; padding: 16px; margin-bottom: 8px; background: var(--bg); border-radius: 8px; }
+    .chain-step:last-child { margin-bottom: 0; }
+    .chain-number { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+    .chain-step.final .chain-number { background: var(--success); }
+    .chain-step.error .chain-number { background: var(--danger); }
+    .chain-url { flex: 1; font-size: 13px; word-break: break-all; }
+    .chain-status { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+    .chain-status.ok { background: #e6f4ea; color: var(--success); }
+    .chain-status.redirect { background: #e8f0fe; color: var(--primary); }
+    .chain-status.error { background: #fce8e6; color: var(--danger); }
+    .chain-arrow { text-align: center; color: var(--muted); margin: 4px 0; }
+    
+    .issue-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--bg); border-radius: 8px; margin-bottom: 8px; }
+    .issue-item:last-child { margin-bottom: 0; }
+    .issue-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+    .issue-icon.critical { background: #fce8e6; color: var(--danger); }
+    .issue-icon.warning { background: #fef7e0; color: #e37400; }
+    .issue-icon.info { background: #e8f0fe; color: var(--primary); }
+    .issue-title { font-weight: 500; margin-bottom: 2px; }
+    .issue-desc { font-size: 13px; color: var(--muted); }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Redirect Checker</h1>
+    <p class="subtitle">Trace URL redirect chains</p>
+  </div>
+  
+  <div class="card">
+    <div class="form-group">
+      <label>URL to Check</label>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="urlInput" placeholder="Enter URL to trace redirects...">
+        <button class="btn-primary" onclick="checkRedirects()">Check</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Tracing redirects...</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="summary-row">
+      <div class="summary-item">
+        <div class="summary-value" id="chainLength">0</div>
+        <div class="summary-label">Redirects</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value" id="issueCount">0</div>
+        <div class="summary-label">Issues</div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h3>Redirect Chain</h3>
+      <div class="chain-visual" id="chainVisual"></div>
+    </div>
+    
+    <div class="card" id="issuesCard" style="display: none;">
+      <h3>Issues Found</h3>
+      <div id="issuesList"></div>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to trace its redirect chain</p>
+  </div>
+  
+  <script>
+    function checkRedirects() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { alert('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeRedirects({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        alert(data?.error || 'Check failed');
+        document.getElementById('empty').style.display = 'block';
+        return;
+      }
+      
+      const redirectCount = Math.max(0, (data.chainLength || 1) - 1);
+      document.getElementById('chainLength').textContent = redirectCount;
+      document.getElementById('issueCount').textContent = (data.issues || []).length;
+      
+      renderChain(data.chain || []);
+      renderIssues(data.issues || []);
+      
+      document.getElementById('results').style.display = 'block';
+    }
+    
+    function renderChain(chain) {
+      const container = document.getElementById('chainVisual');
+      
+      container.innerHTML = chain.map(function(step, index) {
+        const isLast = index === chain.length - 1;
+        const statusClass = step.statusCode === 200 ? 'ok' : (step.statusCode >= 300 && step.statusCode < 400 ? 'redirect' : 'error');
+        const stepClass = isLast ? (step.statusCode === 200 ? 'final' : 'error') : '';
+        
+        let html = '<div class="chain-step ' + stepClass + '">' +
+          '<div class="chain-number">' + (index + 1) + '</div>' +
+          '<div class="chain-url">' + step.url + '</div>' +
+          '<div class="chain-status ' + statusClass + '">' + step.statusCode + ' ' + step.statusText + '</div>' +
+          '</div>';
+        
+        if (!isLast) {
+          html += '<div class="chain-arrow">↓</div>';
+        }
+        
+        return html;
+      }).join('');
+    }
+    
+    function renderIssues(issues) {
+      const card = document.getElementById('issuesCard');
+      const list = document.getElementById('issuesList');
+      
+      if (issues.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+      
+      card.style.display = 'block';
+      
+      list.innerHTML = issues.map(function(issue) {
+        const icon = issue.type === 'critical' ? '!' : (issue.type === 'warning' ? '△' : 'i');
+        return '<div class="issue-item">' +
+          '<div class="issue-icon ' + issue.type + '">' + icon + '</div>' +
+          '<div>' +
+            '<div class="issue-title">' + issue.title + '</div>' +
+            '<div class="issue-desc">' + issue.description + '</div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('empty').style.display = 'block';
+      alert('Error: ' + (err.message || 'Unknown error'));
+    }
+  </script>
+</body>
+</html>

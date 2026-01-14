@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"] { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus { outline: none; border-color: var(--primary); }
+    button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #1a73e8; }
+    
+    .score-container { display: flex; gap: 20px; margin-bottom: 20px; }
+    .score-box { flex: 1; background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); text-align: center; }
+    .score-box .value { font-size: 36px; font-weight: 500; }
+    .score-box .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .score-box.good .value { color: var(--success); }
+    .score-box.medium .value { color: var(--warning); }
+    .score-box.poor .value { color: var(--danger); }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .nap-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .nap-item { padding: 12px; background: var(--bg); border-radius: 8px; }
+    .nap-item .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .nap-item .value { font-size: 14px; font-weight: 500; }
+    .nap-item .value.missing { color: var(--danger); }
+    
+    .checklist { list-style: none; }
+    .checklist li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .checklist li:last-child { border-bottom: none; }
+    .check-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .check-icon.pass { background: #e6f4ea; color: var(--success); }
+    .check-icon.fail { background: #fce8e6; color: var(--danger); }
+    
+    .rec-item { padding: 12px; border-bottom: 1px solid var(--border); }
+    .rec-item:last-child { border-bottom: none; }
+    .rec-priority { font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 6px; display: inline-block; }
+    .rec-priority.high { background: #fce8e6; color: var(--danger); }
+    .rec-priority.medium { background: #fef7e0; color: #b45309; }
+    .rec-issue { font-weight: 500; margin-bottom: 4px; }
+    .rec-fix { font-size: 13px; color: var(--muted); }
+    
+    .loading { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .error { background: #fce8e6; border: 1px solid #f5c6cb; border-radius: 8px; padding: 16px; color: #c5221f; }
+    
+    .schema-preview { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; white-space: pre; max-height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Local SEO Analyzer</h1>
+    <p class="subtitle">Analyze local business optimization signals</p>
+  </div>
+  
+  <div class="input-group">
+    <input type="text" id="urlInput" placeholder="Enter local business URL...">
+    <button onclick="analyzeUrl()">Analyze</button>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Analyzing local SEO signals...</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="score-container">
+      <div id="scoreBox" class="score-box">
+        <div id="scoreValue" class="value">--</div>
+        <div class="label">Local SEO Score</div>
+      </div>
+      <div id="schemaBox" class="score-box">
+        <div id="schemaValue" class="value">--</div>
+        <div class="label">Local Schema</div>
+      </div>
+      <div id="mapBox" class="score-box">
+        <div id="mapValue" class="value">--</div>
+        <div class="label">Map Embedded</div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h3>NAP Information (Name, Address, Phone)</h3>
+      <div class="nap-grid" id="napGrid"></div>
+    </div>
+    
+    <div class="card">
+      <h3>Local SEO Checklist</h3>
+      <ul class="checklist" id="checklist"></ul>
+    </div>
+    
+    <div class="card" id="recsCard">
+      <h3>Recommendations</h3>
+      <div id="recsList"></div>
+    </div>
+    
+    <div class="card" id="schemaCard" style="display: none;">
+      <h3>Suggested LocalBusiness Schema</h3>
+      <pre class="schema-preview" id="schemaPreview"></pre>
+      <button onclick="copySchema()" style="margin-top: 12px;">Copy Schema</button>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to analyze local SEO signals</p>
+  </div>
+  
+  <div id="error" class="error" style="display: none;"></div>
+  
+  <script>
+    let generatedSchema = '';
+    
+    function analyzeUrl() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { showError('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeLocalSEO({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        showError(data?.error || 'Analysis failed');
+        return;
+      }
+      
+      document.getElementById('results').style.display = 'block';
+      
+      // Update score
+      const score = data.score || 0;
+      document.getElementById('scoreValue').textContent = score;
+      document.getElementById('scoreBox').className = 'score-box ' + getScoreClass(score);
+      
+      // Schema status
+      document.getElementById('schemaValue').textContent = data.hasLocalSchema ? '✓' : '✗';
+      document.getElementById('schemaBox').className = 'score-box ' + (data.hasLocalSchema ? 'good' : 'poor');
+      
+      // Map status
+      document.getElementById('mapValue').textContent = data.hasEmbeddedMap ? '✓' : '✗';
+      document.getElementById('mapBox').className = 'score-box ' + (data.hasEmbeddedMap ? 'good' : 'medium');
+      
+      // NAP Grid
+      renderNAP(data.nap || {});
+      
+      // Checklist
+      renderChecklist(data);
+      
+      // Recommendations
+      renderRecommendations(data.recommendations || []);
+      
+      // Generate schema suggestion if missing
+      if (!data.hasLocalSchema && data.nap) {
+        generateSchemaSuggestion(data);
+      }
+    }
+    
+    function getScoreClass(score) {
+      if (score >= 70) return 'good';
+      if (score >= 40) return 'medium';
+      return 'poor';
+    }
+    
+    function renderNAP(nap) {
+      const container = document.getElementById('napGrid');
+      const items = [
+        { label: 'Business Name', value: nap.name },
+        { label: 'Address', value: nap.address },
+        { label: 'Phone', value: nap.phone },
+        { label: 'Email', value: nap.email }
+      ];
+      
+      container.innerHTML = items.map(function(item) {
+        const isMissing = !item.value;
+        return '<div class="nap-item">' +
+          '<div class="label">' + item.label + '</div>' +
+          '<div class="value ' + (isMissing ? 'missing' : '') + '">' + 
+            (item.value || 'Not found') + 
+          '</div></div>';
+      }).join('');
+    }
+    
+    function renderChecklist(data) {
+      const checks = [
+        { label: 'Business name visible', pass: !!data.nap?.name },
+        { label: 'Address found', pass: !!data.nap?.address },
+        { label: 'Phone number found', pass: !!data.nap?.phone },
+        { label: 'LocalBusiness schema', pass: data.hasLocalSchema },
+        { label: 'Embedded map', pass: data.hasEmbeddedMap },
+        { label: 'Local keywords used', pass: (data.localKeywords || []).length > 0 }
+      ];
+      
+      document.getElementById('checklist').innerHTML = checks.map(function(c) {
+        return '<li>' +
+          '<span class="check-icon ' + (c.pass ? 'pass' : 'fail') + '">' + (c.pass ? '✓' : '✗') + '</span>' +
+          '<span>' + c.label + '</span>' +
+          '</li>';
+      }).join('');
+    }
+    
+    function renderRecommendations(recs) {
+      const container = document.getElementById('recsList');
+      
+      if (recs.length === 0) {
+        container.innerHTML = '<div class="empty">Great local SEO setup!</div>';
+        return;
+      }
+      
+      container.innerHTML = recs.map(function(r) {
+        return '<div class="rec-item">' +
+          '<span class="rec-priority ' + r.priority + '">' + r.priority + '</span>' +
+          '<div class="rec-issue">' + r.issue + '</div>' +
+          '<div class="rec-fix">' + r.fix + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function generateSchemaSuggestion(data) {
+      const schema = {
+        '@context': 'https://schema.org',
+        '@type': 'LocalBusiness',
+        name: data.nap?.name || '[Business Name]',
+        telephone: data.nap?.phone || '[Phone Number]',
+        email: data.nap?.email || '[Email]',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: '[Street Address]',
+          addressLocality: '[City]',
+          addressRegion: '[State]',
+          postalCode: '[ZIP]',
+          addressCountry: 'US'
+        },
+        url: data.url
+      };
+      
+      generatedSchema = JSON.stringify(schema, null, 2);
+      
+      document.getElementById('schemaCard').style.display = 'block';
+      document.getElementById('schemaPreview').textContent = generatedSchema;
+    }
+    
+    function copySchema() {
+      const fullSchema = '<script type="application/ld+json">\n' + generatedSchema + '\n<\/script>';
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(fullSchema).then(function() {
+          alert('Schema copied to clipboard!');
+        });
+      }
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      showError(err.message || 'An error occurred');
+    }
+    
+    function showError(msg) {
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = msg;
+    }
+  </script>
+</body>
+</html>

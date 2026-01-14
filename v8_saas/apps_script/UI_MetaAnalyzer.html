@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Meta Tags Analyzer</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    
+    .analyze-form { display: flex; gap: 10px; }
+    .analyze-form input { flex: 1; }
+    
+    .score-section { text-align: center; margin-bottom: 30px; }
+    .score-circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .score-circle.good { background: rgba(35, 134, 54, 0.2); color: var(--success); border: 4px solid var(--success); }
+    .score-circle.ok { background: rgba(210, 153, 34, 0.2); color: var(--warning); border: 4px solid var(--warning); }
+    .score-circle.bad { background: rgba(248, 81, 73, 0.2); color: var(--error); border: 4px solid var(--error); }
+    .score-label { font-size: 14px; color: var(--text-secondary); }
+    
+    .preview-section { margin-bottom: 30px; }
+    .preview-google {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 600px;
+    }
+    .preview-title {
+      color: #1a0dab;
+      font-size: 18px;
+      margin-bottom: 5px;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .preview-url { color: #006621; font-size: 13px; margin-bottom: 5px; }
+    .preview-desc { color: #545454; font-size: 13px; line-height: 1.4; }
+    
+    .meta-item {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .meta-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .meta-name { font-weight: 600; }
+    .meta-status { padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+    .meta-status.good { background: rgba(35, 134, 54, 0.2); color: var(--success); }
+    .meta-status.warning { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+    .meta-status.error { background: rgba(248, 81, 73, 0.2); color: var(--error); }
+    .meta-content {
+      background: var(--bg-primary);
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 13px;
+      word-break: break-all;
+    }
+    .meta-info { margin-top: 10px; font-size: 12px; color: var(--text-secondary); }
+    .char-count { margin-top: 5px; font-size: 11px; }
+    .char-count.over { color: var(--error); }
+    
+    .og-preview {
+      background: #f0f2f5;
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 500px;
+    }
+    .og-image { width: 100%; height: 260px; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+    .og-image img { width: 100%; height: 100%; object-fit: cover; }
+    .og-content { padding: 12px; background: white; }
+    .og-url { font-size: 12px; color: #65676b; text-transform: uppercase; }
+    .og-title { font-size: 16px; font-weight: 600; color: #1c1e21; margin: 5px 0; }
+    .og-desc { font-size: 14px; color: #606770; }
+    
+    .recommendation {
+      display: flex;
+      gap: 15px;
+      padding: 15px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+    }
+    .rec-icon { font-size: 20px; }
+    .rec-content { flex: 1; }
+    .rec-title { font-weight: 600; margin-bottom: 5px; }
+    .rec-desc { font-size: 13px; color: var(--text-secondary); }
+    
+    .loading { text-align: center; padding: 40px; display: none; }
+    .loading.active { display: block; }
+    .message { padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; display: none; }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏷️ Meta Tags Analyzer</h1>
+    <div id="message" class="message"></div>
+    
+    <div class="section">
+      <div class="analyze-form">
+        <input type="text" class="form-input" id="urlInput" placeholder="Enter URL to analyze (e.g., https://example.com)">
+        <button class="btn btn-primary" onclick="analyzeMeta()">🔍 Analyze</button>
+      </div>
+    </div>
+    
+    <div class="loading" id="loading"><p>🔄 Analyzing meta tags...</p></div>
+    
+    <div id="results" style="display:none;">
+      <div class="score-section">
+        <div class="score-circle" id="overallScore">0</div>
+        <div class="score-label">Overall Meta Score</div>
+      </div>
+      
+      <div class="section preview-section">
+        <h2>Google Search Preview</h2>
+        <div class="preview-google">
+          <div class="preview-title" id="previewTitle">Page Title</div>
+          <div class="preview-url" id="previewUrl">https://example.com</div>
+          <div class="preview-desc" id="previewDesc">Page description will appear here...</div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2>Meta Tags Analysis</h2>
+        <div id="metaList"></div>
+      </div>
+      
+      <div class="section">
+        <h2>Social Media Preview</h2>
+        <div class="og-preview">
+          <div class="og-image" id="ogImage">No image</div>
+          <div class="og-content">
+            <div class="og-url" id="ogUrl">EXAMPLE.COM</div>
+            <div class="og-title" id="ogTitle">Page Title</div>
+            <div class="og-desc" id="ogDesc">Description</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h2>Recommendations</h2>
+        <div id="recommendations"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function analyzeMeta() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { showMessage('Please enter a URL', 'error'); return; }
+      
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('results').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(e => {
+          document.getElementById('loading').classList.remove('active');
+          showMessage(e.message, 'error');
+        })
+        .FT_analyzeMetaTags({ url: url });
+    }
+    
+    function displayResults(result) {
+      document.getElementById('loading').classList.remove('active');
+      if (!result.ok) { showMessage(result.error, 'error'); return; }
+      
+      document.getElementById('results').style.display = 'block';
+      
+      // Score
+      const score = result.score || 0;
+      const scoreEl = document.getElementById('overallScore');
+      scoreEl.textContent = score;
+      scoreEl.className = 'score-circle ' + (score >= 80 ? 'good' : score >= 50 ? 'ok' : 'bad');
+      
+      // Google preview
+      document.getElementById('previewTitle').textContent = result.title || 'No title';
+      document.getElementById('previewUrl').textContent = result.url;
+      document.getElementById('previewDesc').textContent = result.description || 'No description';
+      
+      // Meta tags list
+      document.getElementById('metaList').innerHTML = (result.tags || []).map(tag => {
+        const status = tag.status === 'good' ? 'good' : tag.status === 'warning' ? 'warning' : 'error';
+        const charClass = tag.length > tag.maxLength ? 'over' : '';
+        
+        return `
+          <div class="meta-item">
+            <div class="meta-header">
+              <span class="meta-name">${tag.name}</span>
+              <span class="meta-status ${status}">${tag.statusText}</span>
+            </div>
+            <div class="meta-content">${tag.content || '<em>Not found</em>'}</div>
+            ${tag.length ? `<div class="char-count ${charClass}">${tag.length}/${tag.maxLength} characters</div>` : ''}
+            <div class="meta-info">${tag.info || ''}</div>
+          </div>
+        `;
+      }).join('');
+      
+      // OG preview
+      if (result.ogImage) {
+        document.getElementById('ogImage').innerHTML = `<img src="${result.ogImage}" onerror="this.parentElement.textContent='Image failed to load'">`;
+      }
+      document.getElementById('ogUrl').textContent = new URL(result.url).hostname.toUpperCase();
+      document.getElementById('ogTitle').textContent = result.ogTitle || result.title || 'No title';
+      document.getElementById('ogDesc').textContent = result.ogDescription || result.description || 'No description';
+      
+      // Recommendations
+      document.getElementById('recommendations').innerHTML = (result.recommendations || []).map(rec => `
+        <div class="recommendation">
+          <div class="rec-icon">${rec.icon}</div>
+          <div class="rec-content">
+            <div class="rec-title">${rec.title}</div>
+            <div class="rec-desc">${rec.description}</div>
+          </div>
+        </div>
+      `).join('') || '<p style="color:var(--text-secondary);">No recommendations - your meta tags look great!</p>';
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => msg.className = 'message', 3000);
+    }
+  </script>
+</body>
+</html>

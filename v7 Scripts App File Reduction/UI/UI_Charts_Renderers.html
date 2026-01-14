@@ -1,0 +1,449 @@
+<script>
+/**
+ * UI_Charts_Renderers.html
+ * Chart rendering functions for various data visualization components
+ * Extracted from UI_Scripts_App.html for modularization
+ */
+
+/**
+ * Render Conversion Charts (Funnel + Revenue Models)
+ */
+function renderConversionCharts(conversionData) {
+  console.log('📊 renderConversionCharts called with', conversionData.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // Funnel Architecture Bar Chart
+  const funnelCtx = document.getElementById('chart-conversion-funnel');
+  if (funnelCtx) {
+    if (window.competitorCharts['conversion-funnel']) window.competitorCharts['conversion-funnel'].destroy();
+    window.competitorCharts['conversion-funnel'] = new Chart(funnelCtx, {
+      type: 'bar',
+      data: {
+        labels: conversionData.slice(0, 6).map(c => c.domain?.split('.')[0] || 'Unknown'),
+        datasets: [
+          { label: 'Funnel Score', data: conversionData.slice(0, 6).map(c => c.funnelScore || 0), backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: '#f59e0b', borderWidth: 1 },
+          { label: 'Persuasion', data: conversionData.slice(0, 6).map(c => c.landingPersuasion || 0), backgroundColor: 'rgba(139, 92, 246, 0.7)', borderColor: '#8b5cf6', borderWidth: 1 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } } }
+    });
+  }
+
+  // Revenue Model Distribution Doughnut
+  const modelsCtx = document.getElementById('chart-conversion-models');
+  if (modelsCtx) {
+    if (window.competitorCharts['conversion-models']) window.competitorCharts['conversion-models'].destroy();
+    const modelCounts = {};
+    conversionData.forEach(c => { modelCounts[c.revenueModel || 'Unknown'] = (modelCounts[c.revenueModel || 'Unknown'] || 0) + 1; });
+    window.competitorCharts['conversion-models'] = new Chart(modelsCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(modelCounts),
+        datasets: [{ data: Object.values(modelCounts), backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e', '#8b5cf6', '#ec4899', '#14b8a6'], borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1000 }, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } }
+    });
+  }
+  console.log('   ✅ Conversion charts rendered');
+}
+
+/**
+ * Render Distribution Charts (PageRank + Visibility Radar)
+ */
+function renderDistributionCharts(distData) {
+  console.log('📊 renderDistributionCharts called with', distData.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // PageRank Bar Chart
+  const backlinksCtx = document.getElementById('chart-distribution-backlinks');
+  if (backlinksCtx) {
+    if (window.competitorCharts['distribution-backlinks']) window.competitorCharts['distribution-backlinks'].destroy();
+    window.competitorCharts['distribution-backlinks'] = new Chart(backlinksCtx, {
+      type: 'bar',
+      data: {
+        labels: distData.slice(0, 6).map(d => d.domain?.split('.')[0] || 'Unknown'),
+        datasets: [{ label: 'PageRank', data: distData.slice(0, 6).map(d => d.pageRank || 0), backgroundColor: distData.slice(0, 6).map(d => d.pageRank >= 5 ? 'rgba(34, 197, 94, 0.7)' : d.pageRank >= 3 ? 'rgba(59, 130, 246, 0.7)' : 'rgba(249, 115, 22, 0.7)'), borderWidth: 1 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, scales: { y: { beginAtZero: true, max: 10 } }, plugins: { legend: { display: false } } }
+    });
+  }
+
+  // Visibility Radar
+  const radarCtx = document.getElementById('chart-distribution-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['distribution-radar']) window.competitorCharts['distribution-radar'].destroy();
+    const colors = ['#8b5cf6', '#3b82f6', '#22c55e', '#f59e0b'];
+    window.competitorCharts['distribution-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['PageRank', 'Domain Auth', 'SERP Results', 'Visibility', 'External Links'],
+        datasets: distData.slice(0, 4).map((d, i) => ({
+          label: d.domain?.split('.')[0] || 'Unknown',
+          data: [(d.pageRank || 0) * 10, d.domainAuthority || 0, (d.serpResults || 0) * 10, d.serpVisibility || 0, Math.min(100, (d.externalLinks || 0) / 10)],
+          backgroundColor: colors[i] + '20', borderColor: colors[i], borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+  }
+  console.log('   ✅ Distribution charts rendered');
+}
+
+/**
+ * Render Audience Charts (Emotional Triggers + JTBD)
+ */
+function renderAudienceCharts(audienceMetrics) {
+  console.log('📊 renderAudienceCharts called with', audienceMetrics.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // Emotional Trigger Bar Chart (canvas id: chart-audience-emotional)
+  const emotionalCtx = document.getElementById('chart-audience-emotional');
+  if (emotionalCtx) {
+    if (window.competitorCharts['audience-emotional']) window.competitorCharts['audience-emotional'].destroy();
+    window.competitorCharts['audience-emotional'] = new Chart(emotionalCtx, {
+      type: 'bar',
+      data: {
+        labels: audienceMetrics.slice(0, 6).map(a => a.domain?.split('.')[0] || 'Unknown'),
+        datasets: [
+          { label: 'Persona Depth', data: audienceMetrics.slice(0, 6).map(a => a.personaDepth || 0), backgroundColor: 'rgba(236, 72, 153, 0.7)', borderColor: '#ec4899', borderWidth: 1 },
+          { label: 'Emotional Index', data: audienceMetrics.slice(0, 6).map(a => a.emotionalResonance || 0), backgroundColor: 'rgba(139, 92, 246, 0.7)', borderColor: '#8b5cf6', borderWidth: 1 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } } }
+    });
+  }
+
+  // JTBD Coverage Radar (canvas id: chart-audience-jtbd)
+  const jtbdCtx = document.getElementById('chart-audience-jtbd');
+  if (jtbdCtx) {
+    if (window.competitorCharts['audience-jtbd']) window.competitorCharts['audience-jtbd'].destroy();
+    const colors = ['#ec4899', '#8b5cf6', '#0ea5e9', '#22c55e'];
+    window.competitorCharts['audience-jtbd'] = new Chart(jtbdCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Persona Depth', 'JTBD Match', 'Emotional', 'Word Count/30', 'B2B Score'],
+        datasets: audienceMetrics.slice(0, 4).map((a, i) => ({
+          label: a.domain?.split('.')[0] || 'Unknown',
+          data: [a.personaDepth || 0, a.jtbdMatch || 0, a.emotionalResonance || 0, Math.min(100, (a.wordCount || 0) / 30), (a.b2bScore || 0) * 15],
+          backgroundColor: colors[i] + '20', borderColor: colors[i], borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+  }
+  console.log('   ✅ Audience charts rendered');
+}
+
+/**
+ * Render GEO/AEO Charts (AI Readiness + Schema)
+ */
+function renderGeoAeoCharts(geoData) {
+  console.log('📊 renderGeoAeoCharts called with', geoData.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // AI Readiness Radar (canvas id: chart-geo-radar)
+  const aiCtx = document.getElementById('chart-geo-radar');
+  if (aiCtx) {
+    if (window.competitorCharts['geo-radar']) window.competitorCharts['geo-radar'].destroy();
+    const colors = ['#0ea5e9', '#22c55e', '#f59e0b', '#8b5cf6'];
+    window.competitorCharts['geo-radar'] = new Chart(aiCtx, {
+      type: 'radar',
+      data: {
+        labels: ['AI Readiness', 'Schema Types', 'Answer Auth', 'Factual', 'PAA Count'],
+        datasets: geoData.slice(0, 4).map((g, i) => ({
+          label: g.domain?.split('.')[0] || 'Unknown',
+          data: [g.aiReadinessScore || 0, (g.schemaCount || 0) * 15, g.answerAuthority || 0, g.factualIntegrity || 0, (g.paaCount || 0) * 10],
+          backgroundColor: colors[i] + '20', borderColor: colors[i], borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+  }
+
+  // Schema Implementation Bar (canvas id: chart-geo-platforms)
+  const schemaCtx = document.getElementById('chart-geo-platforms');
+  if (schemaCtx) {
+    if (window.competitorCharts['geo-platforms']) window.competitorCharts['geo-platforms'].destroy();
+    window.competitorCharts['geo-platforms'] = new Chart(schemaCtx, {
+      type: 'bar',
+      data: {
+        labels: geoData.slice(0, 6).map(g => g.domain?.split('.')[0] || 'Unknown'),
+        datasets: [{ label: 'Schema Types', data: geoData.slice(0, 6).map(g => g.schemaCount || 0), backgroundColor: 'rgba(14, 165, 233, 0.7)', borderColor: '#0ea5e9', borderWidth: 1 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+    });
+  }
+  console.log('   ✅ GEO/AEO charts rendered');
+}
+
+/**
+ * Render Authority Charts (PageRank + Link Architecture)
+ */
+function renderAuthorityCharts(authorityData) {
+  console.log('📊 renderAuthorityCharts called with', authorityData.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // PageRank Comparison (canvas id: chart-authority-velocity)
+  const prCtx = document.getElementById('chart-authority-velocity');
+  if (prCtx) {
+    if (window.competitorCharts['authority-velocity']) window.competitorCharts['authority-velocity'].destroy();
+    window.competitorCharts['authority-velocity'] = new Chart(prCtx, {
+      type: 'bar',
+      data: {
+        labels: authorityData.slice(0, 6).map(a => a.domain?.split('.')[0] || 'Unknown'),
+        datasets: [
+          { label: 'PageRank', data: authorityData.slice(0, 6).map(a => a.pageRank || 0), backgroundColor: 'rgba(234, 179, 8, 0.7)', borderColor: '#eab308', borderWidth: 1 },
+          { label: 'Topical Auth', data: authorityData.slice(0, 6).map(a => (a.topicalRelevance || 0) / 10), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: '#3b82f6', borderWidth: 1 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, scales: { y: { beginAtZero: true, max: 10 } }, plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } } }
+    });
+  }
+
+  // Link Architecture Doughnut (canvas id: chart-authority-network)
+  const linkCtx = document.getElementById('chart-authority-network');
+  if (linkCtx) {
+    if (window.competitorCharts['authority-network']) window.competitorCharts['authority-network'].destroy();
+    const totalInt = authorityData.reduce((s, a) => s + (a.internalLinks || 0), 0);
+    const totalExt = authorityData.reduce((s, a) => s + (a.externalLinks || 0), 0);
+    window.competitorCharts['authority-network'] = new Chart(linkCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Internal Links', 'External Links'],
+        datasets: [{ data: [totalInt, totalExt], backgroundColor: ['#eab308', '#3b82f6'], borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } }
+    });
+  }
+  console.log('   ✅ Authority charts rendered');
+}
+
+/**
+ * Render Predictive/Performance Charts
+ */
+function renderPredictiveCharts(perfData) {
+  console.log('📊 renderPredictiveCharts called with', perfData.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // Predictive Rank Forecast (canvas id: chart-predictive-forecast)
+  const forecastCtx = document.getElementById('chart-predictive-forecast');
+  if (forecastCtx) {
+    if (window.competitorCharts['predictive-forecast']) window.competitorCharts['predictive-forecast'].destroy();
+    window.competitorCharts['predictive-forecast'] = new Chart(forecastCtx, {
+      type: 'bar',
+      data: {
+        labels: perfData.slice(0, 6).map(p => p.domain?.split('.')[0] || 'Unknown'),
+        datasets: [
+          { label: 'Performance', data: perfData.slice(0, 6).map(p => p.performance || 0), backgroundColor: 'rgba(34, 197, 94, 0.7)', borderColor: '#22c55e', borderWidth: 1 },
+          { label: 'SEO Score', data: perfData.slice(0, 6).map(p => p.seo || 0), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: '#3b82f6', borderWidth: 1 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } } }
+    });
+  }
+
+  // Performance vs Quality Matrix (canvas id: chart-predictive-quality)
+  const qualityCtx = document.getElementById('chart-predictive-quality');
+  if (qualityCtx) {
+    if (window.competitorCharts['predictive-quality']) window.competitorCharts['predictive-quality'].destroy();
+    const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6'];
+    window.competitorCharts['predictive-quality'] = new Chart(qualityCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Performance', 'SEO', 'Accessibility', 'Best Practices', 'PageRank x10'],
+        datasets: perfData.slice(0, 4).map((p, i) => ({
+          label: p.domain?.split('.')[0] || 'Unknown',
+          data: [p.performance || 0, p.seo || 0, p.accessibility || 0, p.bestPractices || 0, (p.pageRank || 0) * 10],
+          backgroundColor: colors[i] + '20', borderColor: colors[i], borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+  }
+  console.log('   ✅ Predictive charts rendered');
+}
+
+/**
+ * Render Strategic Opportunity Charts (Blue Ocean + Moat)
+ */
+function renderStrategicCharts(strategicData) {
+  console.log('📊 renderStrategicCharts called with', strategicData.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // Blue Ocean Opportunity (canvas id: chart-strategic-ocean) - Scatter chart
+  const blueCtx = document.getElementById('chart-strategic-ocean');
+  if (blueCtx) {
+    if (window.competitorCharts['strategic-ocean']) window.competitorCharts['strategic-ocean'].destroy();
+    const colors = ['#0ea5e9', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
+    window.competitorCharts['strategic-ocean'] = new Chart(blueCtx, {
+      type: 'scatter',
+      data: {
+        datasets: strategicData.slice(0, 6).map((s, i) => ({
+          label: s.domain?.split('.')[0] || 'Unknown',
+          data: [{ x: 100 - (s.moatStrength || 50), y: s.opportunityScore || 50 }],
+          backgroundColor: colors[i], borderColor: colors[i], pointRadius: 10
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Vulnerability (100 - Moat)' }, min: 0, max: 100 }, y: { title: { display: true, text: 'Opportunity Score' }, min: 0, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+  }
+
+  // Competitive Moat Radar (canvas id: chart-strategic-moat)
+  const moatCtx = document.getElementById('chart-strategic-moat');
+  if (moatCtx) {
+    if (window.competitorCharts['strategic-moat']) window.competitorCharts['strategic-moat'].destroy();
+    const colors = ['#14b8a6', '#3b82f6', '#f59e0b', '#8b5cf6'];
+    window.competitorCharts['strategic-moat'] = new Chart(moatCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Moat Strength', 'Performance', 'Content Depth', 'Schema', 'Entry Points'],
+        datasets: strategicData.slice(0, 4).map((s, i) => ({
+          label: s.domain?.split('.')[0] || 'Unknown',
+          data: [s.moatStrength || 0, s.performance || 0, Math.min(100, (s.wordCount || 0) / 30), (s.schemaCount || 0) * 15, 100 - (s.entryPoints || 0) * 10],
+          backgroundColor: colors[i] + '20', borderColor: colors[i], borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+  }
+  console.log('   ✅ Strategic charts rendered');
+}
+
+/**
+ * Render Scoring Engine Charts
+ */
+function renderScoringCharts(scoringData) {
+  console.log('📊 renderScoringCharts called with', scoringData.length, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+
+  // Score Distribution Radar (canvas id: chart-scoring-radar)
+  const radarCtx = document.getElementById('chart-scoring-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['scoring-radar']) window.competitorCharts['scoring-radar'].destroy();
+    const colors = ['#6366f1', '#22c55e', '#f59e0b', '#8b5cf6'];
+    window.competitorCharts['scoring-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Technical', 'Authority', 'Content', 'Brand', 'Visibility'],
+        datasets: scoringData.slice(0, 4).map((s, i) => ({
+          label: s.domain?.split('.')[0] || 'Unknown',
+          data: [s.technical || 0, s.authority || 0, s.content || 0, s.brand || 0, s.visibility || 0],
+          backgroundColor: colors[i] + '20', borderColor: colors[i], borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } }
+    });
+  }
+
+  // Overall Score Bar (canvas id: chart-scoring-bar)
+  const barCtx = document.getElementById('chart-scoring-bar');
+  if (barCtx) {
+    if (window.competitorCharts['scoring-bar']) window.competitorCharts['scoring-bar'].destroy();
+    window.competitorCharts['scoring-bar'] = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: scoringData.slice(0, 6).map(s => s.domain?.split('.')[0] || 'Unknown'),
+        datasets: [{ label: 'Overall Score', data: scoringData.slice(0, 6).map(s => s.overall || 0), backgroundColor: scoringData.slice(0, 6).map(s => s.overall >= 80 ? 'rgba(99, 102, 241, 0.8)' : s.overall >= 60 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(249, 115, 22, 0.7)'), borderWidth: 1 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+    });
+  }
+  console.log('   ✅ Scoring charts rendered');
+}
+
+// Export functions to window for global access
+window.renderConversionCharts = renderConversionCharts;
+window.renderDistributionCharts = renderDistributionCharts;
+window.renderAudienceCharts = renderAudienceCharts;
+window.renderGeoAeoCharts = renderGeoAeoCharts;
+window.renderAuthorityCharts = renderAuthorityCharts;
+window.renderPredictiveCharts = renderPredictiveCharts;
+window.renderStrategicCharts = renderStrategicCharts;
+window.renderScoringCharts = renderScoringCharts;
+
+/**
+ * Render Content Systems Charts (Workflow Maturity + AI vs Manual)
+ */
+function renderContentSystemsCharts(systemsData) {
+  console.log('📊 renderContentSystemsCharts called with', systemsData?.length || 0, 'items');
+  if (!window.competitorCharts) window.competitorCharts = {};
+  if (typeof Chart === 'undefined') { console.error('❌ Chart.js not loaded'); return; }
+  if (!systemsData || systemsData.length === 0) { console.warn('⚠️ No systems data for charts'); return; }
+
+  // Get competitor colors
+  const colors = ['#0ea5e9', '#22c55e', '#fb923c', '#a855f7', '#f472b6', '#14b8a6'];
+
+  // Radar Chart - Workflow Maturity
+  const radarCtx = document.getElementById('chart-content-systems-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['content-systems-radar']) {
+      window.competitorCharts['content-systems-radar'].destroy();
+    }
+    window.competitorCharts['content-systems-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Framework', 'AI Workflow', 'Prompt Patterns', 'E-E-A-T', 'Link Equity', 'Editorial'],
+        datasets: systemsData.slice(0, 4).map((sys, i) => ({
+          label: sys.domain?.split('.')[0] || 'Unknown',
+          data: [
+            sys.frameworkMaturity || 50,
+            sys.aiWorkflowRatio || 30,
+            (sys.promptPatterns || 5) * 10,
+            sys.eeatIntegration || 60,
+            sys.linkEquityFlow || 50,
+            sys.editorialConsistency || 70
+          ],
+          backgroundColor: colors[i] + '30',
+          borderColor: colors[i],
+          borderWidth: 2
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { r: { beginAtZero: true, max: 100 } },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+      }
+    });
+  }
+
+  // Bar Chart - AI vs Manual Workflow
+  const barCtx = document.getElementById('chart-content-systems-bar');
+  if (barCtx) {
+    if (window.competitorCharts['content-systems-bar']) {
+      window.competitorCharts['content-systems-bar'].destroy();
+    }
+    window.competitorCharts['content-systems-bar'] = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: systemsData.slice(0, 6).map(s => s.domain?.split('.')[0] || 'Unknown'),
+        datasets: [
+          { label: 'AI Workflow %', data: systemsData.slice(0, 6).map(s => s.aiWorkflowRatio || 30), backgroundColor: 'rgba(14, 165, 233, 0.7)', borderColor: '#0ea5e9', borderWidth: 1 },
+          { label: 'Manual %', data: systemsData.slice(0, 6).map(s => 100 - (s.aiWorkflowRatio || 30)), backgroundColor: 'rgba(156, 163, 175, 0.5)', borderColor: '#9ca3af', borderWidth: 1 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true, max: 100 } },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+      }
+    });
+  }
+
+  console.log('   ✅ Content Systems charts rendered');
+}
+
+// Export renderContentSystemsCharts to window
+window.renderContentSystemsCharts = renderContentSystemsCharts;
+
+console.log('✅ UI_Charts_Renderers.html loaded');
+</script>

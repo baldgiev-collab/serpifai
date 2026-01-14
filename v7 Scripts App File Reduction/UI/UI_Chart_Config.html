@@ -1,0 +1,379 @@
+<!--
+  UI_Chart_Config.html
+  Chart.js Configuration, Options Factory, and Helper Functions
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.chartInstances - Global chart instance storage
+  - window.canvasToInstanceMap - Canvas ID to instance key mapping
+  - window.getCommonChartOptions() - Elite chart options factory
+  - window.wrapText() - Text wrapping helper for labels
+  - window.getChartDefaults() - Configure Chart.js defaults
+-->
+<script>
+  console.log('📊 UI_Chart_Config.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CHART INSTANCE STORAGE (Global)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.chartInstances = window.chartInstances || {};
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CANVAS TO INSTANCE KEY MAPPING
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.canvasToInstanceMap = {
+    'chart-emotional-pains': 'frustrations',
+    'chart-hidden-desires': 'aspirations',
+    'chart-mindset-shifts': 'mindset',
+    'chart-jtbd-impact': 'jtbd',
+    'chart-competitor-gaps': 'competitorGaps',
+    'chart-format-usage': 'formatUsage',
+    'chart-brand-positioning': 'brandPositioning',
+    'chart-value-proposition': 'valueProposition',
+    'chart-content-pillars': 'contentPillars',
+    'chart-priority-matrix': 'priorityMatrix',
+    'chart-opportunity-gaps': 'opportunityGaps',
+    'chart-tactical-roadmap': 'tacticalRoadmap',
+    'chart-impact-matrix': 'impactMatrix',
+    'chart-resource-allocation': 'resourceAllocation'
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TEXT WRAPPING HELPER
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.wrapText = function(text, maxLength) {
+    if (!text) return '';
+    if (typeof text !== 'string') text = String(text);
+    if (text.length <= maxLength) return text;
+
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+
+    words.forEach(word => {
+      if (word.length > maxLength) {
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = '';
+        }
+        for (let i = 0; i < word.length; i += maxLength) {
+          lines.push(word.substring(i, i + maxLength));
+        }
+      } else {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        if (testLine.length <= maxLength) {
+          currentLine = testLine;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+    });
+
+    if (currentLine) lines.push(currentLine);
+    return lines.length > 0 ? lines : [text];
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CHART.JS DEFAULTS CONFIGURATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.configureChartDefaults = function() {
+    if (typeof Chart === 'undefined' || !Chart.defaults) return;
+    
+    if (!Chart.defaults.font) Chart.defaults.font = {};
+    Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    Chart.defaults.font.size = 13;
+    Chart.defaults.color = '#374151';
+
+    Chart.defaults.animation = {
+      duration: 1200,
+      easing: 'easeInOutQuart'
+    };
+
+    if (Chart.defaults.plugins) {
+      if (Chart.defaults.plugins.legend) {
+        if (!Chart.defaults.plugins.legend.labels) Chart.defaults.plugins.legend.labels = {};
+        Chart.defaults.plugins.legend.labels.font = { size: 13 };
+        Chart.defaults.plugins.legend.labels.padding = 12;
+      }
+      if (Chart.defaults.plugins.title) {
+        if (!Chart.defaults.plugins.title.font) Chart.defaults.plugins.title.font = {};
+        Chart.defaults.plugins.title.font.size = 18;
+        Chart.defaults.plugins.title.font.weight = '700';
+        Chart.defaults.plugins.title.padding = { top: 8, bottom: 16 };
+      }
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COMMON ANIMATION CONFIGURATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.getCommonAnimation = function() {
+    return {
+      duration: 1200,
+      easing: 'easeInOutQuart',
+      delay: (context) => {
+        let delay = 0;
+        if (context.type === 'data' && context.mode === 'default') {
+          delay = context.dataIndex * 100;
+        }
+        return delay;
+      }
+    };
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ELITE CHART OPTIONS FACTORY
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.getCommonChartOptions = function(titleText, yAxisLabel = null) {
+    const getThemeColor = (lightColor, darkColor) => {
+      const theme = document.body.getAttribute('data-theme') || 'light';
+      if (theme === 'dark') return darkColor || '#f8fafc';
+      if (theme === 'neon') return '#ffffff';
+      if (theme === 'aurora') return '#ffffff';
+      return lightColor || '#111827';
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: { top: 35, right: 35, bottom: 35, left: 35 }
+      },
+      animation: {
+        duration: 1400,
+        easing: 'easeInOutCubic',
+        onComplete: function(animation) {
+          console.log('Chart animation complete:', titleText);
+        }
+      },
+      interaction: {
+        mode: 'index',
+        intersect: false,
+        axis: 'xy'
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'center',
+          labels: {
+            font: { size: 14, weight: '600', family: "'Inter', sans-serif" },
+            padding: 20,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 12,
+            boxHeight: 12,
+            color: () => getThemeColor('#111827', '#f8fafc'),
+            textAlign: 'center',
+            wrap: true
+          },
+          maxHeight: 150,
+          onClick: function(e, legendItem, legend) {
+            const index = legendItem.datasetIndex;
+            const chart = legend.chart;
+            const meta = chart.getDatasetMeta(index);
+            meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+            chart.update('active');
+          },
+          onHover: (e) => { e.native.target.style.cursor = 'pointer'; },
+          onLeave: (e) => { e.native.target.style.cursor = 'default'; }
+        },
+        title: {
+          display: true,
+          text: titleText,
+          font: { size: 19, weight: '700', family: "'Inter', sans-serif" },
+          padding: { top: 24, bottom: 32 },
+          color: () => getThemeColor('#111827', '#f8fafc'),
+          align: 'center'
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(17, 24, 39, 0.95)',
+          titleFont: { size: 16, weight: '700' },
+          bodyFont: { size: 14, weight: '500' },
+          footerFont: { size: 12, weight: '400', style: 'italic' },
+          padding: 20,
+          cornerRadius: 12,
+          displayColors: true,
+          borderColor: 'rgba(59, 130, 246, 0.5)',
+          borderWidth: 2,
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          footerColor: '#cbd5e1',
+          boxWidth: 12,
+          boxHeight: 12,
+          boxPadding: 8,
+          usePointStyle: true,
+          callbacks: {
+            title: (items) => items[0].label || '',
+            label: (context) => {
+              let label = context.dataset.label || '';
+              if (label) label += ': ';
+              const value = context.parsed.y !== null ? context.parsed.y : context.parsed;
+              label += typeof value === 'number' ? value.toLocaleString() : value;
+              return window.wrapText(label, 45);
+            },
+            footer: (items) => {
+              if (items.length > 0) {
+                const total = items[0].dataset.data.reduce((sum, val) => 
+                  sum + (typeof val === 'object' ? val.y : val), 0);
+                const current = items[0].parsed.y || items[0].parsed;
+                const percentage = ((current / total) * 100).toFixed(1);
+                return `${percentage}% of total`;
+              }
+              return '';
+            }
+          },
+          animation: { duration: 300 }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            font: { size: 13, weight: '500' },
+            padding: 14,
+            color: () => getThemeColor('#6b7280', '#cbd5e1'),
+            autoSkip: true,
+            maxTicksLimit: 10,
+            callback: (value) => {
+              if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+              if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+              return value;
+            }
+          },
+          grid: {
+            color: () => getThemeColor('rgba(229, 231, 235, 0.5)', 'rgba(71, 85, 105, 0.3)'),
+            drawBorder: false,
+            lineWidth: 1
+          },
+          border: { display: false }
+        },
+        x: {
+          ticks: {
+            font: { size: 13, weight: '500' },
+            padding: 14,
+            maxRotation: 45,
+            minRotation: 0,
+            autoSkip: false,
+            color: () => getThemeColor('#6b7280', '#cbd5e1'),
+            callback: function(value) {
+              const label = this.getLabelForValue(value);
+              if (label && label.length > 20) return window.wrapText(label, 20);
+              return label;
+            }
+          },
+          grid: { display: false },
+          border: { display: false }
+        }
+      },
+      onHover: (event, activeElements) => {
+        event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
+      },
+      onClick: (event, activeElements, chart) => {
+        if (activeElements.length > 0) {
+          const dataIndex = activeElements[0].index;
+          const datasetIndex = activeElements[0].datasetIndex;
+          console.log('Chart clicked:', {
+            label: chart.data.labels[dataIndex],
+            value: chart.data.datasets[datasetIndex].data[dataIndex],
+            dataset: chart.data.datasets[datasetIndex].label
+          });
+        }
+      }
+    };
+
+    if (yAxisLabel) {
+      options.scales.y.title = {
+        display: true,
+        text: yAxisLabel,
+        font: { size: 14, weight: '700' },
+        padding: { top: 14, bottom: 14 },
+        color: () => getThemeColor('#374151', '#f8fafc')
+      };
+    }
+
+    return options;
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CHART OPTIONS FACTORY (Simplified version for quick charts)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.getSimpleChartOptions = function(title, yAxisLabel = null, chartType = 'bar') {
+    const commonAnimation = window.getCommonAnimation();
+    
+    const baseOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: commonAnimation,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: {
+          display: chartType !== 'bar',
+          labels: { font: { size: 13 }, padding: 12, color: '#374151' }
+        },
+        title: {
+          display: true,
+          text: title,
+          font: { size: 18, weight: '700', family: "'Inter', -apple-system, sans-serif" },
+          color: '#111827',
+          padding: { top: 8, bottom: 16 }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          titleFont: { size: 14, weight: '600' },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8,
+          displayColors: true
+        }
+      }
+    };
+
+    if (chartType === 'bar' || chartType === 'line') {
+      baseOptions.scales = {
+        y: {
+          beginAtZero: true,
+          ticks: { font: { size: 12 }, color: '#6b7280' },
+          grid: { color: 'rgba(0, 0, 0, 0.05)', drawBorder: false }
+        },
+        x: {
+          ticks: { font: { size: 12 }, color: '#6b7280', maxRotation: 45, minRotation: 0 },
+          grid: { display: false }
+        }
+      };
+      if (yAxisLabel) {
+        baseOptions.scales.y.title = {
+          display: true, text: yAxisLabel,
+          font: { size: 13, weight: '600' }, color: '#374151'
+        };
+      }
+    }
+
+    if (chartType === 'radar' || chartType === 'polarArea') {
+      baseOptions.scales = {
+        r: {
+          beginAtZero: true,
+          ticks: { font: { size: 11 }, color: '#6b7280', backdropColor: 'transparent' },
+          grid: { color: 'rgba(0, 0, 0, 0.1)' }
+        }
+      };
+      if (chartType === 'radar') {
+        baseOptions.scales.r.pointLabels = { font: { size: 12 }, color: '#374151' };
+        baseOptions.scales.r.angleLines = { color: 'rgba(0, 0, 0, 0.1)' };
+      }
+    }
+
+    return baseOptions;
+  };
+
+  console.log('✅ UI_Chart_Config.html loaded - Chart configuration ready');
+</script>

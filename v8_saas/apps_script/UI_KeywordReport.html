@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      padding: 24px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .summary-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    .summary-value {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .summary-label { font-size: 11px; color: #888; margin-top: 4px; }
+    .section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .section-title { font-weight: 600; font-size: 14px; }
+    .filter-btn {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: #a0a0a0;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .filter-btn.active { background: #667eea; color: white; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 8px; color: #888; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .kw-text { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .badge-aio { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    .badge-easy { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .badge-gap { background: rgba(102,126,234,0.2); color: #667eea; }
+    .intent-tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      background: rgba(255,255,255,0.1);
+    }
+    .chart-container { height: 200px; margin: 12px 0; position: relative; }
+    .chart-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #666;
+      font-size: 13px;
+    }
+    .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #e0e0e0; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+    #error { color: #f87171; padding: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <h2>📊 Keyword Intelligence Report</h2>
+  <p class="subtitle" id="report-title">Loading analysis...</p>
+  
+  <div id="error"></div>
+  <div id="loading" class="loading">⏳ Loading keyword data...</div>
+  
+  <div id="content" style="display:none">
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="summary-value" id="total-kw">0</div>
+        <div class="summary-label">Total Keywords</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="aio-count">0</div>
+        <div class="summary-label">AI Overview</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="easy-wins">0</div>
+        <div class="summary-label">Easy Wins</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">🎯 Top Opportunity Keywords</span>
+        <div>
+          <button class="filter-btn active" onclick="filterKw('all')">All</button>
+          <button class="filter-btn" onclick="filterKw('aio')">AIO</button>
+          <button class="filter-btn" onclick="filterKw('easy')">Easy</button>
+        </div>
+      </div>
+      <table id="keyword-table">
+        <thead>
+          <tr><th>Keyword</th><th>Vol</th><th>KD</th><th>Intent</th><th>Tags</th></tr>
+        </thead>
+        <tbody id="keyword-body"></tbody>
+      </table>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">📈 Intent Distribution</div>
+      <div class="chart-container">
+        <div class="chart-placeholder" id="intent-chart">
+          Chart renders with data
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">🏆 Module Performance</div>
+      <div id="module-stats"></div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn btn-primary" onclick="exportData()">📥 Export to Sheet</button>
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Close</button>
+    </div>
+  </div>
+  
+  <script>
+    var allKeywords = [];
+    
+    function loadReport() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (data.error) {
+            showError(data.error);
+            return;
+          }
+          allKeywords = data.keywords || [];
+          renderReport(data);
+        })
+        .withFailureHandler(function(err) {
+          showError(err.message);
+        })
+        .UI_getKeywordReport();
+    }
+    
+    function renderReport(data) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      
+      document.getElementById('report-title').textContent = 
+        data.domain + ' - ' + data.date;
+      document.getElementById('total-kw').textContent = data.totalKeywords || 0;
+      document.getElementById('aio-count').textContent = data.aioCount || 0;
+      document.getElementById('easy-wins').textContent = data.easyWins || 0;
+      
+      renderKeywordTable(allKeywords);
+      renderIntentChart(data.intentBreakdown || {});
+      renderModuleStats(data.moduleStats || []);
+    }
+    
+    function renderKeywordTable(keywords) {
+      const tbody = document.getElementById('keyword-body');
+      tbody.innerHTML = '';
+      
+      const top20 = keywords.slice(0, 20);
+      top20.forEach(function(kw) {
+        const tr = document.createElement('tr');
+        var tags = '';
+        if (kw.hasAIO) tags += '<span class="badge badge-aio">AIO</span> ';
+        if (kw.isEasyWin) tags += '<span class="badge badge-easy">Easy</span> ';
+        if (kw.isGap) tags += '<span class="badge badge-gap">Gap</span>';
+        
+        tr.innerHTML = '<td class="kw-text" title="' + kw.keyword + '">' + kw.keyword + '</td>' +
+          '<td>' + (kw.volume || '-') + '</td>' +
+          '<td>' + (kw.kd || '-') + '</td>' +
+          '<td><span class="intent-tag">' + (kw.intent || '-') + '</span></td>' +
+          '<td>' + tags + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+    
+    function filterKw(type) {
+      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      event.target.classList.add('active');
+      
+      var filtered = allKeywords;
+      if (type === 'aio') filtered = allKeywords.filter(function(k) { return k.hasAIO; });
+      if (type === 'easy') filtered = allKeywords.filter(function(k) { return k.isEasyWin; });
+      renderKeywordTable(filtered);
+    }
+    
+    function renderIntentChart(breakdown) {
+      var html = '';
+      var total = Object.values(breakdown).reduce(function(a,b) { return a + b; }, 0) || 1;
+      Object.keys(breakdown).forEach(function(intent) {
+        var pct = Math.round((breakdown[intent] / total) * 100);
+        html += '<div style="margin:8px 0">' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px">' +
+          '<span>' + intent + '</span><span>' + pct + '%</span></div>' +
+          '<div style="background:rgba(255,255,255,0.1);height:8px;border-radius:4px;margin-top:4px">' +
+          '<div style="background:linear-gradient(90deg,#667eea,#764ba2);height:100%;width:' + pct + '%;border-radius:4px"></div>' +
+          '</div></div>';
+      });
+      document.getElementById('intent-chart').innerHTML = html || 'No data';
+    }
+    
+    function renderModuleStats(stats) {
+      var html = '';
+      stats.forEach(function(m) {
+        html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px">' +
+          '<span>' + m.name + '</span><span>' + m.count + ' keywords</span></div>';
+      });
+      document.getElementById('module-stats').innerHTML = html || 'No module data';
+    }
+    
+    function exportData() {
+      google.script.run
+        .withSuccessHandler(function(r) {
+          alert(r.success ? 'Exported to sheet!' : 'Export failed');
+        })
+        .UI_exportKeywords();
+    }
+    
+    function showError(msg) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = 'Error: ' + msg;
+    }
+    
+    loadReport();
+  </script>
+</body>
+</html>

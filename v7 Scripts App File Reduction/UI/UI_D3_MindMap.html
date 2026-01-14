@@ -1,0 +1,984 @@
+<!--
+  +-----------------------------------------------------------------------------------+
+  |  UI_D3_MindMap.html - D3.js Force-Directed Mind Map Visualization                |
+  |  Creates interactive "Topic Mind Map" with connecting lines                        |
+  |                                                                                    |
+  |  FEATURES:                                                                         |
+  |    - Force-directed D3.js layout with physics simulation                           |
+  |    - Interactive zoom, pan, and drag                                               |
+  |    - Keyword clustering by intent with connecting lines                            |
+  |    - Color-coded by difficulty/opportunity                                         |
+  |    - Animated connections between related topics                                   |
+  |                                                                                    |
+  |  EXPORTS:                                                                          |
+  |    - window.renderMindMap(containerId, keywords, options)                          |
+  |    - window.showMindMapModal(keywords)                                             |
+  |                                                                                    |
+  |  DEPENDENCIES: D3.js v7 (loaded in UI_Scripts_App.html)                            |
+  +-----------------------------------------------------------------------------------+
+-->
+<style>
+  .mind-map-container {
+    width: 100%;
+    height: 600px;
+    background: radial-gradient(circle at center, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .mind-map-container svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .mind-map-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .mind-map-node circle {
+    stroke: rgba(255, 255, 255, 0.4);
+    stroke-width: 1.5px;
+  }
+  
+  .mind-map-node:hover circle {
+    stroke: #fff;
+    stroke-width: 3px;
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+  
+  .mind-map-node text {
+    font-size: 10px;
+    fill: #e2e8f0;
+    text-anchor: middle;
+    pointer-events: none;
+    font-weight: 500;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  
+  .mind-map-link {
+    stroke: rgba(148, 163, 184, 0.15);
+    stroke-width: 1px;
+    fill: none;
+  }
+  
+  .mind-map-link.category-link {
+    stroke: rgba(99, 102, 241, 0.4);
+    stroke-width: 2px;
+  }
+  
+  .mind-map-center-node circle {
+    fill: url(#mindmapCenterGradient) !important;
+    stroke: #fbbf24 !important;
+    stroke-width: 4px;
+    filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.5));
+  }
+  
+  .mind-map-category-node circle {
+    stroke-width: 2.5px !important;
+  }
+  
+  .mind-map-legend {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(15, 23, 42, 0.95);
+    border-radius: 12px;
+    padding: 14px 18px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    backdrop-filter: blur(10px);
+  }
+  
+  .mind-map-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 5px;
+  }
+  
+  .mind-map-legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  
+  .mind-map-stats {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.95);
+    border-radius: 12px;
+    padding: 14px 18px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    backdrop-filter: blur(10px);
+  }
+  
+  .mind-map-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 5px;
+  }
+  
+  .mind-map-stat-value {
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+  
+  .mind-map-tooltip {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.98);
+    border: 1px solid rgba(99, 102, 241, 0.5);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: #e2e8f0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+    max-width: 300px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+  }
+  
+  .mind-map-tooltip.visible {
+    opacity: 1;
+  }
+  
+  .mind-map-tooltip-keyword {
+    font-weight: 700;
+    font-size: 14px;
+    color: #a5b4fc;
+    margin-bottom: 8px;
+  }
+  
+  .mind-map-tooltip-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+  }
+  
+  .mind-map-tooltip-metric {
+    font-size: 11px;
+  }
+  
+  .mind-map-tooltip-metric span {
+    color: #94a3b8;
+  }
+  
+  .mind-map-controls {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: flex;
+    gap: 8px;
+  }
+  
+  .mind-map-control-btn {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .mind-map-control-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  // V12.0: Enhanced Mind Map with Page-Based Clustering + Real Metrics
+  // Features:
+  // - Page-based clustering: Keywords grouped by source page/URL
+  // - Real metrics: Uses actual KD/SV from fetcher data (not defaults)
+  // - Semantic grouping: Clusters by topic similarity
+  // - Visual hierarchy: Domain → Pages → Keywords
+  
+  // Intent categories with colors
+  const INTENT_CATEGORIES = {
+    'what': { color: '#6366f1', label: 'What/Definition', icon: '❓', patterns: ['what is', 'what are', 'define', 'meaning'] },
+    'why': { color: '#8b5cf6', label: 'Why/Reason', icon: '🤔', patterns: ['why', 'reason', 'because', 'cause'] },
+    'how': { color: '#22c55e', label: 'How/Tutorial', icon: '📝', patterns: ['how to', 'how do', 'guide', 'tutorial', 'steps'] },
+    'vs': { color: '#f59e0b', label: 'Vs/Comparison', icon: '⚔️', patterns: [' vs ', ' versus ', 'compared to', 'difference between'] },
+    'best': { color: '#ec4899', label: 'Best/Top', icon: '🏆', patterns: ['best ', 'top ', 'leading', 'premier'] },
+    'buy': { color: '#14b8a6', label: 'Commercial', icon: '🛒', patterns: ['buy', 'price', 'cost', 'cheap', 'discount'] },
+    'other': { color: '#64748b', label: 'Other', icon: '📌', patterns: [] }
+  };
+  
+  // V12.0: Keyword type colors (from breakdown categories)
+  const KEYWORD_TYPE_COLORS = {
+    'primary': { color: '#dc2626', label: 'Primary', icon: '🎯' },
+    'semantic': { color: '#2563eb', label: 'Semantic', icon: '🔗' },
+    'longtail': { color: '#16a34a', label: 'Long-tail', icon: '📝' },
+    'secondary': { color: '#7c3aed', label: 'Secondary', icon: '⚡' },
+    'branded': { color: '#f59e0b', label: 'Branded', icon: '🏷️' }
+  };
+  
+  // V12.0: Page cluster colors (for source page grouping)
+  const PAGE_CLUSTER_COLORS = [
+    '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
+    '#eab308', '#22c55e', '#14b8a6', '#0ea5e9', '#3b82f6'
+  ];
+  
+  // Difficulty colors
+  const DIFFICULTY_COLORS = {
+    easy: '#22c55e',     // Green (0-30)
+    medium: '#f59e0b',   // Amber (31-60)
+    hard: '#ef4444'      // Red (61-100)
+  };
+  
+  /**
+   * V12.0: Extract real metrics from keyword object
+   * Prioritizes actual data over defaults
+   */
+  function extractRealMetrics(kw) {
+    const keyword = typeof kw === 'string' ? kw : (kw.keyword || kw.query || kw.term || '');
+    
+    // Get REAL metrics from fetcher data
+    const volume = kw.volume || kw.searchVolume || kw.sv || kw.estimatedVolume || 0;
+    const difficulty = kw.difficulty || kw.kd || kw.keywordDifficulty || 0;
+    const traffic = kw.traffic || kw.estimatedTraffic || kw.monthlyTraffic || 0;
+    const cpc = kw.cpc || kw.costPerClick || 0;
+    const position = kw.position || kw.avgPosition || kw.rank || 0;
+    
+    // Source page/URL if available
+    const sourceUrl = kw.url || kw.sourceUrl || kw.page || kw.link || '';
+    const sourceTitle = kw.pageTitle || kw.title || '';
+    
+    // Keyword type from breakdown category
+    const type = kw.type || kw.category || kw.cluster || '';
+    
+    return {
+      keyword,
+      volume,
+      difficulty,
+      traffic,
+      cpc,
+      position,
+      sourceUrl,
+      sourceTitle,
+      type,
+      intent: kw.intent || categorizeKeyword(keyword),
+      _hasRealData: volume > 0 || difficulty > 0 || traffic > 0
+    };
+  }
+  
+  /**
+   * V12.0: Cluster keywords by source page
+   * Creates page-based grouping for hierarchical visualization
+   */
+  function clusterBySourcePage(keywords) {
+    const pageMap = {};
+    const unclustered = [];
+    
+    keywords.forEach(kw => {
+      const metrics = extractRealMetrics(kw);
+      const pageKey = metrics.sourceUrl || metrics.sourceTitle || '';
+      
+      if (pageKey) {
+        if (!pageMap[pageKey]) {
+          pageMap[pageKey] = {
+            url: metrics.sourceUrl,
+            title: metrics.sourceTitle || extractPageTitle(metrics.sourceUrl),
+            keywords: [],
+            totalVolume: 0,
+            avgDifficulty: 0,
+            totalTraffic: 0
+          };
+        }
+        pageMap[pageKey].keywords.push({ ...kw, ...metrics });
+        pageMap[pageKey].totalVolume += metrics.volume;
+        pageMap[pageKey].totalTraffic += metrics.traffic;
+      } else {
+        unclustered.push({ ...kw, ...metrics });
+      }
+    });
+    
+    // Calculate averages for page clusters
+    Object.values(pageMap).forEach(page => {
+      if (page.keywords.length > 0) {
+        page.avgDifficulty = Math.round(
+          page.keywords.reduce((sum, k) => sum + k.difficulty, 0) / page.keywords.length
+        );
+      }
+    });
+    
+    return { pages: Object.values(pageMap), unclustered };
+  }
+  
+  /**
+   * V12.0: Cluster keywords by type (primary/semantic/longtail/secondary)
+   */
+  function clusterByType(keywords) {
+    const typeMap = {};
+    
+    keywords.forEach(kw => {
+      const metrics = extractRealMetrics(kw);
+      const type = metrics.type || 'other';
+      
+      if (!typeMap[type]) {
+        typeMap[type] = {
+          type,
+          config: KEYWORD_TYPE_COLORS[type] || INTENT_CATEGORIES['other'],
+          keywords: [],
+          totalVolume: 0,
+          avgDifficulty: 0
+        };
+      }
+      typeMap[type].keywords.push({ ...kw, ...metrics });
+      typeMap[type].totalVolume += metrics.volume;
+    });
+    
+    // Calculate averages
+    Object.values(typeMap).forEach(cluster => {
+      if (cluster.keywords.length > 0) {
+        cluster.avgDifficulty = Math.round(
+          cluster.keywords.reduce((sum, k) => sum + k.difficulty, 0) / cluster.keywords.length
+        );
+      }
+    });
+    
+    return Object.values(typeMap).filter(c => c.keywords.length > 0);
+  }
+  
+  /**
+   * V12.0: Extract page title from URL
+   */
+  function extractPageTitle(url) {
+    if (!url) return 'Homepage';
+    try {
+      const path = new URL(url).pathname;
+      if (path === '/' || path === '') return 'Homepage';
+      
+      // Extract meaningful title from path
+      const parts = path.split('/').filter(Boolean);
+      const lastPart = parts[parts.length - 1] || '';
+      return lastPart
+        .replace(/[-_]/g, ' ')
+        .replace(/\.(html|htm|php|aspx)$/i, '')
+        .split(' ')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ')
+        .substring(0, 25) || 'Page';
+    } catch {
+      return 'Page';
+    }
+  }
+  
+  /**
+   * Categorize keyword by intent
+   */
+  function categorizeKeyword(keyword) {
+    const lower = (keyword || '').toLowerCase();
+    
+    for (const [intent, config] of Object.entries(INTENT_CATEGORIES)) {
+      if (intent === 'other') continue;
+      if (config.patterns.some(p => lower.includes(p))) {
+        return intent;
+      }
+    }
+    
+    return 'other';
+  }
+  
+  /**
+   * Get difficulty color
+   */
+  function getDifficultyColor(difficulty) {
+    const d = difficulty || 0;
+    if (d === 0) return '#94a3b8';  // No data - gray
+    if (d <= 30) return DIFFICULTY_COLORS.easy;
+    if (d <= 60) return DIFFICULTY_COLORS.medium;
+    return DIFFICULTY_COLORS.hard;
+  }
+  
+  /**
+   * V12.0: Build force-directed graph with PAGE-BASED clustering
+   * Hierarchy: Center → Pages → Keywords
+   */
+  function buildGraphData(keywords, centerLabel, options = {}) {
+    const nodes = [];
+    const links = [];
+    const clusterMode = options.clusterMode || 'auto'; // 'page', 'type', 'intent', 'auto'
+    
+    // Add center node
+    const centerId = 'center';
+    nodes.push({
+      id: centerId,
+      name: centerLabel || 'Keywords',
+      type: 'center',
+      size: 45,
+      color: '#fbbf24'
+    });
+    
+    // V12.0: Determine best clustering method
+    const { pages, unclustered } = clusterBySourcePage(keywords);
+    const typeClusters = clusterByType(keywords);
+    
+    // Use page-based clustering if we have page data
+    const hasPageData = pages.length > 0 && pages.some(p => p.url || p.title !== 'Homepage');
+    const hasTypeData = typeClusters.some(c => c.type !== 'other' && c.keywords.length > 0);
+    
+    let clusterMethod = clusterMode;
+    if (clusterMode === 'auto') {
+      clusterMethod = hasPageData ? 'page' : (hasTypeData ? 'type' : 'intent');
+    }
+    
+    console.log(`🧠 [Mind Map V12.0] Cluster method: ${clusterMethod}, Pages: ${pages.length}, Type clusters: ${typeClusters.length}`);
+    
+    // V12.0: PAGE-BASED CLUSTERING
+    if (clusterMethod === 'page' && hasPageData) {
+      pages.slice(0, 8).forEach((page, pageIdx) => {
+        const pageId = `page_${pageIdx}`;
+        const pageColor = PAGE_CLUSTER_COLORS[pageIdx % PAGE_CLUSTER_COLORS.length];
+        
+        nodes.push({
+          id: pageId,
+          name: page.title || `Page ${pageIdx + 1}`,
+          fullName: page.url || page.title,
+          type: 'page',
+          size: 22 + Math.min(10, page.keywords.length),
+          color: pageColor,
+          icon: '📄',
+          totalVolume: page.totalVolume,
+          totalTraffic: page.totalTraffic,
+          keywordCount: page.keywords.length,
+          avgDifficulty: page.avgDifficulty
+        });
+        
+        links.push({ source: centerId, target: pageId, type: 'page' });
+        
+        // Add keywords under this page
+        page.keywords.slice(0, 6).forEach((kw, kwIdx) => {
+          const kwId = `kw_${pageIdx}_${kwIdx}`;
+          addKeywordNode(nodes, links, kwId, pageId, kw, pageColor);
+        });
+      });
+      
+      // Add unclustered keywords as a separate group
+      if (unclustered.length > 0) {
+        const otherId = 'page_other';
+        nodes.push({
+          id: otherId,
+          name: 'Other Keywords',
+          type: 'page',
+          size: 20,
+          color: '#64748b',
+          icon: '📌',
+          keywordCount: unclustered.length
+        });
+        links.push({ source: centerId, target: otherId, type: 'page' });
+        
+        unclustered.slice(0, 8).forEach((kw, idx) => {
+          const kwId = `kw_other_${idx}`;
+          addKeywordNode(nodes, links, kwId, otherId, kw, '#64748b');
+        });
+      }
+    }
+    // V12.0: TYPE-BASED CLUSTERING (primary/semantic/longtail/secondary)
+    else if (clusterMethod === 'type' && hasTypeData) {
+      typeClusters.forEach((cluster, clusterIdx) => {
+        const clusterId = `type_${cluster.type}`;
+        const config = KEYWORD_TYPE_COLORS[cluster.type] || INTENT_CATEGORIES['other'];
+        
+        nodes.push({
+          id: clusterId,
+          name: config.label || cluster.type,
+          type: 'category',
+          size: 24,
+          color: config.color,
+          icon: config.icon,
+          keywordCount: cluster.keywords.length,
+          totalVolume: cluster.totalVolume,
+          avgDifficulty: cluster.avgDifficulty
+        });
+        
+        links.push({ source: centerId, target: clusterId, type: 'category' });
+        
+        cluster.keywords.slice(0, 8).forEach((kw, idx) => {
+          const kwId = `kw_${cluster.type}_${idx}`;
+          addKeywordNode(nodes, links, kwId, clusterId, kw, config.color);
+        });
+      });
+    }
+    // INTENT-BASED CLUSTERING (fallback)
+    else {
+      const intentMap = {};
+      
+      keywords.forEach((kw, i) => {
+        const metrics = extractRealMetrics(kw);
+        if (!metrics.keyword) return;
+        
+        const intent = metrics.intent;
+        const config = INTENT_CATEGORIES[intent];
+        
+        if (!intentMap[intent]) {
+          intentMap[intent] = { config, keywords: [], catId: `cat_${intent}` };
+          nodes.push({
+            id: intentMap[intent].catId,
+            name: config.label,
+            type: 'category',
+            intent: intent,
+            size: 25,
+            color: config.color,
+            icon: config.icon
+          });
+          links.push({ source: centerId, target: intentMap[intent].catId, type: 'category' });
+        }
+        intentMap[intent].keywords.push(metrics);
+      });
+      
+      // Add keyword nodes for each intent cluster
+      Object.values(intentMap).forEach(cluster => {
+        cluster.keywords.slice(0, 8).forEach((kw, idx) => {
+          const kwId = `kw_${cluster.catId}_${idx}`;
+          addKeywordNode(nodes, links, kwId, cluster.catId, kw, cluster.config.color);
+        });
+      });
+    }
+    
+    return { nodes, links };
+  }
+  
+  /**
+   * V12.0: Add a keyword node with REAL metrics
+   */
+  function addKeywordNode(nodes, links, kwId, parentId, kw, clusterColor) {
+    const keyword = kw.keyword || kw.term || kw.query || '';
+    const volume = kw.volume || kw.sv || 0;
+    const difficulty = kw.difficulty || kw.kd || 0;
+    const traffic = kw.traffic || 0;
+    const cpc = kw.cpc || 0;
+    const position = kw.position || 0;
+    
+    // V12.0: Size based on REAL volume (log scale for better distribution)
+    const baseSize = 6;
+    const volumeScale = volume > 0 ? Math.log10(Math.max(10, volume)) : 1;
+    const size = Math.max(5, Math.min(18, baseSize + volumeScale * 2));
+    
+    // V12.0: Color based on REAL KD (gray if no data)
+    const color = difficulty > 0 ? getDifficultyColor(difficulty) : (clusterColor + '99');
+    
+    nodes.push({
+      id: kwId,
+      name: keyword.length > 26 ? keyword.substring(0, 26) + '...' : keyword,
+      fullName: keyword,
+      type: 'keyword',
+      volume: volume,
+      difficulty: difficulty,
+      kd: difficulty,
+      sv: volume,
+      traffic: traffic,
+      cpc: cpc,
+      position: position,
+      size: size,
+      color: color,
+      _hasRealData: volume > 0 || difficulty > 0,
+      _clusterColor: clusterColor
+    });
+    
+    links.push({ source: parentId, target: kwId, type: 'keyword' });
+  }
+  
+  /**
+   * Render Force-Directed Mind Map visualization
+   */
+  window.renderMindMap = function(containerId, keywords, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.error('Mind Map container not found:', containerId);
+      return;
+    }
+    
+    // Clear existing content
+    container.innerHTML = '';
+    container.className = 'mind-map-container';
+    
+    // V12.0: Build graph with auto cluster detection
+    const graphData = buildGraphData(keywords, options.centerLabel || 'Keywords', {
+      clusterMode: options.clusterMode || 'auto'
+    });
+    
+    // Get dimensions
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+    
+    // Create SVG
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+    
+    // Add gradient definitions
+    const defs = svg.append('defs');
+    
+    // Center node gradient
+    const centerGradient = defs.append('radialGradient')
+      .attr('id', 'mindmapCenterGradient');
+    centerGradient.append('stop').attr('offset', '0%').attr('stop-color', '#fcd34d');
+    centerGradient.append('stop').attr('offset', '100%').attr('stop-color', '#d97706');
+    
+    // Arrow marker for links
+    defs.append('marker')
+      .attr('id', 'arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 20)
+      .attr('refY', 0)
+      .attr('markerWidth', 4)
+      .attr('markerHeight', 4)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'rgba(148, 163, 184, 0.3)');
+    
+    // Create zoom behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.3, 4])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+      });
+    
+    svg.call(zoom);
+    
+    // Main group for zooming
+    const g = svg.append('g')
+      .attr('transform', `translate(${width/2}, ${height/2})`);
+    
+    // Create force simulation
+    const simulation = d3.forceSimulation(graphData.nodes)
+      .force('link', d3.forceLink(graphData.links)
+        .id(d => d.id)
+        .distance(d => {
+          if (d.type === 'category') return 150;
+          return 80;
+        })
+        .strength(d => {
+          if (d.type === 'category') return 0.8;
+          return 0.5;
+        })
+      )
+      .force('charge', d3.forceManyBody()
+        .strength(d => {
+          if (d.type === 'center') return -800;
+          if (d.type === 'category') return -400;
+          return -50;
+        })
+      )
+      .force('collide', d3.forceCollide()
+        .radius(d => d.size + 10)
+        .strength(0.8)
+      )
+      .force('center', d3.forceCenter(0, 0))
+      .force('radial', d3.forceRadial(d => {
+        if (d.type === 'center') return 0;
+        if (d.type === 'category') return 120;
+        return 250;
+      }).strength(0.3));
+    
+    // Draw links
+    const link = g.append('g')
+      .selectAll('line')
+      .data(graphData.links)
+      .join('line')
+      .attr('class', d => `mind-map-link ${d.type === 'category' || d.type === 'page' ? 'category-link' : ''}`)
+      .attr('stroke', d => {
+        if (d.type === 'category' || d.type === 'page') {
+          const target = graphData.nodes.find(n => n.id === d.target || n.id === d.target?.id);
+          return target?.color || 'rgba(148, 163, 184, 0.4)';
+        }
+        return 'rgba(148, 163, 184, 0.15)';
+      });
+    
+    // Draw nodes
+    const node = g.append('g')
+      .selectAll('g')
+      .data(graphData.nodes)
+      .join('g')
+      .attr('class', d => {
+        let cls = 'mind-map-node';
+        if (d.type === 'center') cls += ' mind-map-center-node';
+        if (d.type === 'category' || d.type === 'page') cls += ' mind-map-category-node';
+        return cls;
+      })
+      .call(d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended)
+      );
+    
+    // Node circles
+    node.append('circle')
+      .attr('r', d => d.size)
+      .attr('fill', d => {
+        if (d.type === 'center') return 'url(#mindmapCenterGradient)';
+        return d.color;
+      })
+      .style('opacity', d => d.type === 'keyword' ? 0.9 : 1);
+    
+    // Node labels
+    node.append('text')
+      .attr('dy', d => d.type === 'keyword' ? (d.size + 12) : 0)
+      .attr('text-anchor', 'middle')
+      .text(d => d.name)
+      .style('font-size', d => {
+        if (d.type === 'center') return '14px';
+        if (d.type === 'category' || d.type === 'page') return '11px';
+        return '9px';
+      })
+      .style('font-weight', d => d.type !== 'keyword' ? '600' : '400')
+      .style('fill', d => d.type === 'center' ? '#fbbf24' : '#e2e8f0');
+    
+    // V12.0: Category/Page icons
+    node.filter(d => d.type === 'category' || d.type === 'page')
+      .append('text')
+      .attr('dy', 5)
+      .attr('text-anchor', 'middle')
+      .text(d => d.icon || (d.type === 'page' ? '📄' : '📌'))
+      .style('font-size', '16px');
+    
+    // Center icon
+    node.filter(d => d.type === 'center')
+      .append('text')
+      .attr('dy', 5)
+      .attr('text-anchor', 'middle')
+      .text('🌐')
+      .style('font-size', '22px');
+    
+    // V12.0: Enhanced Tooltip with real metrics indicator
+    const tooltip = document.createElement('div');
+    tooltip.className = 'mind-map-tooltip';
+    container.appendChild(tooltip);
+    
+    node.on('mouseenter', function(event, d) {
+      // V12.0: Show tooltips for keywords AND page nodes
+      if (d.type === 'keyword') {
+        const hasRealData = d._hasRealData || (d.volume > 0 && d.difficulty > 0);
+        const dataIndicator = hasRealData 
+          ? '<span style="color: #22c55e; font-size: 10px;">✓ Real Data</span>' 
+          : '<span style="color: #f59e0b; font-size: 10px;">⚡ Estimated</span>';
+        
+        tooltip.innerHTML = `
+          <div class="mind-map-tooltip-keyword">${d.fullName || d.name}</div>
+          <div style="margin-bottom: 8px;">${dataIndicator}</div>
+          <div class="mind-map-tooltip-metrics">
+            <div class="mind-map-tooltip-metric"><span>SV:</span> <strong>${d.volume > 0 ? d.volume.toLocaleString() : '—'}</strong></div>
+            <div class="mind-map-tooltip-metric"><span>KD:</span> <strong style="color: ${getDifficultyColor(d.difficulty)}">${d.difficulty > 0 ? d.difficulty : '—'}</strong></div>
+            <div class="mind-map-tooltip-metric"><span>Traffic:</span> <strong>${d.traffic > 0 ? d.traffic.toLocaleString() : '—'}</strong></div>
+            <div class="mind-map-tooltip-metric"><span>CPC:</span> $${d.cpc > 0 ? d.cpc.toFixed(2) : '—'}</div>
+            ${d.position > 0 ? `<div class="mind-map-tooltip-metric"><span>Position:</span> <strong>#${d.position}</strong></div>` : ''}
+          </div>
+        `;
+        tooltip.classList.add('visible');
+      } else if (d.type === 'page') {
+        // V12.0: Page node tooltip
+        tooltip.innerHTML = `
+          <div class="mind-map-tooltip-keyword">${d.icon || '📄'} ${d.fullName || d.name}</div>
+          <div class="mind-map-tooltip-metrics">
+            <div class="mind-map-tooltip-metric"><span>Keywords:</span> <strong>${d.keywordCount || 0}</strong></div>
+            <div class="mind-map-tooltip-metric"><span>Total SV:</span> <strong>${(d.totalVolume || 0).toLocaleString()}</strong></div>
+            <div class="mind-map-tooltip-metric"><span>Traffic:</span> <strong>${(d.totalTraffic || 0).toLocaleString()}</strong></div>
+            <div class="mind-map-tooltip-metric"><span>Avg KD:</span> <strong style="color: ${getDifficultyColor(d.avgDifficulty)}">${d.avgDifficulty || '—'}</strong></div>
+          </div>
+        `;
+        tooltip.classList.add('visible');
+      } else if (d.type === 'category') {
+        // V12.0: Category node tooltip
+        tooltip.innerHTML = `
+          <div class="mind-map-tooltip-keyword">${d.icon || '📌'} ${d.name}</div>
+          <div class="mind-map-tooltip-metrics">
+            <div class="mind-map-tooltip-metric"><span>Keywords:</span> <strong>${d.keywordCount || 0}</strong></div>
+            ${d.totalVolume ? `<div class="mind-map-tooltip-metric"><span>Total SV:</span> <strong>${d.totalVolume.toLocaleString()}</strong></div>` : ''}
+            ${d.avgDifficulty ? `<div class="mind-map-tooltip-metric"><span>Avg KD:</span> <strong>${d.avgDifficulty}</strong></div>` : ''}
+          </div>
+        `;
+        tooltip.classList.add('visible');
+      }
+    });
+    
+    node.on('mousemove', function(event) {
+      const containerRect = container.getBoundingClientRect();
+      tooltip.style.left = (event.clientX - containerRect.left + 15) + 'px';
+      tooltip.style.top = (event.clientY - containerRect.top + 15) + 'px';
+    });
+    
+    node.on('mouseleave', function() {
+      tooltip.classList.remove('visible');
+    });
+    
+    // Update positions on tick
+    simulation.on('tick', () => {
+      link
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+      
+      node.attr('transform', d => `translate(${d.x}, ${d.y})`);
+    });
+    
+    // Drag functions
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+    
+    // Add controls
+    const controls = document.createElement('div');
+    controls.className = 'mind-map-controls';
+    controls.innerHTML = `
+      <button class="mind-map-control-btn" onclick="this.parentElement.parentElement.querySelector('svg').__zoom && d3.select(this.parentElement.parentElement.querySelector('svg')).transition().call(d3.zoom().transform, d3.zoomIdentity)" title="Reset Zoom">🔄</button>
+      <button class="mind-map-control-btn" onclick="alert('Drag nodes to rearrange. Scroll to zoom. Click and drag background to pan.')" title="Help">❓</button>
+    `;
+    container.appendChild(controls);
+    
+    // V12.0: Dynamic legend based on clustering method
+    const clusterNodes = graphData.nodes.filter(n => n.type === 'page' || n.type === 'category');
+    const hasPageClusters = graphData.nodes.some(n => n.type === 'page');
+    
+    const legend = document.createElement('div');
+    legend.className = 'mind-map-legend';
+    legend.innerHTML = `
+      <div style="font-weight: 600; font-size: 12px; color: #f1f5f9; margin-bottom: 10px;">${hasPageClusters ? '📄 Page Clusters' : '🎯 Keyword Clusters'}</div>
+      ${clusterNodes.slice(0, 6).map(node => `
+        <div class="mind-map-legend-item">
+          <div class="mind-map-legend-dot" style="background: ${node.color}"></div>
+          <span>${node.icon || '📌'} ${node.name} <span style="color: #64748b; font-size: 10px;">(${node.keywordCount || '?'})</span></span>
+        </div>
+      `).join('')}
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2); font-weight: 600; font-size: 12px; color: #f1f5f9;">📊 Difficulty</div>
+      <div class="mind-map-legend-item">
+        <div class="mind-map-legend-dot" style="background: ${DIFFICULTY_COLORS.easy}"></div>
+        <span>Easy (0-30 KD)</span>
+      </div>
+      <div class="mind-map-legend-item">
+        <div class="mind-map-legend-dot" style="background: ${DIFFICULTY_COLORS.medium}"></div>
+        <span>Medium (31-60 KD)</span>
+      </div>
+      <div class="mind-map-legend-item">
+        <div class="mind-map-legend-dot" style="background: ${DIFFICULTY_COLORS.hard}"></div>
+        <span>Hard (61-100 KD)</span>
+      </div>
+      <div class="mind-map-legend-item">
+        <div class="mind-map-legend-dot" style="background: #94a3b8"></div>
+        <span>No Data</span>
+      </div>
+    `;
+    container.appendChild(legend);
+    
+    // V12.0: Enhanced stats with real data detection
+    const totalKeywords = keywords.length;
+    const keywordsWithRealData = keywords.filter(k => {
+      const vol = k.volume || k.searchVolume || k.sv || 0;
+      const diff = k.difficulty || k.kd || 0;
+      return vol > 0 || diff > 0;
+    }).length;
+    const realDataPercent = totalKeywords > 0 ? Math.round((keywordsWithRealData / totalKeywords) * 100) : 0;
+    
+    const avgDifficulty = keywords.reduce((sum, k) => sum + (k.difficulty || k.kd || 0), 0) / Math.max(1, totalKeywords);
+    const totalVolume = keywords.reduce((sum, k) => sum + (k.volume || k.searchVolume || k.sv || 0), 0);
+    const totalTraffic = keywords.reduce((sum, k) => sum + (k.traffic || k.estimatedTraffic || 0), 0);
+    
+    const stats = document.createElement('div');
+    stats.className = 'mind-map-stats';
+    stats.innerHTML = `
+      <div style="font-weight: 600; font-size: 12px; color: #f1f5f9; margin-bottom: 10px;">📈 Keyword Stats</div>
+      <div class="mind-map-stat">🔑 <span class="mind-map-stat-value">${totalKeywords.toLocaleString()}</span> Keywords</div>
+      <div class="mind-map-stat">📊 <span class="mind-map-stat-value">${totalVolume.toLocaleString()}</span> Total SV</div>
+      <div class="mind-map-stat">🚀 <span class="mind-map-stat-value">${totalTraffic.toLocaleString()}</span> Traffic</div>
+      <div class="mind-map-stat">⚡ <span class="mind-map-stat-value">${Math.round(avgDifficulty) || '—'}</span> Avg KD</div>
+      <div class="mind-map-stat" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.2);">
+        <span style="color: ${realDataPercent >= 70 ? '#22c55e' : realDataPercent >= 40 ? '#f59e0b' : '#ef4444'};">
+          ${realDataPercent >= 70 ? '✓' : realDataPercent >= 40 ? '⚡' : '⚠'} ${realDataPercent}% Real Data
+        </span>
+      </div>
+    `;
+    container.appendChild(stats);
+    
+    console.log(`🧠 [Mind Map V12.0] Rendered: ${totalKeywords} keywords, ${clusterNodes.length} clusters, ${realDataPercent}% real data`);
+    
+    return { svg, graphData, simulation };
+  };
+  
+  /**
+   * Show Mind Map in a modal
+   */
+  window.showMindMapModal = function(keywords, options = {}) {
+    const modal = document.createElement('div');
+    modal.className = 'elite-modal-overlay';
+    modal.id = 'mind-map-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    
+    modal.innerHTML = `
+      <div style="width:95vw;max-width:1400px;height:90vh;background:#0f172a;border-radius:24px;overflow:hidden;position:relative;border:1px solid rgba(99,102,241,0.4);box-shadow:0 30px 60px -12px rgba(0,0,0,0.6);">
+        <div style="padding:20px 24px;border-bottom:1px solid rgba(148,163,184,0.15);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(to right, rgba(99,102,241,0.1), transparent);">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <span style="font-size:32px;">🧠</span>
+            <div>
+              <h2 style="margin:0;color:#f1f5f9;font-size:20px;font-weight:700;">${options.title || 'Topic Mind Map'}</h2>
+              <p style="margin:4px 0 0;color:#94a3b8;font-size:13px;">Interactive Force-Directed Keyword Visualization • Drag nodes to explore</p>
+            </div>
+          </div>
+          <button onclick="document.getElementById('mind-map-modal').remove()" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;transition:all 0.2s ease;" onmouseover="this.style.background='rgba(239,68,68,0.4)'" onmouseout="this.style.background='rgba(239,68,68,0.2)'">✕ Close</button>
+        </div>
+        <div id="mind-map-modal-container" style="height:calc(100% - 80px);"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Allow click outside to close
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+    
+    // Escape key to close
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    
+    // Render mind map after modal is in DOM
+    setTimeout(() => {
+      window.renderMindMap('mind-map-modal-container', keywords, {
+        centerLabel: options.centerLabel || 'Discovered Keywords'
+      });
+    }, 100);
+  };
+  
+  console.log('🧠 UI_D3_MindMap.html loaded - Force-Directed Mind Map visualization ready');
+})();
+</script>

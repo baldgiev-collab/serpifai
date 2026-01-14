@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Alerts</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat-mini {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-mini-value { font-size: 24px; font-weight: bold; }
+    .stat-mini-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; }
+    
+    .filter-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .filter-btn {
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    
+    .alert-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 15px;
+      align-items: flex-start;
+      transition: all 0.2s;
+    }
+    .alert-item:hover { border-color: var(--text-secondary); }
+    .alert-item.unread { border-left: 3px solid var(--accent); }
+    
+    .alert-icon { font-size: 24px; }
+    .alert-icon.success { color: var(--success); }
+    .alert-icon.warning { color: var(--warning); }
+    .alert-icon.error { color: var(--error); }
+    .alert-icon.info { color: var(--info); }
+    
+    .alert-content { flex: 1; }
+    .alert-title { font-weight: 600; margin-bottom: 5px; }
+    .alert-message { font-size: 13px; color: var(--text-secondary); margin-bottom: 5px; }
+    .alert-time { font-size: 11px; color: var(--text-secondary); }
+    
+    .alert-actions { display: flex; gap: 5px; }
+    .alert-action {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 5px;
+      font-size: 16px;
+    }
+    .alert-action:hover { color: var(--text-primary); }
+    
+    .priority-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    .priority-badge.high { background: rgba(248, 81, 73, 0.2); color: var(--error); }
+    .priority-badge.medium { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+    .priority-badge.low { background: rgba(139, 148, 158, 0.2); color: var(--text-secondary); }
+    
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+    .empty-icon { font-size: 48px; margin-bottom: 15px; }
+    
+    .message { padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; display: none; }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-row">
+      <h1>🔔 Alerts</h1>
+      <div>
+        <button class="btn btn-secondary" onclick="markAllRead()">✓ Mark All Read</button>
+        <button class="btn btn-secondary" onclick="dismissAll()">🗑 Clear All</button>
+      </div>
+    </div>
+    <div id="message" class="message"></div>
+    
+    <div class="stats-row">
+      <div class="stat-mini">
+        <div class="stat-mini-value" id="statTotal">0</div>
+        <div class="stat-mini-label">Total</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value" style="color:var(--error)" id="statHigh">0</div>
+        <div class="stat-mini-label">High Priority</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value" style="color:var(--warning)" id="statWarning">0</div>
+        <div class="stat-mini-label">Warnings</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value" style="color:var(--info)" id="statUnread">0</div>
+        <div class="stat-mini-label">Unread</div>
+      </div>
+    </div>
+    
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="filterAlerts('all')">All</button>
+      <button class="filter-btn" onclick="filterAlerts('success')">✓ Success</button>
+      <button class="filter-btn" onclick="filterAlerts('warning')">⚠ Warnings</button>
+      <button class="filter-btn" onclick="filterAlerts('error')">✕ Errors</button>
+      <button class="filter-btn" onclick="filterAlerts('info')">ℹ Info</button>
+    </div>
+    
+    <div id="alertList"></div>
+  </div>
+
+  <script>
+    let allAlerts = [];
+    let currentFilter = 'all';
+    
+    document.addEventListener('DOMContentLoaded', loadAlerts);
+    
+    function loadAlerts() {
+      google.script.run
+        .withSuccessHandler(displayAlerts)
+        .withFailureHandler(e => console.error(e))
+        .DB_getAlerts({});
+    }
+    
+    function displayAlerts(result) {
+      if (!result.ok) return;
+      
+      allAlerts = result.alerts;
+      
+      document.getElementById('statTotal').textContent = result.total;
+      document.getElementById('statUnread').textContent = result.unread;
+      document.getElementById('statHigh').textContent = allAlerts.filter(a => a.priority === 'high').length;
+      document.getElementById('statWarning').textContent = allAlerts.filter(a => a.type === 'warning').length;
+      
+      renderAlerts();
+    }
+    
+    function renderAlerts() {
+      const filtered = currentFilter === 'all' ? allAlerts : allAlerts.filter(a => a.type === currentFilter);
+      
+      if (filtered.length === 0) {
+        document.getElementById('alertList').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🔔</div>
+            <p>No alerts to show</p>
+          </div>
+        `;
+        return;
+      }
+      
+      document.getElementById('alertList').innerHTML = filtered.map(alert => {
+        const icon = { success: '✓', warning: '⚠', error: '✕', info: 'ℹ' }[alert.type] || 'ℹ';
+        const time = timeAgo(new Date(alert.createdAt));
+        
+        return `
+          <div class="alert-item ${alert.read ? '' : 'unread'}" data-id="${alert.id}">
+            <div class="alert-icon ${alert.type}">${icon}</div>
+            <div class="alert-content">
+              <div class="alert-title">
+                ${alert.title}
+                <span class="priority-badge ${alert.priority}">${alert.priority}</span>
+              </div>
+              <div class="alert-message">${alert.message}</div>
+              <div class="alert-time">${time}</div>
+            </div>
+            <div class="alert-actions">
+              ${!alert.read ? `<button class="alert-action" onclick="markRead('${alert.id}')" title="Mark as read">👁</button>` : ''}
+              <button class="alert-action" onclick="dismissAlert('${alert.id}')" title="Dismiss">×</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function filterAlerts(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      renderAlerts();
+    }
+    
+    function markRead(id) {
+      google.script.run
+        .withSuccessHandler(() => {
+          const alert = allAlerts.find(a => a.id === id);
+          if (alert) alert.read = true;
+          renderAlerts();
+        })
+        .DB_markAlertRead({ alertId: id });
+    }
+    
+    function dismissAlert(id) {
+      google.script.run
+        .withSuccessHandler(() => {
+          allAlerts = allAlerts.filter(a => a.id !== id);
+          renderAlerts();
+        })
+        .DB_dismissAlert({ alertId: id });
+    }
+    
+    function markAllRead() {
+      allAlerts.forEach(a => a.read = true);
+      renderAlerts();
+      allAlerts.forEach(a => {
+        google.script.run.DB_markAlertRead({ alertId: a.id });
+      });
+    }
+    
+    function dismissAll() {
+      if (!confirm('Clear all alerts?')) return;
+      google.script.run
+        .withSuccessHandler(() => {
+          allAlerts = [];
+          renderAlerts();
+          showMessage('All alerts cleared', 'success');
+        })
+        .DB_dismissAllAlerts();
+    }
+    
+    function timeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      if (seconds < 60) return 'Just now';
+      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+      return Math.floor(seconds / 86400) + 'd ago';
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => msg.className = 'message', 3000);
+    }
+  </script>
+</body>
+</html>

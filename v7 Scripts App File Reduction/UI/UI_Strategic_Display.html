@@ -1,0 +1,292 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Strategic_Display.html - Elite Strategic Display Builder                     -->
+<!-- Builds McKinsey/Bain format executive strategic display                         -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════
+   * Build Elite Strategic Display - NEW McKinsey/Bain Format
+   * Handles executiveBrief, killMoves, competitorRankings, categories
+   * ═══════════════════════════════════════════════════════════════════
+   */
+  function buildEliteStrategicDisplay(analysis, competitors) {
+    let html = '';
+    console.log('🏆 Building Elite Strategic Display...');
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 1. COMPETITIVE LEADERBOARD - Using competitorRankings or processedMetrics
+    // ═══════════════════════════════════════════════════════════════════
+    html += `
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(102,126,234,0.3);">
+            <h3 style="margin: 0 0 24px; font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 32px;">🏆</span>
+              Competitive Leaderboard
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        `;
+
+    // Sort competitors by authority
+    const sorted = [...competitors].sort((a, b) => {
+      const getAuthority = (c) => {
+        const pm = c.processedMetrics || {};
+        if (pm.pageRank) return pm.pageRank * 10;
+        if (pm.authorityMomentum) return pm.authorityMomentum;
+        if (c.apiData?.openPageRank?.page_rank_decimal) return c.apiData.openPageRank.page_rank_decimal * 10;
+        return 45;
+      };
+      return getAuthority(b) - getAuthority(a);
+    });
+
+    const medals = ['🥇', '🥈', '🥉'];
+    sorted.slice(0, 3).forEach((comp, idx) => {
+      const domain = comp.domain || 'Unknown';
+      const pm = comp.processedMetrics || {};
+      const authority = pm.pageRank ? Math.round(pm.pageRank * 10) : pm.authorityMomentum || 45;
+      const traffic = window.formatNumber ? window.formatNumber(pm.estimatedTraffic || 0) : (pm.estimatedTraffic || 0);
+      const tier = pm.authorityTier || 'Unknown';
+
+      html += `
+            <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+              <div style="font-size: 36px; margin-bottom: 8px;">${medals[idx]}</div>
+              <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${domain}</div>
+              <div style="font-size: 11px; opacity: 0.7; margin-bottom: 12px;">${tier}</div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                <span>Authority:</span>
+                <span style="font-weight: 700;">${authority}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
+                <span>Traffic:</span>
+                <span style="font-weight: 700;">${traffic}</span>
+              </div>
+            </div>
+          `;
+    });
+
+    html += `</div></div>`;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 2. EXECUTIVE BRIEF - Strategic Overview
+    // ═══════════════════════════════════════════════════════════════════
+    if (analysis.executiveBrief) {
+      html += buildExecutiveBriefHTML(analysis.executiveBrief);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 2a-2e. ELITE OVERLAYS (JTBD, Loss Leader, Emotional Debt, etc.)
+    // ═══════════════════════════════════════════════════════════════════
+    if (analysis.executiveBrief) {
+      html += buildEliteOverlaysHTML(analysis.executiveBrief);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 3. KILL MOVES - Top strategic actions
+    // ═══════════════════════════════════════════════════════════════════
+    if (analysis.killMoves && analysis.killMoves.length > 0) {
+      html += window.buildKillMovesHTML ? window.buildKillMovesHTML(analysis.killMoves) : '';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 4. PRIORITIZED ROADMAP - Strategic phases
+    // ═══════════════════════════════════════════════════════════════════
+    if (analysis.executiveBrief?.prioritizedRoadmap && analysis.executiveBrief.prioritizedRoadmap.length > 0) {
+      html += buildRoadmapHTML(analysis.executiveBrief.prioritizedRoadmap);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 5. CATEGORY INSIGHTS - If categories are present
+    // ═══════════════════════════════════════════════════════════════════
+    if (analysis.categories && Array.isArray(analysis.categories) && analysis.categories.length > 0) {
+      html += buildCategoryInsightsHTML(analysis.categories);
+    }
+
+    console.log('✅ Elite Strategic Display built successfully');
+    return html;
+  }
+
+  /**
+   * Build Executive Brief section HTML
+   */
+  function buildExecutiveBriefHTML(brief) {
+    let html = `
+            <div style="background: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-left: 4px solid #667eea;">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">🎯</span>
+                Executive Strategic Brief
+              </h4>
+          `;
+
+    // Landscape Overview
+    if (brief.landscapeOverview) {
+      html += `
+              <div style="margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 600; color: #6366f1; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Competitive Landscape</div>
+                <p style="margin: 0; font-size: 15px; line-height: 1.8; color: #374151;">${brief.landscapeOverview}</p>
+              </div>
+            `;
+    }
+
+    // Client Position
+    if (brief.clientPosition) {
+      html += `
+              <div style="margin-bottom: 20px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 16px; border-radius: 12px;">
+                <div style="font-size: 12px; font-weight: 600; color: #0284c7; margin-bottom: 8px; text-transform: uppercase;">Your Position</div>
+                <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #0369a1;">${brief.clientPosition}</p>
+              </div>
+            `;
+    }
+
+    // Critical Threats
+    if (brief.criticalThreats && brief.criticalThreats.length > 0) {
+      html += `
+              <div style="margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 600; color: #dc2626; margin-bottom: 12px; text-transform: uppercase;">⚠️ Critical Threats</div>
+                <div style="display: grid; gap: 12px;">
+            `;
+
+      brief.criticalThreats.forEach(threat => {
+        const urgencyColors = { 'Critical': '#ef4444', 'High': '#f59e0b', 'Medium': '#10b981' };
+        const color = urgencyColors[threat.urgency] || '#6b7280';
+
+        html += `
+                <div style="background: #fef2f2; padding: 16px; border-radius: 12px; border-left: 4px solid ${color};">
+                  <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: #991b1b;">${threat.threat || 'Unknown Threat'}</span>
+                    <span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: ${color}; color: white;">${threat.urgency || 'Medium'}</span>
+                  </div>
+                  <div style="font-size: 13px; color: #7f1d1d;">From: <strong>${threat.fromCompetitor || 'Unknown'}</strong></div>
+                  ${threat.mitigation ? `<div style="font-size: 13px; color: #374151; margin-top: 8px;"><strong>Mitigation:</strong> ${threat.mitigation}</div>` : ''}
+                </div>
+              `;
+      });
+
+      html += `</div></div>`;
+    }
+
+    // Strategic Opportunities
+    if (brief.strategicOpportunities && brief.strategicOpportunities.length > 0) {
+      html += `
+              <div style="margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 600; color: #059669; margin-bottom: 12px; text-transform: uppercase;">🚀 Strategic Opportunities</div>
+                <div style="display: grid; gap: 12px;">
+            `;
+
+      brief.strategicOpportunities.forEach(opp => {
+        html += `
+                <div style="background: #ecfdf5; padding: 16px; border-radius: 12px; border-left: 4px solid #10b981;">
+                  <div style="font-weight: 600; color: #065f46; margin-bottom: 8px;">${opp.opportunity || 'Opportunity'}</div>
+                  <div style="font-size: 13px; color: #047857;">Target: <strong>${opp.targetCompetitor || 'Market Gap'}</strong></div>
+                  ${opp.potentialImpact ? `<div style="font-size: 13px; color: #374151; margin-top: 8px;"><strong>Impact:</strong> ${opp.potentialImpact}</div>` : ''}
+                  ${opp.implementation ? `<div style="font-size: 13px; color: #374151; margin-top: 4px;"><strong>How:</strong> ${opp.implementation}</div>` : ''}
+                </div>
+              `;
+      });
+
+      html += `</div></div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  /**
+   * Build Strategic Roadmap section HTML
+   */
+  function buildRoadmapHTML(roadmap) {
+    let html = `
+            <div style="background: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+              <h4 style="margin: 0 0 24px; font-size: 20px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">🗺️</span>
+                Strategic Roadmap
+              </h4>
+              <div style="display: grid; gap: 16px;">
+          `;
+
+    const phaseColors = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef'];
+
+    roadmap.forEach((phase, idx) => {
+      const color = phaseColors[idx % phaseColors.length];
+
+      html += `
+              <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 20px; border-radius: 12px; border-left: 4px solid ${color};">
+                <div style="font-size: 14px; font-weight: 700; color: ${color}; margin-bottom: 12px;">${phase.phase || 'Phase ' + (idx + 1)}</div>
+            `;
+
+      if (phase.objectives && phase.objectives.length > 0) {
+        html += `<div style="margin-bottom: 12px;"><strong style="font-size: 12px; color: #64748b;">Objectives:</strong><ul style="margin: 8px 0 0 16px; padding: 0; font-size: 14px; color: #374151;">`;
+        phase.objectives.forEach(obj => { html += `<li style="margin-bottom: 4px;">${obj}</li>`; });
+        html += `</ul></div>`;
+      }
+
+      if (phase.keyActions && phase.keyActions.length > 0) {
+        html += `<div style="margin-bottom: 12px;"><strong style="font-size: 12px; color: #64748b;">Key Actions:</strong><ul style="margin: 8px 0 0 16px; padding: 0; font-size: 14px; color: #374151;">`;
+        phase.keyActions.forEach(action => { html += `<li style="margin-bottom: 4px;">${action}</li>`; });
+        html += `</ul></div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div></div>`;
+    return html;
+  }
+
+  /**
+   * Build Category Insights section HTML
+   */
+  function buildCategoryInsightsHTML(categories) {
+    let html = `
+            <div style="background: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">💡</span>
+                Strategic Intelligence Categories
+              </h4>
+              <div style="display: grid; gap: 16px;">
+          `;
+
+    const categoryIcons = ['📊', '🎯', '⚡', '🔍', '🚀', '💎', '📈', '🎨', '🧠', '🔧', '📱', '🌐', '💰', '🏆', '✨'];
+
+    categories.slice(0, 6).forEach((category, idx) => {
+      const icon = categoryIcons[idx] || '📌';
+      const categoryName = category.name || category.categoryName || 'Category ' + (idx + 1);
+      const summary = category.strategicSummary || category.summary || category.description || '';
+
+      html += `
+              <div style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); padding: 20px; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                  <span style="font-size: 24px;">${icon}</span>
+                  <h5 style="margin: 0; font-size: 16px; font-weight: 600; color: #111827;">${categoryName}</h5>
+                </div>
+                <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #4b5563;">${summary}</p>
+            `;
+
+      // Quick wins if available
+      if (category.strategicOpportunities?.quickWins && category.strategicOpportunities.quickWins.length > 0) {
+        html += `
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                  <div style="font-size: 11px; font-weight: 600; color: #10b981; margin-bottom: 8px;">⚡ QUICK WINS</div>
+                  <ul style="margin: 0; padding-left: 16px; font-size: 13px; color: #059669;">
+              `;
+        category.strategicOpportunities.quickWins.slice(0, 3).forEach(win => {
+          html += `<li style="margin-bottom: 4px;">${win}</li>`;
+        });
+        html += `</ul></div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div></div>`;
+    return html;
+  }
+
+  // Export functions globally
+  window.buildEliteStrategicDisplay = buildEliteStrategicDisplay;
+  window.buildExecutiveBriefHTML = buildExecutiveBriefHTML;
+  window.buildRoadmapHTML = buildRoadmapHTML;
+  window.buildCategoryInsightsHTML = buildCategoryInsightsHTML;
+
+})();
+</script>

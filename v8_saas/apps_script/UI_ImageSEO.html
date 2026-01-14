@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"] { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus { outline: none; border-color: var(--primary); }
+    button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #1a73e8; }
+    
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .summary-card { background: var(--card); border-radius: 10px; padding: 16px; border: 1px solid var(--border); text-align: center; }
+    .summary-card .value { font-size: 28px; font-weight: 500; }
+    .summary-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .summary-card.good .value { color: var(--success); }
+    .summary-card.warning .value { color: var(--warning); }
+    .summary-card.bad .value { color: var(--danger); }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .image-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .image-preview { height: 120px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .image-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .image-info { padding: 12px; }
+    .image-src { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 8px; }
+    .image-alt { font-size: 13px; margin-bottom: 8px; }
+    .image-alt.missing { color: var(--danger); font-style: italic; }
+    .image-issues { display: flex; flex-wrap: wrap; gap: 4px; }
+    .issue-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #fce8e6; color: var(--danger); }
+    .issue-tag.warn { background: #fef7e0; color: #b45309; }
+    .score-badge { font-size: 12px; padding: 4px 8px; border-radius: 4px; float: right; }
+    .score-badge.good { background: #e6f4ea; color: var(--success); }
+    .score-badge.medium { background: #fef7e0; color: #b45309; }
+    .score-badge.poor { background: #fce8e6; color: var(--danger); }
+    
+    .rec-item { padding: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+    .rec-item:last-child { border-bottom: none; }
+    .rec-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .rec-icon.high { background: #fce8e6; color: var(--danger); }
+    .rec-icon.medium { background: #fef7e0; color: #b45309; }
+    .rec-icon.low { background: #e8f0fe; color: var(--primary); }
+    .rec-content { flex: 1; }
+    .rec-issue { font-weight: 500; margin-bottom: 2px; }
+    .rec-fix { font-size: 13px; color: var(--muted); }
+    
+    .loading { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .error { background: #fce8e6; border: 1px solid #f5c6cb; border-radius: 8px; padding: 16px; color: #c5221f; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Image SEO Analyzer</h1>
+    <p class="subtitle">Analyze images for SEO optimization</p>
+  </div>
+  
+  <div class="input-group">
+    <input type="text" id="urlInput" placeholder="Enter page URL to analyze images...">
+    <button onclick="analyzeUrl()">Analyze Images</button>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Analyzing images...</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="summary">
+      <div class="summary-card">
+        <div id="totalImages" class="value">0</div>
+        <div class="label">Total Images</div>
+      </div>
+      <div id="altCard" class="summary-card">
+        <div id="withAlt" class="value">0%</div>
+        <div class="label">With Alt Text</div>
+      </div>
+      <div id="dimCard" class="summary-card">
+        <div id="withDim" class="value">0%</div>
+        <div class="label">With Dimensions</div>
+      </div>
+      <div id="scoreCard" class="summary-card">
+        <div id="avgScore" class="value">0</div>
+        <div class="label">Average Score</div>
+      </div>
+    </div>
+    
+    <div class="card" id="recsCard">
+      <h3>Recommendations</h3>
+      <div id="recsList"></div>
+    </div>
+    
+    <div class="card">
+      <h3>Image Details</h3>
+      <div class="image-grid" id="imageGrid"></div>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to analyze images for SEO</p>
+  </div>
+  
+  <div id="error" class="error" style="display: none;"></div>
+  
+  <script>
+    function analyzeUrl() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { showError('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeImages({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        showError(data?.error || 'Analysis failed');
+        return;
+      }
+      
+      document.getElementById('results').style.display = 'block';
+      
+      const summary = data.summary || {};
+      
+      // Update summary cards
+      document.getElementById('totalImages').textContent = summary.total || 0;
+      
+      const altPct = summary.withAltPercent || 0;
+      document.getElementById('withAlt').textContent = altPct + '%';
+      document.getElementById('altCard').className = 'summary-card ' + getStatusClass(altPct);
+      
+      const dimPct = summary.withDimensionsPercent || 0;
+      document.getElementById('withDim').textContent = dimPct + '%';
+      document.getElementById('dimCard').className = 'summary-card ' + getStatusClass(dimPct);
+      
+      const avgScore = summary.averageScore || 0;
+      document.getElementById('avgScore').textContent = avgScore;
+      document.getElementById('scoreCard').className = 'summary-card ' + getStatusClass(avgScore);
+      
+      // Render recommendations
+      renderRecommendations(data.recommendations || []);
+      
+      // Render image grid
+      renderImages(data.images || []);
+    }
+    
+    function getStatusClass(value) {
+      if (value >= 80) return 'good';
+      if (value >= 50) return 'warning';
+      return 'bad';
+    }
+    
+    function renderRecommendations(recs) {
+      const container = document.getElementById('recsList');
+      
+      if (recs.length === 0) {
+        container.innerHTML = '<div class="empty">All images are well optimized!</div>';
+        return;
+      }
+      
+      container.innerHTML = recs.map(function(r) {
+        return '<div class="rec-item">' +
+          '<span class="rec-icon ' + r.priority + '">!</span>' +
+          '<div class="rec-content">' +
+            '<div class="rec-issue">' + r.issue + '</div>' +
+            '<div class="rec-fix">' + r.fix + '</div>' +
+          '</div></div>';
+      }).join('');
+    }
+    
+    function renderImages(images) {
+      const container = document.getElementById('imageGrid');
+      
+      if (images.length === 0) {
+        container.innerHTML = '<div class="empty">No images found on page</div>';
+        return;
+      }
+      
+      container.innerHTML = images.slice(0, 20).map(function(img) {
+        const scoreClass = img.score >= 80 ? 'good' : (img.score >= 50 ? 'medium' : 'poor');
+        
+        let issuesHtml = '';
+        if (img.issues && img.issues.length > 0) {
+          issuesHtml = '<div class="image-issues">' + 
+            img.issues.map(function(i) { return '<span class="issue-tag">' + i + '</span>'; }).join('') +
+            '</div>';
+        }
+        
+        return '<div class="image-card">' +
+          '<div class="image-preview"><img src="' + escapeHtml(img.src) + '" onerror="this.src=\'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2212%22>No Preview</text></svg>\'"></div>' +
+          '<div class="image-info">' +
+            '<span class="score-badge ' + scoreClass + '">' + img.score + '</span>' +
+            '<div class="image-src" title="' + escapeHtml(img.src) + '">' + escapeHtml(img.filename || img.src) + '</div>' +
+            '<div class="image-alt ' + (img.alt ? '' : 'missing') + '">' + 
+              (img.alt ? escapeHtml(img.alt) : 'Missing alt text') + '</div>' +
+            issuesHtml +
+          '</div></div>';
+      }).join('');
+      
+      if (images.length > 20) {
+        container.innerHTML += '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--muted);">Showing 20 of ' + images.length + ' images</div>';
+      }
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      showError(err.message || 'An error occurred');
+    }
+    
+    function showError(msg) {
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = msg;
+    }
+  </script>
+</body>
+</html>

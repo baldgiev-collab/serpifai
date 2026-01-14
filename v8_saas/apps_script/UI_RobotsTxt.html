@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"] { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #1a73e8; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .status-bar { display: flex; gap: 16px; margin-bottom: 20px; }
+    .status-item { flex: 1; background: var(--card); border-radius: 10px; padding: 16px; border: 1px solid var(--border); text-align: center; }
+    .status-item .icon { font-size: 28px; margin-bottom: 8px; }
+    .status-item .label { font-size: 13px; color: var(--muted); }
+    .status-item.exists { border-color: var(--success); }
+    .status-item.missing { border-color: var(--danger); }
+    
+    .section { margin-bottom: 20px; }
+    .section-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .section-title .badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--bg); color: var(--muted); }
+    
+    .rule-list { list-style: none; }
+    .rule-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .rule-item:last-child { border-bottom: none; }
+    .rule-type { font-size: 12px; padding: 2px 8px; border-radius: 4px; min-width: 60px; text-align: center; }
+    .rule-type.allow { background: #e6f4ea; color: var(--success); }
+    .rule-type.disallow { background: #fce8e6; color: var(--danger); }
+    .rule-type.crawl { background: #e8f0fe; color: var(--primary); }
+    .rule-path { font-family: monospace; font-size: 13px; }
+    
+    .issue-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .issue-item:last-child { border-bottom: none; }
+    .issue-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+    .issue-icon.critical { background: #fce8e6; color: var(--danger); }
+    .issue-icon.warning { background: #fef7e0; color: #b45309; }
+    
+    .sitemap-list { list-style: none; }
+    .sitemap-item { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .sitemap-item:last-child { border-bottom: none; }
+    .sitemap-url { font-family: monospace; font-size: 13px; color: var(--primary); word-break: break-all; }
+    
+    .preview { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; white-space: pre; max-height: 300px; overflow-y: auto; }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .error { background: #fce8e6; border: 1px solid #f5c6cb; border-radius: 8px; padding: 16px; color: #c5221f; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Robots.txt Analyzer</h1>
+    <p class="subtitle">Analyze and validate robots.txt configuration</p>
+  </div>
+  
+  <div class="input-group">
+    <input type="text" id="urlInput" placeholder="Enter website URL...">
+    <button onclick="analyzeRobots()">Analyze</button>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Analyzing robots.txt...</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="status-bar">
+      <div id="existsStatus" class="status-item">
+        <div class="icon">📄</div>
+        <div class="label">Robots.txt Status</div>
+      </div>
+      <div id="sitemapStatus" class="status-item">
+        <div class="icon">🗺️</div>
+        <div class="label">Sitemap Declared</div>
+      </div>
+      <div id="issueStatus" class="status-item">
+        <div class="icon">⚠️</div>
+        <div class="label">Issues Found</div>
+      </div>
+    </div>
+    
+    <div class="card" id="issuesCard">
+      <h3>Issues & Warnings</h3>
+      <div id="issuesList"></div>
+    </div>
+    
+    <div class="card">
+      <h3>Sitemaps</h3>
+      <ul class="sitemap-list" id="sitemapList"></ul>
+    </div>
+    
+    <div class="card">
+      <h3>Rules by User Agent</h3>
+      <div id="agentRules"></div>
+    </div>
+    
+    <div class="card">
+      <h3>Raw Content</h3>
+      <pre class="preview" id="rawContent"></pre>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to analyze its robots.txt file</p>
+  </div>
+  
+  <div id="error" class="error" style="display: none;"></div>
+  
+  <script>
+    function analyzeRobots() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { showError('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeRobots({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        showError(data?.error || 'Analysis failed');
+        return;
+      }
+      
+      document.getElementById('results').style.display = 'block';
+      
+      // Update status bar
+      const existsEl = document.getElementById('existsStatus');
+      existsEl.querySelector('.icon').textContent = data.exists ? '✓' : '✗';
+      existsEl.className = 'status-item ' + (data.exists ? 'exists' : 'missing');
+      
+      const sitemaps = data.sitemaps || [];
+      const sitemapEl = document.getElementById('sitemapStatus');
+      sitemapEl.querySelector('.icon').textContent = sitemaps.length > 0 ? sitemaps.length : '✗';
+      sitemapEl.className = 'status-item ' + (sitemaps.length > 0 ? 'exists' : 'missing');
+      
+      const issues = data.issues || [];
+      const issueEl = document.getElementById('issueStatus');
+      issueEl.querySelector('.icon').textContent = issues.length > 0 ? issues.length : '✓';
+      issueEl.className = 'status-item ' + (issues.length > 0 ? 'missing' : 'exists');
+      
+      // Render issues
+      renderIssues(issues);
+      
+      // Render sitemaps
+      renderSitemaps(sitemaps);
+      
+      // Render rules
+      if (data.parsed) {
+        renderRules(data.parsed.agents || {});
+      }
+      
+      // Raw content
+      document.getElementById('rawContent').textContent = data.raw || 'Not found';
+    }
+    
+    function renderIssues(issues) {
+      const container = document.getElementById('issuesList');
+      
+      if (issues.length === 0) {
+        container.innerHTML = '<div class="empty">No issues found ✓</div>';
+        document.getElementById('issuesCard').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('issuesCard').style.display = 'block';
+      container.innerHTML = issues.map(function(issue) {
+        return '<div class="issue-item">' +
+          '<span class="issue-icon ' + issue.severity + '">!</span>' +
+          '<div>' + issue.message + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function renderSitemaps(sitemaps) {
+      const container = document.getElementById('sitemapList');
+      
+      if (sitemaps.length === 0) {
+        container.innerHTML = '<li class="empty">No sitemaps declared</li>';
+        return;
+      }
+      
+      container.innerHTML = sitemaps.map(function(sitemap) {
+        return '<li class="sitemap-item">' +
+          '<span>🗺️</span>' +
+          '<a class="sitemap-url" href="' + sitemap + '" target="_blank">' + sitemap + '</a>' +
+          '</li>';
+      }).join('');
+    }
+    
+    function renderRules(agents) {
+      const container = document.getElementById('agentRules');
+      
+      if (Object.keys(agents).length === 0) {
+        container.innerHTML = '<div class="empty">No rules found</div>';
+        return;
+      }
+      
+      let html = '';
+      
+      for (const agent in agents) {
+        const rules = agents[agent];
+        html += '<div class="section">';
+        html += '<div class="section-title">User-agent: ' + agent + '</div>';
+        html += '<ul class="rule-list">';
+        
+        (rules.allow || []).forEach(function(path) {
+          html += '<li class="rule-item"><span class="rule-type allow">Allow</span><span class="rule-path">' + path + '</span></li>';
+        });
+        
+        (rules.disallow || []).forEach(function(path) {
+          html += '<li class="rule-item"><span class="rule-type disallow">Disallow</span><span class="rule-path">' + path + '</span></li>';
+        });
+        
+        if (rules.crawlDelay) {
+          html += '<li class="rule-item"><span class="rule-type crawl">Delay</span><span class="rule-path">' + rules.crawlDelay + 's</span></li>';
+        }
+        
+        html += '</ul></div>';
+      }
+      
+      container.innerHTML = html;
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      showError(err.message || 'An error occurred');
+    }
+    
+    function showError(msg) {
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = msg;
+    }
+  </script>
+</body>
+</html>

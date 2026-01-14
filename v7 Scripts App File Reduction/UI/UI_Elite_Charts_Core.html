@@ -1,0 +1,210 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UI_Elite_Charts_Core.html
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Core Chart Orchestration & Utility Functions
+ * Extracted from V6 UI_Elite_Charts.html (lines 210-369)
+ * 
+ * Dependencies: UI_Elite_Charts_Utils.html (must load first)
+ * 
+ * Contents:
+ * - renderAllCompetitorCharts: Main orchestration function
+ * - destroyAllCharts: Cleanup all chart instances
+ * - getCompetitorColors: Color palette for competitors
+ * - extractDomains: Extract domain names from competitor array
+ * - extractMetric: Safe metric extraction with null handling
+ * - hasRealData: Check if real data exists for a metric
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Main function to render all competitor charts
+ * Orchestrates the rendering of 30+ chart types
+ */
+function renderAllCompetitorCharts(competitorData) {
+  console.log('📊 Rendering all competitor charts...');
+  console.log('🔍 CHART DIAGNOSTIC: Received data:', {
+    dataType: typeof competitorData,
+    hasCompetitors: !!competitorData.competitors,
+    competitorsIsArray: Array.isArray(competitorData.competitors),
+    competitorsCount: competitorData.competitors ? competitorData.competitors.length : 0
+  });
+  
+  // Validate data structure
+  if (!competitorData || !competitorData.competitors) {
+    console.error('❌ Chart rendering failed: No competitors data');
+    return;
+  }
+  
+  if (!Array.isArray(competitorData.competitors)) {
+    console.error('❌ Chart rendering failed: competitors is not an array', competitorData.competitors);
+    return;
+  }
+  
+  if (competitorData.competitors.length === 0) {
+    console.warn('⚠️ Chart rendering skipped: No competitors to display');
+    return;
+  }
+  
+  try {
+    // Destroy existing charts
+    destroyAllCharts();
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // OVERVIEW CHARTS: DISABLED - populateOverviewTab creates its own charts
+    // The legacy ELITE charts (chart-comp-overview-radar/bar) were causing
+    // "Insufficient data" messages because they expect overview.categoryScores
+    // but were being called with competitorData.competitors[]
+    // populateOverviewTab in UI_Tab_Overview.html handles all overview visualization
+    // ═══════════════════════════════════════════════════════════════════════════
+    // if (typeof renderOverviewRadarChart === 'function') renderOverviewRadarChart(competitorData);
+    // if (typeof renderOverviewBarChart === 'function') renderOverviewBarChart(competitorData);
+    
+    // Market Intelligence charts
+    if (typeof renderMarketShareChart === 'function') renderMarketShareChart(competitorData);
+    if (typeof renderMarketTrendsChart === 'function') renderMarketTrendsChart(competitorData);
+    if (typeof renderCategoryGapChart === 'function') renderCategoryGapChart(competitorData);
+    if (typeof renderNarrativeChart === 'function') renderNarrativeChart(competitorData);
+    if (typeof renderMomentumHeatmap === 'function') renderMomentumHeatmap(competitorData);
+    
+    // Brand Position charts
+    if (typeof renderBrandArchetypeChart === 'function') renderBrandArchetypeChart(competitorData);
+    if (typeof renderEEATChart === 'function') renderEEATChart(competitorData);
+    
+    // Technical SEO charts
+    if (typeof renderTechnicalHealthChart === 'function') renderTechnicalHealthChart(competitorData);
+    if (typeof renderPageSpeedChart === 'function') renderPageSpeedChart(competitorData);
+    
+    // Content Intelligence charts
+    if (typeof renderContentAuthorityChart === 'function') renderContentAuthorityChart(competitorData);
+    if (typeof renderTrafficMixChart === 'function') renderTrafficMixChart(competitorData);
+    
+    // Keyword Strategy charts
+    if (typeof renderKeywordGapChart === 'function') renderKeywordGapChart(competitorData);
+    if (typeof renderIntentFunnelChart === 'function') renderIntentFunnelChart(competitorData);
+  
+    // Content Systems charts
+    if (typeof renderSystemsWorkflowChart === 'function') renderSystemsWorkflowChart(competitorData);
+    if (typeof renderAutomationChart === 'function') renderAutomationChart(competitorData);
+    
+    // Conversion charts
+    if (typeof renderConversionFunnelChart === 'function') renderConversionFunnelChart(competitorData);
+    if (typeof renderMonetizationChart === 'function') renderMonetizationChart(competitorData);
+    
+    // Distribution charts
+    if (typeof renderBacklinksChart === 'function') renderBacklinksChart(competitorData);
+    if (typeof renderDistributionChannelsChart === 'function') renderDistributionChannelsChart(competitorData);
+    
+    // Audience Intelligence charts
+    if (typeof renderPersonasChart === 'function') renderPersonasChart(competitorData);
+    if (typeof renderSentimentChart === 'function') renderSentimentChart(competitorData);
+    
+    // GEO + AEO charts
+    if (typeof renderAICitationsChart === 'function') renderAICitationsChart(competitorData);
+    if (typeof renderLLMAffinityChart === 'function') renderLLMAffinityChart(competitorData);
+    
+    // Authority charts
+    if (typeof renderAuthorityGrowthChart === 'function') renderAuthorityGrowthChart(competitorData);
+    if (typeof renderInfluencersChart === 'function') renderInfluencersChart(competitorData);
+    
+    // Performance charts
+    if (typeof renderPerformanceQualityChart === 'function') renderPerformanceQualityChart(competitorData);
+    if (typeof renderPredictiveChart === 'function') renderPredictiveChart(competitorData);
+    
+    // Opportunity charts
+    if (typeof renderOpportunitiesChart === 'function') renderOpportunitiesChart(competitorData);
+    if (typeof renderMoatChart === 'function') renderMoatChart(competitorData);
+    
+    // Scoring charts
+    if (typeof renderScoringComprehensiveChart === 'function') renderScoringComprehensiveChart(competitorData);
+    if (typeof renderMomentumChart === 'function') renderMomentumChart(competitorData);
+    if (typeof renderTrustChart === 'function') renderTrustChart(competitorData);
+    
+    console.log('✅ All charts rendered');
+    
+  } catch (error) {
+    console.error('❌ Chart rendering error:', error);
+    console.error('   Error stack:', error.stack);
+    console.error('   Data received:', JSON.stringify(competitorData).substring(0, 500));
+  }
+}
+
+/**
+ * Destroy all existing charts - cleanup before re-rendering
+ */
+function destroyAllCharts() {
+  for (let chartId in window.competitorCharts) {
+    if (window.competitorCharts[chartId]) {
+      window.competitorCharts[chartId].destroy();
+      delete window.competitorCharts[chartId];
+    }
+  }
+}
+
+/**
+ * Get competitor colors palette
+ * @param {number} count - Number of colors needed
+ * @returns {Array} Array of rgba color strings
+ */
+function getCompetitorColors(count) {
+  const colors = [
+    'rgba(59, 130, 246, 0.8)',   // Blue
+    'rgba(239, 68, 68, 0.8)',    // Red
+    'rgba(34, 197, 94, 0.8)',    // Green
+    'rgba(251, 146, 60, 0.8)',   // Orange
+    'rgba(168, 85, 247, 0.8)',   // Purple
+    'rgba(236, 72, 153, 0.8)'    // Pink
+  ];
+  return colors.slice(0, count);
+}
+
+/**
+ * Extract domains from competitor data array
+ * @param {Array} competitors - Array of competitor objects
+ * @returns {Array} Array of domain strings
+ */
+function extractDomains(competitors) {
+  return competitors.map(c => c.domain);
+}
+
+/**
+ * Extract metric values with proper null handling
+ * Uses safeGet for reliable data extraction
+ * @param {Array} competitors - Array of competitor objects
+ * @param {string} metricPath - Dot-notation path to metric
+ * @param {*} defaultValue - Default value if not found
+ * @returns {Array} Array of metric values
+ */
+function extractMetric(competitors, metricPath, defaultValue = 0) {
+  return competitors.map(c => {
+    const value = safeGet(c, metricPath, null);
+    return value !== null && value !== undefined && !isNaN(value) ? value : defaultValue;
+  });
+}
+
+/**
+ * Check if any competitor has real data for a metric
+ * @param {Array} competitors - Array of competitor objects
+ * @param {string} metricPath - Dot-notation path to metric
+ * @returns {boolean} True if any competitor has real data
+ */
+function hasRealData(competitors, metricPath) {
+  return competitors.some(c => {
+    const value = safeGet(c, metricPath, null);
+    return value !== null && value !== undefined && value !== 0;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderAllCompetitorCharts = renderAllCompetitorCharts;
+window.destroyAllCharts = destroyAllCharts;
+window.getCompetitorColors = getCompetitorColors;
+window.extractDomains = extractDomains;
+window.extractMetric = extractMetric;
+window.hasRealData = hasRealData;
+
+console.log('✅ UI_Elite_Charts_Core.html loaded - 6 core orchestration functions');
+</script>

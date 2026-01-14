@@ -1,0 +1,263 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     KW_SGE_Resilience.html - SGE/AIO Survival Keyword Generator
+     Contains: generateSGEResilienceKWs
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /**
+   * MODULE 2: SGE/AIO SURVIVAL - 30 AI-Resilient Informational Clusters
+   * UI Category: "🛡️ SGE/AIO Survival"
+   * Target: Terms that survive AI Overview click-theft
+   * Focus: Interactive tools, personalized experiences, gated content
+   */
+  function generateSGEResilienceKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    const keywords = [];
+    const TARGET_COUNT = 30;
+    const kwIntel = gemini.keywordIntelligence || {};
+    const domain = comp.domain || '';
+    const cleanDomain = domain.replace(/^www\./, '');
+    const moat = analyzeCompetitorMoat(comp, gemini);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0: Check ORGANIZED DATA first (from FT_OracleDataOrganizer)
+    // PAA questions are PERFECT for SGE survival (tool/experience based)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const organizedData = window._organizedData || window._eliteTabIntelligence?.organizedData || [];
+    const organizedComp = organizedData.find?.(o => 
+      (o.domain || '').replace(/^www\./, '') === cleanDomain || o.domain === domain
+    );
+    const organizedRawData = organizedComp?.tabData?.keywordStrategy?.rawData || {};
+    const kwRawData = window._kwStrategyRawData || {};
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V8.5: ALSO CHECK keywordProfile from Step 2.5 (keyword-based PAA/Related)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const kwProfile = comp.keywordProfile || {};
+    const kwProfilePAA = (kwProfile.peopleAlsoAsk || []).map(q => 
+      typeof q === 'string' ? { question: q } : q
+    );
+    const kwProfileRelated = (kwProfile.relatedSearches || []).map(q => 
+      typeof q === 'string' ? { query: q } : q
+    );
+    
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    let paaQuestions = organizedRawData.paaQuestions || 
+                       keywordSignals.peopleAlsoAsk || comp.stages?.serper?.data?.peopleAlsoAsk || 
+                       kwProfilePAA || [];
+    let relatedSearches = organizedRawData.keywords || organizedRawData.relatedSearches || 
+                          keywordSignals.relatedSearches || comp.stages?.serper?.data?.relatedSearches || 
+                          kwProfileRelated || [];
+    
+    // Fallback to global data if empty
+    if (paaQuestions.length === 0 && kwRawData.allPAA?.length > 0) paaQuestions = kwRawData.allPAA;
+    if (relatedSearches.length === 0 && kwRawData.allRelated?.length > 0) relatedSearches = kwRawData.allRelated;
+    
+    // ORACLE DATA: Extract H2/H3 headings as keyword sources
+    const oracleData = comp.stages?.oracleFetcher?.data || comp.synthesized?.website || {};
+    const oracleH2 = oracleData.h2 || comp.synthesized?.website?.h2 || [];
+    const oracleH3 = oracleData.h3 || comp.synthesized?.website?.h3 || [];
+
+    console.log(`   🛡️ SGE for ${domain}: PAA=${paaQuestions.length}, Related=${relatedSearches.length}, Oracle H2=${oracleH2.length}, H3=${oracleH3.length}`);
+
+    // SGE Resilience = Lower AIO risk (3-5)
+    const calculateAIOScore = () => 3; // Static base value (low risk)
+
+    const calculateClashScore = () => 5; // Static base value (medium)
+
+    const generatePlainEnglishDesc = (clash) => {
+      if (clash >= 7) return 'SGE Fortress: Requires unique data + interactive widget to defend';
+      if (clash <= 4) return 'Tool Opportunity: Build calculator/comparison tool to own this SERP';
+      return 'Experience Gap: Create personalized journey to survive AI Overview';
+    };
+
+    // PRIORITY 0A: PAA Questions - Perfect for SGE survival (require tools/experiences)
+    paaQuestions.forEach(paa => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const question = (typeof paa === 'string' ? paa : paa.question || paa.title || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(question) && question.length > 10) {
+        globalKeywordSet.add(question);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: question,
+          intent: 'Informational',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'sge',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 45 + (compIndex * 5),
+          y: 5, // Static base value
+          mass: 10, // Static base value
+          moat_type: 'Content',
+          source: 'serper_paa',
+          competitor: domain,
+          tip: generateTip(question, clashScore, aioRisk, 'Content', 'Build interactive tool to answer this question')
+        });
+      }
+    });
+
+    // PRIORITY 0B: Related searches with "how", "what", "best" = tool opportunities
+    relatedSearches.forEach(rs => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const query = (typeof rs === 'string' ? rs : rs.query || rs).toLowerCase().trim();
+      if (!globalKeywordSet.has(query) && query.length > 5 && /how|what|best|compare|vs|tool|calculator/i.test(query)) {
+        globalKeywordSet.add(query);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: query,
+          intent: 'Transactional',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'sge',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 48 + (compIndex * 5),
+          y: 5, // Static base value
+          mass: 10, // Static base value
+          moat_type: 'Content',
+          source: 'serper_related',
+          competitor: domain,
+          tip: generateTip(query, clashScore, aioRisk, 'Content', 'Build interactive tool with proprietary data')
+        });
+      }
+    });
+
+    // Priority 1: Extract tool/interactive keywords from Gemini
+    const interactiveKWs = kwIntel.transactionalKeywords?.topKeywords || [];
+    interactiveKWs.slice(0, 8).forEach(kw => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (kw.keyword || kw).toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 3) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText,
+          intent: 'Transactional',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'sge',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 50 + (compIndex * 5),
+          y: 5, // Static base value
+          mass: 10, // Static base value
+          moat_type: 'Content',
+          source: 'gemini',
+          competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, 'Content', 'Build interactive tool with proprietary data')
+        });
+      }
+    });
+
+    // PRIORITY 2: Oracle H3 headings (long-form content signals - great for SGE survival)
+    oracleH3.forEach(h3 => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (typeof h3 === 'string' ? h3 : h3.text || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 5 && kwText.length < 100) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText,
+          intent: 'Informational',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'sge',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 45 + (compIndex * 5),
+          y: 5, // Static base value
+          mass: 10, // Static base value
+          moat_type: 'Content',
+          source: 'oracle_h3',
+          competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, 'Content', 'Build interactive tool with proprietary data')
+        });
+      }
+    });
+
+    // FALLBACK ONLY: Fill with templates if still below target
+    // V8.5 FIX: Add competitor-specific variants
+    if (keywords.length < TARGET_COUNT) {
+      console.log(`   ⚠️ SGE ${domain}: Using templates to fill ${TARGET_COUNT - keywords.length} remaining slots`);
+      
+      // Generate competitor-specific keyword variants for SGE survival
+      const domainName = cleanDomain.split('.')[0];
+      const competitorTemplates = [
+        `${domainName} calculator`,
+        `${domainName} tool`,
+        `${domainName} roi calculator`,
+        `${domainName} comparison tool`,
+        `${niche} calculator ${domainName}`,
+        `${domainName} analyzer`,
+        `${domainName} audit tool`,
+        `how to use ${domainName}`,
+        `${domainName} workflow`,
+        `${domainName} automation`,
+        `${domainName} dashboard`,
+        `${domainName} reporting`,
+        `${domainName} templates`,
+        `${domainName} best practices`,
+        `${domainName} optimization`
+      ];
+      
+      competitorTemplates.forEach(kwText => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const normalizedKw = kwText.toLowerCase().trim();
+        if (!globalKeywordSet.has(normalizedKw) && normalizedKw.length > 3) {
+          globalKeywordSet.add(normalizedKw);
+          const clashScore = calculateClashScore();
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: normalizedKw,
+            intent: 'Transactional',
+            difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'sge',
+            clash: clashScore,
+            aio_risk: aioRisk,
+            x: 45 + (compIndex * 6),
+            y: 5, // Static base value
+            mass: 10, // Static base value
+            moat_type: 'Content',
+            source: 'competitor_variant',
+            competitor: domain,
+            tip: generateTip(normalizedKw, clashScore, aioRisk, 'Content', 'Build interactive tool with proprietary data')
+          });
+        }
+      });
+      
+      templates.forEach(template => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const kwText = template.replace('{niche}', niche).toLowerCase().trim();
+        if (!globalKeywordSet.has(kwText) && kwText.length > 3) {
+          globalKeywordSet.add(kwText);
+          const clashScore = calculateClashScore();
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: kwText,
+            intent: 'Transactional',
+            difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'sge',
+            clash: clashScore,
+            aio_risk: aioRisk,
+            x: 45 + (compIndex * 6),
+            y: 5, // Static base value
+            mass: 10, // Static base value
+            moat_type: 'Content',
+            source: 'template',
+            competitor: domain,
+            tip: generateTip(kwText, clashScore, aioRisk, 'Content', 'Proprietary data + gated experience')
+          });
+        }
+      });
+    }
+
+    console.log(`   ✅ SGE ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => !['template', 'competitor_variant'].includes(k.source)).length} from real data)`);
+    return keywords;
+  }
+  window.generateSGEResilienceKWs = generateSGEResilienceKWs;
+</script>

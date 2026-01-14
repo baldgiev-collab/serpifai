@@ -1,0 +1,138 @@
+<!--
+  ╔═══════════════════════════════════════════════════════════════════════════════════╗
+  ║  UI_Loading_Utils.html - Loading States & Utilities Module                        ║
+  ║  Provides skeleton loaders, error handlers, and metric validation                 ║
+  ║                                                                                    ║
+  ║  Dependencies: None (Foundation module)                                            ║
+  ║  Exports: window.renderSkeletonLoader, window.handleCompetitorError,              ║
+  ║           window.validateMetricAcrossSources                                       ║
+  ╚═══════════════════════════════════════════════════════════════════════════════════╝
+-->
+<script>
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   * LOADING STATES (Task 36)
+   * Add skeleton loaders and progress indicators
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   */
+  window.renderSkeletonLoader = function(type = 'table') {
+    const skeletonRow = `
+      <tr class="skeleton-row">
+        <td style="padding: 16px;"><div class="skeleton" style="height: 20px; width: 120px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 24px; width: 50px; border-radius: 12px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 20px; width: 80px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 20px; width: 70px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 20px; width: 60px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 20px; width: 40px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 20px; width: 60px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 24px; width: 45px; border-radius: 12px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 20px; width: 60px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 24px; width: 45px; border-radius: 12px;"></div></td>
+        <td style="padding: 16px;"><div class="skeleton" style="height: 24px; width: 50px; border-radius: 12px;"></div></td>
+      </tr>
+    `;
+    
+    return `
+      <style>
+        .skeleton {
+          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+          background-size: 200% 100%;
+          animation: skeleton-loading 1.5s infinite;
+          border-radius: 4px;
+        }
+        @keyframes skeleton-loading {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      </style>
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>Competitor</th><th>Authority</th><th>Traffic</th><th>Value</th>
+            <th>Backlinks</th><th>Country</th><th>Keywords</th><th>KD</th>
+            <th>Trend</th><th>Opportunity</th><th>Health</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${skeletonRow.repeat(5)}
+        </tbody>
+      </table>
+    `;
+  };
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   * ERROR RECOVERY (Task 37)
+   * Graceful degradation when APIs fail with user-friendly messages
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   */
+  window.handleCompetitorError = function(error, context) {
+    console.error(`Competitor error [${context}]:`, error);
+    
+    const errorMessages = {
+      'network': { icon: '🌐', title: 'Network Error', message: 'Unable to reach the server. Check your internet connection.', action: 'Retry' },
+      'timeout': { icon: '⏱️', title: 'Request Timeout', message: 'The request took too long. The server might be busy.', action: 'Retry' },
+      'auth': { icon: '🔐', title: 'Authentication Error', message: 'Your session may have expired. Please refresh the page.', action: 'Refresh' },
+      'quota': { icon: '📊', title: 'API Limit Reached', message: 'You\'ve reached your daily API quota. Upgrade or wait 24 hours.', action: 'Upgrade' },
+      'api': { icon: '⚠️', title: 'API Error', message: 'One or more APIs returned an error. Using estimated data.', action: 'Continue' },
+      'default': { icon: '❌', title: 'Error Occurred', message: 'Something went wrong. Please try again.', action: 'Retry' }
+    };
+    
+    const errorType = error?.type || 'default';
+    const err = errorMessages[errorType] || errorMessages.default;
+    
+    return `
+      <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <span style="font-size: 32px;">${err.icon}</span>
+          <div style="flex: 1;">
+            <h3 style="margin: 0 0 8px; color: #991b1b; font-size: 16px;">${err.title}</h3>
+            <p style="margin: 0 0 16px; color: #b91c1c; font-size: 14px;">${err.message}</p>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="location.reload()" style="background: #dc2626; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;">${err.action}</button>
+              <button onclick="this.closest('div[style*=fef2f2]').remove()" style="background: white; color: #6b7280; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer;">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   * VALIDATION LAYER (Task 35)
+   * Cross-check metrics against multiple sources for accuracy
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   */
+  window.validateMetricAcrossSources = function(metric, sources) {
+    const values = sources.filter(s => s.value !== null && s.value !== undefined && s.value !== 'N/A');
+    if (values.length === 0) return { valid: false, value: 'N/A', confidence: 0 };
+    if (values.length === 1) return { valid: true, value: values[0].value, confidence: 50, source: values[0].name };
+    
+    // Calculate mean and standard deviation
+    const numValues = values.map(v => parseFloat(v.value) || 0);
+    const mean = numValues.reduce((a, b) => a + b, 0) / numValues.length;
+    const variance = numValues.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / numValues.length;
+    const stdDev = Math.sqrt(variance);
+    const coeffOfVar = mean > 0 ? (stdDev / mean) * 100 : 100;
+    
+    // High agreement = low coefficient of variation
+    const confidence = Math.max(0, Math.min(100, 100 - coeffOfVar));
+    
+    // Use median for robustness
+    const sorted = [...numValues].sort((a, b) => a - b);
+    const median = sorted.length % 2 === 0 
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2 
+      : sorted[Math.floor(sorted.length / 2)];
+    
+    return {
+      valid: true,
+      value: Math.round(median),
+      confidence: Math.round(confidence),
+      sources: values.length,
+      agreement: confidence > 70 ? 'high' : confidence > 40 ? 'medium' : 'low'
+    };
+  };
+
+  console.log('✅ UI_Loading_Utils.html loaded');
+</script>

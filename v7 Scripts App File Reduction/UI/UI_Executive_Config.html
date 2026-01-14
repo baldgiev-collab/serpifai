@@ -1,0 +1,236 @@
+<script>
+/**
+ * UI Executive Config - Executive Insight Configuration Generator
+ * Extracted from UI_Scripts_App.html for modularization
+ * Generates C-Suite level insight configurations for brand, technical, content, etc.
+ */
+
+/**
+ * Generate executive insights based on competitor data
+ * @param {string} category - The analysis category (brand, technical, content, etc.)
+ * @param {Array} competitors - Competitor data array
+ * @param {Object} gemini - Gemini analysis data
+ * @returns {Object} Executive insight configuration
+ */
+window.generateExecutiveInsightConfig = function(category, competitors, gemini) {
+  // Extract key metrics from competitors
+  const compCount = competitors?.length || 0;
+  const avgAuthority = competitors?.reduce((sum, c) => sum + (c.stages?.openPageRank?.data?.page_rank_decimal || 0), 0) / (compCount || 1);
+  const avgPerformance = competitors?.reduce((sum, c) => sum + (c.stages?.pageSpeed?.data?.scores?.performance || 0), 0) / (compCount || 1);
+  
+  // Find leader
+  const leader = competitors?.[0]?.domain || 'Unknown';
+  
+  const configs = {
+    brand: {
+      title: 'Brand Intelligence Executive Brief',
+      icon: '🏆',
+      executiveSummary: gemini?.brandPositioning?.analysis || `Market analysis of ${compCount} competitors reveals distinct brand positioning strategies. ${leader} leads with strongest authority signals.`,
+      ceoInsight: `Brand differentiation is ${avgAuthority > 5 ? 'critical' : 'moderate'} in this market. Focus investment on trust signals and thought leadership to capture market share.`,
+      cmoInsight: `Competitor messaging analysis shows opportunity in ${gemini?.brandPositioning?.gaps?.[0] || 'underserved audience segments'}. Recommend repositioning campaign.`,
+      ctoInsight: `Technical brand signals (schema, structured data) are ${avgPerformance > 70 ? 'competitive' : 'opportunity areas'}. Prioritize Organization and Person schema.`,
+      strategicImperative: `Establish category authority through consistent E-E-A-T signals and differentiated value proposition before competitors solidify positions.`,
+      investmentPriority: avgAuthority < 4 ? 'High' : 'Medium',
+      timelineToImpact: '3-6 months',
+      riskLevel: avgAuthority < 3 ? 'High' : 'Medium',
+      marketOpportunity: 'Large',
+      competitiveThreats: [
+        `${leader} dominates with ${Math.round(avgAuthority * 10)} authority score`,
+        'Competitors investing heavily in content marketing',
+        'New market entrants with VC funding',
+        'AI search changing brand discovery patterns'
+      ],
+      actionItems: [
+        'Audit and strengthen E-E-A-T signals',
+        'Develop thought leadership content program',
+        'Implement comprehensive schema markup',
+        'Build strategic partnership portfolio',
+        'Launch brand awareness campaign',
+        'Monitor competitor brand mentions'
+      ],
+      kpis: ['Brand Search Volume', 'Share of Voice', 'E-E-A-T Score', 'Domain Authority', 'Brand Mentions', 'Trust Signals'],
+      dataProofs: ['OpenPageRank API', 'Oracle Fetcher', 'Gemini Analysis', 'SERP Data']
+    },
+    technical: {
+      title: 'Technical SEO Executive Brief',
+      icon: '⚙️',
+      executiveSummary: gemini?.technicalSEO?.analysis || `Technical audit of ${compCount} competitors shows performance scores ranging from ${Math.round(avgPerformance * 0.8)} to ${Math.round(avgPerformance * 1.2)}. Core Web Vitals are ${avgPerformance > 80 ? 'generally strong' : 'opportunity areas'}.`,
+      ceoInsight: `Technical debt is ${avgPerformance < 60 ? 'significantly impacting' : 'moderately affecting'} organic visibility. Recommend ${avgPerformance < 60 ? 'urgent infrastructure investment' : 'optimization sprint'}.`,
+      cmoInsight: `Page experience directly impacts conversion. Current technical state ${avgPerformance > 70 ? 'supports' : 'hinders'} marketing campaign effectiveness.`,
+      ctoInsight: `Priority focus: ${avgPerformance < 50 ? 'Complete infrastructure overhaul' : avgPerformance < 75 ? 'LCP and CLS optimization' : 'Maintain and monitor CWV'}. Budget for CDN and image optimization.`,
+      strategicImperative: `${avgPerformance < 60 ? 'CRITICAL: Technical foundations must be fixed before content investment yields returns.' : 'Optimize Core Web Vitals to maintain competitive advantage in page experience.'}`,
+      investmentPriority: avgPerformance < 50 ? 'Critical' : avgPerformance < 75 ? 'High' : 'Medium',
+      timelineToImpact: avgPerformance < 50 ? '1-2 months' : '2-4 months',
+      riskLevel: avgPerformance < 50 ? 'High' : avgPerformance < 75 ? 'Medium' : 'Low',
+      roiProjection: avgPerformance < 60 ? '+40% Traffic' : '+15% Traffic',
+      competitiveThreats: [
+        `${compCount > 0 ? competitors[0]?.domain : 'Leader'} has ${Math.round(avgPerformance * 1.1)} performance score`,
+        'Google prioritizing page experience in rankings',
+        'Mobile-first indexing penalizing slow sites',
+        'AI search engines favor fast-loading content'
+      ],
+      actionItems: [
+        'Optimize Largest Contentful Paint (LCP)',
+        'Minimize Cumulative Layout Shift (CLS)',
+        'Implement lazy loading for images',
+        'Enable CDN and edge caching',
+        'Audit and fix JavaScript render-blocking',
+        'Mobile performance optimization'
+      ],
+      kpis: ['Performance Score', 'LCP Time', 'CLS Score', 'FID/INP', 'Time to Interactive', 'Page Load Time'],
+      dataProofs: ['PageSpeed Insights API', 'Lighthouse Audit', 'Core Web Vitals', 'Real User Metrics']
+    },
+    content: {
+      title: 'Content Intelligence Executive Brief',
+      icon: '📝',
+      executiveSummary: gemini?.contentAnalysis?.analysis || `Content analysis across ${compCount} competitors reveals significant variation in depth, structure, and topical authority.`,
+      ceoInsight: `Content is the #1 driver of organic growth. Current competitive landscape requires ${gemini?.contentAnalysis?.recommendation || 'strategic content investment to capture market share'}.`,
+      cmoInsight: `Content gaps identified in ${gemini?.contentAnalysis?.gaps?.[0] || 'key purchase-journey stages'}. Recommend content calendar aligned with buyer intent.`,
+      ctoInsight: `Content architecture and internal linking need optimization. Implement topic clusters with pillar page strategy.`,
+      strategicImperative: `Build comprehensive content moat around core topics before competitors dominate SERP real estate and AI training data.`,
+      investmentPriority: 'High',
+      timelineToImpact: '3-6 months',
+      riskLevel: 'Medium',
+      marketOpportunity: 'Very Large',
+      competitiveThreats: [
+        'Competitors publishing high-volume content',
+        'AI-generated content flooding market',
+        'Topic authority being claimed by first movers',
+        'Featured snippets dominated by competitors'
+      ],
+      actionItems: [
+        'Develop pillar content strategy',
+        'Create comprehensive topic clusters',
+        'Optimize existing content for featured snippets',
+        'Implement structured FAQ schema',
+        'Build content velocity program',
+        'Add expert author attribution'
+      ],
+      kpis: ['Content Depth Score', 'Topic Authority', 'Featured Snippets', 'Avg. Word Count', 'Internal Links', 'Time on Page'],
+      dataProofs: ['Oracle Fetcher', 'Content Analysis', 'Heading Structure', 'Word Count Data']
+    },
+    overview: {
+      title: 'Competitive Overview Executive Brief',
+      icon: '📊',
+      executiveSummary: gemini?.executiveBrief?.analysis || `Comprehensive analysis of ${compCount} competitors reveals market dynamics and strategic opportunities across technical, content, and authority dimensions.`,
+      ceoInsight: `The competitive landscape shows ${avgAuthority > 5 ? 'established players with strong authority' : 'room for disruption'}. Strategic investment in ${avgPerformance < 60 ? 'technical foundations' : 'content and authority'} will yield highest returns.`,
+      cmoInsight: `Market positioning opportunities exist in ${gemini?.contentGaps?.[0] || 'underserved customer segments'}. Competitor analysis reveals messaging gaps to exploit.`,
+      ctoInsight: `Technical competitive advantage requires focus on ${avgPerformance < 75 ? 'Core Web Vitals optimization' : 'advanced SEO features like schema and structured data'}.`,
+      strategicImperative: `Act decisively on identified gaps before competitors consolidate market position and AI search dominance.`,
+      investmentPriority: 'High',
+      timelineToImpact: '3-6 months',
+      riskLevel: avgAuthority < 3 ? 'High' : 'Medium',
+      marketOpportunity: 'Large',
+      competitiveThreats: ['Market leaders investing heavily', 'New entrants with fresh approaches', 'AI disrupting traditional SEO', 'Changing user behavior patterns'],
+      actionItems: ['Complete competitive gap analysis', 'Prioritize quick wins', 'Build long-term authority', 'Monitor competitor movements', 'Develop differentiation strategy', 'Implement tracking dashboards'],
+      kpis: ['Overall Visibility Score', 'Market Share', 'Authority Score', 'Traffic Trend', 'Competitive Gap Index', 'ROI Trajectory'],
+      dataProofs: ['All API Sources', 'Gemini Analysis', 'Market Intelligence', 'Trend Data']
+    },
+    market: {
+      title: 'Market Intelligence Executive Brief',
+      icon: '🎯',
+      executiveSummary: gemini?.marketIntelligence?.analysis || `Market analysis of ${compCount} competitors reveals category dynamics, emerging trends, and strategic entry points.`,
+      ceoInsight: `Market size and growth trajectory indicate ${avgAuthority > 5 ? 'mature market requiring differentiation' : 'growth opportunity with first-mover advantage potential'}.`,
+      cmoInsight: `Category positioning reveals opportunities in ${gemini?.marketIntelligence?.gaps?.[0] || 'emerging sub-categories and audience segments'}.`,
+      ctoInsight: `Technology trends show competitors investing in AI features, personalization, and performance optimization.`,
+      strategicImperative: `Capture market share through superior customer experience and strategic positioning before category matures.`,
+      investmentPriority: 'High',
+      timelineToImpact: '4-8 months',
+      riskLevel: 'Medium',
+      marketOpportunity: 'Very Large',
+      competitiveThreats: ['Category leaders with resources', 'Adjacent market entrants', 'Technology disruption', 'Changing market dynamics'],
+      actionItems: ['Deep category analysis', 'Identify white space opportunities', 'Build category authority content', 'Monitor emerging trends', 'Develop competitive moat', 'Create market positioning strategy'],
+      kpis: ['Category Share', 'Brand Awareness', 'Market Penetration', 'Category Authority', 'Trend Alignment', 'Entry Barriers'],
+      dataProofs: ['Serper API', 'Market Analysis', 'Trend Data', 'Competitor Tracking']
+    },
+    distribution: {
+      title: 'Distribution Intelligence Executive Brief',
+      icon: '📡',
+      executiveSummary: gemini?.distributionVisibility?.analysis || `Distribution analysis shows traffic acquisition patterns and visibility channels across ${compCount} competitors.`,
+      ceoInsight: `Traffic diversification is ${avgAuthority > 5 ? 'strong among leaders' : 'an opportunity for sustainable growth'}. Invest in multi-channel distribution strategy.`,
+      cmoInsight: `Channel analysis reveals ${gemini?.distributionVisibility?.topChannel || 'organic search'} as primary driver. Opportunity exists in ${gemini?.distributionVisibility?.underutilized || 'referral and social channels'}.`,
+      ctoInsight: `Technical SEO and link acquisition infrastructure requires attention. Focus on backlink velocity and quality.`,
+      strategicImperative: `Build sustainable traffic acquisition engine through diversified channels and authority building.`,
+      investmentPriority: avgAuthority < 4 ? 'Critical' : 'High',
+      timelineToImpact: '3-6 months',
+      riskLevel: avgAuthority < 3 ? 'High' : 'Medium',
+      marketOpportunity: 'Large',
+      competitiveThreats: ['Competitors with established link profiles', 'Changing algorithm dynamics', 'Paid acquisition pressure', 'Social platform changes'],
+      actionItems: ['Audit current backlink profile', 'Develop link building strategy', 'Identify referral opportunities', 'Build content syndication network', 'Launch digital PR campaign', 'Monitor traffic source trends'],
+      kpis: ['Domain Authority', 'Backlink Velocity', 'Referral Traffic', 'Social Shares', 'Brand Mentions', 'PageRank'],
+      dataProofs: ['OpenPageRank API', 'Serper API', 'Oracle Fetcher', 'Link Analysis']
+    },
+    audience: {
+      title: 'Audience Intelligence Executive Brief',
+      icon: '👥',
+      executiveSummary: gemini?.audienceIntelligence?.analysis || `Audience analysis reveals customer segments, intent patterns, and engagement opportunities across the competitive landscape.`,
+      ceoInsight: `Customer understanding drives competitive advantage. Invest in audience research and persona development to outperform competitors.`,
+      cmoInsight: `Audience segmentation shows opportunities in ${gemini?.audienceIntelligence?.segments?.[0] || 'high-intent buyer personas'}. Tailor messaging to specific journey stages.`,
+      ctoInsight: `User behavior data indicates need for ${avgPerformance < 60 ? 'performance optimization' : 'personalization features'} to improve engagement.`,
+      strategicImperative: `Build deep customer understanding to create resonant content and capture intent-driven traffic.`,
+      investmentPriority: 'High',
+      timelineToImpact: '2-4 months',
+      riskLevel: 'Medium',
+      marketOpportunity: 'Large',
+      competitiveThreats: ['Competitors with better customer data', 'Changing audience preferences', 'Privacy regulation impact', 'Platform algorithm changes'],
+      actionItems: ['Develop detailed buyer personas', 'Map customer journey stages', 'Analyze competitor audience', 'Identify intent signals', 'Create persona-specific content', 'Implement behavioral tracking'],
+      kpis: ['Engagement Rate', 'Time on Site', 'Pages per Session', 'Conversion by Segment', 'Return Visitor Rate', 'Intent Match Score'],
+      dataProofs: ['Gemini Analysis', 'Content Analysis', 'Behavioral Data', 'Intent Mapping']
+    },
+    geoaeo: {
+      title: 'GEO & AEO Intelligence Executive Brief',
+      icon: '🤖',
+      executiveSummary: gemini?.geoAeo?.analysis || `Generative Engine Optimization and Answer Engine Optimization analysis reveals AI visibility opportunities and featured snippet potential.`,
+      ceoInsight: `AI search is transforming organic discovery. Early investment in GEO/AEO creates sustainable competitive advantage as AI adoption accelerates.`,
+      cmoInsight: `Featured snippet and AI Overview capture rates are ${gemini?.geoAeo?.captureRate > 20 ? 'competitive' : 'opportunity areas'}. Prioritize FAQ and How-To content formats.`,
+      ctoInsight: `Technical implementation of schema markup and structured data is essential for AI visibility. Prioritize FAQPage, HowTo, and Article schema.`,
+      strategicImperative: `Capture AI search real estate before competitors dominate generative search results and knowledge panels.`,
+      investmentPriority: 'Critical',
+      timelineToImpact: '2-4 months',
+      riskLevel: 'High',
+      marketOpportunity: 'Very Large',
+      competitiveThreats: ['AI search disrupting traffic', 'Zero-click searches increasing', 'Competitors optimizing for AI', 'Platform changes affecting visibility'],
+      actionItems: ['Implement comprehensive schema markup', 'Optimize for featured snippets', 'Create FAQ content at scale', 'Build entity authority', 'Monitor AI Overview appearances', 'Develop voice search strategy'],
+      kpis: ['Featured Snippet Count', 'AI Overview Citations', 'Schema Coverage', 'Voice Search Ranking', 'Zero-Click Visibility', 'Entity Authority'],
+      dataProofs: ['Serper API', 'Schema Analysis', 'AI Visibility Audit', 'Entity Mapping']
+    },
+    performance: {
+      title: 'Performance Analytics Executive Brief',
+      icon: '📈',
+      executiveSummary: gemini?.performance?.analysis || `Performance tracking across ${compCount} competitors reveals growth trends, ranking movements, and predictive indicators.`,
+      ceoInsight: `Performance trajectory shows ${avgPerformance > 70 ? 'positive momentum' : 'need for strategic intervention'}. Focus on leading indicators for sustainable growth.`,
+      cmoInsight: `Marketing performance correlation analysis shows highest impact from ${gemini?.performance?.topDriver || 'content quality and technical SEO'}.`,
+      ctoInsight: `Performance monitoring infrastructure needs ${avgPerformance < 60 ? 'immediate attention' : 'optimization'}. Implement real-time tracking dashboards.`,
+      strategicImperative: `Build performance culture with data-driven decision making and continuous optimization cycles.`,
+      investmentPriority: avgPerformance < 60 ? 'Critical' : 'High',
+      timelineToImpact: '1-3 months',
+      riskLevel: avgPerformance < 50 ? 'High' : 'Medium',
+      marketOpportunity: 'Large',
+      competitiveThreats: ['Faster-moving competitors', 'Market share erosion', 'Algorithm updates', 'Performance degradation'],
+      actionItems: ['Implement tracking dashboard', 'Set performance benchmarks', 'Create weekly monitoring routine', 'Build predictive models', 'Optimize underperforming pages', 'Develop performance alerts'],
+      kpis: ['Organic Traffic', 'Ranking Positions', 'Conversion Rate', 'Revenue from Organic', 'Click-Through Rate', 'Impressions'],
+      dataProofs: ['PageSpeed API', 'Ranking Data', 'Traffic Analytics', 'Trend Analysis']
+    },
+    opportunities: {
+      title: 'Strategic Opportunities Executive Brief',
+      icon: '🎲',
+      executiveSummary: gemini?.opportunities?.analysis || `Strategic gap analysis reveals ${gemini?.opportunities?.count || 'multiple'} high-potential opportunities across content, technical, and authority dimensions.`,
+      ceoInsight: `Quick wins identified can generate ${avgAuthority > 5 ? '15-25%' : '30-50%'} improvement in organic visibility within 90 days with focused execution.`,
+      cmoInsight: `Content opportunities in ${gemini?.opportunities?.topCategory || 'underserved topic clusters'} offer immediate competitive advantage potential.`,
+      ctoInsight: `Technical quick wins available in ${avgPerformance < 60 ? 'Core Web Vitals' : 'schema implementation and crawl efficiency'}.`,
+      strategicImperative: `Execute on identified opportunities rapidly before competitors close gaps and capture market share.`,
+      investmentPriority: 'High',
+      timelineToImpact: '1-3 months',
+      riskLevel: 'Low',
+      marketOpportunity: 'Very Large',
+      roiProjection: '+35% Visibility',
+      competitiveThreats: ['Competitor awareness of same gaps', 'Resource constraints', 'Execution delays', 'Market timing'],
+      actionItems: ['Prioritize by impact/effort', 'Create 30-60-90 day plan', 'Assign ownership', 'Set measurable goals', 'Build execution timeline', 'Monitor progress weekly'],
+      kpis: ['Opportunities Captured', 'Gap Closure Rate', 'Quick Win Execution', 'Impact Realized', 'Time to Value', 'ROI per Initiative'],
+      dataProofs: ['Gap Analysis', 'Competitive Intelligence', 'Opportunity Scoring', 'Impact Modeling']
+    }
+  };
+  
+  return configs[category] || configs.brand;
+};
+</script>

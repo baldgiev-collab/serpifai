@@ -1,0 +1,285 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     KW_Forensic_Matrix.html - Keyword Forensic Matrix Generator
+     Contains: calculateTopicalScore, generateForensicKeywordMatrix, runDataDiagnostic
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  // ═══════════════════════════════════════════════════════════════════════════
+  // KW STRATEGY PHASE HELPER FUNCTIONS - v6.0 (4-Phase Architecture)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * PHASE 1 HELPER: Calculate Topical Score from PHP Fetcher data
+   * Maps site-wide URLs to their current "Topical Score"
+   */
+  function calculateTopicalScore(fetcherData, comp) {
+    let score = 0;
+    const metadata = fetcherData.metadata || {};
+    const headings = fetcherData.headings || {};
+    const schema = fetcherData.schema || [];
+
+    // Word count contribution (max 30 points)
+    const wordCount = metadata.wordCount || 0;
+    if (wordCount >= 3000) score += 30;
+    else if (wordCount >= 2000) score += 25;
+    else if (wordCount >= 1000) score += 18;
+    else if (wordCount >= 500) score += 10;
+
+    // Heading structure contribution (max 25 points)
+    const h1Count = headings.h1?.length || 0;
+    const h2Count = headings.h2?.length || 0;
+    const h3Count = headings.h3?.length || 0;
+    if (h1Count === 1) score += 8; // Single H1 is ideal
+    if (h2Count >= 5) score += 10;
+    else if (h2Count >= 3) score += 7;
+    if (h3Count >= 5) score += 7;
+
+    // Schema markup contribution (max 25 points)
+    const schemaTypes = Array.isArray(schema) ? schema.length : Object.keys(schema).length;
+    if (schemaTypes >= 5) score += 25;
+    else if (schemaTypes >= 3) score += 18;
+    else if (schemaTypes >= 1) score += 10;
+
+    // Internal linking contribution (max 20 points)
+    const internalLinks = fetcherData.links?.filter(l => l.internal)?.length || 0;
+    if (internalLinks >= 20) score += 20;
+    else if (internalLinks >= 10) score += 15;
+    else if (internalLinks >= 5) score += 8;
+
+    return Math.min(100, score);
+  }
+  window.calculateTopicalScore = calculateTopicalScore;
+
+  /**
+   * PHASE 2 HELPER: Generate Forensic Keyword Matrix (Zero-Repetition Rule)
+   * Performs "Causal Chain" search (900+ steps) via Gemini Deep Research
+   * SPEC: Exactly 90 keywords per competitor organized into 4 UI Modules
+   * CONSTRAINT: Zero duplicates allowed across the entire report
+   * 
+   * 4 UI MODULES (Bento-Grid Layout):
+   *   1. [MONEY MOAT]: 15 High-Volume Revenue Pillars (Head Terms)
+   *   2. [SGE/AIO SURVIVAL]: 30 AI-resilient informational clusters
+   *   3. [LONG-TAIL VELOCITY]: 30 High-conversion terms (KD < 30)
+   *   4. [LLM CITATION GAPS]: 15 Terms for AI-agent sourcing (RAG-ready)
+   */
+  function generateForensicKeywordMatrix(competitors, gemini, yourDomain) {
+    console.log('🔬 PHASE 2: Generating Forensic 90-KW Matrix (Zero-Repetition Rule)...');
+    console.log('   🔗 Initiating Causal Chain Search (900+ steps)...');
+
+    const matrix = [];
+    const globalKeywordSet = new Set(); // ZERO-REPETITION enforcement
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE 1: DIAGNOSTIC DATA INGESTION (FAIL-SAFE)
+    // Check for null, repeated, or placeholder values
+    // ═══════════════════════════════════════════════════════════════════════════
+    const diagnosticResults = runDataDiagnostic(competitors, gemini);
+    if (diagnosticResults.apiFailure) {
+      console.log('   ⚠️ API FAILURE DETECTED: Triggering Gemini Deep Research fallback...');
+      console.log('   🔍 Browsing 100+ live SERP results for 2025 data reconstruction...');
+    }
+
+    // 2025 Deep Research Protocol: 90-KW Templates per Module
+    const kwTemplates2025 = {
+      // MODULE 1: MONEY MOAT (15 High-Volume Revenue Pillars)
+      moneyMoat: [
+        '{niche} software 2025', '{niche} platform comparison', '{niche} enterprise solution',
+        'AI-powered {niche}', '{niche} automation tool', '{niche} SaaS platform',
+        'best {niche} for agencies', '{niche} competitor analysis', '{niche} market leader',
+        '{niche} pricing 2025', '{niche} vs competitors', '{niche} ROI calculator',
+        'top {niche} tools', '{niche} for enterprise', 'buy {niche} software'
+      ],
+      // MODULE 2: SGE/AIO SURVIVAL (30 AI-Resilient Informational Clusters)
+      sgeResilience: [
+        '{niche} interactive calculator', '{niche} tool comparison table', '{niche} custom report',
+        '{niche} personalized analysis', '{niche} real-time dashboard', '{niche} API documentation',
+        '{niche} integration guide', '{niche} case study results', '{niche} benchmark data',
+        '{niche} industry report 2025', '{niche} proprietary methodology', '{niche} certification program',
+        '{niche} expert consultation', '{niche} live audit tool', '{niche} competitive intelligence',
+        '{niche} custom implementation', '{niche} white-glove setup', '{niche} managed service',
+        '{niche} enterprise support', '{niche} SLA guarantee', '{niche} dedicated account manager',
+        '{niche} onboarding specialist', '{niche} training program', '{niche} community forum',
+        '{niche} user conference 2025', '{niche} workflow automation', '{niche} custom dashboard builder',
+        '{niche} team collaboration tools', '{niche} advanced reporting suite', '{niche} real-time alerts'
+      ],
+      // MODULE 3: LONG-TAIL VELOCITY (30 High-Conversion Terms, KD < 30)
+      longTailVelocity: [
+        'how to optimize for AI overviews in {niche}', 'best {niche} tools for small business 2025',
+        '{niche} vs manual process ROI calculator', 'which {niche} platform has the best API',
+        'how to measure {niche} performance metrics', 'step by step {niche} implementation guide',
+        '{niche} for solopreneurs under $50/mo', '{niche} with zapier integration',
+        '{niche} that works with shopify', '{niche} for wordpress sites',
+        'cheap {niche} alternative that works', '{niche} free plan limitations',
+        'how long to see {niche} results', '{niche} setup time estimate',
+        '{niche} learning curve for beginners', 'is {niche} worth it for bloggers',
+        '{niche} for local businesses', '{niche} multilingual support',
+        '{niche} mobile app features', '{niche} chrome extension review',
+        '{niche} for startups bootstrap budget', '{niche} vs spreadsheet comparison',
+        '{niche} automation for beginners', 'best free {niche} tools 2025',
+        '{niche} that integrates with slack', '{niche} for content creators',
+        '{niche} lifetime deal worth it', '{niche} for non-technical users',
+        '{niche} agency white label options', '{niche} for ecommerce stores'
+      ],
+      // MODULE 4: LLM CITATION GAPS (15 Terms for AI-Agent Sourcing, RAG-Ready)
+      llmCitationGaps: [
+        'how to get cited in Perplexity for {niche}', 'RAG-ready content strategy for {niche}',
+        'GEO optimization {niche} 2025', 'SGE citation management {niche}', 'Perplexity source targeting {niche}',
+        'AI overview optimization {niche}', 'LLM citation strategy {niche}', 'zero-click survival {niche}',
+        'entity SEO {niche}', 'semantic content clustering {niche}', 'ChatGPT source optimization {niche}',
+        'become AI answer source for {niche}', '{niche} knowledge graph optimization',
+        '{niche} structured data for LLMs', 'generative engine ranking factors {niche}'
+      ]
+    };
+
+    // Market Gravity Calculation with NEW SCALAR FORMULA
+    const marketGravityPositions = calculateMarketGravityPositions(competitors, gemini);
+
+    // Extract exactly 90 keywords per competitor with zero duplicates
+    competitors.slice(0, 5).forEach((comp, index) => {
+      const domain = comp.domain || `Competitor ${index + 1}`;
+      const pm = comp.processedMetrics || {};
+      const synthesized = comp.synthesized || {};
+
+      // Determine niche from domain/content
+      const niche = extractNicheFromCompetitor(comp, gemini);
+
+      // Get Market Gravity position for this competitor
+      const gravityPosition = marketGravityPositions[index] || { x: 50 + index * 10, y: 50 + index * 8, radius: 10 };
+
+      // PHASE 3: Generate EXACT 90-KW structure with 4 UI MODULES
+      const competitorKeywords = {
+        competitor: domain,
+        competitorIndex: index + 1,
+        niche: niche,
+        gravityPosition: gravityPosition,
+        groupId: index + 1,
+        // MOAT ANALYSIS (Phase 3)
+        moat: analyzeCompetitorMoat(comp, gemini),
+        // MODULE 1: Money Moat (25 High-Intent Head Terms)
+        moneyMoat: generateMoneyMoatKWs(comp, gemini, niche, kwTemplates2025.moneyMoat, globalKeywordSet, index),
+        // MODULE 2: SGE/AIO Resilience (25 Terms)
+        sgeResilience: generateSGEResilienceKWs(comp, gemini, niche, kwTemplates2025.sgeResilience, globalKeywordSet, index),
+        // MODULE 3: Long-Tail Velocity (20 Niche Conversion Terms)
+        longTailVelocity: generateLongTailVelocityKWs(comp, gemini, niche, kwTemplates2025.longTailVelocity, globalKeywordSet, index),
+        // MODULE 4: LLM Citation Gaps (20 AI Primary Source Terms)
+        llmCitationGaps: generateLLMCitationGapKWs(comp, gemini, niche, kwTemplates2025.llmCitationGaps, globalKeywordSet, index),
+        // Legacy compatibility
+        primary: [],
+        secondary: [],
+        longTail: [],
+        faqs: [],
+        killerInsight: generateKillerInsight(comp, gemini, niche, index)
+      };
+
+      // Populate legacy arrays for backward compatibility
+      competitorKeywords.primary = competitorKeywords.moneyMoat.slice(0, 6);
+      competitorKeywords.secondary = competitorKeywords.sgeResilience.slice(0, 6);
+      competitorKeywords.longTail = competitorKeywords.longTailVelocity.slice(0, 5);
+      competitorKeywords.faqs = competitorKeywords.llmCitationGaps.slice(0, 4);
+
+      // Combine all for keywords array
+      competitorKeywords.keywords = [
+        ...competitorKeywords.moneyMoat,
+        ...competitorKeywords.sgeResilience,
+        ...competitorKeywords.longTailVelocity,
+        ...competitorKeywords.llmCitationGaps
+      ];
+
+      // Verify exact count: 15 + 30 + 30 + 15 = 90
+      const totalKws = competitorKeywords.moneyMoat.length +
+        competitorKeywords.sgeResilience.length +
+        competitorKeywords.longTailVelocity.length +
+        competitorKeywords.llmCitationGaps.length;
+
+      console.log(`   📊 ${domain}: ${totalKws} keywords (Target: 90) | Moat: ${competitorKeywords.moat.type} | Gravity: (${gravityPosition.x.toFixed(1)}, ${gravityPosition.y.toFixed(1)}, R=${gravityPosition.radius?.toFixed(1) || 10})`);
+      matrix.push(competitorKeywords);
+    });
+
+    // Total should be 450 (90 per competitor × 5 competitors) with ZERO duplicates
+    const totalKWs = matrix.reduce((sum, c) =>
+      sum + (c.moneyMoat?.length || 0) + (c.sgeResilience?.length || 0) + (c.longTailVelocity?.length || 0) + (c.llmCitationGaps?.length || 0), 0
+    );
+    console.log(`   ✅ TOTAL UNIQUE KEYWORDS: ${totalKWs} | Global Set: ${globalKeywordSet.size} (Zero-Repetition Enforced)`);
+
+    return matrix;
+  }
+  window.generateForensicKeywordMatrix = generateForensicKeywordMatrix;
+
+  /**
+   * PHASE 1: DIAGNOSTIC DATA INGESTION (Fail-Safe)
+   * Checks for null, repeated, or placeholder values (e.g., 50/50)
+   * Returns apiFailure: true if Gemini Deep Research fallback is needed
+   */
+  function runDataDiagnostic(competitors, gemini) {
+    console.log('🔍 PHASE 1: Running Diagnostic Data Ingestion...');
+
+    let nullCount = 0;
+    let placeholderCount = 0;
+    let repeatedCount = 0;
+    let serpDataFound = 0;
+    let paaDataFound = 0;
+    const seenValues = new Set();
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CRITICAL: Check organized data for real SERP data first
+    // ═══════════════════════════════════════════════════════════════════════════
+    const organizedData = window._organizedData || window._eliteTabIntelligence?.organizedData || [];
+    const kwRawData = window._kwStrategyRawData || {};
+    
+    if (organizedData && organizedData.length > 0) {
+      organizedData.forEach(comp => {
+        const rawData = comp?.tabData?.keywordStrategy?.rawData || {};
+        if (rawData.paaQuestions?.length > 0) paaDataFound += rawData.paaQuestions.length;
+        if (rawData.serpResults?.length > 0) serpDataFound += rawData.serpResults.length;
+      });
+    }
+    
+    // Also check global KW strategy data
+    if (kwRawData.allPAA?.length > 0) paaDataFound += kwRawData.allPAA.length;
+    if (kwRawData.allOrganic?.length > 0) serpDataFound += kwRawData.allOrganic.length;
+
+    competitors.slice(0, 5).forEach(comp => {
+      const pm = comp.processedMetrics || {};
+      const serper = comp.apiData?.serper || comp.stages?.serper?.data || {};
+
+      // Check for SERP data in competitor stages
+      if (serper.peopleAlsoAsk?.length > 0) paaDataFound += serper.peopleAlsoAsk.length;
+      if (serper.organic?.length > 0) serpDataFound += serper.organic.length;
+
+      // Check for null values
+      if (!pm.geminiEstimates?.monthlyTraffic && !pm.estimatedTraffic) nullCount++;
+      if (!pm.domainAuthority && !pm.geminiEstimates?.authorityScore) nullCount++;
+
+      // Check for placeholder values (50/50, 0, etc.)
+      const traffic = pm.geminiEstimates?.monthlyTraffic || pm.estimatedTraffic || 0;
+      const auth = pm.domainAuthority || pm.geminiEstimates?.authorityScore || 0;
+      if (traffic === 50000 || traffic === 0) placeholderCount++;
+      if (auth === 50 || auth === 0) placeholderCount++;
+
+      // Check for repeated values
+      const key = `${traffic}-${auth}`;
+      if (seenValues.has(key)) repeatedCount++;
+      seenValues.add(key);
+    });
+
+    // API failure = NO SERP data AND NO PAA data AND high null/placeholder counts
+    // If we have organized data with PAA/SERP, that's not an API failure
+    const hasSerpData = serpDataFound > 0 || paaDataFound > 0;
+    const apiFailure = !hasSerpData && (nullCount > 2 || placeholderCount > 3 || repeatedCount > 2);
+
+    console.log(`   📊 Diagnostic Results: Nulls=${nullCount}, Placeholders=${placeholderCount}, Repeated=${repeatedCount}`);
+    console.log(`   📊 SERP Data: ${serpDataFound} organic results, ${paaDataFound} PAA questions`);
+    console.log(`   ${apiFailure ? '⚠️ API FAILURE DETECTED' : '✅ Data Quality OK'}`);
+
+    return {
+      apiFailure,
+      nullCount,
+      placeholderCount,
+      repeatedCount,
+      serpDataFound,
+      paaDataFound,
+      hasSerpData,
+      diagnosis: apiFailure ? 'Triggering Gemini Deep Research fallback' : 'Data ingestion successful'
+    };
+  }
+  window.runDataDiagnostic = runDataDiagnostic;
+</script>

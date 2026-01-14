@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Backlink Analysis</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .search-row { display: flex; gap: 10px; margin-bottom: 15px; }
+    .search-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .search-input:focus { outline: none; border-color: var(--accent); }
+    
+    .btn {
+      padding: 12px 24px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--text-secondary); cursor: not-allowed; }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-value { font-size: 28px; font-weight: bold; color: var(--accent); }
+    .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 5px; }
+    
+    .results { display: none; }
+    .results.active { display: block; }
+    
+    .backlinks-table {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .table-header {
+      display: grid;
+      grid-template-columns: 2fr 80px 80px 80px 100px;
+      gap: 10px;
+      padding: 12px 15px;
+      background: var(--bg-tertiary);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 2fr 80px 80px 80px 100px;
+      gap: 10px;
+      padding: 12px 15px;
+      border-top: 1px solid var(--border);
+      align-items: center;
+      font-size: 14px;
+    }
+    .table-row:hover { background: rgba(255,255,255,0.02); }
+    
+    .domain-cell {
+      display: flex;
+      flex-direction: column;
+    }
+    .domain-name { font-weight: 500; word-break: break-all; }
+    .domain-url {
+      font-size: 12px;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .authority-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .authority-high { background: rgba(35, 134, 54, 0.2); color: var(--success); }
+    .authority-medium { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+    .authority-low { background: rgba(139, 148, 158, 0.2); color: var(--text-secondary); }
+    
+    .link-type {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--bg-primary);
+    }
+    .link-type.dofollow { color: var(--success); }
+    .link-type.nofollow { color: var(--text-secondary); }
+    
+    .anchor-text { font-size: 13px; color: var(--text-secondary); }
+    
+    .chart-section { margin-top: 20px; }
+    .chart-title { font-size: 14px; margin-bottom: 10px; }
+    .chart-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .chart-label { width: 120px; font-size: 13px; }
+    .chart-track {
+      flex: 1;
+      height: 20px;
+      background: var(--bg-primary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .chart-fill { height: 100%; background: var(--accent); }
+    .chart-value { width: 60px; text-align: right; font-size: 13px; margin-left: 10px; }
+    
+    .loading { text-align: center; padding: 40px; display: none; }
+    .loading.active { display: block; }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔗 Backlink Analysis</h1>
+    <div id="message" class="message"></div>
+    
+    <div class="section">
+      <div class="search-row">
+        <input type="url" class="search-input" id="domainInput" placeholder="Enter domain (e.g., example.com)">
+        <button class="btn btn-primary" onclick="analyzeBacklinks()" id="analyzeBtn">🔍 Analyze</button>
+      </div>
+    </div>
+    
+    <div class="loading" id="loading"><p>🔄 Analyzing backlinks...</p></div>
+    
+    <div class="results" id="results">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-label">Total Backlinks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statDomains">0</div>
+          <div class="stat-label">Referring Domains</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statDofollow">0%</div>
+          <div class="stat-label">Dofollow</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statAuthority">0</div>
+          <div class="stat-label">Avg. Authority</div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="chart-section">
+          <div class="chart-title">Authority Distribution</div>
+          <div class="chart-bar">
+            <span class="chart-label">High (70-100)</span>
+            <div class="chart-track"><div class="chart-fill" id="chartHigh" style="width: 0%"></div></div>
+            <span class="chart-value" id="chartHighVal">0</span>
+          </div>
+          <div class="chart-bar">
+            <span class="chart-label">Medium (40-69)</span>
+            <div class="chart-track"><div class="chart-fill" id="chartMed" style="width: 0%"></div></div>
+            <span class="chart-value" id="chartMedVal">0</span>
+          </div>
+          <div class="chart-bar">
+            <span class="chart-label">Low (0-39)</span>
+            <div class="chart-track"><div class="chart-fill" id="chartLow" style="width: 0%"></div></div>
+            <span class="chart-value" id="chartLowVal">0</span>
+          </div>
+        </div>
+      </div>
+      
+      <h2>Top Backlinks</h2>
+      <div class="backlinks-table">
+        <div class="table-header">
+          <div>Domain</div>
+          <div>Authority</div>
+          <div>Type</div>
+          <div>Traffic</div>
+          <div>Anchor</div>
+        </div>
+        <div id="backlinksList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function analyzeBacklinks() {
+      const domain = document.getElementById('domainInput').value.trim();
+      if (!domain) { showMessage('Enter a domain', 'error'); return; }
+      
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('results').classList.remove('active');
+      document.getElementById('analyzeBtn').disabled = true;
+      
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(e => { document.getElementById('loading').classList.remove('active'); document.getElementById('analyzeBtn').disabled = false; showMessage(e.message, 'error'); })
+        .FT_analyzeBacklinks({ domain: domain });
+    }
+    
+    function displayResults(result) {
+      document.getElementById('loading').classList.remove('active');
+      document.getElementById('analyzeBtn').disabled = false;
+      
+      if (!result.ok) { showMessage(result.error, 'error'); return; }
+      
+      document.getElementById('results').classList.add('active');
+      
+      const data = result.data || {};
+      document.getElementById('statTotal').textContent = formatNumber(data.totalBacklinks || 0);
+      document.getElementById('statDomains').textContent = formatNumber(data.referringDomains || 0);
+      document.getElementById('statDofollow').textContent = (data.dofollowPercent || 0) + '%';
+      document.getElementById('statAuthority').textContent = data.avgAuthority || 0;
+      
+      // Charts
+      const dist = data.authorityDistribution || { high: 0, medium: 0, low: 0 };
+      const total = dist.high + dist.medium + dist.low || 1;
+      updateChart('High', dist.high, total);
+      updateChart('Med', dist.medium, total);
+      updateChart('Low', dist.low, total);
+      
+      // Table
+      const backlinks = data.backlinks || [];
+      document.getElementById('backlinksList').innerHTML = backlinks.slice(0, 50).map(bl => {
+        const authClass = bl.authority >= 70 ? 'high' : bl.authority >= 40 ? 'medium' : 'low';
+        return `
+          <div class="table-row">
+            <div class="domain-cell">
+              <span class="domain-name">${bl.domain}</span>
+              <span class="domain-url">${bl.url || ''}</span>
+            </div>
+            <div><span class="authority-badge authority-${authClass}">${bl.authority}</span></div>
+            <div><span class="link-type ${bl.type}">${bl.type}</span></div>
+            <div>${formatNumber(bl.traffic || 0)}</div>
+            <div class="anchor-text">${bl.anchor || '-'}</div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function updateChart(level, count, total) {
+      const pct = Math.round((count / total) * 100);
+      document.getElementById('chart' + level).style.width = pct + '%';
+      document.getElementById('chart' + level + 'Val').textContent = count;
+    }
+    
+    function formatNumber(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return n.toString();
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+    }
+  </script>
+</body>
+</html>

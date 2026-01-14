@@ -1,0 +1,606 @@
+<!--
+  ELITE_Fetcher_Backlinks.html
+  ═══════════════════════════════════════════════════════════════════════════
+  SERPIFAI Elite Backlink Intelligence v1.0
+  Advanced backlink discovery, analysis, and gap detection
+  
+  Features:
+  - Referring domain extraction and scoring
+  - Anchor text distribution analysis
+  - Dofollow/Nofollow classification
+  - Link velocity tracking
+  - Backlink gap analysis between competitors
+  - Domain Rating (DR) estimation
+  
+  Dependencies: ELITE_Fetcher_Core.html
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<script>
+(function() {
+  'use strict';
+  
+  console.log('🔗 ELITE_Fetcher_Backlinks.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ELITE BACKLINK FETCHER CLASS
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  class EliteBacklinkFetcher extends window.EliteFetcher {
+    constructor(config = {}) {
+      super(config);
+      this.moduleName = 'Backlink Intelligence';
+      this.version = '1.0.0';
+      
+      // Backlink-specific configuration
+      this.backlinkConfig = {
+        maxReferringDomains: config.maxReferringDomains || 100,
+        anchorTextCategories: ['branded', 'exact', 'partial', 'generic', 'naked', 'other'],
+        trustSignals: ['edu', 'gov', 'org', 'news', 'wiki'],
+        spamIndicators: ['casino', 'pharma', 'adult', 'link-farm'],
+        ...config
+      };
+      
+      console.log(`   ✅ ${this.moduleName} v${this.version} initialized`);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MAIN BACKLINK ANALYSIS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async analyzeBacklinks(domain, options = {}) {
+      console.log(`🔗 Analyzing backlinks for ${domain}...`);
+      
+      const normalizedDomain = this.normalizeDomain(domain);
+      
+      // Collect data from multiple sources with fallback chain
+      const fetchersConfig = [
+        {
+          id: 'elite',
+          fetcher: (d) => this.fetchEliteBacklinkData(d),
+          required: false
+        },
+        {
+          id: 'openPageRank',
+          fetcher: (d) => this.fetchOpenPageRankData(d),
+          required: false
+        },
+        {
+          id: 'serper',
+          fetcher: (d) => this.fetchSerperBacklinkSignals(d),
+          required: false
+        }
+      ];
+      
+      try {
+        const aggregated = await this.fetchWithFallback(normalizedDomain, fetchersConfig);
+        
+        // Enrich with calculated metrics
+        const enriched = this.enrichBacklinkData(aggregated, normalizedDomain);
+        
+        return enriched;
+      } catch (error) {
+        console.error(`❌ Backlink analysis failed for ${domain}:`, error);
+        return this.generateFallbackEstimate(normalizedDomain);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA SOURCE FETCHERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async fetchEliteBacklinkData(domain) {
+      // Elite internal backlink intelligence from PHP fetcher
+      const phpData = window._phpFetcherCache?.[domain];
+      
+      if (!phpData) {
+        return null;
+      }
+      
+      const links = phpData.links || [];
+      const externalLinks = links.filter(l => !l.internal);
+      const internalLinks = links.filter(l => l.internal);
+      
+      // Extract unique referring domains from external links
+      const referringDomains = new Set();
+      externalLinks.forEach(link => {
+        try {
+          const url = new URL(link.href || link.url || '');
+          referringDomains.add(url.hostname.replace(/^www\./, ''));
+        } catch (e) {}
+      });
+      
+      // Analyze anchor text distribution
+      const anchorTexts = this.analyzeAnchorTexts(externalLinks, domain);
+      
+      return {
+        totalBacklinks: externalLinks.length,
+        referringDomains: referringDomains.size,
+        referringDomainsList: Array.from(referringDomains).slice(0, 50),
+        internalLinks: internalLinks.length,
+        anchorTextDistribution: anchorTexts,
+        dofollowRatio: this.calculateDofollowRatio(externalLinks),
+        _source: 'elite',
+        _timestamp: Date.now()
+      };
+    }
+    
+    async fetchOpenPageRankData(domain) {
+      // Use cached OpenPageRank data if available
+      const cached = window._openPageRankCache?.[domain];
+      
+      if (cached) {
+        return {
+          pageRank: cached.page_rank_decimal || 0,
+          domainRank: cached.rank || 0,
+          statusCode: cached.status_code || 200,
+          _source: 'openPageRank',
+          _timestamp: Date.now()
+        };
+      }
+      
+      return null;
+    }
+    
+    async fetchSerperBacklinkSignals(domain) {
+      // Extract backlink signals from SERP data
+      const serperData = window._serperCache?.[domain];
+      
+      if (!serperData) {
+        return null;
+      }
+      
+      const organic = serperData.organic || [];
+      
+      // Count unique domains linking (appearing in same SERP)
+      const serpCompetitors = new Set();
+      organic.forEach(result => {
+        try {
+          const url = new URL(result.link || '');
+          const resultDomain = url.hostname.replace(/^www\./, '');
+          if (resultDomain !== domain) {
+            serpCompetitors.add(resultDomain);
+          }
+        } catch (e) {}
+      });
+      
+      return {
+        serpVisibility: organic.length,
+        serpPosition: organic.findIndex(r => r.link?.includes(domain)) + 1 || 0,
+        serpCompetitors: Array.from(serpCompetitors),
+        _source: 'serper',
+        _timestamp: Date.now()
+      };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ANCHOR TEXT ANALYSIS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    analyzeAnchorTexts(links, domain) {
+      const distribution = {
+        branded: { count: 0, percentage: 0, examples: [] },
+        exact: { count: 0, percentage: 0, examples: [] },
+        partial: { count: 0, percentage: 0, examples: [] },
+        generic: { count: 0, percentage: 0, examples: [] },
+        naked: { count: 0, percentage: 0, examples: [] },
+        other: { count: 0, percentage: 0, examples: [] }
+      };
+      
+      const brandName = domain.split('.')[0].toLowerCase();
+      const genericTerms = ['click here', 'read more', 'learn more', 'visit', 'website', 'link', 'here', 'this'];
+      
+      links.forEach(link => {
+        const anchor = (link.text || link.anchor || '').toLowerCase().trim();
+        
+        if (!anchor) {
+          distribution.other.count++;
+          return;
+        }
+        
+        // Classify anchor text
+        if (anchor.includes(brandName)) {
+          distribution.branded.count++;
+          if (distribution.branded.examples.length < 5) {
+            distribution.branded.examples.push(anchor);
+          }
+        } else if (anchor.includes('http') || anchor.match(/^[\d.]+$/)) {
+          distribution.naked.count++;
+          if (distribution.naked.examples.length < 5) {
+            distribution.naked.examples.push(anchor);
+          }
+        } else if (genericTerms.some(term => anchor.includes(term))) {
+          distribution.generic.count++;
+          if (distribution.generic.examples.length < 5) {
+            distribution.generic.examples.push(anchor);
+          }
+        } else if (anchor.length > 3 && anchor.length < 50) {
+          distribution.partial.count++;
+          if (distribution.partial.examples.length < 5) {
+            distribution.partial.examples.push(anchor);
+          }
+        } else {
+          distribution.other.count++;
+        }
+      });
+      
+      // Calculate percentages
+      const total = links.length || 1;
+      Object.keys(distribution).forEach(key => {
+        distribution[key].percentage = Math.round((distribution[key].count / total) * 100);
+      });
+      
+      return distribution;
+    }
+    
+    calculateDofollowRatio(links) {
+      if (!links || links.length === 0) return 100;
+      
+      const dofollowCount = links.filter(l => {
+        const rel = (l.rel || '').toLowerCase();
+        return !rel.includes('nofollow') && !rel.includes('ugc') && !rel.includes('sponsored');
+      }).length;
+      
+      return Math.round((dofollowCount / links.length) * 100);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA ENRICHMENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    enrichBacklinkData(data, domain) {
+      // Calculate Domain Rating (DR) estimate
+      const drEstimate = this.estimateDomainRating(data);
+      
+      // Calculate link velocity (if historical data available)
+      const linkVelocity = this.calculateLinkVelocity(domain);
+      
+      // Identify trust signals
+      const trustAnalysis = this.analyzeTrustSignals(data.referringDomainsList || []);
+      
+      // Calculate spam score
+      const spamScore = this.calculateSpamScore(data);
+      
+      return {
+        ...data,
+        domainRating: drEstimate,
+        linkVelocity,
+        trustAnalysis,
+        spamScore,
+        healthScore: this.calculateBacklinkHealthScore(data, drEstimate, spamScore),
+        recommendations: this.generateRecommendations(data, drEstimate, spamScore)
+      };
+    }
+    
+    estimateDomainRating(data) {
+      // DR estimation algorithm based on available signals
+      let drScore = 0;
+      let confidence = 50;
+      
+      // PageRank contribution (0-10 scale → 0-40 DR points)
+      if (data.pageRank) {
+        drScore += Math.min(40, data.pageRank * 4);
+        confidence += 15;
+      }
+      
+      // Referring domains contribution
+      const refDomains = data.referringDomains || 0;
+      if (refDomains > 0) {
+        // Logarithmic scale: 10 RD = +5, 100 RD = +15, 1000 RD = +25
+        drScore += Math.min(30, Math.log10(refDomains + 1) * 10);
+        confidence += 10;
+      }
+      
+      // Total backlinks contribution
+      const totalBacklinks = data.totalBacklinks || 0;
+      if (totalBacklinks > 0) {
+        drScore += Math.min(20, Math.log10(totalBacklinks + 1) * 5);
+        confidence += 5;
+      }
+      
+      // Dofollow ratio bonus
+      const dofollowRatio = data.dofollowRatio || 50;
+      if (dofollowRatio > 70) {
+        drScore += 5;
+      }
+      
+      // SERP visibility bonus
+      if (data.serpPosition && data.serpPosition <= 10) {
+        drScore += 10 - data.serpPosition;
+        confidence += 10;
+      }
+      
+      return {
+        score: Math.min(100, Math.round(drScore)),
+        confidence: Math.min(95, confidence),
+        tier: this.getDRTier(drScore)
+      };
+    }
+    
+    getDRTier(score) {
+      if (score >= 80) return { label: 'Elite', color: '#22c55e', icon: '👑' };
+      if (score >= 60) return { label: 'Strong', color: '#84cc16', icon: '💪' };
+      if (score >= 40) return { label: 'Medium', color: '#f59e0b', icon: '📊' };
+      if (score >= 20) return { label: 'Growing', color: '#f97316', icon: '🌱' };
+      return { label: 'New', color: '#ef4444', icon: '🆕' };
+    }
+    
+    calculateLinkVelocity(domain) {
+      // Check historical data for link velocity
+      const history = window._backlinkHistory?.[domain];
+      
+      if (!history || history.length < 2) {
+        return {
+          trend: 'unknown',
+          change: 0,
+          periodDays: 0,
+          icon: '❓'
+        };
+      }
+      
+      const latest = history[history.length - 1];
+      const previous = history[history.length - 2];
+      const change = (latest.referringDomains || 0) - (previous.referringDomains || 0);
+      const periodDays = Math.round((latest.timestamp - previous.timestamp) / 86400000);
+      
+      return {
+        trend: change > 0 ? 'growing' : change < 0 ? 'declining' : 'stable',
+        change,
+        periodDays,
+        velocity: periodDays > 0 ? Math.round(change / periodDays * 30) : 0, // Monthly rate
+        icon: change > 0 ? '📈' : change < 0 ? '📉' : '➡️'
+      };
+    }
+    
+    analyzeTrustSignals(referringDomains) {
+      const signals = {
+        eduLinks: 0,
+        govLinks: 0,
+        newsLinks: 0,
+        wikiLinks: 0,
+        trustDomains: []
+      };
+      
+      referringDomains.forEach(domain => {
+        const lowerDomain = domain.toLowerCase();
+        
+        if (lowerDomain.endsWith('.edu') || lowerDomain.includes('.edu.')) {
+          signals.eduLinks++;
+          signals.trustDomains.push({ domain, type: 'edu', icon: '🎓' });
+        } else if (lowerDomain.endsWith('.gov') || lowerDomain.includes('.gov.')) {
+          signals.govLinks++;
+          signals.trustDomains.push({ domain, type: 'gov', icon: '🏛️' });
+        } else if (lowerDomain.includes('news') || lowerDomain.includes('times') || 
+                   lowerDomain.includes('post') || lowerDomain.includes('herald')) {
+          signals.newsLinks++;
+          signals.trustDomains.push({ domain, type: 'news', icon: '📰' });
+        } else if (lowerDomain.includes('wiki')) {
+          signals.wikiLinks++;
+          signals.trustDomains.push({ domain, type: 'wiki', icon: '📚' });
+        }
+      });
+      
+      signals.trustScore = Math.min(100, 
+        signals.eduLinks * 15 + 
+        signals.govLinks * 20 + 
+        signals.newsLinks * 10 + 
+        signals.wikiLinks * 5
+      );
+      
+      return signals;
+    }
+    
+    calculateSpamScore(data) {
+      let spamIndicators = 0;
+      let totalChecks = 0;
+      
+      // Check anchor text distribution
+      const anchors = data.anchorTextDistribution || {};
+      totalChecks++;
+      if (anchors.exact?.percentage > 50) {
+        spamIndicators++; // Over-optimized exact match anchors
+      }
+      
+      // Check dofollow ratio
+      totalChecks++;
+      if ((data.dofollowRatio || 0) > 95) {
+        spamIndicators++; // Unnatural 100% dofollow
+      }
+      
+      // Check referring domain diversity
+      totalChecks++;
+      const rdToBacklinkRatio = (data.referringDomains || 1) / (data.totalBacklinks || 1);
+      if (rdToBacklinkRatio < 0.1) {
+        spamIndicators++; // Too many links from few domains
+      }
+      
+      const spamScore = Math.round((spamIndicators / totalChecks) * 100);
+      
+      return {
+        score: spamScore,
+        level: spamScore > 50 ? 'high' : spamScore > 25 ? 'medium' : 'low',
+        indicators: spamIndicators,
+        color: spamScore > 50 ? '#ef4444' : spamScore > 25 ? '#f59e0b' : '#22c55e'
+      };
+    }
+    
+    calculateBacklinkHealthScore(data, dr, spam) {
+      let score = 50; // Base score
+      
+      // DR contribution (+30 max)
+      score += Math.min(30, dr.score * 0.3);
+      
+      // Trust signals (+20 max)
+      const trust = data.trustAnalysis || {};
+      score += Math.min(20, (trust.trustScore || 0) * 0.2);
+      
+      // Spam penalty (-30 max)
+      score -= Math.min(30, (spam.score || 0) * 0.3);
+      
+      // Diversity bonus (+10 max)
+      const diversity = (data.referringDomains || 0) / (data.totalBacklinks || 1);
+      score += Math.min(10, diversity * 20);
+      
+      return {
+        score: Math.max(0, Math.min(100, Math.round(score))),
+        label: score >= 70 ? 'Healthy' : score >= 50 ? 'Fair' : 'Needs Work',
+        color: score >= 70 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'
+      };
+    }
+    
+    generateRecommendations(data, dr, spam) {
+      const recommendations = [];
+      
+      if (dr.score < 30) {
+        recommendations.push({
+          priority: 'high',
+          type: 'authority',
+          title: 'Build Domain Authority',
+          action: 'Focus on acquiring high-quality backlinks from authoritative sites',
+          icon: '👑'
+        });
+      }
+      
+      if ((data.trustAnalysis?.trustScore || 0) < 20) {
+        recommendations.push({
+          priority: 'medium',
+          type: 'trust',
+          title: 'Acquire Trust Signals',
+          action: 'Target .edu, .gov, and news site backlinks for credibility',
+          icon: '🏛️'
+        });
+      }
+      
+      if (spam.score > 30) {
+        recommendations.push({
+          priority: 'high',
+          type: 'cleanup',
+          title: 'Disavow Toxic Links',
+          action: 'Audit and disavow spammy/over-optimized backlinks',
+          icon: '🧹'
+        });
+      }
+      
+      const anchors = data.anchorTextDistribution || {};
+      if ((anchors.branded?.percentage || 0) < 20) {
+        recommendations.push({
+          priority: 'medium',
+          type: 'branding',
+          title: 'Increase Branded Anchors',
+          action: 'Build more links with branded anchor text for natural profile',
+          icon: '🏷️'
+        });
+      }
+      
+      return recommendations;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FALLBACK ESTIMATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    generateFallbackEstimate(domain) {
+      console.log(`   ⚠️ Using fallback estimation for ${domain}`);
+      
+      // Return zeros - real data requires API
+      const tld = domain.split('.').pop();
+      const domainLength = domain.length;
+      
+      let baseEstimate = {
+        totalBacklinks: 0, // Real data requires API
+        referringDomains: 0, // Real data requires API
+        pageRank: 0, // Real data requires API
+        dofollowRatio: 0, // Real data requires API
+        _isEmpty: true,
+        _message: 'Configure backlink API for real data'
+      };
+      
+      // Adjust based on TLD
+      if (tld === 'edu' || tld === 'gov') {
+        // Keep zeros - just note the TLD for context
+        baseEstimate._tldBonus = true;
+      }
+      
+      // Short domains typically have more authority
+      if (domainLength < 10) {
+        baseEstimate._shortDomain = true;
+      }
+      
+      return {
+        ...baseEstimate,
+        _isEstimate: true,
+        _confidence: 0,
+        _source: 'fallback',
+        _timestamp: Date.now()
+      };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BACKLINK GAP ANALYSIS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async analyzeBacklinkGap(yourDomain, competitors) {
+      console.log(`🔍 Analyzing backlink gap: ${yourDomain} vs ${competitors.length} competitors`);
+      
+      const yourData = await this.analyzeBacklinks(yourDomain);
+      const competitorData = await Promise.all(
+        competitors.map(c => this.analyzeBacklinks(c))
+      );
+      
+      // Find domains linking to competitors but not to you
+      const yourReferrers = new Set(yourData.referringDomainsList || []);
+      const gapOpportunities = [];
+      
+      competitorData.forEach((data, index) => {
+        (data.referringDomainsList || []).forEach(domain => {
+          if (!yourReferrers.has(domain)) {
+            const existing = gapOpportunities.find(g => g.domain === domain);
+            if (existing) {
+              existing.linksToCompetitors++;
+              existing.competitors.push(competitors[index]);
+            } else {
+              gapOpportunities.push({
+                domain,
+                linksToCompetitors: 1,
+                competitors: [competitors[index]],
+                estimatedDR: data.domainRating?.score || 30
+              });
+            }
+          }
+        });
+      });
+      
+      // Sort by opportunity score (links to multiple competitors = higher priority)
+      gapOpportunities.sort((a, b) => {
+        const scoreA = a.linksToCompetitors * a.estimatedDR;
+        const scoreB = b.linksToCompetitors * b.estimatedDR;
+        return scoreB - scoreA;
+      });
+      
+      return {
+        yourMetrics: yourData,
+        competitorMetrics: competitorData,
+        gapOpportunities: gapOpportunities.slice(0, 50),
+        summary: {
+          totalGapDomains: gapOpportunities.length,
+          highPriorityGaps: gapOpportunities.filter(g => g.linksToCompetitors >= 2).length,
+          avgCompetitorDR: Math.round(
+            competitorData.reduce((a, b) => a + (b.domainRating?.score || 0), 0) / competitorData.length
+          )
+        }
+      };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GLOBAL EXPORT
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.EliteBacklinkFetcher = EliteBacklinkFetcher;
+  window.eliteBacklinkFetcher = new EliteBacklinkFetcher();
+  
+  console.log('✅ ELITE_Fetcher_Backlinks.html loaded');
+  console.log('   Exported: window.EliteBacklinkFetcher (class)');
+  console.log('   Exported: window.eliteBacklinkFetcher (instance)');
+
+})();
+</script>

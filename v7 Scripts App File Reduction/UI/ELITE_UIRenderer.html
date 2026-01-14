@@ -1,0 +1,1454 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🎨 ELITE UI RENDERER - Enterprise-Grade Data Visualization System
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * PURPOSE: Render highly valuable visualizations across all 15 tabs using
+ *          pre-processed data from ELITE_DataVisualizationEngine.gs
+ * 
+ * INTEGRATES WITH:
+ * - ELITE_DataVisualizationEngine.gs (backend data processing)
+ * - UI_Charts_Competitor.html (Chart.js rendering)
+ * - UI_Scripts_App.html (tab population functions)
+ * 
+ * VISUALIZATION TYPES:
+ * - Gauge charts (scores, health metrics)
+ * - Radar charts (multi-dimensional comparisons)
+ * - Horizontal bar charts (rankings)
+ * - Bubble charts (market positioning)
+ * - Heatmaps (feature matrices)
+ * - Treemaps (distribution analysis)
+ * - Sunburst charts (hierarchical data)
+ * - Funnel charts (conversion flows)
+ * - KPI cards (quick metrics)
+ * 
+ * @version 2.0.0
+ * @author Serpifai Elite Engineering
+ */
+
+// Store ELITE chart instances globally
+window.eliteChartInstances = window.eliteChartInstances || {};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CORE RENDERING ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Main entry point - render all ELITE visualizations
+ * @param {Object} eliteData - Pre-processed data from ELITE_DataVisualizationEngine
+ */
+function ELITE_renderAllVisualizations(eliteData) {
+  console.log('🎨 ELITE UI RENDERER: Starting visualization render...');
+  console.log('📊 Data received:', {
+    tabs: eliteData.tabs ? Object.keys(eliteData.tabs).length : 0,
+    geminiInsights: eliteData.geminiInsights ? Object.keys(eliteData.geminiInsights).length : 0,
+    comparative: eliteData.comparative ? Object.keys(eliteData.comparative).length : 0
+  });
+  
+  if (!eliteData || !eliteData.tabs) {
+    console.warn('⚠️ No ELITE data available for rendering');
+    return;
+  }
+  
+  try {
+    // Render each tab's visualizations
+    Object.keys(eliteData.tabs).forEach(tabId => {
+      const tabData = eliteData.tabs[tabId];
+      ELITE_renderTabVisualization(tabId, tabData, eliteData.comparative);
+    });
+    
+    // Render Gemini insights for each tab
+    if (eliteData.geminiInsights) {
+      Object.keys(eliteData.geminiInsights).forEach(tabId => {
+        const insights = eliteData.geminiInsights[tabId];
+        ELITE_renderGeminiInsights(tabId, insights);
+      });
+    }
+    
+    console.log('✅ ELITE visualizations rendered successfully');
+  } catch (error) {
+    console.error('❌ Error in ELITE render:', error);
+  }
+}
+
+/**
+ * Render visualizations for a specific tab
+ */
+function ELITE_renderTabVisualization(tabId, tabData, comparativeData) {
+  console.log(`🎨 Rendering tab: ${tabId}`);
+  
+  // Find the tab panel
+  const panel = document.querySelector(`[data-comp-panel="${tabId}"]`) || 
+                document.getElementById(`panel-${tabId}`);
+  
+  if (!panel) {
+    console.warn(`⚠️ Panel not found for tab: ${tabId}`);
+    return;
+  }
+  
+  // Get visualization specs for this tab
+  const specs = ELITE_getVisualizationSpecs(tabId);
+  if (!specs) {
+    console.warn(`⚠️ No visualization specs for tab: ${tabId}`);
+    return;
+  }
+  
+  // Render each visualization type
+  if (specs.cards) {
+    specs.cards.forEach(cardSpec => {
+      ELITE_renderKPICard(panel, cardSpec, tabData, comparativeData);
+    });
+  }
+  
+  if (specs.charts) {
+    specs.charts.forEach(chartSpec => {
+      ELITE_renderChart(panel, chartSpec, tabData, comparativeData);
+    });
+  }
+  
+  if (specs.tables) {
+    specs.tables.forEach(tableSpec => {
+      ELITE_renderComparisonTable(panel, tableSpec, tabData, comparativeData);
+    });
+  }
+  
+  if (specs.heatmaps) {
+    specs.heatmaps.forEach(heatmapSpec => {
+      ELITE_renderHeatmap(panel, heatmapSpec, tabData, comparativeData);
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VISUALIZATION SPECS PER TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ELITE_getVisualizationSpecs(tabId) {
+  const specs = {
+    // Tab 1: Overview
+    'overview': {
+      cards: [
+        { id: 'overall-score', type: 'gauge', data: 'overallScore', label: 'Overall Score', color: '#1a73e8' },
+        { id: 'competitor-count', type: 'metric', data: 'competitorCount', label: 'Competitors Analyzed' },
+        { id: 'data-points', type: 'metric', data: 'dataPoints', label: 'Data Points Collected' }
+      ],
+      charts: [
+        { id: 'score-radar', type: 'radar', data: 'scoreBreakdown', title: 'Competitive Positioning' },
+        { id: 'score-bar', type: 'horizontalBar', data: 'rankings', title: 'Overall Rankings' }
+      ],
+      tables: [
+        { id: 'competitor-matrix', columns: ['Domain', 'Authority', 'Traffic', 'Keywords', 'Score'], data: 'competitorMatrix' }
+      ]
+    },
+    
+    // Tab 2: Market Intelligence
+    'market': {
+      cards: [
+        { id: 'market-leader', type: 'highlight', data: 'marketLeader', label: 'Market Leader' },
+        { id: 'market-gap', type: 'opportunity', data: 'biggestGap', label: 'Biggest Gap' }
+      ],
+      charts: [
+        { id: 'market-bubble', type: 'bubble', data: 'marketPosition', title: 'Market Position Matrix' },
+        { id: 'authority-ranking', type: 'horizontalBar', data: 'authorityRanking', title: 'Domain Authority' },
+        { id: 'traffic-share', type: 'doughnut', data: 'trafficShare', title: 'Traffic Distribution' }
+      ],
+      heatmaps: [
+        { id: 'feature-matrix', data: 'featureMatrix', title: 'Feature Comparison Matrix' }
+      ]
+    },
+    
+    // Tab 3: Brand Positioning
+    'brand': {
+      cards: [
+        { id: 'brand-strength', type: 'gauge', data: 'brandStrength', label: 'Brand Strength' }
+      ],
+      charts: [
+        { id: 'brand-radar', type: 'radar', data: 'brandAttributes', title: 'Brand Attributes' },
+        { id: 'eeat-radar', type: 'radar', data: 'eeatScores', title: 'E-E-A-T Analysis' }
+      ],
+      tables: [
+        { id: 'title-comparison', columns: ['Domain', 'Title', 'Length', 'Keywords'], data: 'titleComparison' }
+      ]
+    },
+    
+    // Tab 4: Technical SEO
+    'technical': {
+      cards: [
+        { id: 'performance-avg', type: 'gauge', data: 'avgPerformance', label: 'Avg Performance', thresholds: [50, 90] },
+        { id: 'cwv-pass', type: 'metric', data: 'cwvPassRate', label: 'CWV Pass Rate' }
+      ],
+      charts: [
+        { id: 'cwv-grouped', type: 'groupedBar', data: 'cwvMetrics', title: 'Core Web Vitals Comparison' },
+        { id: 'performance-ranking', type: 'horizontalBar', data: 'performanceRanking', title: 'Performance Rankings' }
+      ],
+      tables: [
+        { id: 'cwv-matrix', columns: ['Domain', 'LCP', 'FID', 'CLS', 'Performance', 'Accessibility'], data: 'cwvMatrix' }
+      ]
+    },
+    
+    // Tab 5: Content Intelligence
+    'content': {
+      cards: [
+        { id: 'content-quality', type: 'gauge', data: 'contentQuality', label: 'Content Quality' },
+        { id: 'humanity-score', type: 'gauge', data: 'avgHumanity', label: 'Humanity Score', color: '#34a853' }
+      ],
+      charts: [
+        { id: 'content-depth', type: 'horizontalBar', data: 'contentDepth', title: 'Content Depth Analysis' },
+        { id: 'word-count', type: 'bar', data: 'wordCounts', title: 'Word Count Comparison' }
+      ],
+      tables: [
+        { id: 'content-matrix', columns: ['Domain', 'Word Count', 'Headings', 'Images', 'Humanity Score'], data: 'contentMatrix' }
+      ]
+    },
+    
+    // Tab 6: Keyword Strategy
+    'keyword': {
+      cards: [
+        { id: 'keyword-universe', type: 'metric', data: 'totalKeywords', label: 'Keyword Universe' },
+        { id: 'keyword-gap', type: 'opportunity', data: 'keywordGaps', label: 'Keyword Gaps' }
+      ],
+      charts: [
+        { id: 'keyword-overlap', type: 'venn', data: 'keywordOverlap', title: 'Keyword Overlap' },
+        { id: 'keyword-gap-bar', type: 'horizontalBar', data: 'gapOpportunities', title: 'Gap Opportunities' },
+        { id: 'intent-pie', type: 'pie', data: 'intentDistribution', title: 'Search Intent Distribution' }
+      ],
+      tables: [
+        { id: 'keyword-matrix', columns: ['Domain', 'Total KWs', 'Organic', 'Paid', 'New Opportunities'], data: 'keywordMatrix' }
+      ]
+    },
+    
+    // Tab 7: Content Systems
+    'systems': {
+      cards: [
+        { id: 'automation-score', type: 'gauge', data: 'automationScore', label: 'Automation Level' }
+      ],
+      charts: [
+        { id: 'cms-pie', type: 'pie', data: 'cmsDistribution', title: 'CMS Distribution' },
+        { id: 'tech-stack', type: 'treemap', data: 'techStack', title: 'Technology Stack' }
+      ],
+      tables: [
+        { id: 'tech-matrix', columns: ['Domain', 'CMS', 'Analytics', 'CDN', 'AI Tools'], data: 'techMatrix' }
+      ]
+    },
+    
+    // Tab 8: Conversion Intelligence
+    'conversion': {
+      cards: [
+        { id: 'friction-score', type: 'gauge', data: 'frictionScore', label: 'Friction Score', inverted: true },
+        { id: 'cta-count', type: 'metric', data: 'avgCTAs', label: 'Avg CTAs per Page' }
+      ],
+      charts: [
+        { id: 'cta-radar', type: 'radar', data: 'ctaElements', title: 'CTA Elements Comparison' },
+        { id: 'conversion-funnel', type: 'funnel', data: 'conversionFunnel', title: 'Conversion Funnel' }
+      ],
+      tables: [
+        { id: 'conversion-matrix', columns: ['Domain', 'Forms', 'CTAs', 'Chat', 'Exit Intent'], data: 'conversionMatrix' }
+      ]
+    },
+    
+    // Tab 9: Distribution
+    'distribution': {
+      cards: [
+        { id: 'link-balance', type: 'gauge', data: 'linkBalance', label: 'Link Balance' }
+      ],
+      charts: [
+        { id: 'link-types', type: 'pie', data: 'linkTypes', title: 'Internal vs External Links' },
+        { id: 'anchor-types', type: 'bar', data: 'anchorDistribution', title: 'Anchor Text Distribution' }
+      ],
+      tables: [
+        { id: 'link-matrix', columns: ['Domain', 'Internal', 'External', 'Nofollow', 'Dofollow'], data: 'linkMatrix' }
+      ]
+    },
+    
+    // Tab 10: Audience Intelligence
+    'audience': {
+      charts: [
+        { id: 'audience-overlap', type: 'venn', data: 'audienceOverlap', title: 'Audience Overlap' },
+        { id: 'intent-dist', type: 'pie', data: 'intentDistribution', title: 'Search Intent Distribution' }
+      ],
+      tables: [
+        { id: 'persona-matrix', columns: ['Persona', 'Size', 'Intent', 'Value'], data: 'personaMatrix' }
+      ]
+    },
+    
+    // Tab 11: GEO/AEO
+    'geoaeo': {
+      cards: [
+        { id: 'aeo-readiness', type: 'gauge', data: 'aeoReadiness', label: 'AEO Readiness' },
+        { id: 'faq-count', type: 'metric', data: 'totalFAQs', label: 'Total FAQs' }
+      ],
+      charts: [
+        { id: 'faq-bar', type: 'horizontalBar', data: 'faqCounts', title: 'FAQ Count by Competitor' },
+        { id: 'schema-pie', type: 'pie', data: 'schemaTypes', title: 'Schema Coverage' }
+      ]
+    },
+    
+    // Tab 12: Authority & Influence
+    'authority': {
+      cards: [
+        { id: 'authority-leader', type: 'highlight', data: 'authorityLeader', label: 'Authority Leader' }
+      ],
+      charts: [
+        { id: 'authority-bar', type: 'horizontalBar', data: 'authorityRanking', title: 'Authority Rankings' },
+        { id: 'eeat-radar', type: 'radar', data: 'eeatComparison', title: 'E-E-A-T Comparison' }
+      ],
+      tables: [
+        { id: 'eeat-matrix', columns: ['Domain', 'Experience', 'Expertise', 'Authority', 'Trust'], data: 'eeatMatrix' }
+      ]
+    },
+    
+    // Tab 13: Performance & Predictive
+    'performance': {
+      charts: [
+        { id: 'trend-lines', type: 'line', data: 'trendData', title: 'Performance Trends' },
+        { id: 'momentum-bar', type: 'horizontalBar', data: 'momentumScores', title: 'Momentum Analysis' }
+      ],
+      tables: [
+        { id: 'performance-matrix', columns: ['Domain', 'Current', '3-Mo Trend', '6-Mo Forecast'], data: 'performanceMatrix' }
+      ]
+    },
+    
+    // Tab 14: Strategic Opportunities
+    'opportunities': {
+      charts: [
+        { id: 'opportunity-bubble', type: 'bubble', data: 'opportunityMatrix', title: 'Impact vs Effort Matrix' },
+        { id: 'priority-funnel', type: 'funnel', data: 'priorityFunnel', title: 'Priority Action Funnel' }
+      ],
+      tables: [
+        { id: 'action-plan', columns: ['Action', 'Impact', 'Effort', 'Priority', 'Timeline'], data: 'actionPlan' }
+      ]
+    },
+    
+    // Tab 15: Scoring Engine
+    'scoring': {
+      cards: [
+        { id: 'your-grade', type: 'grade', data: 'yourGrade', label: 'Your Grade' },
+        { id: 'rank-position', type: 'metric', data: 'rankPosition', label: 'Your Ranking' }
+      ],
+      charts: [
+        { id: 'category-radar', type: 'radar', data: 'categoryScores', title: 'Category Scores' },
+        { id: 'leaderboard', type: 'horizontalBar', data: 'leaderboard', title: 'Leaderboard' }
+      ],
+      tables: [
+        { id: 'score-matrix', columns: ['Domain', 'Technical', 'Content', 'Authority', 'UX', 'Overall', 'Grade'], data: 'scoreMatrix' }
+      ]
+    }
+  };
+  
+  return specs[tabId] || null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// KPI CARD RENDERING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ELITE_renderKPICard(panel, spec, tabData, comparativeData) {
+  const container = panel.querySelector(`#elite-card-${spec.id}`) || 
+                    panel.querySelector(`[data-elite-card="${spec.id}"]`);
+  
+  // Create container if it doesn't exist
+  let cardContainer = container;
+  if (!cardContainer) {
+    const metricsSection = panel.querySelector('.elite-metrics-section') || 
+                           panel.querySelector('.comp-metrics');
+    if (metricsSection) {
+      cardContainer = document.createElement('div');
+      cardContainer.id = `elite-card-${spec.id}`;
+      cardContainer.className = 'elite-kpi-card';
+      metricsSection.appendChild(cardContainer);
+    } else {
+      return; // No place to put the card
+    }
+  }
+  
+  const value = ELITE_getDataValue(tabData, spec.data);
+  const comparative = comparativeData ? ELITE_getComparativeInfo(comparativeData, spec.data) : null;
+  
+  switch (spec.type) {
+    case 'gauge':
+      cardContainer.innerHTML = ELITE_renderGaugeCard(spec, value, comparative);
+      break;
+    case 'metric':
+      cardContainer.innerHTML = ELITE_renderMetricCard(spec, value, comparative);
+      break;
+    case 'highlight':
+      cardContainer.innerHTML = ELITE_renderHighlightCard(spec, value, comparative);
+      break;
+    case 'opportunity':
+      cardContainer.innerHTML = ELITE_renderOpportunityCard(spec, value, comparative);
+      break;
+    case 'grade':
+      cardContainer.innerHTML = ELITE_renderGradeCard(spec, value, comparative);
+      break;
+  }
+}
+
+function ELITE_renderGaugeCard(spec, value, comparative) {
+  const numValue = parseFloat(value) || 0;
+  const color = spec.color || ELITE_getColorForValue(numValue, spec.thresholds);
+  const rank = comparative ? comparative.rank : null;
+  const gap = comparative ? comparative.gap : null;
+  
+  return `
+    <div class="elite-gauge-card">
+      <div class="elite-gauge-container">
+        <svg viewBox="0 0 120 70" class="elite-gauge-svg">
+          <path d="M15 60 A45 45 0 0 1 105 60" fill="none" stroke="#e0e0e0" stroke-width="10" stroke-linecap="round"/>
+          <path d="M15 60 A45 45 0 0 1 105 60" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="${numValue * 1.41} 141.3" class="elite-gauge-arc"/>
+        </svg>
+        <div class="elite-gauge-value">${Math.round(numValue)}</div>
+      </div>
+      <div class="elite-gauge-label">${spec.label}</div>
+      ${rank ? `<div class="elite-gauge-rank">#${rank} of ${comparative.total}</div>` : ''}
+      ${gap ? `<div class="elite-gauge-gap" style="color: ${gap > 0 ? '#ea4335' : '#34a853'}">${gap > 0 ? '+' : ''}${gap.toFixed(1)} to leader</div>` : ''}
+    </div>
+  `;
+}
+
+function ELITE_renderMetricCard(spec, value, comparative) {
+  const displayValue = typeof value === 'number' ? value.toLocaleString() : value;
+  const trend = comparative ? comparative.trend : null;
+  
+  return `
+    <div class="elite-metric-card">
+      <div class="elite-metric-value">${displayValue}</div>
+      <div class="elite-metric-label">${spec.label}</div>
+      ${trend ? `
+        <div class="elite-metric-trend ${trend > 0 ? 'up' : 'down'}">
+          <span class="trend-icon">${trend > 0 ? '↑' : '↓'}</span>
+          <span class="trend-value">${Math.abs(trend)}%</span>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function ELITE_renderHighlightCard(spec, value, comparative) {
+  return `
+    <div class="elite-highlight-card">
+      <div class="elite-highlight-label">${spec.label}</div>
+      <div class="elite-highlight-value">${value || 'N/A'}</div>
+      ${comparative?.details ? `<div class="elite-highlight-details">${comparative.details}</div>` : ''}
+    </div>
+  `;
+}
+
+function ELITE_renderOpportunityCard(spec, value, comparative) {
+  const opportunities = Array.isArray(value) ? value : [value];
+  
+  return `
+    <div class="elite-opportunity-card">
+      <div class="elite-opportunity-label">${spec.label}</div>
+      <div class="elite-opportunity-count">${opportunities.length}</div>
+      <div class="elite-opportunity-list">
+        ${opportunities.slice(0, 3).map(opp => `<div class="opportunity-item">• ${opp}</div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function ELITE_renderGradeCard(spec, value, comparative) {
+  const gradeColors = { 'A+': '#1a73e8', 'A': '#1a73e8', 'A-': '#1a73e8', 
+                        'B+': '#34a853', 'B': '#34a853', 'B-': '#34a853',
+                        'C+': '#fbbc04', 'C': '#fbbc04', 'C-': '#fbbc04',
+                        'D+': '#ff9800', 'D': '#ff9800', 'D-': '#ff9800',
+                        'F': '#ea4335' };
+  const color = gradeColors[value] || '#666';
+  
+  return `
+    <div class="elite-grade-card" style="border-color: ${color}">
+      <div class="elite-grade-value" style="color: ${color}">${value || 'N/A'}</div>
+      <div class="elite-grade-label">${spec.label}</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHART RENDERING (integrates with Chart.js from UI_Charts_Competitor.html)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ELITE_renderChart(panel, spec, tabData, comparativeData) {
+  const canvasId = `elite-chart-${spec.id}`;
+  let canvas = panel.querySelector(`#${canvasId}`);
+  
+  // Create canvas if it doesn't exist
+  if (!canvas) {
+    const chartSection = panel.querySelector('.elite-charts-section') || 
+                         panel.querySelector('.chart-row') ||
+                         panel.querySelector('.comp-charts');
+    if (chartSection) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'elite-chart-wrapper';
+      wrapper.innerHTML = `
+        <div class="elite-chart-title">${spec.title}</div>
+        <canvas id="${canvasId}" width="400" height="250"></canvas>
+      `;
+      chartSection.appendChild(wrapper);
+      canvas = wrapper.querySelector(`#${canvasId}`);
+    } else {
+      return;
+    }
+  }
+  
+  // Destroy existing chart instance
+  if (window.eliteChartInstances[canvasId]) {
+    window.eliteChartInstances[canvasId].destroy();
+  }
+  
+  const chartData = ELITE_getDataValue(tabData, spec.data);
+  if (!chartData) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  switch (spec.type) {
+    case 'radar':
+      window.eliteChartInstances[canvasId] = ELITE_createRadarChart(ctx, chartData, spec);
+      break;
+    case 'horizontalBar':
+      window.eliteChartInstances[canvasId] = ELITE_createHorizontalBarChart(ctx, chartData, spec);
+      break;
+    case 'bar':
+      window.eliteChartInstances[canvasId] = ELITE_createBarChart(ctx, chartData, spec);
+      break;
+    case 'groupedBar':
+      window.eliteChartInstances[canvasId] = ELITE_createGroupedBarChart(ctx, chartData, spec);
+      break;
+    case 'pie':
+      window.eliteChartInstances[canvasId] = ELITE_createPieChart(ctx, chartData, spec);
+      break;
+    case 'doughnut':
+      window.eliteChartInstances[canvasId] = ELITE_createDoughnutChart(ctx, chartData, spec);
+      break;
+    case 'line':
+      window.eliteChartInstances[canvasId] = ELITE_createLineChart(ctx, chartData, spec);
+      break;
+    case 'bubble':
+      window.eliteChartInstances[canvasId] = ELITE_createBubbleChart(ctx, chartData, spec);
+      break;
+  }
+}
+
+function ELITE_createRadarChart(ctx, data, spec) {
+  const colors = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa', '#00bcd4'];
+  
+  return new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: data.labels || Object.keys(data.datasets?.[0]?.data || {}),
+      datasets: (data.datasets || [data]).map((ds, i) => ({
+        label: ds.label || `Dataset ${i + 1}`,
+        data: ds.data || Object.values(ds),
+        borderColor: colors[i % colors.length],
+        backgroundColor: colors[i % colors.length] + '20',
+        borderWidth: 2,
+        pointRadius: 3
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 25, font: { size: 10 } },
+          pointLabels: { font: { size: 11, weight: '600' } }
+        }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true } }
+      }
+    }
+  });
+}
+
+function ELITE_createHorizontalBarChart(ctx, data, spec) {
+  const sortedData = [...(data.items || data)].sort((a, b) => (b.value || b) - (a.value || a));
+  
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sortedData.map(item => item.label || item.domain || 'Unknown'),
+      datasets: [{
+        data: sortedData.map(item => item.value || item),
+        backgroundColor: sortedData.map((item, i) => 
+          i === 0 ? '#1a73e8' : (item.isYou ? '#34a853' : '#e3f2fd')
+        ),
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function ELITE_createBarChart(ctx, data, spec) {
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.labels || data.map(d => d.label),
+      datasets: [{
+        data: data.values || data.map(d => d.value),
+        backgroundColor: '#1a73e8',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function ELITE_createGroupedBarChart(ctx, data, spec) {
+  const colors = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335'];
+  
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: data.groups.map((group, i) => ({
+        label: group.label,
+        data: group.values,
+        backgroundColor: colors[i % colors.length],
+        borderRadius: 4
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+}
+
+function ELITE_createPieChart(ctx, data, spec) {
+  const colors = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa', '#00bcd4', '#ff9800', '#9c27b0'];
+  
+  return new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: data.labels || data.map(d => d.label),
+      datasets: [{
+        data: data.values || data.map(d => d.value),
+        backgroundColor: colors
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function ELITE_createDoughnutChart(ctx, data, spec) {
+  const colors = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'];
+  
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.labels || data.map(d => d.label),
+      datasets: [{
+        data: data.values || data.map(d => d.value),
+        backgroundColor: colors,
+        cutout: '60%'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right' }
+      }
+    }
+  });
+}
+
+function ELITE_createLineChart(ctx, data, spec) {
+  const colors = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335'];
+  
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels,
+      datasets: data.series.map((s, i) => ({
+        label: s.label,
+        data: s.values,
+        borderColor: colors[i % colors.length],
+        backgroundColor: colors[i % colors.length] + '20',
+        tension: 0.3,
+        fill: i === 0
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+}
+
+function ELITE_createBubbleChart(ctx, data, spec) {
+  const colors = ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'];
+  
+  return new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: data.items.map((item, i) => ({
+        label: item.label,
+        data: [{ x: item.x, y: item.y, r: Math.max(5, Math.min(30, item.r / 2)) }],
+        backgroundColor: colors[i % colors.length] + '80'
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      },
+      scales: {
+        x: { title: { display: true, text: spec.xLabel || 'Authority' } },
+        y: { title: { display: true, text: spec.yLabel || 'Traffic' } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPARISON TABLE RENDERING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ELITE_renderComparisonTable(panel, spec, tabData, comparativeData) {
+  const tableId = `elite-table-${spec.id}`;
+  let tableContainer = panel.querySelector(`#${tableId}`);
+  
+  if (!tableContainer) {
+    const tableSection = panel.querySelector('.elite-tables-section') || 
+                         panel.querySelector('.comp-tables') ||
+                         panel;
+    tableContainer = document.createElement('div');
+    tableContainer.id = tableId;
+    tableContainer.className = 'elite-table-wrapper';
+    tableSection.appendChild(tableContainer);
+  }
+  
+  const tableData = ELITE_getDataValue(tabData, spec.data);
+  if (!tableData || !tableData.length) return;
+  
+  const rows = tableData.map((row, i) => {
+    const isLeader = i === 0;
+    const isYou = row.isYou || row.domain === 'Your Site';
+    const rowClass = isLeader ? 'elite-row-leader' : (isYou ? 'elite-row-you' : '');
+    
+    return `
+      <tr class="${rowClass}">
+        <td><span class="elite-rank">${i + 1}</span></td>
+        ${spec.columns.map(col => {
+          const value = row[col.toLowerCase()] || row[col] || '-';
+          const formattedValue = ELITE_formatTableValue(value, col);
+          return `<td>${formattedValue}</td>`;
+        }).join('')}
+      </tr>
+    `;
+  }).join('');
+  
+  tableContainer.innerHTML = `
+    <table class="elite-comparison-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          ${spec.columns.map(col => `<th>${col}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
+function ELITE_formatTableValue(value, column) {
+  if (value === null || value === undefined || value === '-') return '-';
+  
+  // Format based on column type
+  if (typeof value === 'number') {
+    if (column.toLowerCase().includes('score') || column.toLowerCase().includes('rate')) {
+      return `<span class="elite-score ${ELITE_getScoreClass(value)}">${value}%</span>`;
+    }
+    if (column.toLowerCase().includes('traffic') || column.toLowerCase().includes('keywords')) {
+      return value.toLocaleString();
+    }
+    return value.toFixed(1);
+  }
+  
+  if (typeof value === 'boolean') {
+    return value ? '✅' : '❌';
+  }
+  
+  return value;
+}
+
+function ELITE_getScoreClass(value) {
+  if (value >= 90) return 'elite-score-excellent';
+  if (value >= 70) return 'elite-score-good';
+  if (value >= 50) return 'elite-score-average';
+  return 'elite-score-poor';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HEATMAP RENDERING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ELITE_renderHeatmap(panel, spec, tabData, comparativeData) {
+  const heatmapId = `elite-heatmap-${spec.id}`;
+  let heatmapContainer = panel.querySelector(`#${heatmapId}`);
+  
+  if (!heatmapContainer) {
+    const section = panel.querySelector('.elite-heatmaps-section') || panel;
+    heatmapContainer = document.createElement('div');
+    heatmapContainer.id = heatmapId;
+    heatmapContainer.className = 'elite-heatmap-wrapper';
+    section.appendChild(heatmapContainer);
+  }
+  
+  const matrixData = ELITE_getDataValue(tabData, spec.data);
+  if (!matrixData) return;
+  
+  const { rows, columns, values } = matrixData;
+  
+  const headerCells = columns.map(col => `<th>${col}</th>`).join('');
+  const dataRows = rows.map((row, i) => {
+    const cells = values[i].map(val => {
+      const color = ELITE_getHeatmapColor(val);
+      return `<td style="background-color: ${color}; color: ${val > 50 ? '#fff' : '#333'}">${val}</td>`;
+    }).join('');
+    return `<tr><th>${row}</th>${cells}</tr>`;
+  }).join('');
+  
+  heatmapContainer.innerHTML = `
+    <div class="elite-heatmap-title">${spec.title}</div>
+    <table class="elite-heatmap-table">
+      <thead><tr><th></th>${headerCells}</tr></thead>
+      <tbody>${dataRows}</tbody>
+    </table>
+  `;
+}
+
+function ELITE_getHeatmapColor(value) {
+  // Green to Red gradient based on value (0-100)
+  const normalized = Math.max(0, Math.min(100, value)) / 100;
+  const r = Math.round(255 * (1 - normalized));
+  const g = Math.round(255 * normalized);
+  const b = 0;
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GEMINI INSIGHTS RENDERING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ELITE_renderGeminiInsights(tabId, insights) {
+  const panel = document.querySelector(`[data-comp-panel="${tabId}"]`) || 
+                document.getElementById(`panel-${tabId}`);
+  
+  if (!panel) return;
+  
+  // Find or create insights container
+  let insightsContainer = panel.querySelector('.elite-gemini-insights');
+  if (!insightsContainer) {
+    insightsContainer = document.createElement('div');
+    insightsContainer.className = 'elite-gemini-insights';
+    panel.appendChild(insightsContainer);
+  }
+  
+  // Render different insight types
+  let html = '<div class="elite-insights-header">🧠 AI Strategic Analysis</div>';
+  
+  if (insights.executiveSummary) {
+    html += `
+      <div class="elite-insight-section">
+        <div class="elite-insight-title">Executive Summary</div>
+        <div class="elite-insight-content">${insights.executiveSummary}</div>
+      </div>
+    `;
+  }
+  
+  if (insights.rankings && insights.rankings.length > 0) {
+    html += `
+      <div class="elite-insight-section">
+        <div class="elite-insight-title">Competitive Rankings</div>
+        <div class="elite-rankings-list">
+          ${insights.rankings.map((item, i) => `
+            <div class="elite-ranking-item ${item.isYou ? 'elite-ranking-you' : ''}">
+              <span class="elite-ranking-position">#${i + 1}</span>
+              <span class="elite-ranking-name">${item.domain}</span>
+              <span class="elite-ranking-score">${item.score}%</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  if (insights.opportunities && insights.opportunities.length > 0) {
+    html += `
+      <div class="elite-insight-section">
+        <div class="elite-insight-title">🎯 Top Opportunities</div>
+        <div class="elite-opportunities-list">
+          ${insights.opportunities.slice(0, 5).map(opp => `
+            <div class="elite-opportunity-item">
+              <div class="elite-opp-title">${opp.title}</div>
+              <div class="elite-opp-impact">Impact: <span class="impact-${opp.impact}">${opp.impact}</span></div>
+              <div class="elite-opp-action">${opp.action}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  if (insights.threats && insights.threats.length > 0) {
+    html += `
+      <div class="elite-insight-section">
+        <div class="elite-insight-title">⚠️ Key Threats</div>
+        <div class="elite-threats-list">
+          ${insights.threats.slice(0, 3).map(threat => `
+            <div class="elite-threat-item">
+              <span class="elite-threat-source">${threat.source}</span>
+              <span class="elite-threat-desc">${threat.description}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  if (insights.recommendations && insights.recommendations.length > 0) {
+    html += `
+      <div class="elite-insight-section">
+        <div class="elite-insight-title">💡 Strategic Recommendations</div>
+        <div class="elite-recs-list">
+          ${insights.recommendations.slice(0, 5).map((rec, i) => `
+            <div class="elite-rec-item">
+              <span class="elite-rec-number">${i + 1}</span>
+              <span class="elite-rec-text">${rec}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  insightsContainer.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function ELITE_getDataValue(data, path) {
+  if (!data || !path) return null;
+  
+  const parts = path.split('.');
+  let value = data;
+  
+  for (const part of parts) {
+    if (value === null || value === undefined) return null;
+    value = value[part];
+  }
+  
+  return value;
+}
+
+function ELITE_getComparativeInfo(comparativeData, metric) {
+  if (!comparativeData || !comparativeData[metric]) return null;
+  return comparativeData[metric];
+}
+
+function ELITE_getColorForValue(value, thresholds) {
+  thresholds = thresholds || [50, 75];
+  if (value >= thresholds[1]) return '#34a853'; // Green
+  if (value >= thresholds[0]) return '#fbbc04'; // Yellow
+  return '#ea4335'; // Red
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTEGRATION: Bridge to existing renderCompetitorIntelligence
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Enhanced render function that uses ELITE data when available
+ * This function is called from UI_Scripts_App.html after competitor analysis
+ */
+function ELITE_enhanceRenderCompetitorIntelligence(data) {
+  console.log('🎨 ELITE ENHANCEMENT: Checking for pre-processed visualization data...');
+  
+  // Check if ELITE data is available
+  if (data.eliteVisualization) {
+    console.log('✅ ELITE visualization data found! Rendering enhanced visualizations...');
+    ELITE_renderAllVisualizations(data.eliteVisualization);
+  }
+  
+  // Also render standard charts for backwards compatibility
+  if (typeof renderAllCompetitorCharts === 'function') {
+    console.log('📊 Also rendering standard competitor charts...');
+    renderAllCompetitorCharts(data);
+  }
+}
+
+// Export function for global access
+window.ELITE_renderAllVisualizations = ELITE_renderAllVisualizations;
+window.ELITE_enhanceRenderCompetitorIntelligence = ELITE_enhanceRenderCompetitorIntelligence;
+window.ELITE_renderTabVisualization = ELITE_renderTabVisualization;
+window.ELITE_renderGeminiInsights = ELITE_renderGeminiInsights;
+window.ELITE_getVisualizationSpecs = ELITE_getVisualizationSpecs;
+window.ELITE_renderKPICard = ELITE_renderKPICard;
+window.ELITE_renderGaugeCard = ELITE_renderGaugeCard;
+window.ELITE_renderMetricCard = ELITE_renderMetricCard;
+window.ELITE_renderHighlightCard = ELITE_renderHighlightCard;
+window.ELITE_renderOpportunityCard = ELITE_renderOpportunityCard;
+window.ELITE_renderGradeCard = ELITE_renderGradeCard;
+window.ELITE_renderChart = ELITE_renderChart;
+window.ELITE_createRadarChart = ELITE_createRadarChart;
+window.ELITE_createHorizontalBarChart = ELITE_createHorizontalBarChart;
+window.ELITE_createBarChart = ELITE_createBarChart;
+window.ELITE_createGroupedBarChart = ELITE_createGroupedBarChart;
+window.ELITE_createPieChart = ELITE_createPieChart;
+window.ELITE_createDoughnutChart = ELITE_createDoughnutChart;
+window.ELITE_createLineChart = ELITE_createLineChart;
+window.ELITE_createBubbleChart = ELITE_createBubbleChart;
+window.ELITE_renderComparisonTable = ELITE_renderComparisonTable;
+window.ELITE_renderHeatmap = ELITE_renderHeatmap;
+window.ELITE_formatTableValue = ELITE_formatTableValue;
+window.ELITE_getScoreClass = ELITE_getScoreClass;
+
+console.log('✅ ELITE UI Renderer loaded successfully');
+</script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ELITE VISUALIZATION STYLES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* KPI Cards */
+.elite-kpi-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  text-align: center;
+  min-width: 140px;
+}
+
+.elite-gauge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.elite-gauge-container {
+  position: relative;
+  width: 100px;
+  height: 60px;
+}
+
+.elite-gauge-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.elite-gauge-arc {
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.elite-gauge-value {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+}
+
+.elite-gauge-label {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+}
+
+.elite-gauge-rank {
+  font-size: 11px;
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.elite-gauge-gap {
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.elite-metric-card {
+  text-align: center;
+}
+
+.elite-metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a73e8;
+}
+
+.elite-metric-label {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.elite-metric-trend {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.elite-metric-trend.up {
+  color: #34a853;
+}
+
+.elite-metric-trend.down {
+  color: #ea4335;
+}
+
+.elite-highlight-card {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border-left: 4px solid #1a73e8;
+}
+
+.elite-highlight-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a73e8;
+}
+
+.elite-opportunity-card {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-left: 4px solid #34a853;
+}
+
+.elite-opportunity-count {
+  font-size: 32px;
+  font-weight: 700;
+  color: #34a853;
+}
+
+.elite-grade-card {
+  border: 3px solid;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.elite-grade-value {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+/* Chart Wrappers */
+.elite-chart-wrapper {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 16px;
+}
+
+.elite-chart-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+/* Tables */
+.elite-table-wrapper {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.elite-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.elite-comparison-table th,
+.elite-comparison-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.elite-comparison-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+}
+
+.elite-row-leader {
+  background: linear-gradient(90deg, #fff8e1 0%, white 100%);
+}
+
+.elite-row-leader td:first-child::before {
+  content: '🥇 ';
+}
+
+.elite-row-you {
+  background: linear-gradient(90deg, #e8f5e9 0%, white 100%);
+}
+
+.elite-rank {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background: #e3f2fd;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.elite-score {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.elite-score-excellent { background: #e8f5e9; color: #2e7d32; }
+.elite-score-good { background: #e3f2fd; color: #1565c0; }
+.elite-score-average { background: #fff8e1; color: #f57f17; }
+.elite-score-poor { background: #ffebee; color: #c62828; }
+
+/* Heatmaps */
+.elite-heatmap-wrapper {
+  margin-top: 16px;
+}
+
+.elite-heatmap-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.elite-heatmap-table {
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.elite-heatmap-table th,
+.elite-heatmap-table td {
+  padding: 6px 10px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+}
+
+/* Gemini Insights */
+.elite-gemini-insights {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.elite-insights-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: #7b1fa2;
+  margin-bottom: 16px;
+}
+
+.elite-insight-section {
+  background: white;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.elite-insight-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.elite-insight-content {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+}
+
+.elite-rankings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.elite-ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.elite-ranking-you {
+  background: #e8f5e9;
+  border: 1px solid #4caf50;
+}
+
+.elite-ranking-position {
+  font-weight: 700;
+  color: #1a73e8;
+  width: 30px;
+}
+
+.elite-ranking-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.elite-ranking-score {
+  font-weight: 600;
+  color: #333;
+}
+
+.elite-opportunities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.elite-opportunity-item {
+  padding: 10px;
+  background: #e8f5e9;
+  border-radius: 6px;
+  border-left: 3px solid #4caf50;
+}
+
+.elite-opp-title {
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.elite-opp-impact {
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.impact-high { color: #d32f2f; font-weight: 700; }
+.impact-medium { color: #f57c00; font-weight: 600; }
+.impact-low { color: #388e3c; }
+
+.elite-opp-action {
+  font-size: 12px;
+  color: #555;
+  margin-top: 4px;
+}
+
+.elite-threats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.elite-threat-item {
+  padding: 8px;
+  background: #ffebee;
+  border-radius: 6px;
+  border-left: 3px solid #f44336;
+  display: flex;
+  gap: 10px;
+}
+
+.elite-threat-source {
+  font-weight: 600;
+  color: #c62828;
+}
+
+.elite-recs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.elite-rec-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #e3f2fd;
+  border-radius: 6px;
+}
+
+.elite-rec-number {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background: #1a73e8;
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.elite-rec-text {
+  flex: 1;
+  font-size: 13px;
+  color: #333;
+}
+
+/* Dark Theme Support */
+[data-theme="dark"] .elite-kpi-card,
+[data-theme="dark"] .elite-chart-wrapper,
+[data-theme="dark"] .elite-insight-section {
+  background: #1e1e1e;
+}
+
+[data-theme="dark"] .elite-comparison-table th {
+  background: #2d2d2d;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .elite-comparison-table td {
+  color: #e0e0e0;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .elite-gemini-insights {
+  background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+}
+
+[data-theme="dark"] .elite-insights-header {
+  color: #ce93d8;
+}
+</style>

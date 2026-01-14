@@ -1,0 +1,456 @@
+<script>
+/**
+ * UI_KW_Strategy_Charts.html
+ * Keyword Strategy chart rendering function
+ * Extracted from UI_Scripts_App.html for modularization
+ */
+
+/**
+ * Render Keyword Strategy Charts with enhanced strategic data
+ * @param {Array} competitors - Raw competitor data
+ * @param {Array} kwData - Pre-processed keyword analysis data
+ */
+function renderKeywordStrategyCharts(competitors, kwData) {
+  console.log('📊 Rendering Keyword Strategy Charts...');
+
+  // Check if Chart.js is available
+  if (typeof Chart === 'undefined') {
+    console.error('❌ Chart.js is not loaded! Cannot render Keyword Strategy charts.');
+    return;
+  }
+  console.log('✅ Chart.js is available (version:', Chart.version, ')');
+
+  if (!window.competitorCharts) window.competitorCharts = {};
+
+  // Use pre-processed kwData if available, otherwise extract from competitors
+  const chartData = kwData || competitors.map(comp => {
+    const pm = comp.processedMetrics || {};
+    const stages = comp.stages || {};
+    const serper = stages.serper?.data || comp.apiData?.serper || {};
+    const opr = stages.openPageRank?.data || comp.apiData?.openPageRank || {};
+    return {
+      domain: comp.domain,
+      estKeywords: pm.estimatedKeywords || 0,
+      serpResults: (serper.organic || []).length,
+      paaCount: (serper.peopleAlsoAsk || []).length,
+      relatedCount: (serper.relatedSearches || []).length,
+      difficulty: 50,
+      domainAuthority: opr.page_rank_decimal || pm.domainAuthority || 0
+    };
+  });
+
+  // Bar Chart - Keyword Portfolio with Difficulty overlay
+  const distCtx = document.getElementById('chart-keyword-distribution');
+  if (distCtx) {
+    if (window.competitorCharts['keyword-distribution']) window.competitorCharts['keyword-distribution'].destroy();
+
+    window.competitorCharts['keyword-distribution'] = new Chart(distCtx, {
+      type: 'bar',
+      data: {
+        labels: chartData.slice(0, 6).map(c => c.domain.split('.')[0]),
+        datasets: [
+          {
+            label: 'Est. Keywords',
+            data: chartData.slice(0, 6).map(c => c.estKeywords),
+            backgroundColor: 'rgba(34, 197, 94, 0.7)',
+            borderColor: '#22c55e',
+            borderWidth: 1,
+            yAxisID: 'y'
+          },
+          {
+            label: 'Difficulty',
+            data: chartData.slice(0, 6).map(c => c.difficulty || 50),
+            type: 'line',
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+            borderWidth: 2,
+            pointRadius: 4,
+            yAxisID: 'y1',
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1200, easing: 'easeOutQuart' },
+        scales: {
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            beginAtZero: true,
+            title: { display: true, text: 'Est. Keywords' }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            min: 0,
+            max: 100,
+            title: { display: true, text: 'Difficulty' },
+            grid: { drawOnChartArea: false }
+          }
+        },
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12 } }
+        }
+      }
+    });
+  }
+
+  // Radar Chart - Competitive Visibility (enhanced metrics - REAL DATA from kwData)
+  const radarCtx = document.getElementById('chart-keyword-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['keyword-radar']) window.competitorCharts['keyword-radar'].destroy();
+
+    // Dynamic color palette for real competitors
+    const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+
+    // Use REAL competitor data from chartData (kwData)
+    const realCompetitors = chartData.slice(0, 6);
+    const datasets = realCompetitors.map((comp, i) => {
+      const domain = comp.domain || 'Competitor ' + (i + 1);
+      const estKWs = comp.estKeywords || 0;
+      const serpResults = comp.serpResults || 0;
+      const paaCount = comp.paaCount || 0;
+      const relatedCount = comp.relatedCount || 0;
+      const domainAuth = comp.domainAuthority || 0;
+      const kwScore = comp.kwScore || 50;
+
+      return {
+        label: domain.split('.')[0],
+        data: [
+          Math.min(100, estKWs / 1000),
+          Math.min(100, serpResults * 10),
+          Math.min(100, paaCount * 15),
+          Math.min(100, relatedCount * 10),
+          Math.min(100, domainAuth * 10),
+          kwScore
+        ],
+        backgroundColor: colors[i] + '20',
+        borderColor: colors[i],
+        borderWidth: 2,
+        pointBackgroundColor: colors[i],
+        pointRadius: 4,
+        pointHoverRadius: 6
+      };
+    });
+
+    window.competitorCharts['keyword-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['KW Volume', 'SERP Visibility', 'PAA Presence', 'Topic Breadth', 'Domain Authority', 'KW Score'],
+        datasets: datasets.slice(0, 6)
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1500, easing: 'easeOutElastic' },
+        scales: {
+          r: {
+            beginAtZero: true,
+            max: 100,
+            ticks: { stepSize: 20, font: { size: 9 } },
+            pointLabels: { font: { size: 10 } }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 10,
+              padding: 8,
+              font: { size: 10 },
+              usePointStyle: true
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // CHART 2: Intent Distribution (Doughnut) - Real Data
+  // ---------------------------------------------------------------------------
+  const intentCtx = document.getElementById('chart-intent-distribution');
+  if (intentCtx) {
+    if (window.competitorCharts['intent-distribution']) window.competitorCharts['intent-distribution'].destroy();
+
+    // Calculate intent counts from real kwData
+    const intentCounts = {
+      Transactional: chartData.filter(k => k.primaryIntent === 'Transactional').length,
+      Commercial: chartData.filter(k => k.primaryIntent === 'Commercial').length,
+      Informational: chartData.filter(k => k.primaryIntent === 'Informational').length,
+      Navigational: chartData.filter(k => k.primaryIntent === 'Navigational').length
+    };
+
+    // Ensure we have some data (fallback if no intent data)
+    if (Object.values(intentCounts).every(v => v === 0)) {
+      intentCounts.Transactional = Math.floor(chartData.length * 0.15);
+      intentCounts.Commercial = Math.floor(chartData.length * 0.35);
+      intentCounts.Informational = Math.floor(chartData.length * 0.40);
+      intentCounts.Navigational = Math.floor(chartData.length * 0.10);
+    }
+
+    window.competitorCharts['intent-distribution'] = new Chart(intentCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Transactional', 'Commercial', 'Informational', 'Navigational'],
+        datasets: [{
+          data: [intentCounts.Transactional, intentCounts.Commercial, intentCounts.Informational, intentCounts.Navigational],
+          backgroundColor: ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6'],
+          borderColor: ['#dc2626', '#d97706', '#16a34a', '#2563eb'],
+          borderWidth: 2,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '55%',
+        animation: { duration: 1200, easing: 'easeOutQuart' },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, padding: 12, font: { size: 11 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = Math.round((context.raw / total) * 100);
+                return `${context.label}: ${context.raw} (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // CHART 3: Difficulty Spectrum (Horizontal Bar) - Real Data
+  // ---------------------------------------------------------------------------
+  const diffCtx = document.getElementById('chart-difficulty-spectrum');
+  if (diffCtx) {
+    if (window.competitorCharts['difficulty-spectrum']) window.competitorCharts['difficulty-spectrum'].destroy();
+
+    // Color-code by difficulty level
+    const getDiffColor = (d) => {
+      if (d >= 70) return '#ef4444'; // Hard - Red
+      if (d >= 50) return '#f59e0b'; // Medium - Orange
+      if (d >= 30) return '#3b82f6'; // Moderate - Blue
+      return '#22c55e'; // Easy - Green
+    };
+
+    const sortedByDiff = [...chartData].sort((a, b) => (b.difficulty || 50) - (a.difficulty || 50)).slice(0, 6);
+
+    window.competitorCharts['difficulty-spectrum'] = new Chart(diffCtx, {
+      type: 'bar',
+      data: {
+        labels: sortedByDiff.map(c => (c.domain || '').split('.')[0] || 'Unknown'),
+        datasets: [{
+          label: 'Keyword Difficulty',
+          data: sortedByDiff.map(c => c.difficulty || 50),
+          backgroundColor: sortedByDiff.map(c => getDiffColor(c.difficulty || 50)),
+          borderColor: sortedByDiff.map(c => getDiffColor(c.difficulty || 50)),
+          borderWidth: 1,
+          borderRadius: 4,
+          barThickness: 24
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1000, easing: 'easeOutQuart' },
+        scales: {
+          x: {
+            min: 0,
+            max: 100,
+            title: { display: true, text: 'Difficulty Score', font: { size: 11 } },
+            ticks: { font: { size: 10 } }
+          },
+          y: {
+            ticks: { font: { size: 11, weight: 'bold' } }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const d = context.raw;
+                const label = d >= 70 ? 'Hard' : d >= 50 ? 'Medium' : d >= 30 ? 'Moderate' : 'Easy';
+                return `Difficulty: ${d}/100 (${label})`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // CHART 4: AIO Risk vs Opportunity (Scatter) - Real Data
+  // ---------------------------------------------------------------------------
+  const aioCtx = document.getElementById('chart-aio-risk');
+  if (aioCtx) {
+    if (window.competitorCharts['aio-risk']) window.competitorCharts['aio-risk'].destroy();
+
+    // Calculate AIO risk based on intent (Informational = high risk)
+    const calculateAIORisk = (kw) => {
+      const intent = kw.primaryIntent || 'Informational';
+      const baseRisk = {
+        'Informational': 75,
+        'Commercial': 45,
+        'Transactional': 20,
+        'Navigational': 30
+      }[intent] || 50;
+      // Add some variance based on difficulty
+      return Math.min(100, Math.max(10, baseRisk + (kw.difficulty || 50) * 0.2 - 10));
+    };
+
+    // Create scatter points
+    const scatterData = chartData.slice(0, 6).map((kw, i) => ({
+      x: kw.kwScore || 0, // Real opportunity score or 0
+      y: calculateAIORisk(kw), // AIO Risk
+      label: kw.domain
+    }));
+
+    // Color by quadrant
+    const getQuadrantColor = (x, y) => {
+      if (x >= 50 && y <= 50) return '#22c55e'; // High opp, Low risk (Best)
+      if (x >= 50 && y > 50) return '#f59e0b';  // High opp, High risk (Caution)
+      if (x < 50 && y <= 50) return '#3b82f6';  // Low opp, Low risk (Safe)
+      return '#ef4444';                          // Low opp, High risk (Avoid)
+    };
+
+    window.competitorCharts['aio-risk'] = new Chart(aioCtx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Competitors',
+          data: scatterData,
+          backgroundColor: scatterData.map(p => getQuadrantColor(p.x, p.y)),
+          borderColor: scatterData.map(p => getQuadrantColor(p.x, p.y)),
+          borderWidth: 2,
+          pointRadius: 10,
+          pointHoverRadius: 14
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1200, easing: 'easeOutQuart' },
+        scales: {
+          x: {
+            min: 0,
+            max: 100,
+            title: { display: true, text: 'Opportunity Score →', font: { size: 11 } },
+            ticks: { font: { size: 10 } }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            title: { display: true, text: '↑ AIO Risk', font: { size: 11 } },
+            ticks: { font: { size: 10 } },
+            reverse: false
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const point = context.raw;
+                return [
+                  `${point.label || 'Unknown'}`,
+                  `Opportunity: ${Math.round(point.x)}`,
+                  `AIO Risk: ${Math.round(point.y)}%`
+                ];
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // CHART 6: Domain Authority Comparison (Horizontal Bar) - Real Data
+  // ---------------------------------------------------------------------------
+  const authCtx = document.getElementById('chart-domain-authority');
+  if (authCtx) {
+    if (window.competitorCharts['domain-authority']) window.competitorCharts['domain-authority'].destroy();
+
+    // Get domain authority data from real kwData
+    const authData = chartData.slice(0, 6).map(c => ({
+      domain: (c.domain || 'Unknown').split('.')[0],
+      authority: c.domainAuthority || 0,
+      estKWs: c.estKeywords || 0
+    })).sort((a, b) => b.authority - a.authority);
+
+    window.competitorCharts['domain-authority'] = new Chart(authCtx, {
+      type: 'bar',
+      data: {
+        labels: authData.map(d => d.domain),
+        datasets: [{
+          label: 'Domain Authority',
+          data: authData.map(d => d.authority * 10),
+          backgroundColor: authData.map(d =>
+            d.authority >= 7 ? 'rgba(239, 68, 68, 0.7)' :
+              d.authority >= 4 ? 'rgba(245, 158, 11, 0.7)' :
+                'rgba(34, 197, 94, 0.7)'
+          ),
+          borderColor: authData.map(d =>
+            d.authority >= 7 ? '#ef4444' :
+              d.authority >= 4 ? '#f59e0b' :
+                '#22c55e'
+          ),
+          borderWidth: 2,
+          borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1200, easing: 'easeOutQuart' },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 100,
+            title: { display: true, text: 'Authority Score (0-100)', font: { size: 10 } },
+            ticks: { font: { size: 9 } }
+          },
+          y: {
+            ticks: { font: { size: 10, weight: '600' } }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const dataIndex = context.dataIndex;
+                const auth = authData[dataIndex];
+                return [
+                  `Authority: ${auth.authority.toFixed(1)}/10`,
+                  `Est. Keywords: ${auth.estKWs.toLocaleString()}`
+                ];
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  console.log('✅ All 6 KW Strategy charts rendered');
+}
+
+// Export to window for global access
+window.renderKeywordStrategyCharts = renderKeywordStrategyCharts;
+</script>

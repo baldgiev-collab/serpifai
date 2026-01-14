@@ -1,0 +1,263 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Tab_Insights.html - Tab-Specific Insights Builder & Injector                -->
+<!-- Builds rich HTML for tab insights and injects to all tabs                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Build rich HTML for tab insights
+   * @param {Object} category - Gemini category object
+   * @param {string} tabName - Tab identifier for styling
+   * @returns {string} - Complete HTML string
+   */
+  function buildTabInsightsHTML(category, tabName) {
+    // Define colors per tab type
+    const tabColors = {
+      'content': { gradient: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', accent: '#3b82f6', text: '#1e40af', icon: '📝' },
+      'technical': { gradient: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', accent: '#f59e0b', text: '#92400e', icon: '⚙️' },
+      'keywords': { gradient: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', accent: '#22c55e', text: '#166534', icon: '🔑' },
+      'market': { gradient: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', accent: '#6366f1', text: '#3730a3', icon: '📊' },
+      'brand': { gradient: 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)', accent: '#ec4899', text: '#9d174d', icon: '🎨' },
+      'systems': { gradient: 'linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%)', accent: '#06b6d4', text: '#155e75', icon: '🔧' },
+      'conversion': { gradient: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', accent: '#ef4444', text: '#991b1b', icon: '🎯' },
+      'distribution': { gradient: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)', accent: '#a855f7', text: '#6b21a8', icon: '📡' },
+      'audience': { gradient: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', accent: '#f59e0b', text: '#92400e', icon: '👥' },
+      'geo': { gradient: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', accent: '#10b981', text: '#065f46', icon: '🌍' },
+      'authority': { gradient: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', accent: '#f59e0b', text: '#92400e', icon: '👑' },
+      'performance': { gradient: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', accent: '#3b82f6', text: '#1e40af', icon: '⚡' },
+      'gaps': { gradient: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', accent: '#ef4444', text: '#991b1b', icon: '🔍' },
+      'opportunity': { gradient: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', accent: '#6366f1', text: '#3730a3', icon: '💎' },
+      'scoring': { gradient: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', accent: '#22c55e', text: '#166534', icon: '🏆' }
+    };
+
+    const colors = tabColors[tabName] || tabColors['content'];
+    const analysis = category.analysis || category.summary || '';
+    const insights = category.insights || category.keyFindings || [];
+    const recommendations = category.recommendations || category.actionableRecommendations || [];
+    const metrics = category.metrics || category.estimatedMetrics || {};
+
+    let html = `
+          <div style="background: ${colors.gradient}; padding: 28px; border-radius: 16px; border-left: 5px solid ${colors.accent}; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700; color: ${colors.text}; display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 24px;">${colors.icon}</span>
+              ${category.name || 'Strategic Analysis'}
+              <span style="background: linear-gradient(135deg, ${colors.accent}, ${colors.text}); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; margin-left: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Gemini Deep Research</span>
+            </h4>
+        `;
+
+    // Analysis paragraph
+    if (analysis) {
+      html += `
+            <div style="background: rgba(255,255,255,0.8); padding: 18px; border-radius: 12px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.5);">
+              <p style="margin: 0; font-size: 14.5px; line-height: 1.8; color: #1e293b; font-weight: 450;">${analysis}</p>
+            </div>
+          `;
+    }
+
+    // Key Insights
+    if (insights.length > 0) {
+      html += `
+            <div style="margin-bottom: 16px;">
+              <h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; color: ${colors.text}; text-transform: uppercase; letter-spacing: 0.05em;">💡 Top Strategic Findings</h5>
+              <div style="display: grid; gap: 10px;">
+          `;
+      insights.forEach((insight, idx) => {
+        const insightText = typeof insight === 'string' ? insight : insight.text || insight.insight || JSON.stringify(insight);
+        html += `
+              <div style="background: rgba(255,255,255,0.7); padding: 14px 16px; border-radius: 12px; display: flex; gap: 14px; align-items: flex-start; border: 1px solid rgba(255,255,255,0.3);">
+                <span style="background: ${colors.accent}; color: white; min-width: 24px; height: 24px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;">${idx + 1}</span>
+                <span style="color: #334155; font-size: 13.5px; line-height: 1.6;">${insightText}</span>
+              </div>
+            `;
+      });
+      html += `</div></div>`;
+    }
+
+    // Recommendations
+    if (recommendations.length > 0) {
+      html += `
+            <div style="background: rgba(255,255,255,0.4); padding: 20px; border-radius: 16px; margin-bottom: 16px; border: 1px dashed ${colors.accent}40;">
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700; color: ${colors.text}; text-transform: uppercase; letter-spacing: 0.05em;">🎯 Actionable Kill Moves</h5>
+              <div style="display: grid; gap: 12px;">
+          `;
+      recommendations.forEach((rec, idx) => {
+        let recText, priority, timeline;
+        if (typeof rec === 'string') {
+          recText = rec;
+          priority = idx < 2 ? 'HIGH' : idx < 4 ? 'MEDIUM' : 'NORMAL';
+          timeline = idx < 2 ? 'IMMEDIATE' : idx < 4 ? 'Q1' : 'Q2';
+        } else {
+          recText = rec.action || rec.recommendation || rec.text || JSON.stringify(rec);
+          priority = rec.priority || 'MEDIUM';
+          timeline = rec.timeline || 'TBD';
+        }
+
+        const priorityColors = {
+          'CRITICAL': '#e11d48',
+          'HIGH': '#ea580c',
+          'MEDIUM': '#ca8a04',
+          'LOW': '#16a34a',
+          'NORMAL': '#64748b'
+        };
+        const pColor = priorityColors[priority.toUpperCase()] || priorityColors['MEDIUM'];
+
+        html += `
+              <div style="background: white; padding: 14px 16px; border-radius: 12px; border-left: 4px solid ${pColor}; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                  <span style="color: #1e293b; font-size: 13.5px; line-height: 1.6; flex: 1; font-weight: 500;">${recText}</span>
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;">
+                    <span style="background: ${pColor}15; color: ${pColor}; padding: 2px 10px; border-radius: 6px; font-size: 10px; font-weight: 800;">${priority}</span>
+                    <span style="background: #eff6ff; color: #3b82f6; padding: 2px 10px; border-radius: 6px; font-size: 10px; font-weight: 600;">${timeline}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+      });
+      html += `</div></div>`;
+    }
+
+    // Key Metrics
+    if (metrics && Object.keys(metrics).length > 0) {
+      html += `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
+          `;
+      Object.entries(metrics).slice(0, 6).forEach(([key, value]) => {
+        const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+        html += `
+              <div style="background: rgba(255,255,255,0.9); padding: 16px 12px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="font-size: 9px; color: #64748b; margin-bottom: 6px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.025em;">${displayKey}</div>
+                <div style="font-size: 19px; font-weight: 800; color: ${colors.text}; letter-spacing: -0.025em;">${value}</div>
+              </div>
+            `;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+
+    return html;
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * INJECT GEMINI INSIGHTS INTO ALL TABS
+   * ═══════════════════════════════════════════════════════════════════════════
+   * This function iterates through all 15 competitor analysis tabs and injects
+   * Gemini deep research insights + Forensic Proof into each one.
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  function injectGeminiInsightsToAllTabs(data) {
+    console.log('🤖 Injecting Gemini Deep Research Insights + Forensic Proof into ALL tabs...');
+
+    // Map of tab panel IDs to their Gemini insight tab names
+    const tabMappings = {
+      'market': 'market',
+      'brand': 'brand',
+      'technical': 'technical',
+      'content': 'content',
+      'keywords': 'keywords',
+      'systems': 'systems',
+      'conversion': 'conversion',
+      'distribution': 'distribution',
+      'audience': 'audience',
+      'geo': 'geo',
+      'authority': 'authority',
+      'performance': 'performance',
+      'opportunity': 'opportunity',
+      'scoring': 'scoring'
+    };
+
+    // Forensic Data Key Mapping
+    const forensicKeyMap = {
+      'distribution': 'distributionVisibility',
+      'content': 'contentStrategy',
+      'systems': 'contentOperations',
+      'conversion': 'conversionMonetization',
+      'audience': 'audienceIntelligence',
+      'keywords': 'keywordsDetailed',
+      'geo': 'geoAeoIntelligence',
+      'opportunity': 'strategicOpportunities'
+    };
+
+    let injectedCount = 0;
+
+    Object.entries(tabMappings).forEach(([panelId, tabName]) => {
+      try {
+        const panel = document.querySelector(`[data-comp-panel="${panelId}"]`);
+        if (!panel) return;
+
+        // 1. Get Gemini insights for this tab
+        const insightsHtml = window.getGeminiInsightsForTab ? window.getGeminiInsightsForTab(data, tabName) : '';
+
+        // 2. Prepare Forensic Deep Dive for this specific tab
+        let forensicHtml = '';
+        const forensicKey = forensicKeyMap[panelId];
+        if (forensicKey && window.renderDeepDiveForensics) {
+          const forensicSource = data.eliteTabIntelligence || data.analysis || {};
+          const forensicDataSubset = {};
+          if (forensicKey === 'keywordsDetailed') {
+            forensicDataSubset.keywordsDetailed = forensicSource.keywordsDetailed ||
+              data.competitors?.[0]?.deepDive?.keywordsDetailed ||
+              data.competitors?.[0]?.keywordsDetailed;
+          } else {
+            forensicDataSubset[forensicKey] = forensicSource[forensicKey];
+          }
+
+          forensicHtml = window.renderDeepDiveForensics(forensicDataSubset);
+        }
+
+        // Skip if both are empty
+        if (!insightsHtml && !forensicHtml) {
+          console.log(`   ⏭️ No extra insights for: ${tabName}`);
+          return;
+        }
+
+        // Find or create the insights container
+        let insightsContainer = panel.querySelector('.gemini-insights-container');
+        if (!insightsContainer) {
+          insightsContainer = document.createElement('div');
+          insightsContainer.className = 'gemini-insights-container';
+          insightsContainer.style.cssText = 'margin-top: 32px; border-top: 2px solid rgba(139, 92, 246, 0.1); padding-top: 32px;';
+          panel.appendChild(insightsContainer);
+        }
+
+        // BUILD COMBINED CONTENT
+        let combinedHtml = '';
+
+        if (insightsHtml) {
+          combinedHtml += `
+                  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                    <span style="font-size: 24px;">🤖</span>
+                    <span style="font-size: 16px; font-weight: 700; color: #6d28d9; letter-spacing: -0.01em;">Gemini Strategic Deep Research</span>
+                    <span style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; padding: 3px 12px; border-radius: 20px; font-size: 10px; font-weight: 700; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);">ELITE ENGINE</span>
+                  </div>
+                  ${insightsHtml}
+                `;
+        }
+
+        if (forensicHtml) {
+          if (combinedHtml) combinedHtml += `<div style="height: 48px;"></div>`; // Spacer
+          combinedHtml += forensicHtml;
+        }
+
+        insightsContainer.innerHTML = combinedHtml;
+        injectedCount++;
+        console.log(`   ✅ Injected Gemini + Forensics into: ${tabName}`);
+
+      } catch (error) {
+        console.error(`   ❌ Error injecting into ${panelId}:`, error);
+      }
+    });
+
+    console.log(`✅ Gemini insights + Forensics injected into ${injectedCount}/14 tabs`);
+    return injectedCount;
+  }
+
+  // Export functions globally
+  window.buildTabInsightsHTML = buildTabInsightsHTML;
+  window.injectGeminiInsightsToAllTabs = injectGeminiInsightsToAllTabs;
+
+})();
+</script>

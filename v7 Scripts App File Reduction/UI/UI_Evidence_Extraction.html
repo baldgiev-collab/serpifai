@@ -1,0 +1,338 @@
+<script>
+/**
+ * UI Evidence Extraction - Oracle Level Data Extraction
+ * Extracted from UI_Scripts_App.html for modularization
+ * Extracts structured proof/evidence for each metric from competitor data
+ */
+
+// Global evidence store - populated when data loads
+window._competitorEvidence = window._competitorEvidence || {};
+
+/**
+ * Extract all structured evidence from competitor data
+ * @param {Array} competitors - Array of competitor objects
+ * @returns {Object} - Evidence organized by domain
+ */
+window.extractAllEvidence = function(competitors) {
+  const evidence = {};
+  
+  // Get organized data as additional source
+  const organizedData = window._organizedData || [];
+  const organizedByDomain = {};
+  organizedData.forEach(od => {
+    if (od.domain) organizedByDomain[od.domain.replace(/^www\./, '')] = od;
+  });
+  
+  competitors.forEach(comp => {
+    const domain = comp.domain || comp.url || 'Unknown';
+    const cleanDomain = domain.replace(/^www\./, '');
+    const stages = comp.stages || {};
+    const synth = comp.synthesized || {};
+    const website = synth.website || {};
+    const oracle = stages.oracleFetcher?.data || {};
+    const php = stages.phpFetcher?.data || {};
+    const opr = stages.openPageRank?.data || comp.opr || {};
+    const serper = stages.serper?.data || comp.serper || comp.apiData?.serper || {};
+    const pageSpeed = stages.pageSpeed?.data || comp.pageSpeed || {};
+    
+    // V8.5: Get synthesized SEO data which includes merged serperBrand data
+    const synthSeo = synth.seo || {};
+    
+    // Also check organized data for this domain
+    const organized = organizedByDomain[cleanDomain] || {};
+    const rawKwData = organized?.tabData?.keywordStrategy?.rawData || {};
+    
+    // V8.5: Merge SERP data from multiple sources including synthesized (which has serperBrand merged)
+    const serpPAA = synthSeo.peopleAlsoAsk || serper.peopleAlsoAsk || rawKwData.paaQuestions || [];
+    const serpOrganic = synthSeo.organic || serper.organic || rawKwData.serpResults || [];
+    const serpRelated = synthSeo.relatedSearches || serper.relatedSearches || rawKwData.relatedSearches || [];
+    
+    // V8.5: Get SERP features from synthesized data (includes brand search results)
+    const hasAnswerBox = synthSeo.answerBox || serper.answerBox || synthSeo.hasFeaturedSnippet;
+    const hasKnowledgeGraph = synthSeo.hasKnowledgeGraph || serper.knowledgeGraph;
+    const hasSitelinks = (synthSeo.sitelinks?.length > 0) || serper.sitelinks?.length > 0;
+    const serpFeatures = synthSeo.serpFeatures || [];
+    
+    evidence[domain] = {
+      // === LINK EVIDENCE ===
+      internalLinks: extractLinkList(oracle.internalLinks || website.internalLinks || synth.content?.internalLinks || [], domain, 'internal'),
+      externalLinks: extractLinkList(oracle.externalLinks || website.externalLinks || synth.content?.externalLinks || [], domain, 'external'),
+      
+      // === HEADING EVIDENCE ===
+      headings: {
+        h1: oracle.h1 || website.h1 || '',
+        h2: oracle.h2 || website.h2 || [],
+        h3: oracle.h3 || [],
+        h4: oracle.h4 || [],
+        total: (oracle.h2?.length || 0) + (oracle.h3?.length || 0) + (oracle.h4?.length || 0),
+        questionH2s: (oracle.h2 || website.h2 || []).filter(h => h.includes('?')).length
+      },
+      
+      // === SCHEMA EVIDENCE ===
+      schema: {
+        types: oracle.schemaTypes || website.schemaTypes || [],
+        count: (oracle.schemaTypes || website.schemaTypes || []).length,
+        hasOrganization: (oracle.schemaTypes || []).includes('Organization'),
+        hasFAQPage: (oracle.schemaTypes || []).includes('FAQPage'),
+        hasHowTo: (oracle.schemaTypes || []).includes('HowTo'),
+        hasArticle: (oracle.schemaTypes || []).some(s => s.includes('Article')),
+        hasBreadcrumb: (oracle.schemaTypes || []).includes('BreadcrumbList'),
+        hasProduct: (oracle.schemaTypes || []).includes('Product')
+      },
+      
+      // === CONTENT EVIDENCE ===
+      content: {
+        title: oracle.title || website.title || '',
+        titleLength: (oracle.title || website.title || '').length,
+        description: oracle.description || website.description || '',
+        descriptionLength: (oracle.description || website.description || '').length,
+        wordCount: oracle.wordCount || website.wordCount || 0,
+        language: oracle.language || website.language || 'Unknown'
+      },
+      
+      // === AUTHORITY EVIDENCE ===
+      authority: {
+        pageRank: opr.page_rank_decimal || 0,
+        pageRankInteger: opr.page_rank_integer || 0,
+        globalRank: parseInt(opr.rank) || 0,
+        domainAuthority: Math.round((opr.page_rank_decimal || 0) * 10),
+        referringDomains: Math.round((opr.page_rank_decimal || 0) * 50),
+        backlinks: Math.round((opr.page_rank_decimal || 0) * 5000),
+        source: 'OpenPageRank API'
+      },
+      
+      // === SERP EVIDENCE (Enhanced with organized data fallback) ===
+      serp: {
+        organicResults: serpOrganic.length || 0,
+        topPages: serpOrganic.slice(0, 5).map(r => ({
+          title: r.title || '',
+          url: r.link || r.url || '',
+          position: r.position || 0,
+          snippet: r.snippet || r.description || ''
+        })),
+        paaQuestions: serpPAA,
+        relatedSearches: serpRelated,
+        hasFeaturedSnippet: !!hasAnswerBox,
+        hasKnowledgePanel: !!hasKnowledgeGraph,
+        hasSitelinks: !!hasSitelinks,
+        serpFeatures: serpFeatures,
+        estimatedTraffic: serper.estimatedTraffic || 0,
+        source: serpOrganic.length > 0 ? 'Serper API' : (serpPAA.length > 0 ? 'Organized Data' : 'Pending')
+      },
+      
+      // === TECHNICAL EVIDENCE ===
+      technical: {
+        performance: pageSpeed.scores?.performance || 0,
+        seo: pageSpeed.scores?.seo || 0,
+        accessibility: pageSpeed.scores?.accessibility || 0,
+        bestPractices: pageSpeed.scores?.best_practices || 0,
+        lcp: pageSpeed.core_web_vitals?.lcp || 0,
+        fid: pageSpeed.core_web_vitals?.fid || 0,
+        cls: pageSpeed.core_web_vitals?.cls || 0,
+        loadTime: pageSpeed.loadTime || 0,
+        source: pageSpeed.strategy ? 'PageSpeed API' : 'Pending'
+      },
+      
+      // === E-E-A-T EVIDENCE ===
+      eeat: calculateEEATEvidence(comp, oracle, website, opr),
+      
+      // === PRICING/CONVERSION EVIDENCE ===
+      conversion: extractConversionEvidence(comp, oracle, website),
+      
+      // === KEYWORDS EVIDENCE (V8.5 Enhanced) ===
+      keywords: {
+        organicKeywords: serpOrganic.map(r => ({
+          keyword: r.title || '',
+          position: r.position || 0,
+          url: r.link || r.url || '',
+          snippet: r.snippet || ''
+        })),
+        relatedSearches: serpRelated.map((rs, idx) => ({
+          keyword: typeof rs === 'string' ? rs : (rs.query || rs.keyword || ''),
+          source: 'Related Search',
+          index: idx + 1
+        })),
+        paaKeywords: serpPAA.map((paa, idx) => ({
+          question: typeof paa === 'string' ? paa : (paa.question || paa.query || ''),
+          answer: typeof paa === 'object' ? (paa.snippet || paa.answer || '') : '',
+          index: idx + 1
+        })),
+        signalKeywords: (rawKwData.keywords || []).slice(0, 50),
+        estimatedKeywords: comp.processedMetrics?.estimatedKeywords || 
+                           synth.seo?.estimatedKeywords || 
+                           Math.round(serpOrganic.length * 15),
+        source: serpOrganic.length > 0 ? 'Serper API' : 'Estimated'
+      },
+      
+      // === BACKLINKS & REFERRING DOMAINS EVIDENCE (V8.5) ===
+      backlinksEvidence: {
+        pageRankScore: opr.page_rank_decimal || 0,
+        estimatedBacklinks: Math.round((opr.page_rank_decimal || 0) * 5000),
+        estimatedReferringDomains: Math.round((opr.page_rank_decimal || 0) * 50),
+        globalRank: opr.rank || 'Unknown',
+        calculationMethod: 'PageRank-based estimation (PageRank × multiplier)',
+        source: 'OpenPageRank API',
+        topBacklinks: (comp.processedMetrics?.topBacklinks || synth.authority?.topBacklinks || []).slice(0, 20),
+        anchorTextDistribution: synth.authority?.anchorTextDistribution || {
+          branded: 0,
+          exactMatch: 0,
+          partialMatch: 0,
+          generic: 0,
+          nakedURL: 0
+        }
+      },
+      
+      // === ANCHOR TEXT EVIDENCE ===
+      anchorText: extractAnchorTextEvidence(comp, synth, oracle),
+      
+      // === RAW DATA SOURCES ===
+      dataSources: {
+        pageSpeed: stages.pageSpeed?.success ? 'Available' : 'Pending',
+        openPageRank: stages.openPageRank?.success ? 'Available' : 'Pending',
+        oracleFetcher: stages.oracleFetcher?.success ? 'Available' : 'Pending',
+        phpFetcher: stages.phpFetcher?.success ? 'Available' : 'Pending',
+        serper: stages.serper?.success || serpOrganic.length > 0 ? 'Available' : 'Pending'
+      }
+    };
+  });
+  
+  window._competitorEvidence = evidence;
+  return evidence;
+};
+
+/**
+ * Extract anchor text evidence from multiple sources
+ */
+function extractAnchorTextEvidence(comp, synth, oracle) {
+  const internalLinks = oracle.internalLinks || synth.website?.internalLinks || [];
+  const externalLinks = oracle.externalLinks || synth.website?.externalLinks || [];
+  
+  const anchors = [];
+  [...internalLinks, ...externalLinks].forEach(link => {
+    const text = typeof link === 'object' ? (link.text || link.anchor || '') : '';
+    if (text && text.length > 1) {
+      anchors.push({
+        text: text,
+        url: typeof link === 'object' ? (link.url || link.href || '') : link,
+        type: link.isExternal ? 'external' : 'internal'
+      });
+    }
+  });
+  
+  const anchorCounts = {};
+  anchors.forEach(a => {
+    const key = a.text.toLowerCase().substring(0, 50);
+    if (!anchorCounts[key]) anchorCounts[key] = { text: a.text, count: 0, urls: [] };
+    anchorCounts[key].count++;
+    if (anchorCounts[key].urls.length < 3) anchorCounts[key].urls.push(a.url);
+  });
+  
+  return {
+    topAnchors: Object.values(anchorCounts).sort((a, b) => b.count - a.count).slice(0, 20),
+    totalAnchors: anchors.length,
+    uniqueAnchors: Object.keys(anchorCounts).length
+  };
+}
+
+/**
+ * Extract and structure link list with metadata
+ */
+function extractLinkList(links, domain, type) {
+  if (!Array.isArray(links)) links = [];
+  return links.slice(0, 100).map((link, idx) => {
+    const url = typeof link === 'string' ? link : (link.url || link.href || '');
+    const text = typeof link === 'object' ? (link.text || link.anchor || '') : '';
+    return {
+      url: url,
+      anchor: text || url.split('/').pop() || 'Link',
+      type: type,
+      index: idx + 1,
+      isExternal: !url.includes(domain) && url.startsWith('http')
+    };
+  });
+}
+
+/**
+ * Calculate E-E-A-T evidence with breakdown
+ */
+function calculateEEATEvidence(comp, oracle, website, opr) {
+  const fullText = JSON.stringify(comp.synthesized || {}).toLowerCase();
+  const pageRank = opr.page_rank_decimal || 0;
+  const schemaTypes = oracle.schemaTypes || website.schemaTypes || [];
+  
+  const experienceSignals = [];
+  if (fullText.includes('years of experience') || fullText.includes('since')) experienceSignals.push('Years of experience mentioned');
+  if (fullText.includes('case study') || fullText.includes('case studies')) experienceSignals.push('Case studies present');
+  if (fullText.includes('testimonial') || fullText.includes('review')) experienceSignals.push('Testimonials/reviews found');
+  if (fullText.includes('portfolio') || fullText.includes('our work')) experienceSignals.push('Portfolio showcased');
+  
+  const expertiseSignals = [];
+  if (fullText.includes('expert') || fullText.includes('specialist')) expertiseSignals.push('Expert terminology used');
+  if (fullText.includes('certified') || fullText.includes('certification')) expertiseSignals.push('Certifications mentioned');
+  if (fullText.includes('published') || fullText.includes('research')) expertiseSignals.push('Published research');
+  if (fullText.includes('author') || fullText.includes('written by')) expertiseSignals.push('Author attribution');
+  if (schemaTypes.includes('Person')) expertiseSignals.push('Person schema present');
+  
+  const authoritySignals = [];
+  if (pageRank >= 6) authoritySignals.push(`High PageRank (${pageRank.toFixed(1)})`);
+  else if (pageRank >= 4) authoritySignals.push(`Moderate PageRank (${pageRank.toFixed(1)})`);
+  if (schemaTypes.includes('Organization')) authoritySignals.push('Organization schema present');
+  if (fullText.includes('award') || fullText.includes('recognition')) authoritySignals.push('Awards/recognition mentioned');
+  if (fullText.includes('partner') || fullText.includes('featured in')) authoritySignals.push('Partnerships/media features');
+  
+  const trustSignals = [];
+  if (fullText.includes('privacy policy') || fullText.includes('privacy')) trustSignals.push('Privacy policy present');
+  if (fullText.includes('terms of service') || fullText.includes('terms')) trustSignals.push('Terms of service present');
+  if (fullText.includes('secure') || fullText.includes('ssl') || fullText.includes('https')) trustSignals.push('Security indicators');
+  if (fullText.includes('guarantee') || fullText.includes('refund')) trustSignals.push('Guarantee offered');
+  if (fullText.includes('contact') || fullText.includes('support')) trustSignals.push('Contact/support available');
+  
+  const experienceScore = Math.min(100, experienceSignals.length * 25);
+  const expertiseScore = Math.min(100, expertiseSignals.length * 20);
+  const authorityScore = Math.min(100, authoritySignals.length * 25 + (pageRank * 8));
+  const trustScore = Math.min(100, trustSignals.length * 20);
+  const overallEEAT = Math.round((experienceScore + expertiseScore + authorityScore + trustScore) / 4);
+  
+  return {
+    overall: overallEEAT,
+    experience: { score: experienceScore, signals: experienceSignals },
+    expertise: { score: expertiseScore, signals: expertiseSignals },
+    authoritativeness: { score: authorityScore, signals: authoritySignals },
+    trustworthiness: { score: trustScore, signals: trustSignals }
+  };
+}
+
+/**
+ * Extract conversion/pricing evidence
+ */
+function extractConversionEvidence(comp, oracle, website) {
+  const fullText = JSON.stringify(comp.synthesized || {}).toLowerCase();
+  
+  const ctaSignals = [];
+  const pricingSignals = [];
+  
+  const ctaWords = ['get started', 'sign up', 'try free', 'start free', 'buy now', 'subscribe', 'contact us', 'request demo', 'book a call', 'schedule'];
+  ctaWords.forEach(cta => {
+    if (fullText.includes(cta)) ctaSignals.push(cta.charAt(0).toUpperCase() + cta.slice(1));
+  });
+  
+  if (fullText.includes('pricing')) pricingSignals.push('Pricing page detected');
+  if (fullText.includes('$') || fullText.includes('usd')) pricingSignals.push('Price amounts shown');
+  if (fullText.includes('per month') || fullText.includes('/mo')) pricingSignals.push('Monthly pricing');
+  if (fullText.includes('per year') || fullText.includes('annual')) pricingSignals.push('Annual pricing option');
+  if (fullText.includes('free trial') || fullText.includes('try free')) pricingSignals.push('Free trial available');
+  if (fullText.includes('money back') || fullText.includes('guarantee')) pricingSignals.push('Money-back guarantee');
+  if (fullText.includes('discount') || fullText.includes('save')) pricingSignals.push('Discount signals');
+  
+  return {
+    ctaCount: ctaSignals.length,
+    ctaSignals: ctaSignals,
+    pricingSignals: pricingSignals,
+    hasPricing: pricingSignals.length > 0,
+    hasAnnual: fullText.includes('annual') || fullText.includes('yearly'),
+    hasGuarantee: fullText.includes('guarantee') || fullText.includes('money back'),
+    hasTrial: fullText.includes('trial') || fullText.includes('free'),
+    hasDiscount: fullText.includes('discount') || fullText.includes('save') || fullText.includes('% off')
+  };
+}
+</script>

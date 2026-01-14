@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Internal Links</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-value { font-size: 28px; font-weight: bold; }
+    .stat-value.green { color: var(--success); }
+    .stat-value.yellow { color: var(--warning); }
+    .stat-value.red { color: var(--error); }
+    .stat-value.blue { color: var(--info); }
+    .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 5px; }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    
+    .analyze-form {
+      display: flex;
+      gap: 10px;
+    }
+    .analyze-form input { flex: 1; }
+    
+    .tab-container { margin-bottom: 20px; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+    .tab {
+      padding: 10px 20px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+    .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .page-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .page-title { font-weight: 600; }
+    .page-url { font-size: 12px; color: var(--text-secondary); }
+    
+    .link-stats { display: flex; gap: 20px; }
+    .link-stat { display: flex; align-items: center; gap: 5px; }
+    .link-stat .count { font-weight: bold; }
+    .link-stat .label { font-size: 12px; color: var(--text-secondary); }
+    
+    .link-list { margin-top: 15px; }
+    .link-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .link-item:last-child { border-bottom: none; }
+    .link-anchor { color: var(--info); font-size: 14px; }
+    .link-target { font-size: 12px; color: var(--text-secondary); }
+    
+    .opportunity-card {
+      background: rgba(35, 134, 54, 0.1);
+      border: 1px solid var(--success);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .opportunity-card h3 { font-size: 16px; margin-bottom: 10px; }
+    .suggestion { font-size: 14px; color: var(--text-secondary); margin-bottom: 10px; }
+    .opp-action { display: flex; gap: 10px; }
+    
+    .orphan-warning {
+      background: rgba(248, 81, 73, 0.1);
+      border: 1px solid var(--error);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .orphan-warning h3 { color: var(--error); margin-bottom: 10px; }
+    
+    .loading { text-align: center; padding: 40px; display: none; }
+    .loading.active { display: block; }
+    .message { padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; display: none; }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-row">
+      <h1>🔗 Internal Link Analysis</h1>
+    </div>
+    <div id="message" class="message"></div>
+    
+    <div class="section">
+      <div class="analyze-form">
+        <input type="text" class="form-input" id="siteUrl" placeholder="Enter your site URL (e.g., example.com)">
+        <button class="btn btn-primary" onclick="analyzeLinks()">🔍 Analyze Links</button>
+      </div>
+    </div>
+    
+    <div class="loading" id="loading"><p>🔄 Analyzing internal links...</p></div>
+    
+    <div id="results" style="display:none;">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value blue" id="statTotal">0</div>
+          <div class="stat-label">Total Internal Links</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value green" id="statPages">0</div>
+          <div class="stat-label">Pages Analyzed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value yellow" id="statOrphans">0</div>
+          <div class="stat-label">Orphan Pages</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statOpps">0</div>
+          <div class="stat-label">Link Opportunities</div>
+        </div>
+      </div>
+      
+      <div class="tab-container">
+        <div class="tabs">
+          <div class="tab active" onclick="showTab('structure')">Link Structure</div>
+          <div class="tab" onclick="showTab('opportunities')">Opportunities</div>
+          <div class="tab" onclick="showTab('orphans')">Orphan Pages</div>
+        </div>
+        
+        <div id="structure" class="tab-content active"></div>
+        <div id="opportunities" class="tab-content"></div>
+        <div id="orphans" class="tab-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.tab[onclick*="' + tabId + '"]').classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+    
+    function analyzeLinks() {
+      const url = document.getElementById('siteUrl').value.trim();
+      if (!url) { showMessage('Please enter a site URL', 'error'); return; }
+      
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('results').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(e => {
+          document.getElementById('loading').classList.remove('active');
+          showMessage(e.message, 'error');
+        })
+        .FT_analyzeInternalLinks({ url: url });
+    }
+    
+    function displayResults(result) {
+      document.getElementById('loading').classList.remove('active');
+      
+      if (!result.ok) { showMessage(result.error, 'error'); return; }
+      
+      document.getElementById('results').style.display = 'block';
+      
+      // Stats
+      document.getElementById('statTotal').textContent = result.totalLinks || 0;
+      document.getElementById('statPages').textContent = (result.pages || []).length;
+      document.getElementById('statOrphans').textContent = (result.orphans || []).length;
+      document.getElementById('statOpps').textContent = (result.opportunities || []).length;
+      
+      // Structure tab
+      document.getElementById('structure').innerHTML = (result.pages || []).map(page => `
+        <div class="page-card">
+          <div class="page-header">
+            <div>
+              <div class="page-title">${page.title || 'Untitled'}</div>
+              <div class="page-url">${page.url}</div>
+            </div>
+            <div class="link-stats">
+              <div class="link-stat"><span class="count">${page.inbound || 0}</span><span class="label">Inbound</span></div>
+              <div class="link-stat"><span class="count">${page.outbound || 0}</span><span class="label">Outbound</span></div>
+            </div>
+          </div>
+          ${page.links && page.links.length > 0 ? `
+            <div class="link-list">
+              ${page.links.slice(0, 5).map(link => `
+                <div class="link-item">
+                  <span class="link-anchor">${link.anchor || '[no anchor]'}</span>
+                  <span class="link-target">${link.target}</span>
+                </div>
+              `).join('')}
+              ${page.links.length > 5 ? '<div style="padding:10px;color:var(--text-secondary);">+' + (page.links.length - 5) + ' more links</div>' : ''}
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+      
+      // Opportunities tab
+      document.getElementById('opportunities').innerHTML = (result.opportunities || []).map(opp => `
+        <div class="opportunity-card">
+          <h3>💡 ${opp.title}</h3>
+          <p class="suggestion">${opp.suggestion}</p>
+          <div style="font-size:13px;color:var(--text-secondary);">
+            <strong>From:</strong> ${opp.source}<br>
+            <strong>To:</strong> ${opp.target}<br>
+            <strong>Suggested Anchor:</strong> ${opp.anchor}
+          </div>
+        </div>
+      `).join('') || '<p style="color:var(--text-secondary);">No opportunities found.</p>';
+      
+      // Orphans tab
+      document.getElementById('orphans').innerHTML = (result.orphans || []).map(page => `
+        <div class="orphan-warning">
+          <h3>⚠️ ${page.title || 'Orphan Page'}</h3>
+          <p class="page-url">${page.url}</p>
+          <p style="margin-top:10px;font-size:13px;">This page has no internal links pointing to it.</p>
+        </div>
+      `).join('') || '<p style="color:var(--text-secondary);">No orphan pages found! 🎉</p>';
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => msg.className = 'message', 3000);
+    }
+  </script>
+</body>
+</html>

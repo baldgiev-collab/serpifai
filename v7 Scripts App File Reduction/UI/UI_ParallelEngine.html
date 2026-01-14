@@ -1,0 +1,1102 @@
+<!--
+═══════════════════════════════════════════════════════════════════════════════════════
+UI_PARALLELENGINE.HTML - ORACLE ELITE v22.0 PARALLEL TASK-CLUSTER ARCHITECTURE
+═══════════════════════════════════════════════════════════════════════════════════════
+
+PARALLEL EXECUTION ENGINE FOR UI
+═══════════════════════════════════════════════════════════════════════════════════════
+
+PURPOSE: Fire 6 simultaneous google.script.run calls and poll for status
+- Initializes job via Cluster_InitializeJob
+- Fires 6 parallel calls to Worker_ExecuteCompetitorPipeline
+- Polls Cluster_GetJobStatus every 1.5 seconds
+- Hydrates bento-grid as each competitor completes
+- Finalizes and displays overview when all complete
+
+ARCHITECTURE:
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│  User clicks "Run Elite Analysis"                                                   │
+│     ↓                                                                                │
+│  ParallelEngine.initializeJob() → Gets jobToken                                     │
+│     ↓                                                                                │
+│  ParallelEngine.fireAllWorkers() → 6 simultaneous google.script.run calls           │
+│     ↓                                                                                │
+│  ParallelEngine.startPolling() → Polls every 1.5s                                   │
+│     ↓                                                                                │
+│  As each completes: ParallelEngine.hydrateCompetitor(domain, data)                  │
+│     ↓                                                                                │
+│  All complete: ParallelEngine.finalize() → Displays overview                        │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+@version 22.0.0-cluster
+═══════════════════════════════════════════════════════════════════════════════════════
+-->
+
+<script>
+/**
+ * Oracle Elite v22.0 Parallel Execution Engine
+ * Manages parallel competitor analysis with real-time UI updates
+ */
+const ParallelEngine = (function() {
+  'use strict';
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // CONFIGURATION - v23.0 ENHANCED
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  const CONFIG = {
+    POLL_INTERVAL_MS: 1500,       // Status polling interval
+    MAX_POLL_ATTEMPTS: 200,       // 5 minute timeout (200 * 1.5s)
+    ANIMATION_DURATION_MS: 300,   // UI animation speed
+    RETRY_DELAY_MS: 1000,         // Delay before retry
+    HYDRATION_DELAY_MS: 100,      // v23.0: Delay between progressive UI updates
+    MIN_HYDRATION_THRESHOLD: 1    // v23.0: Hydrate after N competitors complete
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // STATE - v23.0 ENHANCED WITH HYDRATION QUEUE
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  let state = {
+    jobToken: null,
+    projectId: null,
+    yourDomain: null,
+    competitors: [],
+    completedCompetitors: new Set(),
+    failedCompetitors: new Set(),
+    pollInterval: null,
+    pollAttempts: 0,
+    isRunning: false,
+    startTime: null,
+    callbacks: {},
+    // v23.0: Progressive hydration state
+    hydrationQueue: [],
+    hydrationInProgress: false,
+    completedData: new Map(),  // Stores completed competitor data for progressive render
+    listeners: new Set()        // State change listeners
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // v23.0: STATE LISTENER PATTERN
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  function addStateListener(listener) {
+    if (typeof listener === 'function') {
+      state.listeners.add(listener);
+    }
+    return () => state.listeners.delete(listener);
+  }
+  
+  function notifyStateChange(event, data) {
+    // v23.0.1: Defer notification to break google.script.run callback chain
+    // This prevents "message channel closed" errors
+    setTimeout(function() {
+      state.listeners.forEach(function(listener) {
+        try {
+          listener(event, data, getState());
+        } catch (e) {
+          console.warn('State listener error:', e);
+        }
+      });
+    }, 0);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Start parallel analysis for competitors
+   * v23.0: Now supports progressive UI hydration via state listeners
+   * @param {string} projectId - Project identifier
+   * @param {Array} competitors - Array of competitor domains
+   * @param {string} yourDomain - Client's domain
+   * @param {Object} callbacks - Event callbacks
+   */
+  function startAnalysis(projectId, competitors, yourDomain, callbacks) {
+    console.log('🚀 ParallelEngine v23.0: Starting analysis');
+    console.log(`   Project: ${projectId}`);
+    console.log(`   Competitors: ${competitors.join(', ')}`);
+    console.log(`   Your Domain: ${yourDomain || 'N/A'}`);
+    
+    // Reset state
+    state = {
+      jobToken: null,
+      projectId: projectId,
+      yourDomain: yourDomain,
+      competitors: competitors,
+      completedCompetitors: new Set(),
+      failedCompetitors: new Set(),
+      pollInterval: null,
+      pollAttempts: 0,
+      isRunning: true,
+      startTime: Date.now(),
+      // v23.0: Progressive hydration state
+      hydrationQueue: [],
+      hydrationInProgress: false,
+      completedData: new Map(),
+      listeners: state.listeners || new Set(),  // Preserve existing listeners
+      callbacks: callbacks || {}
+    };
+    
+    // Trigger onStart callback
+    if (state.callbacks.onStart) {
+      state.callbacks.onStart({ competitorCount: competitors.length });
+    }
+    
+    // Initialize job
+    initializeJob();
+  }
+  
+  /**
+   * Stop analysis and clean up
+   */
+  function stopAnalysis() {
+    console.log('⏹️ ParallelEngine: Stopping analysis');
+    
+    state.isRunning = false;
+    
+    if (state.pollInterval) {
+      clearInterval(state.pollInterval);
+      state.pollInterval = null;
+    }
+    
+    if (state.callbacks.onStop) {
+      state.callbacks.onStop();
+    }
+  }
+  
+  /**
+   * Get current state
+   */
+  function getState() {
+    return {
+      isRunning: state.isRunning,
+      jobToken: state.jobToken,
+      competitorCount: state.competitors.length,
+      completedCount: state.completedCompetitors.size,
+      failedCount: state.failedCompetitors.size,
+      progress: calculateProgress(),
+      elapsedMs: state.startTime ? Date.now() - state.startTime : 0
+    };
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // JOB INITIALIZATION
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  function initializeJob() {
+    console.log('📋 Initializing job...');
+    
+    google.script.run
+      .withSuccessHandler(onJobInitialized)
+      .withFailureHandler(onJobInitFailed)
+      .Cluster_InitializeJob(
+        state.projectId,
+        state.competitors,
+        state.yourDomain,
+        {}
+      );
+  }
+  
+  function onJobInitialized(result) {
+    if (!result.success) {
+      console.error('❌ Job initialization failed:', result.error);
+      onJobInitFailed(new Error(result.error));
+      return;
+    }
+    
+    console.log('✅ Job initialized:', result.jobToken);
+    
+    state.jobToken = result.jobToken;
+    state.competitors = result.competitors;
+    
+    // Trigger onJobCreated callback
+    if (state.callbacks.onJobCreated) {
+      state.callbacks.onJobCreated({
+        jobToken: result.jobToken,
+        competitors: result.competitors,
+        pollInterval: result.pollInterval
+      });
+    }
+    
+    // Fire all workers in parallel
+    fireAllWorkers();
+    
+    // Start polling for status
+    startPolling();
+  }
+  
+  function onJobInitFailed(error) {
+    console.error('❌ Job init failed:', error);
+    state.isRunning = false;
+    
+    if (state.callbacks.onError) {
+      state.callbacks.onError({
+        phase: 'initialization',
+        error: error.message || error.toString()
+      });
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // PARALLEL WORKER EXECUTION
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Fire all worker pipelines simultaneously
+   * This is the key to parallel execution - 6 google.script.run calls at once
+   */
+  function fireAllWorkers() {
+    console.log(`🚀 Firing ${state.competitors.length} parallel workers...`);
+    
+    // Update UI to show workers starting
+    if (state.callbacks.onWorkersStarted) {
+      state.callbacks.onWorkersStarted({
+        count: state.competitors.length,
+        competitors: state.competitors.map(c => c.domain)
+      });
+    }
+    
+    // Fire each competitor pipeline in parallel
+    state.competitors.forEach((competitor, index) => {
+      console.log(`   [${index + 1}/${state.competitors.length}] Starting: ${competitor.domain}`);
+      
+      // Update UI for this competitor
+      if (state.callbacks.onCompetitorStarted) {
+        state.callbacks.onCompetitorStarted({
+          index: index,
+          id: competitor.id,
+          domain: competitor.domain
+        });
+      }
+      
+      // Fire the pipeline - this runs async on server
+      google.script.run
+        .withSuccessHandler(function(result) {
+          onWorkerComplete(competitor, result);
+        })
+        .withFailureHandler(function(error) {
+          onWorkerFailed(competitor, error);
+        })
+        .Worker_ExecuteCompetitorPipeline(
+          state.jobToken,
+          competitor.id,
+          competitor.domain,
+          state.yourDomain,
+          { spreadsheetId: null } // Will be set by controller if needed
+        );
+    });
+    
+    console.log(`✅ All ${state.competitors.length} workers fired`);
+  }
+  
+  function onWorkerComplete(competitor, result) {
+    console.log(`✅ Worker complete: ${competitor.domain}`);
+    
+    state.completedCompetitors.add(competitor.id);
+    
+    // v23.0: Store completed data for progressive hydration
+    const competitorData = {
+      index: competitor.index,
+      id: competitor.id,
+      domain: competitor.domain,
+      success: result.success,
+      data: result.finalData || {},
+      executionTimeMs: result.executionTimeMs,
+      completedAt: new Date().toISOString()
+    };
+    
+    state.completedData.set(competitor.id, competitorData);
+    
+    // v23.0.1: Defer hydration and notifications to prevent message channel closure
+    // Using setTimeout(0) breaks the google.script.run callback chain
+    setTimeout(function() {
+      queueHydration(competitorData);
+      notifyStateChange('COMPETITOR_COMPLETE', competitorData);
+    }, 0);
+    
+    // Hydrate UI with competitor data (legacy callback)
+    if (state.callbacks.onCompetitorComplete) {
+      state.callbacks.onCompetitorComplete(competitorData);
+    }
+    
+    // Check if all complete
+    checkCompletion();
+  }
+  
+  /**
+   * v23.0: Queue competitor for progressive UI hydration
+   * This allows bento-grids to populate as each competitor completes
+   */
+  function queueHydration(competitorData) {
+    state.hydrationQueue.push(competitorData);
+    
+    // Process queue if not already processing
+    if (!state.hydrationInProgress) {
+      processHydrationQueue();
+    }
+  }
+  
+  /**
+   * v23.0: Process hydration queue with debouncing
+   */
+  function processHydrationQueue() {
+    if (state.hydrationQueue.length === 0) {
+      state.hydrationInProgress = false;
+      return;
+    }
+    
+    state.hydrationInProgress = true;
+    
+    const competitorData = state.hydrationQueue.shift();
+    
+    // Hydrate this competitor's bento card
+    hydrateCompetitorCard(competitorData);
+    
+    // Continue processing after delay (prevents UI jank)
+    setTimeout(() => processHydrationQueue(), CONFIG.HYDRATION_DELAY_MS);
+  }
+  
+  /**
+   * v23.0: Hydrate a single competitor's bento card
+   */
+  function hydrateCompetitorCard(competitorData) {
+    const cardId = `comp-card-${competitorData.domain.replace(/\./g, '-')}`;
+    const card = document.getElementById(cardId);
+    
+    if (!card) {
+      console.log(`   Creating new card for ${competitorData.domain}`);
+      // Card doesn't exist yet - will be created by renderCompetitorIntelligence
+      return;
+    }
+    
+    console.log(`   🎨 Hydrating card: ${competitorData.domain}`);
+    
+    // Update card status
+    card.classList.remove('loading', 'pending');
+    card.classList.add(competitorData.success ? 'completed' : 'failed');
+    
+    // Update card content with real data
+    const data = competitorData.data || {};
+    
+    // Update metrics if available
+    const metricsContainer = card.querySelector('.metrics-preview');
+    if (metricsContainer && data.processedMetrics) {
+      const pm = data.processedMetrics;
+      metricsContainer.innerHTML = `
+        <div class="metric">
+          <span class="metric-value">${pm.authorityScore || 'N/A'}</span>
+          <span class="metric-label">Authority</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">${pm.performanceScore || 'N/A'}</span>
+          <span class="metric-label">Performance</span>
+        </div>
+        <div class="metric">
+          <span class="metric-value">${pm.seoScore || 'N/A'}</span>
+          <span class="metric-label">SEO</span>
+        </div>
+      `;
+    }
+    
+    // Update status badge
+    const statusBadge = card.querySelector('.status-badge');
+    if (statusBadge) {
+      statusBadge.textContent = competitorData.success ? 'Complete' : 'Failed';
+      statusBadge.className = `status-badge ${competitorData.success ? 'completed' : 'failed'}`;
+    }
+    
+    // Notify state listeners of hydration
+    notifyStateChange('CARD_HYDRATED', { domain: competitorData.domain, cardId: cardId });
+  }
+  
+  function onWorkerFailed(competitor, error) {
+    console.error(`❌ Worker failed: ${competitor.domain}`, error);
+    
+    state.failedCompetitors.add(competitor.id);
+    
+    // v23.0.1: Defer notification to prevent message channel closure
+    setTimeout(function() {
+      notifyStateChange('COMPETITOR_FAILED', {
+        id: competitor.id,
+        domain: competitor.domain,
+        error: error.message || error.toString()
+      });
+    }, 0);
+    
+    if (state.callbacks.onCompetitorFailed) {
+      state.callbacks.onCompetitorFailed({
+        index: competitor.index,
+        id: competitor.id,
+        domain: competitor.domain,
+        error: error.message || error.toString()
+      });
+    }
+    
+    // Check if all complete (including failures)
+    checkCompletion();
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // STATUS POLLING
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  function startPolling() {
+    console.log('🔄 Starting status polling...');
+    
+    state.pollInterval = setInterval(pollStatus, CONFIG.POLL_INTERVAL_MS);
+  }
+  
+  function pollStatus() {
+    if (!state.isRunning || !state.jobToken) {
+      return;
+    }
+    
+    state.pollAttempts++;
+    
+    // Check for timeout
+    if (state.pollAttempts >= CONFIG.MAX_POLL_ATTEMPTS) {
+      console.error('⏰ Polling timeout reached');
+      stopAnalysis();
+      
+      if (state.callbacks.onTimeout) {
+        state.callbacks.onTimeout({
+          elapsedMs: Date.now() - state.startTime,
+          completedCount: state.completedCompetitors.size,
+          totalCount: state.competitors.length
+        });
+      }
+      return;
+    }
+    
+    google.script.run
+      .withSuccessHandler(onStatusReceived)
+      .withFailureHandler(function(error) {
+        console.warn('⚠️ Status poll failed:', error);
+        // Don't stop - continue polling
+      })
+      .Cluster_GetJobStatus(state.jobToken);
+  }
+  
+  function onStatusReceived(status) {
+    if (!status.success) {
+      console.warn('⚠️ Status check returned error:', status.error);
+      return;
+    }
+    
+    // Update progress
+    if (state.callbacks.onProgress) {
+      state.callbacks.onProgress({
+        progress: status.progress,
+        completedCount: status.completedCount,
+        failedCount: status.failedCount,
+        totalCount: status.competitorCount,
+        elapsedSeconds: status.elapsedSeconds
+      });
+    }
+    
+    // Update individual competitor statuses
+    if (status.competitors && state.callbacks.onCompetitorStatus) {
+      status.competitors.forEach(comp => {
+        state.callbacks.onCompetitorStatus({
+          id: comp.id,
+          domain: comp.domain,
+          status: comp.status,
+          progress: comp.progress,
+          metrics: comp.metrics || {}
+        });
+      });
+    }
+    
+    // Check if job is complete
+    if (status.isComplete) {
+      console.log('🏁 Job marked complete by server');
+      finalizeJob();
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // COMPLETION AND FINALIZATION
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  function checkCompletion() {
+    const totalProcessed = state.completedCompetitors.size + state.failedCompetitors.size;
+    const totalCompetitors = state.competitors.length;
+    
+    console.log(`📊 Progress: ${totalProcessed}/${totalCompetitors}`);
+    
+    if (totalProcessed >= totalCompetitors) {
+      console.log('🏁 All workers complete');
+      finalizeJob();
+    }
+  }
+  
+  function finalizeJob() {
+    if (!state.isRunning) return;
+    
+    console.log('🎯 Finalizing job...');
+    
+    // Stop polling
+    if (state.pollInterval) {
+      clearInterval(state.pollInterval);
+      state.pollInterval = null;
+    }
+    
+    // Call finalize on server
+    google.script.run
+      .withSuccessHandler(onJobFinalized)
+      .withFailureHandler(onFinalizeFailed)
+      .Cluster_FinalizeJob(state.jobToken, {});
+  }
+  
+  function onJobFinalized(result) {
+    console.log('✅ Job finalized');
+    
+    state.isRunning = false;
+    
+    const totalTime = Date.now() - state.startTime;
+    
+    if (state.callbacks.onComplete) {
+      state.callbacks.onComplete({
+        success: result.success,
+        jobToken: state.jobToken,
+        overview: result.overview,
+        dashboardCharts: result.dashboardCharts,
+        comparisonMatrix: result.comparisonMatrix,
+        competitorCount: result.competitorCount,
+        completedCount: state.completedCompetitors.size,
+        failedCount: state.failedCompetitors.size,
+        totalTimeMs: totalTime
+      });
+    }
+  }
+  
+  function onFinalizeFailed(error) {
+    console.error('❌ Finalize failed:', error);
+    
+    state.isRunning = false;
+    
+    if (state.callbacks.onError) {
+      state.callbacks.onError({
+        phase: 'finalization',
+        error: error.message || error.toString()
+      });
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // UTILITIES
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  function calculateProgress() {
+    const total = state.competitors.length;
+    if (total === 0) return 0;
+    
+    const completed = state.completedCompetitors.size + state.failedCompetitors.size;
+    return Math.round((completed / total) * 100);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // PUBLIC INTERFACE
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  return {
+    startAnalysis: startAnalysis,
+    stopAnalysis: stopAnalysis,
+    getState: getState,
+    // v23.0: New progressive hydration APIs
+    addStateListener: addStateListener,
+    getCompletedData: () => state.completedData,
+    hydrateCard: hydrateCompetitorCard,
+    version: '23.0.1-stable'
+  };
+  
+})();
+
+// Expose to window for cross-module access
+window.ParallelEngine = ParallelEngine;
+
+console.log('✅ UI_ParallelEngine.html loaded - v23.0.1 Message Channel Fix');
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// v23.0: PROGRESSIVE RENDERING HELPER
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Initialize progressive rendering listener
+ * Call this early to start rendering competitors as they complete
+ */
+function initProgressiveRendering(containerId, options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.warn('Progressive rendering container not found:', containerId);
+    return null;
+  }
+  
+  console.log('🚀 Initializing progressive rendering on:', containerId);
+  
+  // Register state listener - must NOT return truthy values to avoid message channel errors
+  const unsubscribe = ParallelEngine.addStateListener(function(event, data, state) {
+    if (event === 'COMPETITOR_COMPLETE') {
+      console.log('📦 Progressive render: ' + data.domain);
+      renderSingleCompetitor(container, data, options);
+    } else if (event === 'COMPETITOR_FAILED') {
+      console.log('⚠️ Progressive render (failed): ' + data.domain);
+      renderFailedCompetitor(container, data, options);
+    } else if (event === 'CARD_HYDRATED') {
+      console.log('🎨 Card hydrated: ' + data.domain);
+    }
+    // Explicitly return undefined to prevent message channel issues
+    return;
+  });
+  
+  return { unsubscribe };
+}
+
+/**
+ * Render a single completed competitor
+ */
+function renderSingleCompetitor(container, competitorData, options) {
+  const domain = competitorData.domain || 'unknown';
+  const cardId = `comp-card-${domain.replace(/\./g, '-')}`;
+  
+  // Check if card already exists
+  let card = document.getElementById(cardId);
+  
+  if (!card) {
+    // Create new card
+    card = document.createElement('div');
+    card.id = cardId;
+    card.className = 'competitor-card bento-card completed';
+    container.appendChild(card);
+  }
+  
+  const data = competitorData.data || {};
+  const pm = data.processedMetrics || {};
+  
+  card.innerHTML = `
+    <div class="card-header">
+      <h3 class="card-title">${domain}</h3>
+      <span class="status-badge completed">✓ Complete</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width: 100%"></div>
+    </div>
+    <div class="metrics-preview">
+      <div class="metric">
+        <span class="metric-value">${pm.authorityScore || 'N/A'}</span>
+        <span class="metric-label">Authority</span>
+      </div>
+      <div class="metric">
+        <span class="metric-value">${pm.performanceScore || 'N/A'}</span>
+        <span class="metric-label">Performance</span>
+      </div>
+      <div class="metric">
+        <span class="metric-value">${pm.seoScore || 'N/A'}</span>
+        <span class="metric-label">SEO</span>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="execution-time">${competitorData.executionTimeMs || 0}ms</span>
+    </div>
+  `;
+  
+  // Animate in
+  card.style.animation = 'fadeIn 0.3s ease';
+}
+
+/**
+ * Render a failed competitor card
+ */
+function renderFailedCompetitor(container, competitorData, options) {
+  const domain = competitorData.domain || 'unknown';
+  const cardId = `comp-card-${domain.replace(/\./g, '-')}`;
+  
+  let card = document.getElementById(cardId);
+  
+  if (!card) {
+    card = document.createElement('div');
+    card.id = cardId;
+    card.className = 'competitor-card bento-card failed';
+    container.appendChild(card);
+  }
+  
+  card.innerHTML = `
+    <div class="card-header">
+      <h3 class="card-title">${domain}</h3>
+      <span class="status-badge failed">✗ Failed</span>
+    </div>
+    <div class="error-message">
+      <span class="error-icon">⚠️</span>
+      <span class="error-text">${competitorData.error || 'Analysis failed'}</span>
+    </div>
+    <div class="card-footer">
+      <button class="retry-btn" onclick="retryCompetitor('${domain}')">Retry</button>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// UI INTEGRATION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Create bento-grid competitor cards for real-time updates
+ */
+function createCompetitorCards(competitors, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  competitors.forEach((competitor, index) => {
+    const card = document.createElement('div');
+    card.id = `competitor-card-${competitor.id || index}`;
+    card.className = 'competitor-card bento-card pending';
+    
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="domain-name">${competitor.domain || competitor}</span>
+        <span class="status-badge pending">Pending</span>
+      </div>
+      <div class="card-body">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 0%"></div>
+        </div>
+        <div class="metrics-preview">
+          <div class="metric-placeholder"></div>
+          <div class="metric-placeholder"></div>
+          <div class="metric-placeholder"></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="phase-indicator">Waiting...</span>
+        <span class="time-indicator">--</span>
+      </div>
+    `;
+    
+    container.appendChild(card);
+  });
+}
+
+/**
+ * Update a competitor card with real-time data
+ */
+function updateCompetitorCard(competitorId, data) {
+  const card = document.getElementById(`competitor-card-${competitorId}`);
+  if (!card) return;
+  
+  // Update status
+  const statusBadge = card.querySelector('.status-badge');
+  if (statusBadge) {
+    statusBadge.className = `status-badge ${data.status}`;
+    statusBadge.textContent = capitalizeFirst(data.status);
+  }
+  
+  // Update progress bar
+  const progressFill = card.querySelector('.progress-fill');
+  if (progressFill) {
+    progressFill.style.width = `${data.progress || 0}%`;
+  }
+  
+  // Update phase indicator
+  const phaseIndicator = card.querySelector('.phase-indicator');
+  if (phaseIndicator && data.phase) {
+    phaseIndicator.textContent = data.phase;
+  }
+  
+  // Update time indicator
+  const timeIndicator = card.querySelector('.time-indicator');
+  if (timeIndicator && data.executionTimeMs) {
+    timeIndicator.textContent = `${(data.executionTimeMs / 1000).toFixed(1)}s`;
+  }
+  
+  // Update metrics if available
+  if (data.metrics) {
+    updateMetricsPreview(card, data.metrics);
+  }
+  
+  // Add animation class for visual feedback
+  card.classList.add('updating');
+  setTimeout(() => card.classList.remove('updating'), 300);
+}
+
+/**
+ * Update metrics preview in card
+ */
+function updateMetricsPreview(card, metrics) {
+  const metricsContainer = card.querySelector('.metrics-preview');
+  if (!metricsContainer) return;
+  
+  metricsContainer.innerHTML = `
+    <div class="metric">
+      <span class="metric-value">${metrics.compositeScore || 0}</span>
+      <span class="metric-label">Score</span>
+    </div>
+    <div class="metric">
+      <span class="metric-value">${formatNumber(metrics.traffic || 0)}</span>
+      <span class="metric-label">Traffic</span>
+    </div>
+    <div class="metric">
+      <span class="metric-value">${metrics.authority || 0}</span>
+      <span class="metric-label">Authority</span>
+    </div>
+  `;
+}
+
+/**
+ * Update overall progress indicator
+ */
+function updateOverallProgress(progress, completedCount, totalCount, elapsedSeconds) {
+  const progressElement = document.getElementById('overall-progress');
+  if (progressElement) {
+    progressElement.style.width = `${progress}%`;
+  }
+  
+  const progressText = document.getElementById('progress-text');
+  if (progressText) {
+    progressText.textContent = `${completedCount}/${totalCount} competitors (${elapsedSeconds}s)`;
+  }
+}
+
+/**
+ * Show completion summary
+ */
+function showCompletionSummary(result) {
+  const summaryContainer = document.getElementById('completion-summary');
+  if (!summaryContainer) return;
+  
+  const avgTime = result.totalTimeMs / 1000;
+  const perCompetitor = avgTime / result.competitorCount;
+  
+  summaryContainer.innerHTML = `
+    <div class="summary-header">
+      <h3>✅ Analysis Complete</h3>
+      <span class="total-time">${avgTime.toFixed(1)}s total</span>
+    </div>
+    <div class="summary-stats">
+      <div class="stat">
+        <span class="stat-value">${result.completedCount}</span>
+        <span class="stat-label">Completed</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">${result.failedCount}</span>
+        <span class="stat-label">Failed</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value">${perCompetitor.toFixed(1)}s</span>
+        <span class="stat-label">Avg/Competitor</span>
+      </div>
+    </div>
+  `;
+  
+  summaryContainer.style.display = 'block';
+}
+
+// Helper functions
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatNumber(num) {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toString();
+}
+</script>
+
+<style>
+/* Bento Grid Layout */
+.competitor-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.competitor-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 16px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.competitor-card.pending {
+  opacity: 0.7;
+  border-color: #e0e0e0;
+}
+
+.competitor-card.running {
+  border-color: #2196f3;
+  animation: pulse 1.5s infinite;
+}
+
+.competitor-card.completed {
+  border-color: #4caf50;
+}
+
+.competitor-card.failed {
+  border-color: #f44336;
+}
+
+.competitor-card.updating {
+  transform: scale(1.02);
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2); }
+  50% { box-shadow: 0 4px 16px rgba(33, 150, 243, 0.4); }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.domain-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.pending { background: #e0e0e0; color: #666; }
+.status-badge.fetching { background: #bbdefb; color: #1565c0; }
+.status-badge.enriching { background: #c8e6c9; color: #2e7d32; }
+.status-badge.analyzing { background: #fff3e0; color: #e65100; }
+.status-badge.saving { background: #f3e5f5; color: #7b1fa2; }
+.status-badge.completed { background: #c8e6c9; color: #2e7d32; }
+.status-badge.failed { background: #ffcdd2; color: #c62828; }
+
+.progress-bar {
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2196f3, #4caf50);
+  transition: width 0.3s ease;
+}
+
+.metrics-preview {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.metric {
+  text-align: center;
+  flex: 1;
+}
+
+.metric-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a73e8;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #666;
+}
+
+.metric-placeholder {
+  flex: 1;
+  height: 40px;
+  background: linear-gradient(90deg, #f0f0f0, #e0e0e0, #f0f0f0);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #888;
+}
+
+/* Overall Progress */
+#overall-progress-container {
+  background: #e0e0e0;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 16px;
+}
+
+#overall-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #1a73e8, #4caf50);
+  transition: width 0.5s ease;
+}
+
+/* Completion Summary */
+#completion-summary {
+  display: none;
+  background: #e8f5e9;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.summary-header h3 {
+  margin: 0;
+  color: #2e7d32;
+}
+
+.total-time {
+  font-size: 14px;
+  color: #666;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a73e8;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+</style>

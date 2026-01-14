@@ -1,0 +1,320 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UI_Elite_Charts_Brand.html
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Brand Position & Technical SEO Chart Renderers
+ * Extracted from V6 UI_Elite_Charts.html (lines 909-1177)
+ * 
+ * Dependencies: 
+ * - UI_Elite_Charts_Utils.html (formatting utilities)
+ * - UI_Elite_Charts_Core.html (getCompetitorColors, extractDomains, extractMetric)
+ * 
+ * Contents:
+ * - renderBrandArchetypeChart: Brand archetype alignment polar area
+ * - renderEEATChart: E-E-A-T trust signals radar
+ * - renderTechnicalHealthChart: Technical SEO health bar chart
+ * - renderPageSpeedChart: Page speed performance bar chart
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Brand Archetype Chart (Polar Area)
+ * Shows brand archetype alignment scores for competitors
+ */
+function renderBrandArchetypeChart(data) {
+  const ctx = document.getElementById('chart-comp-brand-archetype');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const brandData = geminiData.brandPositioning || {};
+  
+  const archetypes = ['Sage', 'Hero', 'Outlaw', 'Magician', 'Explorer', 'Creator'];
+  const colors = ['#667eea', '#34a853', '#ea4335', '#8e24aa', '#00acc1', '#ff6f00'];
+  
+  // Build archetype distribution data from real metrics
+  const archetypeData = competitors.slice(0, 6).map((comp) => {
+    const pm = comp.processedMetrics || {};
+    const authorityScore = pm.authorityScore || pm.domainAuthority || 50;
+    const contentDepth = pm.contentDepth || (pm.estimatedKeywords ? Math.min(100, Math.log10(pm.estimatedKeywords) * 20) : 50);
+    return Math.round(55 + (authorityScore * 0.3) + (contentDepth * 0.15));
+  });
+  
+  const domains = competitors.slice(0, 6).map(c => c.domain || 'Competitor');
+  
+  // Destroy existing chart before creating new one
+  if (window.competitorCharts && window.competitorCharts['brand-archetype']) {
+    window.competitorCharts['brand-archetype'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['brand-archetype'] = new Chart(ctx, {
+    type: 'polarArea',
+    data: {
+      labels: domains,
+      datasets: [{
+        data: archetypeData,
+        backgroundColor: colors.map(c => c + '80'),
+        borderColor: colors,
+        borderWidth: 2,
+        hoverBorderWidth: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 1500,
+        easing: 'easeOutQuart'
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10, weight: '500' }, padding: 10, usePointStyle: true }
+        },
+        title: {
+          display: true,
+          text: '🎭 Brand Archetype Alignment',
+          font: { size: 14, weight: '700' },
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const score = context.raw;
+              const label = score >= 80 ? 'Strong Alignment' : score >= 60 ? 'Good Alignment' : 'Needs Work';
+              return [`Alignment Score: ${score}/100`, `Status: ${label}`];
+            }
+          }
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 25, font: { size: 9 } },
+          grid: { color: 'rgba(0,0,0,0.08)' }
+        }
+      }
+    }
+  });
+}
+
+/**
+ * E-E-A-T Chart (Radar)
+ * Shows Experience, Expertise, Authoritativeness, Trustworthiness scores
+ */
+function renderEEATChart(data) {
+  const ctx = document.getElementById('chart-comp-eeat');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const domains = competitors.slice(0, 5).map(c => c.domain || 'Competitor');
+  
+  // Calculate E-E-A-T component scores from real data
+  const eeatData = {
+    experience: [],
+    expertise: [],
+    authoritativeness: [],
+    trustworthiness: []
+  };
+  
+  competitors.slice(0, 5).forEach(comp => {
+    const pm = comp.processedMetrics || {};
+    const contentDepth = pm.contentDepth || (pm.estimatedKeywords ? Math.min(100, Math.log10(pm.estimatedKeywords) * 20) : 50);
+    
+    eeatData.experience.push(Math.round(((pm.performanceScore || 50) + (pm.accessibilityScore || 50)) / 2));
+    eeatData.expertise.push(Math.round(contentDepth));
+    eeatData.authoritativeness.push(pm.authorityScore || pm.domainAuthority || 50);
+    eeatData.trustworthiness.push(Math.round(((pm.seoScore || 50) + (pm.bestPracticesScore || 50)) / 2));
+  });
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['eeat']) {
+    window.competitorCharts['eeat'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['eeat'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Experience', 'Expertise', 'Authoritativeness', 'Trustworthiness'],
+      datasets: competitors.slice(0, 5).map((comp, idx) => ({
+        label: comp.domain || `Comp ${idx + 1}`,
+        data: [
+          eeatData.experience[idx],
+          eeatData.expertise[idx],
+          eeatData.authoritativeness[idx],
+          eeatData.trustworthiness[idx]
+        ],
+        backgroundColor: ['rgba(102,126,234,0.15)', 'rgba(52,168,83,0.15)', 'rgba(251,188,4,0.15)', 'rgba(234,67,53,0.15)', 'rgba(142,36,170,0.15)'][idx],
+        borderColor: ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'][idx],
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 7,
+        pointBackgroundColor: ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'][idx],
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: { duration: 1500, easing: 'easeOutQuart' },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10, weight: '500' }, padding: 10, usePointStyle: true }
+        },
+        title: {
+          display: true,
+          text: '🏆 E-E-A-T Trust Signals Radar',
+          font: { size: 14, weight: '700' },
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const score = context.raw;
+              const status = score >= 80 ? '🟢 Strong' : score >= 60 ? '🟡 Good' : score >= 40 ? '🟠 Fair' : '🔴 Weak';
+              return `${context.dataset.label}: ${score}/100 ${status}`;
+            }
+          }
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 25, font: { size: 9 }, backdropColor: 'transparent' },
+          grid: { color: 'rgba(0,0,0,0.08)' },
+          pointLabels: { font: { size: 11, weight: '600' }, color: '#333' }
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Technical Health Chart (Bar)
+ * Shows SEO Score and Schema Implementation across competitors
+ */
+function renderTechnicalHealthChart(data) {
+  const ctx = document.getElementById('chart-comp-technical-health');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['technical-health']) {
+    window.competitorCharts['technical-health'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['technical-health'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [
+        {
+          label: 'SEO Score',
+          data: extractMetric(competitors, 'processedMetrics.seoScore'),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)'
+        },
+        {
+          label: 'Schema Implementation',
+          data: extractMetric(competitors, 'processedMetrics.schemaImplementation'),
+          backgroundColor: 'rgba(59, 130, 246, 0.7)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Technical SEO Health' }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+/**
+ * Page Speed Chart (Bar)
+ * Shows performance scores with color-coded status
+ */
+function renderPageSpeedChart(data) {
+  const ctx = document.getElementById('chart-comp-page-speed');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['page-speed']) {
+    window.competitorCharts['page-speed'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['page-speed'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Performance Score',
+        data: extractMetric(competitors, 'processedMetrics.performanceScore'),
+        backgroundColor: competitors.map((c) => {
+          const score = c.processedMetrics?.performanceScore || 
+                       c.categories?.pageSpeed?.metrics?.performanceScore || 0;
+          if (score >= 90) return 'rgba(34, 197, 94, 0.7)';
+          if (score >= 50) return 'rgba(251, 146, 60, 0.7)';
+          return 'rgba(239, 68, 68, 0.7)';
+        })
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Page Speed Performance' }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          max: 100,
+          ticks: {
+            callback: function(value) {
+              if (value >= 90) return value + ' (Good)';
+              if (value >= 50) return value + ' (Needs Work)';
+              return value + ' (Poor)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderBrandArchetypeChart = renderBrandArchetypeChart;
+window.renderEEATChart = renderEEATChart;
+window.renderTechnicalHealthChart = renderTechnicalHealthChart;
+window.renderPageSpeedChart = renderPageSpeedChart;
+
+console.log('✅ UI_Elite_Charts_Brand.html loaded - 4 brand & technical chart functions');
+</script>

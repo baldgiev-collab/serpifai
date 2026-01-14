@@ -1,0 +1,119 @@
+<!--
+  UI_Markdown_Utils.html
+  Markdown Cleaning & Formatting Utilities
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.cleanReportForDisplay() - Remove JSON/artifacts from text
+  - window.formatMarkdownReport() - Convert markdown to styled HTML
+  - window.updateStageStatus() - Update sidebar stage badges
+  
+  Dependencies: None (standalone utility module)
+-->
+<script>
+  console.log('📝 UI_Markdown_Utils.html loading...');
+
+  /**
+   * Clean report text by removing JSON blocks and artifacts
+   * @param {string} text - Raw report text with potential artifacts
+   * @returns {string} Cleaned text
+   */
+  window.cleanReportForDisplay = function(text) {
+    if (!text) return '';
+
+    let cleaned = text;
+
+    // Remove JSON code blocks (```json ... ```)
+    cleaned = cleaned.replace(/```json[\s\S]*?```/gi, '');
+
+    // Remove standalone JSON objects
+    cleaned = cleaned.replace(/\{[\s\S]*?"name"[\s\S]*?"description"[\s\S]*?\}/g, '');
+
+    // Remove price/token artifacts: $2, $1, $$, etc.
+    cleaned = cleaned.replace(/\$\d+/g, '');
+    cleaned = cleaned.replace(/\$\$/g, '');
+
+    // Remove excessive whitespace
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    cleaned = cleaned.replace(/^\s+/gm, '');
+
+    // Remove triple dashes
+    cleaned = cleaned.replace(/---+/g, '');
+
+    // Remove any remaining code fence markers
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+
+    return cleaned.trim();
+  };
+
+  /**
+   * Simple markdown-to-HTML formatter with presentation-quality styling
+   * @param {string} markdown - Markdown text
+   * @returns {string} Styled HTML
+   */
+  window.formatMarkdownReport = function(markdown) {
+    if (!markdown) return '<p class="no-content">No report available</p>';
+
+    let html = markdown;
+
+    // Remove any remaining JSON artifacts
+    html = html.replace(/```json[\s\S]*?```/g, '');
+    html = html.replace(/```[\s\S]*?```/g, '');
+
+    // Add section dividers and icons for numbered sections (### 1. Title)
+    html = html.replace(/###\s*(\d+)\.\s*([^\n]+)/g, function(match, num, title) {
+      const icons = ['🎯', '💡', '🔄', '✨', '🗺️', '📋', '🏆', '💼', '📊', '🎨', '🔍', '⚡', '📈', '🌟', '💎'];
+      const icon = icons[parseInt(num) - 1] || '📌';
+      return `<div class="report-section-divider"></div><h3 class="report-section-heading"><span class="section-icon">${icon}</span><span class="section-number">${num}.</span> <span class="section-title">${title.trim()}</span></h3>`;
+    });
+
+    // Main headers (## Title)
+    html = html.replace(/##\s+([^\n]+)/g, '<h2 class="report-main-heading">$1</h2>');
+
+    // Subheaders (#### Title)
+    html = html.replace(/####\s+([^\n]+)/g, '<h4 class="report-subheading">$1</h4>');
+
+    // Bold text
+    html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong class="report-emphasis">$1</strong>');
+
+    // Italic text
+    html = html.replace(/\*([^*\n]+)\*/g, '<em class="report-italic">$1</em>');
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code class="report-code">$1</code>');
+
+    // Bullet points
+    html = html.replace(/^\s*[\*\-]\s+(.+)$/gm, '<li class="report-list-item">$1</li>');
+
+    // Numbered lists
+    html = html.replace(/^\s*\d+\.\s+(.+)$/gm, '<li class="report-list-item-numbered">$1</li>');
+
+    // Wrap consecutive list items
+    html = html.replace(/(<li class="report-list-item">.*?<\/li>(?:\s*\n)?)+/gs, function(match) {
+      return `<ul class="report-list">${match}</ul>`;
+    });
+    html = html.replace(/(<li class="report-list-item-numbered">.*?<\/li>(?:\s*\n)?)+/gs, function(match) {
+      return `<ol class="report-list-numbered">${match}</ol>`;
+    });
+
+    // Horizontal rules
+    html = html.replace(/^---+$/gm, '<hr class="report-divider">');
+
+    // Blockquotes
+    html = html.replace(/^>\s+(.+)$/gm, '<blockquote class="report-quote">$1</blockquote>');
+
+    // Convert remaining line breaks to paragraphs
+    html = html.split('\n\n').map(para => {
+      para = para.trim();
+      if (para && !para.includes('<h') && !para.includes('<ul') && !para.includes('<ol') &&
+          !para.includes('<div') && !para.includes('<hr') && !para.includes('<blockquote')) {
+        return `<p class="report-paragraph">${para.replace(/\n/g, '<br>')}</p>`;
+      }
+      return para;
+    }).join('\n');
+
+    return `<div class="report-content-enhanced report-elite-typography">${html}</div>`;
+  };
+
+  console.log('✅ UI_Markdown_Utils.html loaded');
+</script>

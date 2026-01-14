@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elite Competitor Intelligence</title>
+  
+  <!-- Chart.js for visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      background: #f8f9fa;
+      color: #202124;
+    }
+    
+    .elite-viewport {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    /* Header */
+    .elite-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .elite-header h1 {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    
+    .elite-header .meta {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    /* Tab Navigation */
+    .tab-navigation {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+      flex-wrap: wrap;
+    }
+    
+    .tab-button {
+      padding: 12px 20px;
+      border: none;
+      background: white;
+      color: #5f6368;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+      border-bottom: 3px solid transparent;
+    }
+    
+    .tab-button:hover {
+      background: #f1f3f4;
+      color: #202124;
+    }
+    
+    .tab-button.active {
+      background: white;
+      color: #1a73e8;
+      border-bottom-color: #1a73e8;
+    }
+    
+    /* Tab Content */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Category Card */
+    .category-card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .category-card h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #202124;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .category-icon {
+      font-size: 32px;
+    }
+    
+    /* Insights Section */
+    .insights-section {
+      margin-bottom: 30px;
+    }
+    
+    .insights-section h3 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #5f6368;
+    }
+    
+    .insight-item {
+      padding: 15px;
+      background: #f8f9fa;
+      border-left: 4px solid #1a73e8;
+      margin-bottom: 10px;
+      border-radius: 4px;
+    }
+    
+    /* Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .metric-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .metric-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    
+    .metric-label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    /* Chart Container */
+    .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      position: relative;
+      height: 400px;
+    }
+    
+    .chart-container canvas {
+      max-height: 100%;
+    }
+    
+    /* Recommendations */
+    .recommendations-list {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .recommendation-item {
+      padding: 15px;
+      background: #e8f5e9;
+      border-left: 4px solid #34a853;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    
+    .recommendation-item::before {
+      content: "✓";
+      color: #34a853;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    /* Loading State */
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #1a73e8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Competitor Comparison Table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .comparison-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #5f6368;
+    }
+    
+    .comparison-table tr:hover {
+      background: #f8f9fa;
+    }
+    
+    /* Score Badge */
+    .score-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .score-high {
+      background: #e8f5e9;
+      color: #34a853;
+    }
+    
+    .score-medium {
+      background: #fff3e0;
+      color: #f57c00;
+    }
+    
+    .score-low {
+      background: #fce4ec;
+      color: #e91e63;
+    }
+  </style>
+</head>
+<body>
+  <div class="elite-viewport">
+    <!-- Header -->
+    <div class="elite-header">
+      <h1>🏆 Elite Competitor Intelligence</h1>
+      <div class="meta">
+        <?!= analysis.competitors ? analysis.competitors.length : 0 ?> competitors analyzed | 
+        Generated: <?!= new Date(timestamp).toLocaleString() ?>
+      </div>
+    </div>
+    
+    <!-- Tab Navigation -->
+    <div class="tab-navigation" id="tabNav">
+      <!-- Tabs will be generated dynamically -->
+    </div>
+    
+    <!-- Tab Content Containers -->
+    <div id="tabContentArea">
+      <!-- Content will be generated dynamically -->
+    </div>
+  </div>
+  
+  <script>
+    // Analysis data injected from server
+    const analysisData = JSON.parse('<?!= JSON.stringify(analysis || {}) ?>');
+    const categories = JSON.parse('<?!= JSON.stringify(categories || []) ?>');
+    
+    // Initialize tabs
+    function initializeTabs() {
+      const tabNav = document.getElementById('tabNav');
+      const contentArea = document.getElementById('tabContentArea');
+      
+      categories.forEach((category, index) => {
+        // Create tab button
+        const button = document.createElement('button');
+        button.className = 'tab-button' + (index === 0 ? ' active' : '');
+        button.innerHTML = `${category.icon} ${category.name}`;
+        button.onclick = () => switchTab(category.id);
+        tabNav.appendChild(button);
+        
+        // Create tab content
+        const content = document.createElement('div');
+        content.className = 'tab-content' + (index === 0 ? ' active' : '');
+        content.id = `tab-${category.id}`;
+        content.innerHTML = renderCategoryContent(category);
+        contentArea.appendChild(content);
+      });
+      
+      // Render charts for active tab
+      setTimeout(() => renderChartsForTab(categories[0].id), 100);
+    }
+    
+    // Switch tabs
+    function switchTab(categoryId) {
+      // Update buttons
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Update content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(`tab-${categoryId}`).classList.add('active');
+      
+      // Render charts
+      renderChartsForTab(categoryId);
+    }
+    
+    // Render category content
+    function renderCategoryContent(category) {
+      const data = analysisData.geminiAnalysis?.categories?.[category.id] || {};
+      
+      let html = `
+        <div class="category-card">
+          <h2><span class="category-icon">${category.icon}</span>${category.name}</h2>
+          
+          <!-- Insights -->
+          <div class="insights-section">
+            <h3>Key Insights</h3>
+            ${renderInsights(data.insights || [])}
+          </div>
+          
+          <!-- Metrics -->
+          ${renderMetrics(data.metrics || {})}
+          
+          <!-- Chart -->
+          <div class="chart-container">
+            <canvas id="chart-${category.id}"></canvas>
+          </div>
+          
+          <!-- Recommendations -->
+          <div class="insights-section">
+            <h3>Recommendations</h3>
+            ${renderRecommendations(data.recommendations || [])}
+          </div>
+        </div>
+      `;
+      
+      return html;
+    }
+    
+    // Render insights
+    function renderInsights(insights) {
+      if (!insights || insights.length === 0) {
+        return '<div class="insight-item">No insights available yet.</div>';
+      }
+      
+      return insights.map(insight => 
+        `<div class="insight-item">${insight}</div>`
+      ).join('');
+    }
+    
+    // Render metrics
+    function renderMetrics(metrics) {
+      const keys = Object.keys(metrics);
+      if (keys.length === 0) return '';
+      
+      const metricsHtml = keys.map(key => `
+        <div class="metric-card">
+          <div class="metric-value">${metrics[key]}</div>
+          <div class="metric-label">${key.replace(/([A-Z])/g, ' $1').trim()}</div>
+        </div>
+      `).join('');
+      
+      return `
+        <div class="insights-section">
+          <h3>Key Metrics</h3>
+          <div class="metrics-grid">
+            ${metricsHtml}
+          </div>
+        </div>
+      `;
+    }
+    
+    // Render recommendations
+    function renderRecommendations(recommendations) {
+      if (!recommendations || recommendations.length === 0) {
+        return '<div class="recommendation-item">Analysis pending...</div>';
+      }
+      
+      return `
+        <ul class="recommendations-list">
+          ${recommendations.map(rec => 
+            `<li class="recommendation-item">${rec}</li>`
+          ).join('')}
+        </ul>
+      `;
+    }
+    
+    // Render charts for active tab
+    function renderChartsForTab(categoryId) {
+      const canvas = document.getElementById(`chart-${categoryId}`);
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Destroy existing chart
+      if (window.activeCharts && window.activeCharts[categoryId]) {
+        window.activeCharts[categoryId].destroy();
+      }
+      
+      // Get chart data (would come from server in real implementation)
+      const chartConfig = getChartConfig(categoryId);
+      
+      // Create new chart
+      if (!window.activeCharts) window.activeCharts = {};
+      window.activeCharts[categoryId] = new Chart(ctx, chartConfig);
+    }
+    
+    // Get chart configuration
+    function getChartConfig(categoryId) {
+      // Sample chart configuration
+      // In production, this would use actual data from analysisData
+      return {
+        type: 'bar',
+        data: {
+          labels: analysisData.competitors || ['Competitor 1', 'Competitor 2'],
+          datasets: [{
+            label: 'Competitive Score',
+            data: [75, 85],
+            backgroundColor: '#4285f4'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      };
+    }
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', initializeTabs);
+  </script>
+</body>
+</html>

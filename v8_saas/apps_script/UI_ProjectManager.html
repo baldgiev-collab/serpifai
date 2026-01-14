@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Project Manager</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    
+    .header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .project-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      transition: all 0.2s;
+    }
+    .project-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .project-card.active { border-color: var(--accent); border-width: 2px; }
+    
+    .project-name { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .project-domain { color: var(--text-secondary); font-size: 14px; margin-bottom: 10px; }
+    .project-meta {
+      display: flex;
+      gap: 15px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 15px;
+    }
+    .project-actions { display: flex; gap: 10px; }
+    
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .form-help { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+    .empty-state h3 { margin-bottom: 10px; color: var(--text-primary); }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-actions">
+      <h1>📁 Projects</h1>
+      <button class="btn btn-primary" onclick="showCreateModal()">+ New Project</button>
+    </div>
+    
+    <div id="message" class="message"></div>
+    
+    <div id="projectsGrid" class="projects-grid">
+      <div class="empty-state">
+        <h3>Loading projects...</h3>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Create/Edit Modal -->
+  <div class="modal-overlay" id="projectModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">New Project</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="projectForm" onsubmit="saveProject(event)">
+        <input type="hidden" id="projectId">
+        
+        <div class="form-group">
+          <label class="form-label">Project Name *</label>
+          <input type="text" class="form-input" id="projectName" required placeholder="My SEO Project">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Domain</label>
+          <input type="text" class="form-input" id="projectDomain" placeholder="example.com">
+          <div class="form-help">Your website domain (without https://)</div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Niche/Industry</label>
+          <input type="text" class="form-input" id="projectNiche" placeholder="e.g., SaaS, E-commerce, Healthcare">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Brand Name</label>
+          <input type="text" class="form-input" id="projectBrand" placeholder="Your brand name">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Competitors</label>
+          <textarea class="form-textarea" id="projectCompetitors" placeholder="competitor1.com&#10;competitor2.com&#10;competitor3.com"></textarea>
+          <div class="form-help">One competitor domain per line</div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Seed Keywords</label>
+          <textarea class="form-textarea" id="projectKeywords" placeholder="keyword 1&#10;keyword 2&#10;keyword 3"></textarea>
+          <div class="form-help">One keyword per line</div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="submit" class="btn btn-primary">Save Project</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let projects = [];
+    let activeProjectId = null;
+    
+    function init() {
+      loadProjects();
+      try {
+        activeProjectId = localStorage.getItem('activeProjectId');
+      } catch (e) {}
+    }
+    
+    function loadProjects() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            projects = result.projects || [];
+            renderProjects();
+          } else {
+            showMessage(result.error || 'Failed to load projects', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error: ' + error.message, 'error');
+        })
+        .DB_PM_listProjects({});
+    }
+    
+    function renderProjects() {
+      const grid = document.getElementById('projectsGrid');
+      
+      if (projects.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <h3>No projects yet</h3>
+            <p>Create your first project to get started</p>
+          </div>
+        `;
+        return;
+      }
+      
+      grid.innerHTML = projects.map(project => `
+        <div class="project-card ${project.projectId === activeProjectId ? 'active' : ''}">
+          <div class="project-name">${escapeHtml(project.name)}</div>
+          <div class="project-domain">${escapeHtml(project.domain || 'No domain set')}</div>
+          <div class="project-meta">
+            <span>📊 ${(project.competitors || []).length} competitors</span>
+            <span>🔑 ${(project.keywords || []).length} keywords</span>
+          </div>
+          <div class="project-actions">
+            <button class="btn btn-primary btn-sm" onclick="selectProject('${project.projectId}')">Select</button>
+            <button class="btn btn-secondary btn-sm" onclick="editProject('${project.projectId}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteProject('${project.projectId}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    function showCreateModal() {
+      document.getElementById('modalTitle').textContent = 'New Project';
+      document.getElementById('projectForm').reset();
+      document.getElementById('projectId').value = '';
+      document.getElementById('projectModal').classList.add('active');
+    }
+    
+    function editProject(projectId) {
+      const project = projects.find(p => p.projectId === projectId);
+      if (!project) return;
+      
+      document.getElementById('modalTitle').textContent = 'Edit Project';
+      document.getElementById('projectId').value = project.projectId;
+      document.getElementById('projectName').value = project.name || '';
+      document.getElementById('projectDomain').value = project.domain || '';
+      document.getElementById('projectNiche').value = project.niche || '';
+      document.getElementById('projectBrand').value = project.brandName || '';
+      document.getElementById('projectCompetitors').value = (project.competitors || []).join('\n');
+      document.getElementById('projectKeywords').value = (project.keywords || []).join('\n');
+      
+      document.getElementById('projectModal').classList.add('active');
+    }
+    
+    function closeModal() {
+      document.getElementById('projectModal').classList.remove('active');
+    }
+    
+    function saveProject(event) {
+      event.preventDefault();
+      
+      const projectId = document.getElementById('projectId').value;
+      const payload = {
+        projectId: projectId || undefined,
+        name: document.getElementById('projectName').value,
+        domain: document.getElementById('projectDomain').value,
+        niche: document.getElementById('projectNiche').value,
+        brandName: document.getElementById('projectBrand').value,
+        competitors: document.getElementById('projectCompetitors').value.split('\n').filter(c => c.trim()),
+        keywords: document.getElementById('projectKeywords').value.split('\n').filter(k => k.trim())
+      };
+      
+      const action = projectId ? 'DB_PM_saveProject' : 'DB_PM_createProject';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showMessage('Project saved successfully!', 'success');
+            closeModal();
+            loadProjects();
+          } else {
+            showMessage(result.error || 'Failed to save', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error: ' + error.message, 'error');
+        })
+        [action](payload);
+    }
+    
+    function selectProject(projectId) {
+      activeProjectId = projectId;
+      try {
+        localStorage.setItem('activeProjectId', projectId);
+      } catch (e) {}
+      showMessage('Project selected!', 'success');
+      renderProjects();
+    }
+    
+    function deleteProject(projectId) {
+      if (!confirm('Are you sure you want to delete this project?')) return;
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showMessage('Project deleted', 'success');
+            loadProjects();
+          } else {
+            showMessage(result.error || 'Failed to delete', 'error');
+          }
+        })
+        .DB_PM_deleteProject({ projectId: projectId });
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => { msg.className = 'message'; }, 5000);
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

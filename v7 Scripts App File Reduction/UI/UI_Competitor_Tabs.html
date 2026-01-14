@@ -1,0 +1,585 @@
+<script>
+/**
+ * UI_Competitor_Tabs.html
+ * Competitor intelligence tab rendering and management functions
+ * Extracted from UI_Scripts_App.html for modularization
+ */
+
+/**
+ * Render competitor intelligence tabs
+ */
+function renderCompetitorTabs(data) {
+  const tabsContainer = document.getElementById('competitorIntelligenceTabs');
+  if (!tabsContainer) return;
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'categoryIntelligence', label: 'Market Intelligence', icon: '🏷️' },
+    { id: 'brandPositioning', label: 'Brand Positioning', icon: '🎯' },
+    { id: 'technicalSEO', label: 'Technical SEO', icon: '⚙️' },
+    { id: 'contentIntelligence', label: 'Content', icon: '📝' },
+    { id: 'keywordStrategy', label: 'Keywords', icon: '🔑' },
+    { id: 'contentSystems', label: 'Content Systems', icon: '🔄' },
+    { id: 'conversionData', label: 'Conversion', icon: '💰' },
+    { id: 'distributionData', label: 'Distribution', icon: '📡' },
+    { id: 'audienceIntelligence', label: 'Audience', icon: '👥' },
+    { id: 'geoAeoIntelligence', label: 'AI Search', icon: '🤖' },
+    { id: 'authorityInfluence', label: 'Authority', icon: '⭐' },
+    { id: 'performancePredictive', label: 'Performance', icon: '📈' },
+    { id: 'strategicOpportunities', label: 'Strategy', icon: '🎯' },
+    { id: 'scoringEngine', label: 'Scoring', icon: '🏆' }
+  ];
+
+  tabs.forEach(tab => {
+    const btn = document.createElement('button');
+    btn.className = 'competitor-tab-btn';
+    btn.setAttribute('data-tab', tab.id);
+    btn.innerHTML = `${tab.icon} ${tab.label}`;
+    btn.onclick = () => activateCompetitorTab(tab.id);
+    tabsContainer.appendChild(btn);
+  });
+}
+
+/**
+ * Render all competitor tab panels
+ */
+function renderCompetitorTabPanels(data) {
+  const contentContainer = document.getElementById('competitorTabContent');
+  if (!contentContainer) return;
+
+  contentContainer.innerHTML = '';
+
+  // Render Overview tab
+  contentContainer.appendChild(renderOverviewPanel(data));
+
+  // Render other category tabs
+  const categories = [
+    'categoryIntelligence', 'brandPositioning', 'technicalSEO', 'contentIntelligence',
+    'keywordStrategy', 'contentSystems', 'conversionData', 'distributionData',
+    'audienceIntelligence', 'geoAeoIntelligence', 'authorityInfluence', 'performancePredictive',
+    'strategicOpportunities', 'scoringEngine'
+  ];
+
+  categories.forEach(category => {
+    if (data.intelligence && data.intelligence[category]) {
+      contentContainer.appendChild(renderCategoryPanel(category, data));
+    }
+  });
+}
+
+/**
+ * Render Overview panel
+ */
+function renderOverviewPanel(data) {
+  const panel = document.createElement('div');
+  panel.className = 'competitor-tab-panel';
+  panel.id = 'panel-overview';
+
+  const overview = data.overview || {};
+  const insights = data.insights || {};
+
+  // Build overview HTML
+  let html = '<div class="competitor-section">';
+  html += '<h3><span class="competitor-section-icon">📊</span> Executive Overview</h3>';
+
+  // Executive Summary
+  if (insights.executiveSummary) {
+    html += `<div class="competitor-insight-box">
+          <h4>Executive Summary</h4>
+          <p>${insights.executiveSummary}</p>
+        </div>`;
+  }
+
+  // Competitive ranking table
+  html += '<div class="competitor-comparison-table-wrapper">';
+  html += '<table class="competitor-comparison-table">';
+  html += '<thead><tr><th>Rank</th><th>Competitor</th><th>Overall Score</th><th>Key Strengths</th></tr></thead>';
+  html += '<tbody>';
+
+  if (overview.rankings && overview.rankings.length > 0) {
+    overview.rankings.forEach((comp, index) => {
+      const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
+      html += `<tr>
+            <td><span class="competitor-rank-badge ${rankClass}">#${index + 1}</span></td>
+            <td class="competitor-name-cell">${comp.domain}</td>
+            <td><strong>${Math.round(comp.averageScore)}/100</strong></td>
+            <td>${comp.strengths || 'N/A'}</td>
+          </tr>`;
+    });
+  } else {
+    data.competitors.forEach((domain, index) => {
+      html += `<tr>
+            <td><span class="competitor-rank-badge">#${index + 1}</span></td>
+            <td class="competitor-name-cell">${domain}</td>
+            <td><strong>-</strong></td>
+            <td>Analyzing...</td>
+          </tr>`;
+    });
+  }
+
+  html += '</tbody></table></div>';
+  html += '</div>';
+
+  // Strategic Insights
+  if (insights.strategicInsights && insights.strategicInsights.length > 0) {
+    html += '<div class="competitor-section">';
+    html += '<h3><span class="competitor-section-icon">💡</span> Strategic Insights</h3>';
+    html += '<ul class="competitor-insight-list">';
+    insights.strategicInsights.forEach(insight => {
+      html += `<li>${insight}</li>`;
+    });
+    html += '</ul></div>';
+  }
+
+  // Actionable Recommendations
+  if (insights.actionableRecommendations && insights.actionableRecommendations.length > 0) {
+    html += '<div class="competitor-section">';
+    html += '<h3><span class="competitor-section-icon">🎯</span> Actionable Recommendations</h3>';
+    html += '<ul class="competitor-insight-list">';
+    insights.actionableRecommendations.forEach(rec => {
+      html += `<li>${rec}</li>`;
+    });
+    html += '</ul></div>';
+  }
+
+  // Render charts
+  if (data.charts && data.charts.overview) {
+    html += '<div class="competitor-section">';
+    html += '<h3><span class="competitor-section-icon">📈</span> Visual Analysis</h3>';
+    html += '<div class="charts-grid">';
+    html += `<div class="competitor-chart-container">
+          <h4>Competitive Positioning</h4>
+          <canvas id="chart-overview-main"></canvas>
+        </div>`;
+
+    html += '</div></div>';
+  }
+
+  // Insights
+  if (data.insights && data.insights.overview) {
+    html += renderInsightsSection(data.insights.overview);
+  }
+
+  panel.innerHTML = html;
+
+  // Render charts after DOM insertion
+  setTimeout(() => {
+    if (data.charts && data.charts.overview) {
+      renderChart('overview-main', data.charts.overview);
+    }
+  }, 100);
+
+  return panel;
+}
+
+/**
+ * Render category panel
+ */
+function renderCategoryPanel(categoryKey, data) {
+  const panel = document.createElement('div');
+  panel.className = 'competitor-tab-panel';
+  panel.id = `panel-${categoryKey}`;
+
+  const categoryData = data.intelligence[categoryKey];
+  if (!categoryData) {
+    panel.innerHTML = '<p>No data available for this category</p>';
+    return panel;
+  }
+
+  const categoryNames = {
+    categoryIntelligence: 'Market + Category Intelligence',
+    brandPositioning: 'Brand & Strategic Positioning',
+    technicalSEO: 'Technical SEO & Performance',
+    contentIntelligence: 'Organic Traffic & Content Intelligence',
+    keywordStrategy: 'Keyword & Entity Strategy',
+    contentSystems: 'Content Systems & Operations',
+    conversionData: 'Conversion & Monetization',
+    distributionData: 'Distribution & Visibility',
+    audienceIntelligence: 'Audience & Psychological Intelligence',
+    geoAeoIntelligence: 'GEO + AEO Intelligence',
+    authorityInfluence: 'Authority & Influence',
+    performancePredictive: 'Performance & Predictive Intelligence',
+    strategicOpportunities: 'Strategic Opportunity Matrix',
+    scoringEngine: 'Scoring & Visualization Engine'
+  };
+
+  let html = '<div class="competitor-section">';
+  html += `<h3><span class="competitor-section-icon">📋</span> ${categoryNames[categoryKey] || categoryKey}</h3>`;
+
+  // Render comparison table
+  html += '<div class="competitor-comparison-table-wrapper">';
+  html += '<table class="competitor-comparison-table">';
+  html += '<thead><tr><th>Competitor</th><th>Key Metrics</th></tr></thead>';
+  html += '<tbody>';
+
+  // Render each competitor's data
+  Object.keys(categoryData).forEach(domain => {
+    const domainData = categoryData[domain];
+    html += `<tr>
+          <td class="competitor-name-cell"><strong>${domain}</strong></td>
+          <td><pre style="font-size:11px;max-width:600px;overflow:auto;">${JSON.stringify(domainData, null, 2)}</pre></td>
+        </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  html += '</div>';
+
+  // Render charts
+  const chartConfig = data.charts[categoryKey];
+  if (chartConfig) {
+    html += '<div class="competitor-section">';
+    html += '<h3><span class="competitor-section-icon">📊</span> Visual Analysis</h3>';
+    html += '<div class="charts-grid">';
+    html += `<div class="competitor-chart-container">
+          <h4>${categoryNames[categoryKey]} Overview</h4>
+          <canvas id="chart-${categoryKey}"></canvas>
+        </div>`;
+    html += '</div></div>';
+  }
+
+  panel.innerHTML = html;
+
+  // Render charts after DOM insertion
+  setTimeout(() => {
+    if (chartConfig) {
+      renderChart(categoryKey, chartConfig);
+    }
+  }, 100);
+
+  return panel;
+}
+
+/**
+ * Render comparison table for a category
+ */
+function renderComparisonTable(categoryData) {
+  if (!categoryData.competitors || categoryData.competitors.length === 0) {
+    return '<p>No comparison data available</p>';
+  }
+
+  // Get all metric keys from first competitor
+  const firstComp = categoryData.competitors[0];
+  const metricKeys = Object.keys(firstComp.metrics || {});
+
+  if (metricKeys.length === 0) {
+    return '<p>No metrics available</p>';
+  }
+
+  let html = '<div class="competitor-comparison-table-wrapper">';
+  html += '<table class="competitor-comparison-table">';
+  html += '<thead><tr><th>Metric</th>';
+
+  // Add competitor columns
+  categoryData.competitors.forEach(comp => {
+    html += `<th>${comp.domain}</th>`;
+  });
+
+  html += '</tr></thead><tbody>';
+
+  // Add rows for each metric
+  metricKeys.forEach(metricKey => {
+    html += `<tr><td class="competitor-name-cell">${formatMetricName(metricKey)}</td>`;
+
+    categoryData.competitors.forEach(comp => {
+      const metric = comp.metrics[metricKey];
+      const score = metric?.score || 0;
+      const value = metric?.value || 'N/A';
+
+      html += `<td><strong>${score}/100</strong><br><small>${truncate(JSON.stringify(value), 50)}</small></td>`;
+    });
+
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  return html;
+}
+
+/**
+ * Render insights section
+ */
+function renderInsightsSection(insights) {
+  if (!insights) return '';
+
+  let html = '<div class="competitor-insights">';
+  html += '<h4>💡 Strategic Insights</h4>';
+
+  if (insights.keyInsights && insights.keyInsights.length > 0) {
+    insights.keyInsights.forEach(insight => {
+      html += `<div class="competitor-insight-item">• ${insight}</div>`;
+    });
+  } else if (insights.keyTakeaways && insights.keyTakeaways.length > 0) {
+    insights.keyTakeaways.slice(0, 5).forEach(takeaway => {
+      html += `<div class="competitor-insight-item">• ${takeaway}</div>`;
+    });
+  } else if (insights.summary) {
+    html += `<div class="competitor-insight-item">${insights.summary}</div>`;
+  }
+
+  html += '</div>';
+
+  return html;
+}
+
+/**
+ * Activate a competitor intelligence tab
+ * V8.0: Added lazy loading for performance optimization
+ */
+function activateCompetitorTab(tabId) {
+  // Update tab buttons
+  const tabButtons = document.querySelectorAll('.competitor-tab-btn');
+  tabButtons.forEach(btn => {
+    if (btn.getAttribute('data-tab') === tabId) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Update tab panels
+  const tabPanels = document.querySelectorAll('.competitor-tab-panel');
+  tabPanels.forEach(panel => {
+    if (panel.id === `panel-${tabId}`) {
+      panel.classList.add('active');
+    } else {
+      panel.classList.remove('active');
+    }
+  });
+
+  // V8.0: LAZY LOADING - Trigger data load for deferred tabs
+  lazyLoadTabData(tabId);
+}
+
+/**
+ * V8.0: Lazy load tab data for deferred API calls
+ * Called when user clicks on a tab that requires additional data
+ */
+function lazyLoadTabData(tabId) {
+  // Check if this tab needs lazy loading
+  const lazyTabs = {
+    'technical-seo': {
+      needsPageSpeed: true,
+      loader: lazyLoadPageSpeedData,
+      loadedKey: 'pageSpeedLoaded'
+    },
+    'performance-intelligence': {
+      needsPageSpeed: true,
+      loader: lazyLoadPageSpeedData,
+      loadedKey: 'pageSpeedLoaded'
+    }
+  };
+
+  const tabConfig = lazyTabs[tabId];
+  if (!tabConfig) return; // Tab doesn't need lazy loading
+
+  // Check if already loaded
+  if (window.competitorDataState && window.competitorDataState[tabConfig.loadedKey]) {
+    console.log(`[Lazy] ${tabId} data already loaded`);
+    return;
+  }
+
+  // Initialize state tracker
+  if (!window.competitorDataState) {
+    window.competitorDataState = {};
+  }
+
+  console.log(`[Lazy] Loading additional data for ${tabId}...`);
+
+  // Show loading indicator in the tab
+  const panel = document.getElementById(`panel-${tabId}`);
+  if (panel) {
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = `lazy-loading-${tabId}`;
+    loadingOverlay.innerHTML = `
+          <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                      background: rgba(0,0,0,0.1); display: flex; align-items: center; 
+                      justify-content: center; z-index: 100; border-radius: 12px;">
+            <div style="background: white; padding: 24px; border-radius: 12px; 
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.15); text-align: center;">
+              <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <div style="font-weight: 600; color: #667085;">Loading PageSpeed data...</div>
+              <div style="font-size: 12px; color: #98a2b3;">This may take a few seconds</div>
+            </div>
+          </div>
+        `;
+    loadingOverlay.style.position = 'relative';
+    panel.style.position = 'relative';
+    panel.appendChild(loadingOverlay);
+  }
+
+  // Call the loader
+  tabConfig.loader().then(() => {
+    window.competitorDataState[tabConfig.loadedKey] = true;
+    console.log(`[Lazy] ${tabId} data loaded successfully`);
+
+    // Remove loading overlay
+    const overlay = document.getElementById(`lazy-loading-${tabId}`);
+    if (overlay) overlay.remove();
+
+    // Refresh the tab content
+    refreshTabContent(tabId);
+  }).catch(err => {
+    console.error(`[Lazy] Error loading ${tabId} data:`, err);
+
+    // Remove loading overlay
+    const overlay = document.getElementById(`lazy-loading-${tabId}`);
+    if (overlay) overlay.remove();
+
+    // Show error message
+    showToast('Failed to load additional data. Please try again.', 'error');
+  });
+}
+
+/**
+ * V8.0: Lazy load PageSpeed data for all competitors
+ */
+async function lazyLoadPageSpeedData() {
+  const competitorData = window.lastCompetitorAnalysisData;
+  if (!competitorData || !competitorData.competitors) {
+    console.warn('[Lazy] No competitor data available for PageSpeed loading');
+    return;
+  }
+
+  const domains = competitorData.competitors.map(c => c.domain || c.url).filter(Boolean);
+  console.log(`[Lazy] Fetching PageSpeed for ${domains.length} domains...`);
+
+  // Call backend to fetch PageSpeed data
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(result => {
+        if (result.success) {
+          // Merge PageSpeed data into existing competitor data
+          result.pageSpeedData.forEach((psData, i) => {
+            if (competitorData.competitors[i]) {
+              competitorData.competitors[i].pageSpeedLazy = psData;
+
+              // Update processedMetrics if exists
+              if (competitorData.competitors[i].processedMetrics && psData.success) {
+                const scores = psData.data?.scores || {};
+                competitorData.competitors[i].processedMetrics.performanceScore = scores.performance || 0;
+                competitorData.competitors[i].processedMetrics.seoScore = scores.seo || 0;
+                competitorData.competitors[i].processedMetrics.accessibilityScore = scores.accessibility || 0;
+                competitorData.competitors[i].processedMetrics.bestPracticesScore = scores.best_practices || 0;
+              }
+            }
+          });
+
+          console.log('[Lazy] PageSpeed data merged into competitor data');
+          resolve(result);
+        } else {
+          reject(new Error(result.error || 'Failed to fetch PageSpeed data'));
+        }
+      })
+      .withFailureHandler(reject)
+      .fetchPageSpeedForDomains(domains);
+  });
+}
+
+/**
+ * V8.0: Refresh tab content after lazy loading
+ */
+function refreshTabContent(tabId) {
+  const competitorData = window.lastCompetitorAnalysisData;
+  if (!competitorData) return;
+
+  // Re-call the populate function for the tab
+  switch (tabId) {
+    case 'technical-seo':
+      if (typeof populateTechnicalSEOTab === 'function') {
+        populateTechnicalSEOTab(competitorData);
+      }
+      break;
+    case 'performance-intelligence':
+      if (typeof populatePerformanceIntelligenceTab === 'function') {
+        populatePerformanceIntelligenceTab(competitorData);
+      }
+      break;
+  }
+}
+
+/**
+ * Render a chart using Chart.js
+ */
+function renderChart(chartId, chartConfig) {
+  const canvas = document.getElementById(`chart-${chartId}`);
+  if (!canvas) {
+    console.warn('Canvas not found for chart:', chartId);
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  // Destroy existing chart if any
+  if (window.competitorCharts && window.competitorCharts[chartId]) {
+    window.competitorCharts[chartId].destroy();
+  }
+
+  // Initialize charts storage
+  if (!window.competitorCharts) {
+    window.competitorCharts = {};
+  }
+
+  // Create chart
+  try {
+    window.competitorCharts[chartId] = new Chart(ctx, {
+      type: chartConfig.type,
+      data: chartConfig.data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom'
+          }
+        },
+        scales: chartConfig.type !== 'radar' && chartConfig.type !== 'doughnut' && chartConfig.type !== 'pie' ? {
+          y: {
+            beginAtZero: true,
+            max: 100
+          }
+        } : {}
+      }
+    });
+  } catch (error) {
+    console.error('Error rendering chart:', chartId, error);
+  }
+}
+
+/**
+ * Helper: Format metric name
+ */
+function formatMetricName(key) {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+}
+
+/**
+ * Helper: Truncate text
+ */
+function truncate(text, length) {
+  if (!text) return 'N/A';
+  text = String(text);
+  return text.length > length ? text.substring(0, length) + '...' : text;
+}
+
+// Export functions to window for global access
+window.renderCompetitorTabs = renderCompetitorTabs;
+window.renderCompetitorTabPanels = renderCompetitorTabPanels;
+window.renderOverviewPanel = renderOverviewPanel;
+window.renderCategoryPanel = renderCategoryPanel;
+window.renderComparisonTable = renderComparisonTable;
+window.renderInsightsSection = renderInsightsSection;
+window.activateCompetitorTab = activateCompetitorTab;
+window.lazyLoadTabData = lazyLoadTabData;
+window.lazyLoadPageSpeedData = lazyLoadPageSpeedData;
+window.refreshTabContent = refreshTabContent;
+window.renderChart = renderChart;
+window.formatMetricName = formatMetricName;
+window.truncate = truncate;
+</script>

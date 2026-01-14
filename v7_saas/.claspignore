@@ -1,0 +1,28 @@
+# .claspignore - Files to exclude from clasp push
+# ================================================
+# This prevents problematic files from being deployed
+
+# Ignore backup and test folders
+php_backend/**
+serpifai_php/**
+serpifai_apps_script/**
+
+# Ignore very large files that may cause issues
+# Uncomment these if they cause problems:
+# apps_script/FT_CompetitorKW_Fetcher.gs
+# apps_script/UI_Scripts_App.html
+
+# Ignore diagnostic files
+apps_script/DIAGNOSTIC_*.gs
+apps_script/DIAG_*.gs
+apps_script/TEST_*.gs
+
+# Ignore empty/backup files
+apps_script/UI_Scripts_App_working.html
+
+# Common ignores
+node_modules/**
+.git/**
+*.md
+*.sql
+*.backup

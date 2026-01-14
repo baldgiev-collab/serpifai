@@ -1,0 +1,679 @@
+<script>
+  /**
+   * ============================================================================
+   * UI_Tab_ContentIntel.html
+   * ============================================================================
+   * Extracted from UI_Scripts_App.html for modular architecture
+   * 
+   * Contains:
+   * - populateContentIntelligenceTab() - Main Content Intelligence tab population
+   * 
+   * Dependencies:
+   * - renderExecutiveGeminiInsight() from UI_Executive_Renderer.html
+   * - renderRawDataComparisonTable() from UI_Raw_Data_Tables.html
+   * - renderOnePercentStrategyPanel() from UI_Strategy_Panel.html
+   * - renderEliteContentStrategy() from UI_Scripts_App.html (or dedicated file)
+   * - renderContentIntelligenceCharts() from UI_Scripts_App.html (or dedicated file)
+   * - getGeminiInsightsForTab() from UI_Gemini_Insights.html
+   * - generateExecutiveInsightConfig() from UI_Executive_Config.html
+   * ============================================================================
+   */
+
+  /**
+   * Populate Content Intelligence Tab - ELITE v9.0
+   * Uses FT_GenerateEliteTabIntelligence → PSEO Detection, Topical Coverage,
+   * Content Velocity, Direct-to-Answer, Content Quality Matrix, Kill Moves
+   */
+  function populateContentIntelligenceTab(data) {
+    console.log('📊 Populating Content Intelligence Tab (Elite v9.0 - CONTENT STRATEGY)...');
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-content-metrics');
+    let insightsDiv = document.getElementById('comp-content-insights');
+
+    if (!metricsDiv || !insightsDiv) {
+      const panel = document.querySelector('[data-comp-panel="content"]') ||
+        document.getElementById('panel-contentIntelligence');
+      if (panel) {
+        console.log('🔧 Creating dynamic containers inside content panel');
+        if (!metricsDiv) {
+          metricsDiv = panel.querySelector('#comp-content-metrics') || (() => {
+            const c = document.createElement('div'); c.id = 'comp-content-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+            const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+            return c;
+          })();
+        }
+        if (!insightsDiv) {
+          insightsDiv = panel.querySelector('#comp-content-insights') || (() => {
+            const c = document.createElement('div'); c.id = 'comp-content-insights'; c.className = 'comp-insights'; c.style.width = '100%'; c.style.marginTop = '24px';
+            panel.appendChild(c); return c;
+          })();
+        }
+      }
+    }
+
+    if (!metricsDiv || !insightsDiv) {
+      console.warn('⚠️ Content Intelligence tab containers not found - check UI_Components_Competitors.html has data-comp-panel="content"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+    const gemini = data.geminiAnalysis || data.analysis || {};
+    const contentStrategy = gemini.categories?.contentStrategy || gemini.contentStrategy || {};
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // ---------------------------------------------------------------------------
+    // ELITE TAB INTELLIGENCE v9.0 - Check for enhanced data
+    // ---------------------------------------------------------------------------
+    const eliteData = data.eliteTabIntelligence || window._eliteTabIntelligence;
+    const contentStrat = eliteData?.contentStrategy;
+
+    if (contentStrat) {
+      console.log('🚀 Using ELITE Tab Intelligence v9.0 for Content Strategy Tab');
+      console.log('   Topical Coverage:', contentStrat.topicalCoverageScore?.length || 0);
+      console.log('   PSEO Detection:', contentStrat.pseoPatternDetection?.length || 0);
+      console.log('   Content Velocity:', contentStrat.contentVelocity?.length || 0);
+      console.log('   Kill Moves:', contentStrat.killMoves?.length || 0);
+
+      // CRITICAL: Mark Elite mode active to prevent chart rendering attempts
+      window._contentEliteModeActive = true;
+
+      renderEliteContentStrategy(metricsDiv, insightsDiv, contentStrat, competitors, eliteData);
+      return;
+    }
+
+    // Fallback mode - charts will be rendered
+    window._contentEliteModeActive = false;
+
+    // FALLBACK: Original content analysis (this is normal if Elite mode wasn't enabled)
+    console.log('📋 Using standard content analysis mode...');
+    
+    // NEW: Check organized data from FT_OracleDataOrganizer for content/headings data
+    const organizedData = data?.organizedData || 
+                          data?.eliteTabIntelligence?.organizedData ||
+                          window._organizedData ||
+                          window._eliteTabIntelligence?.organizedData;
+    const organizedContentMap = {};
+    if (organizedData && organizedData.length > 0) {
+      console.log('📦 Found organized data for content tab');
+      organizedData.forEach(comp => {
+        const rawData = comp?.tabData?.contentIntel?.rawData;
+        if (rawData) {
+          organizedContentMap[comp.domain] = rawData;
+        }
+      });
+    }
+
+    // DEBUG: Log first competitor's data structure
+    if (competitors.length > 0) {
+      const c = competitors[0];
+      // Check all possible serper data locations
+      const serperData = c.stages?.serper?.data || c.apiData?.serper || c.synthesized?.seo || {};
+      const organicCount = serperData.organic?.length || c.keywordProfile?.organic?.length || 0;
+      const paaCount = serperData.peopleAlsoAsk?.length || c.keywordProfile?.peopleAlsoAsk?.length || 0;
+      const relatedCount = serperData.relatedSearches?.length || c.keywordProfile?.relatedSearches?.length || 0;
+      
+      console.log('🔍 DEBUG - First competitor data structure:');
+      console.log('   Domain:', c.domain);
+      console.log('   synthesized:', c.synthesized ? 'EXISTS' : 'MISSING');
+      console.log('   synthesized.website:', c.synthesized?.website);
+      console.log('   synthesized.website.title:', c.synthesized?.website?.title);
+      console.log('   synthesized.website.wordCount:', c.synthesized?.website?.wordCount);
+      console.log('   synthesized.website.dataSource:', c.synthesized?.website?.dataSource);
+      console.log('   synthesized.topPages:', c.synthesized?.topPages);
+      console.log('   snapshot.metadata:', c.snapshot?.metadata);
+      console.log('   serper.organic:', organicCount, 'results (from stages/apiData/synthesized)');
+      console.log('   serper.peopleAlsoAsk:', paaCount, 'questions');
+      console.log('   serper.relatedSearches:', relatedCount, 'terms');
+      console.log('   keywordProfile:', c.keywordProfile ? 'EXISTS' : 'N/A');
+      console.log('   organizedContentData:', organizedContentMap[c.domain] ? 'AVAILABLE' : 'N/A');
+    }
+
+    // Generate executive insight for content
+    const contentExecConfig = generateExecutiveInsightConfig('content', competitors, gemini);
+    const avgWordCount = competitors.reduce((sum, c) => {
+      const orgData = organizedContentMap[c.domain] || {};
+      const wc = orgData.wordCount || c.synthesized?.website?.wordCount || c.processedMetrics?.wordCount || 0;
+      return sum + wc;
+    }, 0) / (competitors.length || 1);
+    
+    contentExecConfig.executiveSummary = `Content analysis across ${competitors.length} competitors shows average word count of ${Math.round(avgWordCount)}. ${avgWordCount < 1000 ? 'Content depth is below industry standards - significant expansion opportunity.' : avgWordCount < 2000 ? 'Moderate content depth - targeted expansion recommended.' : 'Strong content foundations - focus on topical authority.'}`;
+    if (contentStrategy.analysis) contentExecConfig.executiveSummary = contentStrategy.analysis;
+    contentExecConfig.dataProofs = ['Oracle Fetcher', 'Serper API', 'Content Analysis', 'Heading Structure'];
+
+    // Build Elite Content Intelligence Dashboard
+    let html = `
+          <!-- EXECUTIVE INTELLIGENCE BRIEF -->
+          ${renderExecutiveGeminiInsight(contentExecConfig)}
+          
+          <!-- CONTENT INTELLIGENCE HEADER -->
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(59,130,246,0.3);">
+            <h3 style="margin: 0 0 16px; font-size: 22px; font-weight: 700;">📈 Organic Traffic & Content Intelligence</h3>
+            <p style="margin: 0; opacity: 0.9; font-size: 14px;">Deep content analysis from PHP Fetcher, SERP data, and semantic analysis</p>
+          </div>
+          
+          <!-- CONTENT METRICS COMPARISON TABLE -->
+          <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; overflow-x: auto;">
+            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #202124;">
+              📊 Content Quality & Depth Analysis
+              <span style="font-size: 11px; font-weight: 400; color: #666; margin-left: 8px;">[Data Source: PHP Fetcher + Serper API]</span>
+            </h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <thead>
+                <tr style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                  <th style="text-align: left; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Competitor</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Word Count</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Title</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Schema Types</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">SERP Pages</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Content Score</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Data Source</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+    // Process each competitor with REAL content data
+    competitors.forEach((comp, index) => {
+      const pm = comp.processedMetrics || {};
+      const synthesized = comp.synthesized || {};
+      const website = synthesized.website || {};
+      const content = synthesized.content || {};
+      const apiData = comp.apiData || {};
+      const serper = apiData.serper || {};
+      const snapshot = comp.snapshot || {};
+
+      // Extract REAL content data
+      const wordCount = website.wordCount || snapshot.metadata?.wordCount || pm.wordCount || 0;
+      const title = website.title || snapshot.metadata?.title || 'N/A';
+      const schemaTypes = website.schemaTypes || snapshot.schema?.types || [];
+      const serpPages = (serper.organic || []).length || pm.indexedPages || 0;
+      const hasRealData = wordCount > 0 || title !== 'N/A';
+
+      // Calculate content score based on real signals
+      let contentScore = 40; // Base
+      if (wordCount >= 3000) contentScore += 25;
+      else if (wordCount >= 1500) contentScore += 15;
+      else if (wordCount >= 500) contentScore += 5;
+      if (schemaTypes.length >= 3) contentScore += 20;
+      else if (schemaTypes.length >= 1) contentScore += 10;
+      if (serpPages >= 10) contentScore += 15;
+      else if (serpPages >= 5) contentScore += 8;
+      contentScore = Math.min(100, contentScore);
+
+      const dataSource = hasRealData ? '✅ Fetcher API' : (pm.wordCount ? '📦 Cached' : '⏳ Pending');
+      const getScoreColor = (score) => score >= 70 ? '#22c55e' : score >= 50 ? '#3b82f6' : '#f59e0b';
+
+      html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${index % 2 === 1 ? 'background: #fafafa;' : ''}">
+              <td style="padding: 16px 12px;">
+                <div style="font-weight: 600; color: #1f2937;">${index + 1}. ${comp.domain}</div>
+              </td>
+              <td style="text-align: center; padding: 16px 12px;">
+                <span style="font-weight: 700; color: ${wordCount >= 1500 ? '#22c55e' : wordCount >= 500 ? '#3b82f6' : '#6b7280'};">
+                  ${wordCount > 0 ? wordCount.toLocaleString() : 'N/A'}
+                </span>
+              </td>
+              <td style="padding: 16px 12px; max-width: 200px;">
+                <div style="font-size: 12px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${title}">
+                  ${title.substring(0, 40)}${title.length > 40 ? '...' : ''}
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 12px;">
+                ${schemaTypes.length > 0 ?
+          `<span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 6px; font-size: 11px;">${schemaTypes.length} types</span>` :
+          `<span style="background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-size: 11px;">None</span>`
+        }
+              </td>
+              <td style="text-align: center; padding: 16px 12px;">
+                <span style="font-weight: 600; color: #374151;">${serpPages}</span>
+              </td>
+              <td style="text-align: center; padding: 16px 12px;">
+                <div style="display: inline-block; padding: 6px 12px; border-radius: 8px; font-weight: 700; color: white; background: ${getScoreColor(contentScore)};">
+                  ${contentScore}/100
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 12px;">
+                <span style="font-size: 11px; color: ${hasRealData ? '#22c55e' : '#f59e0b'};">${dataSource}</span>
+              </td>
+            </tr>`;
+    });
+
+    html += `
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- CONTENT DEEP DIVE CARDS - Enhanced with Clickable Links -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px;">`;
+
+    // Content detail cards with real data + clickable top pages
+    competitors.slice(0, 6).forEach((comp, index) => {
+      const synthesized = comp.synthesized || {};
+      const website = synthesized.website || {};
+      const content = synthesized.content || {};
+      const apiData = comp.apiData || {};
+      const serper = apiData.serper || {};
+      const snapshot = comp.snapshot || {};
+      const stages = comp.stages || {};
+
+      // Extract metadata with proper fallbacks
+      const title = website.title || snapshot.metadata?.title || '';
+      const description = website.description || snapshot.metadata?.description || '';
+      const h1 = website.h1 || snapshot.metadata?.h1 || '';
+      const wordCount = website.wordCount || snapshot.metadata?.wordCount || 0;
+      const schemaTypes = website.schemaTypes || snapshot.schema?.types || [];
+      const dataSource = website.dataSource || (stages.phpFetcher?.success ? 'PHP Fetcher' : 'Serper SERP');
+
+      // Get top pages from synthesized.topPages (new) or fallback to serper organic
+      const topPages = synthesized.topPages || content.topPages || (serper.organic || []).slice(0, 5).map((item, i) => ({
+        position: item.position || (i + 1),
+        title: item.title || '',
+        url: item.link || '',
+        snippet: item.snippet || ''
+      }));
+
+      const borderColors = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+      html += `
+            <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid ${borderColors[index] || '#6b7280'};">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h5 style="margin: 0; font-size: 14px; font-weight: 700; color: #374151;">${comp.domain}</h5>
+                <span style="font-size: 10px; padding: 3px 8px; border-radius: 12px; background: ${dataSource.includes('PHP') ? '#dcfce7' : '#dbeafe'}; color: ${dataSource.includes('PHP') ? '#166534' : '#1e40af'};">${dataSource}</span>
+              </div>
+              
+              <!-- Page Title -->
+              <div style="margin-bottom: 14px;">
+                <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">📄 Page Title</div>
+                <div style="font-size: 13px; color: #1f2937; font-weight: 500; line-height: 1.4;">${title ? (title.substring(0, 70) + (title.length > 70 ? '...' : '')) : '<span style="color:#9ca3af;">Not detected</span>'}</div>
+              </div>
+              
+              <!-- Meta Description -->
+              <div style="margin-bottom: 14px;">
+                <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">📝 Meta Description</div>
+                <div style="font-size: 12px; color: #4b5563; line-height: 1.5;">${description ? (description.substring(0, 140) + (description.length > 140 ? '...' : '')) : '<span style="color:#9ca3af;">Not detected</span>'}</div>
+              </div>
+              
+              <!-- H1 Heading -->
+              <div style="margin-bottom: 14px;">
+                <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">🏷️ H1 Heading</div>
+                <div style="font-size: 13px; color: #374151; font-weight: 500;">${h1 ? (h1.substring(0, 60) + (h1.length > 60 ? '...' : '')) : '<span style="color:#9ca3af;">Not detected</span>'}</div>
+              </div>
+              
+              <!-- Content Metrics Row -->
+              <div style="display: flex; gap: 16px; margin-bottom: 16px; padding: 12px; background: #f9fafb; border-radius: 8px;">
+                <div style="text-align: center; flex: 1;">
+                  <div style="font-size: 18px; font-weight: 700; color: ${wordCount >= 1500 ? '#22c55e' : wordCount >= 500 ? '#3b82f6' : '#9ca3af'};">${wordCount > 0 ? wordCount.toLocaleString() : '—'}</div>
+                  <div style="font-size: 10px; color: #6b7280;">Words</div>
+                </div>
+                <div style="text-align: center; flex: 1;">
+                  <div style="font-size: 18px; font-weight: 700; color: ${schemaTypes.length > 0 ? '#8b5cf6' : '#9ca3af'};">${schemaTypes.length || '—'}</div>
+                  <div style="font-size: 10px; color: #6b7280;">Schema</div>
+                </div>
+                <div style="text-align: center; flex: 1;">
+                  <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">${topPages.length || 0}</div>
+                  <div style="font-size: 10px; color: #6b7280;">SERP Hits</div>
+                </div>
+              </div>
+              
+              <!-- Top Indexed Pages with CLICKABLE LINKS -->
+              ${topPages.length > 0 ? `
+              <div>
+                <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">🔗 Top Indexed Pages</div>
+                ${topPages.slice(0, 5).map((p, i) => {
+        const pageUrl = p.url || p.link || '';
+        const pageTitle = p.title || pageUrl.split('/').pop() || 'Page ' + (i + 1);
+        return `
+                  <a href="${pageUrl}" target="_blank" rel="noopener" style="display: block; margin-bottom: 8px; padding: 10px 12px; background: #f0f9ff; border-radius: 8px; text-decoration: none; border-left: 3px solid #3b82f6; transition: all 0.2s;" onmouseover="this.style.background='#dbeafe'; this.style.transform='translateX(4px)';" onmouseout="this.style.background='#f0f9ff'; this.style.transform='translateX(0)';">
+                    <div style="font-size: 12px; color: #1e40af; font-weight: 500; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${i + 1}. ${pageTitle.substring(0, 50)}${pageTitle.length > 50 ? '...' : ''}
+                    </div>
+                    <div style="font-size: 10px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      🌐 ${pageUrl.substring(0, 45)}${pageUrl.length > 45 ? '...' : ''}
+                    </div>
+                  </a>`;
+      }).join('')}
+              </div>
+              ` : `
+              <div style="padding: 16px; background: #fef3c7; border-radius: 8px; text-align: center;">
+                <span style="font-size: 11px; color: #92400e;">⚠️ No SERP data available - run analysis again</span>
+              </div>
+              `}
+            </div>`;
+    });
+
+    html += `
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- ELITE RAW CONTENT DATA COMPARISON (Ahrefs/SEMrush Level) -->
+          <!-- --------------------------------------------------------------------------- -->
+          <h4 style="margin: 30px 0 20px; font-size: 20px; font-weight: 800; color: #202124;">
+            📊 Raw Content Data Comparison (Ahrefs/SEMrush Level)
+          </h4>
+        `;
+
+    // Content Depth & Structure Comparison
+    const contentDepthData = competitors.slice(0, 6).map(c => {
+      const website = c.synthesized?.website || {};
+      return {
+        domain: c.domain,
+        wordCount: website.wordCount || 0,
+        h1Count: (website.h1 || []).length,
+        h2Count: (website.h2 || []).length,
+        h3Count: (website.h3 || []).length
+      };
+    });
+    const contentLeader = contentDepthData.reduce((best, c) => c.wordCount > (best?.wordCount || 0) ? c : best, null);
+    const geminiContentInsight = contentLeader && contentLeader.wordCount > 0
+      ? `${contentLeader.domain} leads with ${contentLeader.wordCount.toLocaleString()} words. Comprehensive content (2000+ words) ranks 2.3x better for competitive terms. Target ${Math.max(contentLeader.wordCount + 500, 2000)} words to outrank.`
+      : 'Word count data pending. Run analysis to benchmark content depth against competitors.';
+
+    html += renderRawDataComparisonTable({
+      title: 'Content Depth & Structure',
+      icon: '📏',
+      description: 'Word count, heading structure, and content organization from each competitor',
+      competitors: competitors,
+      geminiInsight: geminiContentInsight,
+      dataExtractor: (c) => {
+        const website = c.synthesized?.website || {};
+        const snapshot = c.snapshot || {};
+        return {
+          wordCount: website.wordCount || snapshot.metadata?.wordCount || 0,
+          h1Count: (website.h1 || []).length,
+          h2Count: (website.h2 || []).length,
+          h3Count: (website.h3 || []).length,
+          totalHeadings: (website.h1 || []).length + (website.h2 || []).length + (website.h3 || []).length,
+          paragraphs: website.paragraphs || Math.ceil((website.wordCount || 0) / 150),
+          avgSentenceLength: website.avgSentenceLength || 15,
+          readability: website.readabilityScore || (website.wordCount > 1500 ? 'Long-form' : website.wordCount > 500 ? 'Medium' : 'Short')
+        };
+      },
+      fields: [
+        { key: 'wordCount', label: 'Word Count', icon: '📝', type: 'number', compareMode: 'highest' },
+        { key: 'h1Count', label: 'H1 Tags', icon: '🏷️', type: 'number' },
+        { key: 'h2Count', label: 'H2 Tags', icon: '📌', type: 'number', compareMode: 'highest' },
+        { key: 'h3Count', label: 'H3 Tags', icon: '📍', type: 'number' },
+        { key: 'totalHeadings', label: 'Total Headings', icon: '🔢', type: 'number', compareMode: 'highest' },
+        { key: 'readability', label: 'Content Type', icon: '📖', type: 'text' }
+      ]
+    });
+
+    // Title & Meta Comparison
+    html += renderRawDataComparisonTable({
+      title: 'Title & Meta Tags Analysis',
+      icon: '🏷️',
+      description: 'Actual title tags and meta descriptions from each competitor homepage',
+      competitors: competitors,
+      geminiInsight: 'Optimal title length is 50-60 characters, meta description 150-160 characters. Include primary keyword in both for maximum click-through rate.',
+      dataExtractor: (c) => {
+        const website = c.synthesized?.website || {};
+        const snapshot = c.snapshot || {};
+        const metadata = snapshot.metadata || {};
+        const title = website.title || metadata.title || '';
+        const description = website.description || website.metaDescription || metadata.description || '';
+        return {
+          title: title || 'Not detected',
+          titleLength: title.length,
+          titleOptimal: title.length >= 50 && title.length <= 60 ? '✅ Optimal' : title.length > 60 ? '⚠️ Too Long' : '⚠️ Too Short',
+          metaDescription: description || 'Not detected',
+          metaLength: description.length,
+          metaOptimal: description.length >= 150 && description.length <= 160 ? '✅ Optimal' : description.length > 160 ? '⚠️ Too Long' : '⚠️ Too Short'
+        };
+      },
+      fields: [
+        { key: 'title', label: 'Page Title', icon: '📄', type: 'text-long' },
+        { key: 'titleLength', label: 'Title Length', icon: '📐', type: 'number', compareMode: 'closest_to_55' },
+        { key: 'titleOptimal', label: 'Title Status', icon: '✓', type: 'text' },
+        { key: 'metaDescription', label: 'Meta Description', icon: '📝', type: 'text-long' },
+        { key: 'metaLength', label: 'Meta Length', icon: '📐', type: 'number', compareMode: 'closest_to_155' }
+      ]
+    });
+
+    // H1 and H2 Headings Deep Dive
+    html += renderRawDataComparisonTable({
+      title: 'Heading Tags (H1/H2) Deep Dive',
+      icon: '🔤',
+      description: 'Actual H1 and top H2 headings extracted from each competitor page',
+      competitors: competitors,
+      geminiInsight: 'H1 should contain primary keyword and match user intent. H2s should cover subtopics and questions. Question-format H2s increase PAA eligibility by 35%.',
+      dataExtractor: (c) => {
+        const website = c.synthesized?.website || {};
+        const h1s = website.h1 || [];
+        const h2s = website.h2 || [];
+        return {
+          h1Primary: h1s[0] || 'Not detected',
+          h2First: h2s[0] || 'None',
+          h2Second: h2s[1] || 'None',
+          h2Third: h2s[2] || 'None',
+          totalH2s: h2s.length,
+          questionH2s: h2s.filter(h => h.includes('?')).length
+        };
+      },
+      fields: [
+        { key: 'h1Primary', label: 'Primary H1', icon: '🏷️', type: 'text-long' },
+        { key: 'h2First', label: 'H2 #1', icon: '📌', type: 'text-long' },
+        { key: 'h2Second', label: 'H2 #2', icon: '📌', type: 'text-long' },
+        { key: 'totalH2s', label: 'Total H2s', icon: '🔢', type: 'number', compareMode: 'highest' },
+        { key: 'questionH2s', label: 'Question H2s', icon: '❓', type: 'number', compareMode: 'highest' }
+      ]
+    });
+
+    // SERP Visibility Comparison
+    html += renderRawDataComparisonTable({
+      title: 'SERP Visibility & Top Pages',
+      icon: '🔍',
+      description: 'Number of indexed pages and top-ranking URLs from search results',
+      competitors: competitors,
+      geminiInsight: 'Higher SERP visibility indicates stronger domain authority and content coverage. Analyze top-ranking pages to identify successful content patterns.',
+      dataExtractor: (c) => {
+        const serper = c.apiData?.serper || {};
+        const topPages = c.synthesized?.topPages || serper.organic || [];
+        return {
+          serpHits: topPages.length,
+          topPage1: topPages[0]?.title || 'N/A',
+          topPage1Url: topPages[0]?.url || topPages[0]?.link || 'N/A',
+          topPage2: topPages[1]?.title || 'N/A',
+          topPage3: topPages[2]?.title || 'N/A',
+          avgPosition: topPages.length > 0 ? Math.round(topPages.reduce((sum, p) => sum + (p.position || 10), 0) / topPages.length) : 'N/A'
+        };
+      },
+      fields: [
+        { key: 'serpHits', label: 'SERP Hits', icon: '📊', type: 'number', compareMode: 'highest' },
+        { key: 'avgPosition', label: 'Avg Position', icon: '🎯', type: 'number', compareMode: 'lowest' },
+        { key: 'topPage1', label: 'Top Page #1', icon: '🥇', type: 'text-long' },
+        { key: 'topPage2', label: 'Top Page #2', icon: '🥈', type: 'text-long' },
+        { key: 'topPage3', label: 'Top Page #3', icon: '🥉', type: 'text-long' }
+      ]
+    });
+
+    html += `
+          <!-- ENHANCED CONTENT ANALYTICS CHARTS -->
+          <div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                📊 Content Depth Comparison
+                <span class="info-tooltip" title="[i] Word count per competitor homepage. Higher = more comprehensive content. Longer pages generally rank better for competitive terms." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-content-depth" style="width: 100% !important;"></canvas></div>
+            </div>
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                🎯 Content Quality Matrix
+                <span class="info-tooltip" title="[i] Multi-dimensional radar: Readability, Schema Depth, Word Count, Multimedia, Mobile UX, Load Speed. Larger area = better content quality." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-content-radar" style="width: 100% !important;"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- SERP VISIBILITY & CONTENT STRATEGY GRID -->
+          <div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                🔍 SERP Visibility Index
+                <span class="info-tooltip" title="[i] Number of indexed pages appearing in search results. Higher visibility = stronger organic presence. Compare to identify content gaps." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-serp-visibility" style="width: 100% !important;"></canvas></div>
+            </div>
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                💰 Content Investment Score
+                <span class="info-tooltip" title="[i] Combined score: Words + Schema + SERP presence. Higher score = greater content investment. Use to benchmark your content production budget." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-content-investment" style="width: 100% !important;"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- 1% STRATEGY EXECUTION PANEL - Content Tab -->
+          <!-- --------------------------------------------------------------------------- -->
+          ${(() => {
+            // Extract PAA questions from competitors
+            const paaQuestions = gemini?.paaQuestions || gemini?.peopleAlsoAsk ||
+              competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || c.apiData?.serper?.peopleAlsoAsk || []).slice(0, 10);
+            
+            // Extract content-relevant keywords
+            const contentKeywords = gemini?.keywords || gemini?.targetKeywords ||
+              competitors.flatMap(c => c.processedMetrics?.topKeywords || []).slice(0, 20);
+            
+            // Brand entity
+            const brandEntity = {
+              name: data.projectName || data.domain || 'Your Brand',
+              url: data.url || data.domain || '',
+              id: '#organization'
+            };
+            
+            return renderOnePercentStrategyPanel({
+              paaQuestions: paaQuestions,
+              keywords: contentKeywords,
+              brandEntity: brandEntity,
+              competitors: competitors,
+              tabName: 'content'
+            });
+          })()}
+        `;
+
+    metricsDiv.innerHTML = html;
+    console.log('📋 Content Intelligence HTML injected. metricsDiv children:', metricsDiv.children.length);
+
+    // Render Content charts with extended timeout
+    setTimeout(() => {
+      console.log('⏰ setTimeout callback fired for Content Intelligence charts');
+      console.log('   Checking if canvases exist in DOM...');
+      console.log('   - chart-content-depth:', document.getElementById('chart-content-depth') ? 'FOUND' : 'NOT FOUND');
+      console.log('   - chart-content-radar:', document.getElementById('chart-content-radar') ? 'FOUND' : 'NOT FOUND');
+      console.log('   - chart-serp-visibility:', document.getElementById('chart-serp-visibility') ? 'FOUND' : 'NOT FOUND');
+      console.log('   - chart-content-investment:', document.getElementById('chart-content-investment') ? 'FOUND' : 'NOT FOUND');
+      renderContentIntelligenceCharts(competitors);
+    }, 300);
+
+    // Build Strategic Insights - ENHANCED with more strategic value
+    const avgWordCountInsights = Math.round(competitors.reduce((sum, c) => sum + (c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0), 0) / competitors.length);
+    const withSchema = competitors.filter(c => (c.synthesized?.website?.schemaTypes || c.snapshot?.schema?.types || []).length > 0).length;
+    const avgSerpHits = Math.round(competitors.reduce((sum, c) => sum + (c.synthesized?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0), 0) / competitors.length);
+    const leader = competitors.reduce((best, c) => {
+      const bestWC = best.synthesized?.website?.wordCount || best.snapshot?.metadata?.wordCount || 0;
+      const currWC = c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0;
+      return currWC > bestWC ? c : best;
+    }, competitors[0]);
+    const schemaLeader = competitors.reduce((best, c) => {
+      const bestS = (best.synthesized?.website?.schemaTypes || best.snapshot?.schema?.types || []).length;
+      const currS = (c.synthesized?.website?.schemaTypes || c.snapshot?.schema?.types || []).length;
+      return currS > bestS ? c : best;
+    }, competitors[0]);
+
+    let insightsHtml = `
+          <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 24px; border-radius: 16px; border-left: 5px solid #3b82f6; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #1e40af;">🎯 Strategic Content Analysis</h4>`;
+
+    if (contentStrategy.insights && contentStrategy.insights.length > 0) {
+      insightsHtml += '<ul style="margin: 0; padding-left: 20px;">';
+      contentStrategy.insights.forEach(insight => {
+        insightsHtml += `<li style="margin-bottom: 10px; color: #1e3a8a; line-height: 1.6;">${insight}</li>`;
+      });
+      insightsHtml += '</ul>';
+    } else {
+      insightsHtml += `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- Content Depth Analysis -->
+              <div style="background: rgba(255,255,255,0.6); padding: 16px; border-radius: 12px;">
+                <h5 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1e40af;">📏 Content Depth</h5>
+                <p style="margin: 0 0 8px; font-size: 12px; color: #374151; line-height: 1.5;">
+                  Average word count: <strong>${avgWordCountInsights > 0 ? avgWordCountInsights.toLocaleString() : 'N/A'}</strong>
+                </p>
+                <p style="margin: 0; font-size: 11px; color: #4b5563; line-height: 1.4;">
+                  ${avgWordCountInsights >= 2000 ? '✅ Competitors invest heavily in comprehensive, long-form content. Match or exceed with pillar pages.' : avgWordCountInsights >= 1000 ? '⚠️ Moderate content depth. Opportunity to differentiate with 3,000+ word comprehensive guides.' : '🔴 Low content depth across competitors. Create 10x content to dominate.'}
+                </p>
+              </div>
+              
+              <!-- Schema Adoption -->
+              <div style="background: rgba(255,255,255,0.6); padding: 16px; border-radius: 12px;">
+                <h5 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1e40af;">🔧 Schema Adoption</h5>
+                <p style="margin: 0 0 8px; font-size: 12px; color: #374151; line-height: 1.5;">
+                  <strong>${withSchema}/${competitors.length}</strong> competitors use structured data
+                </p>
+                <p style="margin: 0; font-size: 11px; color: #4b5563; line-height: 1.4;">
+                  ${withSchema > competitors.length / 2 ? '✅ Schema is industry standard. Implement Organization, FAQ, HowTo, and Article schemas.' : '🟡 Low schema adoption = rich results opportunity. Be first to implement comprehensive schema.'}
+                </p>
+              </div>
+              
+              <!-- SERP Visibility -->
+              <div style="background: rgba(255,255,255,0.6); padding: 16px; border-radius: 12px;">
+                <h5 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1e40af;">🔍 SERP Visibility</h5>
+                <p style="margin: 0 0 8px; font-size: 12px; color: #374151; line-height: 1.5;">
+                  Avg indexed pages per competitor: <strong>${avgSerpHits}</strong>
+                </p>
+                <p style="margin: 0; font-size: 11px; color: #4b5563; line-height: 1.4;">
+                  ${avgSerpHits >= 8 ? '✅ Strong SERP presence. Focus on featured snippets and PAA optimization.' : avgSerpHits >= 4 ? '⚠️ Moderate visibility. Increase topical coverage with content clusters.' : '🔴 Low SERP footprint. Rapid content expansion can capture market share.'}
+                </p>
+              </div>
+              
+              <!-- Content Leader -->
+              <div style="background: rgba(255,255,255,0.6); padding: 16px; border-radius: 12px;">
+                <h5 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #1e40af;">🏆 Category Leaders</h5>
+                <p style="margin: 0 0 4px; font-size: 12px; color: #374151; line-height: 1.5;">
+                  Content: <strong>${leader?.domain || 'N/A'}</strong> (${(leader?.synthesized?.website?.wordCount || 0).toLocaleString()} words)
+                </p>
+                <p style="margin: 0; font-size: 12px; color: #374151; line-height: 1.5;">
+                  Schema: <strong>${schemaLeader?.domain || 'N/A'}</strong> (${(schemaLeader?.synthesized?.website?.schemaTypes || schemaLeader?.snapshot?.schema?.types || []).length} types)
+                </p>
+              </div>
+            </div>`;
+    }
+
+    insightsHtml += `
+          </div>
+          
+          <!-- DATA SOURCE LEGEND -->
+          <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <h5 style="margin: 0 0 12px; font-size: 13px; font-weight: 600; color: #6b7280;">📚 Data Sources & Methodology</h5>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; margin-bottom: 12px;">
+              <span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 12px;">✅ PHP Fetcher (Full HTML)</span>
+              <span style="background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 12px;">🔍 Serper API (SERP Data)</span>
+              <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px;">📊 Schema.org Parser</span>
+              <span style="background: #fce7f3; color: #be185d; padding: 4px 10px; border-radius: 12px;">🤖 Gemini AI (Analysis)</span>
+            </div>
+            <p style="margin: 0; font-size: 11px; color: #6b7280; line-height: 1.5;">
+              Content metrics extracted via PHP headless browser. SERP data from Serper.dev API. When PHP fails, SERP snippets provide fallback metadata.
+            </p>
+          </div>
+        `;
+
+    // ADD GEMINI DEEP RESEARCH INSIGHTS
+    const geminiInsights = getGeminiInsightsForTab(data, 'content');
+    if (geminiInsights) {
+      insightsHtml += geminiInsights;
+      console.log('✅ Added Gemini deep research insights to Content Intelligence tab');
+    }
+
+    insightsDiv.innerHTML = insightsHtml;
+    console.log('✅ Content Intelligence tab populated with REAL data');
+  }
+
+  // Export to window for global access
+  window.populateContentIntelligenceTab = populateContentIntelligenceTab;
+
+</script>

@@ -1,0 +1,360 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ELITE PROOF MODULE
+ * Expandable proof panels, comparison tables, data source validation
+ * Requires: ELITE_Config.html, ELITE_Helpers.html
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Render an expandable proof panel for any metric
+ */
+function renderExpandableProofPanel(metricName, proof, panelId) {
+  if (!proof) return '';
+  
+  const dataSource = proof.dataSource || 'Analysis';
+  const confidence = proof.confidence || 'medium';
+  const calculation = proof.calculation || proof.formula || null;
+  const rawData = proof.rawData || proof.breakdown || null;
+  const sources = proof.sources || proof.apis || [];
+  
+  const confidenceColors = { high: '#10b981', medium: '#f59e0b', low: '#ef4444' };
+  const confidenceWidth = { high: '100%', medium: '66%', low: '33%' };
+  
+  return `
+  <div class="elite-proof-panel" style="margin-top: 12px;">
+    <button class="proof-panel-toggle" onclick="toggleProofPanel('${panelId}')" style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #7dd3fc; border-radius: 10px; cursor: pointer;">
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #0369a1; font-weight: 600;">
+        <span>🔍</span>
+        <span>View Proof & Data Sources</span>
+      </span>
+      <span id="${panelId}-chevron" style="transition: transform 0.3s; color: #0369a1;">▼</span>
+    </button>
+    
+    <div id="${panelId}" class="proof-panel-content" style="display: none; margin-top: 12px; padding: 0 16px;">
+      <div style="background: #f8fafc; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0;">
+        
+        <!-- Data Source & Confidence -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="proof-badge ${dataSource.includes('Real') ? 'proof-badge-real' : dataSource.includes('API') ? 'proof-badge-api' : 'proof-badge-estimate'}">
+              ${dataSource.includes('Real') ? '✓ Live Data' : dataSource.includes('API') ? '🔗 API' : '📊 Estimate'}
+            </span>
+            <span style="font-size: 11px; color: #64748b;">${dataSource}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 11px; color: #64748b;">Confidence:</span>
+            <div class="confidence-bar" style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+              <div class="confidence-bar-fill confidence-${confidence}" style="height: 100%; width: ${confidenceWidth[confidence] || '66%'}; background: ${confidenceColors[confidence]}; border-radius: 3px;"></div>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: ${confidenceColors[confidence] || '#f59e0b'}; text-transform: capitalize;">${confidence}</span>
+          </div>
+        </div>
+        
+        ${calculation ? `
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📐 Calculation Method</div>
+            <div style="background: white; border-radius: 8px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; color: #1e293b; border: 1px solid #e2e8f0;">
+              ${calculation}
+            </div>
+          </div>
+        ` : ''}
+        
+        ${rawData ? `
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📊 Data Breakdown</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px;">
+              ${Object.entries(rawData).map(([key, value]) => `
+                <div style="background: white; border-radius: 8px; padding: 10px; text-align: center; border: 1px solid #e2e8f0;">
+                  <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${typeof value === 'object' ? JSON.stringify(value) : value}</div>
+                  <div style="font-size: 9px; color: #64748b; text-transform: capitalize; margin-top: 4px;">${key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        ${sources.length > 0 ? `
+          <div>
+            <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">🔗 Data Sources</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              ${sources.map(source => `
+                <span style="padding: 6px 12px; background: white; border-radius: 20px; font-size: 11px; color: #475569; border: 1px solid #e2e8f0;">
+                  ${typeof source === 'object' ? source.name || source.api : source}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        ${proof.lastUpdated ? `
+          <div style="margin-top: 12px; font-size: 10px; color: #94a3b8; text-align: right;">
+            Last updated: ${proof.lastUpdated}
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+/**
+ * Toggle proof panel visibility
+ */
+function toggleProofPanel(panelId) {
+  const panel = document.getElementById(panelId);
+  const chevron = document.getElementById(panelId + '-chevron');
+  
+  if (panel) {
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    if (chevron) {
+      chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+  }
+}
+window.toggleProofPanel = toggleProofPanel;
+
+/**
+ * Render a comparison table with leader/lagging highlighting
+ */
+function renderComparisonTable(data, columns, title) {
+  if (!data || data.length === 0) return '';
+  
+  // Find min/max for each numeric column
+  const columnStats = {};
+  columns.forEach(col => {
+    if (col.type === 'number' || col.type === 'score') {
+      const values = data.map(d => parseFloat(d[col.key]) || 0);
+      columnStats[col.key] = {
+        max: Math.max(...values),
+        min: Math.min(...values)
+      };
+    }
+  });
+  
+  return `
+  <div class="elite-comparison-table" style="margin: 24px 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h4 style="margin: 0; font-size: 16px; font-weight: 800; color: #0f172a;">${title}</h4>
+      <div style="display: flex; gap: 12px;">
+        <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: #64748b;">
+          <span style="width: 12px; height: 12px; background: linear-gradient(135deg, #dcfce7, #bbf7d0); border-radius: 3px;"></span>
+          Leader
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: #64748b;">
+          <span style="width: 12px; height: 12px; background: linear-gradient(135deg, #fef2f2, #fecaca); border-radius: 3px;"></span>
+          Needs Work
+        </span>
+      </div>
+    </div>
+    
+    <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+              ${columns.map(col => `
+                <th style="padding: 14px 16px; text-align: ${col.align || 'left'}; font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0;">
+                  ${col.label}
+                </th>
+              `).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${data.slice(0, 10).map((row, idx) => `
+              <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                ${columns.map(col => {
+                  const value = row[col.key];
+                  const stats = columnStats[col.key];
+                  let cellStyle = '';
+                  
+                  if (stats && (col.type === 'number' || col.type === 'score')) {
+                    const numVal = parseFloat(value) || 0;
+                    if (col.higherIsBetter !== false) {
+                      if (numVal === stats.max) cellStyle = 'background: linear-gradient(135deg, #dcfce7, #bbf7d0);';
+                      else if (numVal === stats.min && stats.min !== stats.max) cellStyle = 'background: linear-gradient(135deg, #fef2f2, #fecaca);';
+                    } else {
+                      if (numVal === stats.min) cellStyle = 'background: linear-gradient(135deg, #dcfce7, #bbf7d0);';
+                      else if (numVal === stats.max && stats.min !== stats.max) cellStyle = 'background: linear-gradient(135deg, #fef2f2, #fecaca);';
+                    }
+                  }
+                  
+                  return `
+                    <td style="padding: 14px 16px; font-size: 13px; color: #1e293b; ${col.align ? 'text-align:' + col.align + ';' : ''} ${cellStyle}">
+                      ${formatComparisonCellValue(value, col.type, col.format)}
+                    </td>
+                  `;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+/**
+ * Format cell value based on type for comparison tables
+ */
+function formatComparisonCellValue(value, type, format) {
+  if (value === null || value === undefined) return '<span style="color: #94a3b8;">—</span>';
+  
+  switch(type) {
+    case 'score':
+      const numVal = parseInt(value);
+      const color = numVal >= 70 ? '#10b981' : numVal >= 40 ? '#f59e0b' : '#ef4444';
+      return `<span style="font-weight: 700; color: ${color};">${numVal}%</span>`;
+    
+    case 'number':
+      return `<span style="font-weight: 600;">${typeof value === 'number' ? value.toLocaleString() : value}</span>`;
+    
+    case 'trend':
+      if (value > 0) return `<span style="color: #10b981; font-weight: 600;">↑ ${value}%</span>`;
+      if (value < 0) return `<span style="color: #ef4444; font-weight: 600;">↓ ${Math.abs(value)}%</span>`;
+      return `<span style="color: #64748b; font-weight: 600;">→ ${value}%</span>`;
+    
+    case 'badge':
+      const badgeColors = { HIGH: '#dc2626', MEDIUM: '#f59e0b', LOW: '#10b981', GOOD: '#10b981', BAD: '#ef4444' };
+      return `<span style="padding: 4px 10px; background: ${badgeColors[value] || '#64748b'}15; color: ${badgeColors[value] || '#64748b'}; border-radius: 12px; font-size: 10px; font-weight: 700;">${value}</span>`;
+    
+    case 'list':
+      if (Array.isArray(value)) {
+        return value.slice(0, 3).map(v => `<span style="display: inline-block; padding: 2px 8px; background: #f1f5f9; border-radius: 4px; font-size: 11px; margin: 2px;">${v}</span>`).join('');
+      }
+      return value;
+    
+    default:
+      return value;
+  }
+}
+
+/**
+ * Render metric with inline tooltip
+ */
+function renderMetricWithTooltip(value, label, tooltipContent, options = {}) {
+  const tooltipId = 'metric-tip-' + Math.random().toString(36).substr(2, 9);
+  const { size = 'medium', showLabel = true } = options;
+  
+  const sizes = {
+    small: { value: '14px', label: '10px', padding: '8px 12px' },
+    medium: { value: '18px', label: '11px', padding: '12px 16px' },
+    large: { value: '24px', label: '12px', padding: '16px 20px' }
+  };
+  
+  const s = sizes[size] || sizes.medium;
+  
+  return `
+  <div class="elite-metric-tooltip" style="position: relative; display: inline-block; padding: ${s.padding}; background: white; border-radius: 12px; border: 1px solid #e2e8f0; cursor: help;"
+       onmouseenter="document.getElementById('${tooltipId}').style.display='block'"
+       onmouseleave="document.getElementById('${tooltipId}').style.display='none'">
+    <div style="font-size: ${s.value}; font-weight: 800; color: #0f172a;">${value}</div>
+    ${showLabel ? `<div style="font-size: ${s.label}; color: #64748b; margin-top: 4px;">${label}</div>` : ''}
+    
+    <div id="${tooltipId}" style="display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: 260px; background: #0f172a; color: white; padding: 14px 18px; border-radius: 12px; font-size: 12px; line-height: 1.5; z-index: 1000; box-shadow: 0 10px 40px rgba(0,0,0,0.3); margin-bottom: 8px;">
+      <div style="position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid #0f172a;"></div>
+      ${tooltipContent}
+    </div>
+  </div>
+  `;
+}
+
+/**
+ * Render data quality indicator
+ */
+function renderDataQualityIndicator(quality, size = 'medium') {
+  const qualities = {
+    'high': { label: 'Real Data', color: '#10b981', bg: '#dcfce7', icon: '✓' },
+    'medium': { label: 'Estimated', color: '#f59e0b', bg: '#fef3c7', icon: '~' },
+    'low': { label: 'Inferred', color: '#ef4444', bg: '#fef2f2', icon: '?' },
+    'real': { label: 'Verified', color: '#10b981', bg: '#dcfce7', icon: '✓' },
+    'api': { label: 'API Data', color: '#3b82f6', bg: '#dbeafe', icon: '🔗' }
+  };
+  
+  const q = qualities[quality?.toLowerCase()] || qualities.medium;
+  const sizes = {
+    small: { font: '9px', padding: '3px 8px' },
+    medium: { font: '10px', padding: '4px 10px' },
+    large: { font: '11px', padding: '6px 14px' }
+  };
+  const s = sizes[size] || sizes.medium;
+  
+  return `
+  <span style="display: inline-flex; align-items: center; gap: 4px; padding: ${s.padding}; background: ${q.bg}; color: ${q.color}; border-radius: 12px; font-size: ${s.font}; font-weight: 700;">
+    <span>${q.icon}</span>
+    <span>${q.label}</span>
+  </span>
+  `;
+}
+
+/**
+ * Render confidence meter
+ */
+function renderConfidenceMeter(confidence, width = 100) {
+  const confidenceNum = typeof confidence === 'string' 
+    ? ({ high: 90, medium: 60, low: 30 }[confidence.toLowerCase()] || 50)
+    : confidence;
+  
+  const color = confidenceNum >= 70 ? '#10b981' : confidenceNum >= 40 ? '#f59e0b' : '#ef4444';
+  
+  return `
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <div style="flex: 1; max-width: ${width}px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
+      <div style="height: 100%; width: ${confidenceNum}%; background: ${color}; border-radius: 3px; transition: width 0.5s ease;"></div>
+    </div>
+    <span style="font-size: 11px; font-weight: 600; color: ${color};">${confidenceNum}%</span>
+  </div>
+  `;
+}
+
+/**
+ * Render proof summary card
+ */
+function renderProofSummaryCard(proof) {
+  if (!proof) return '';
+  
+  return `
+  <div class="elite-proof-summary" style="padding: 16px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; border: 1px solid #e2e8f0;">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;">Data Proof</div>
+        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">${proof.lastUpdated || 'Just now'}</div>
+      </div>
+      ${renderDataQualityIndicator(proof.quality || proof.dataSource)}
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+      <div style="text-align: center;">
+        <div style="font-size: 16px; font-weight: 800; color: #0f172a;">${proof.sources?.length || 1}</div>
+        <div style="font-size: 9px; color: #64748b;">Sources</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 16px; font-weight: 800; color: #0f172a;">${proof.dataPoints || '-'}</div>
+        <div style="font-size: 9px; color: #64748b;">Data Points</div>
+      </div>
+      <div style="text-align: center;">
+        ${renderConfidenceMeter(proof.confidence || 'medium', 60)}
+        <div style="font-size: 9px; color: #64748b; margin-top: 2px;">Confidence</div>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderExpandableProofPanel = renderExpandableProofPanel;
+window.toggleProofPanel = toggleProofPanel;
+window.renderComparisonTable = renderComparisonTable;
+window.formatComparisonCellValue = formatComparisonCellValue;
+window.renderMetricWithTooltip = renderMetricWithTooltip;
+window.renderDataQualityIndicator = renderDataQualityIndicator;
+window.renderConfidenceMeter = renderConfidenceMeter;
+window.renderProofSummaryCard = renderProofSummaryCard;
+
+console.log('✅ ELITE_Proof.html loaded');
+</script>

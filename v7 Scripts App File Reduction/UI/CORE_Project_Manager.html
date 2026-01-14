@@ -1,0 +1,338 @@
+<!--
+  CORE_Project_Manager.html
+  Project CRUD Operations & Auto-Loading System
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.refreshProjectList() - Load project list from Google Sheets
+  - window.loadProject() - Load a specific project
+  - window.doSaveProject() - Save current project
+  - window.doNewProject() - Create new blank project
+  - window.doRenameProject() - Rename existing project
+  - window.doDeleteProject() - Delete project
+  
+  Dependencies:
+  - CORE_State_Global.html (for global state)
+  - CORE_Form_Data.html (for fillFormData, collectFormData)
+  - UI_Core_Utils.html (for showToast, showLoadingIndicator)
+-->
+<script>
+  console.log('📁 CORE_Project_Manager.html loading...');
+
+  // Page load timestamp for initial load detection
+  window._pageLoadTime = window._pageLoadTime || Date.now();
+  window._initialProjectLoaded = false;
+  window._projectListRefreshing = false;
+
+  /**
+   * Refresh the project list dropdown from Google Sheets
+   */
+  window.refreshProjectList = function() {
+    console.log('🔄 refreshProjectList called');
+    window._projectListRefreshing = true;
+
+    const selectEl = document.getElementById('projectSelect');
+    const nameInput = document.getElementById('projectNameInput');
+
+    if (typeof google === 'undefined' || !google.script?.run) {
+      console.log('⚠️ No google.script.run - local preview mode');
+      if (selectEl) {
+        selectEl.innerHTML = '<option value="">Local preview (no Apps Script)</option>';
+      }
+      window._projectListRefreshing = false;
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        console.log('✅ listProjects success:', res?.projects?.length, 'projects');
+
+        if (!selectEl) return;
+
+        selectEl.innerHTML = '<option value="">Select project…</option>';
+
+        if (!res || typeof res !== 'object') {
+          selectEl.innerHTML += '<option value="">Error loading projects</option>';
+          return;
+        }
+
+        const projects = res.projects || [];
+        if (projects.length === 0) {
+          selectEl.innerHTML += '<option value="">No projects yet</option>';
+        } else {
+          projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.name;
+            selectEl.appendChild(opt);
+          });
+        }
+
+        // Auto-load last project only on TRUE initial page load
+        if (res.lastProject && projects.find(p => p.name === res.lastProject)) {
+          selectEl.value = res.lastProject;
+          
+          const isReallyInitialLoad = !window._initialProjectLoaded &&
+            !window._projectListRefreshing &&
+            (Date.now() - window._pageLoadTime) < 2000;
+
+          if (isReallyInitialLoad) {
+            console.log('🔄 Initial load - loading last project:', res.lastProject);
+            window.loadProject(res.lastProject);
+            window._initialProjectLoaded = true;
+          } else {
+            window._initialProjectLoaded = true;
+          }
+        } else if (!window._initialProjectLoaded) {
+          window.fillFormData?.({});
+          if (nameInput) nameInput.value = '';
+          window.setActiveTab?.('workflow');
+          window._initialProjectLoaded = true;
+        }
+
+        window._projectListRefreshing = false;
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ listProjects failed:', error);
+        window.showToast?.('⚠️ Could not load projects');
+        if (selectEl) selectEl.innerHTML = '<option value="">Error loading projects</option>';
+        window._projectListRefreshing = false;
+      })
+      .listProjects();
+  };
+
+  /**
+   * Load a specific project by name
+   * @param {string} name - Project name to load
+   */
+  window.loadProject = function(name) {
+    console.log('📂 loadProject:', name);
+
+    if (!name) {
+      window.fillFormData?.({});
+      window.recalcScores?.();
+      return;
+    }
+
+    if (typeof google === 'undefined' || !google.script?.run) {
+      window.showToast?.('Local preview: cannot load from Apps Script');
+      return;
+    }
+
+    window.showLoadingIndicator?.(name);
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        window.hideLoadingIndicator?.();
+        console.log('✅ loadProject success');
+
+        if (res?.data) {
+          window.fillFormData?.(res.data);
+          
+          const saveStatus = document.getElementById('saveStatus');
+          if (saveStatus) {
+            saveStatus.textContent = res.updatedAt 
+              ? 'Loaded · ' + new Date(res.updatedAt).toLocaleTimeString()
+              : 'Loaded';
+          }
+
+          window.recalcScores?.();
+
+          // Auto-load saved competitor analysis
+          if (res.competitorAnalysis?.success && res.competitorAnalysis?.competitors) {
+            loadSavedCompetitorAnalysis(res, name);
+          }
+        } else {
+          window.showToast?.('Project not found or empty');
+        }
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator?.();
+        console.error('❌ loadProject failed:', error);
+        window.showToast?.('Error loading project');
+      })
+      .loadProject(name);
+  };
+
+  /**
+   * Load saved competitor analysis from project data
+   */
+  function loadSavedCompetitorAnalysis(res, projectName) {
+    console.log('🎯 Loading saved competitor analysis...');
+    
+    // Show loading state
+    const loadingState = document.getElementById('comp-loading-state');
+    const emptyState = document.getElementById('comp-empty-state');
+    const resultsContainer = document.getElementById('comp-results');
+    
+    if (loadingState) {
+      loadingState.style.display = 'flex';
+      loadingState.innerHTML = '<div style="text-align:center;padding:40px;"><p>Loading saved competitor analysis...</p></div>';
+    }
+    if (emptyState) emptyState.style.display = 'none';
+    if (resultsContainer) resultsContainer.style.display = 'none';
+
+    // Clear previous data
+    window._lastCompetitorData = null;
+    window._eliteTabIntelligence = null;
+    window._organizedData = null;
+    window.competitorIntelligenceData = null;
+
+    // Deduplicate competitors
+    const rawCompetitors = res.competitorAnalysis.competitors || [];
+    const seenDomains = new Set();
+    const uniqueCompetitors = rawCompetitors.filter(comp => {
+      const domain = (comp.domain || '').toLowerCase().replace(/^www\./, '');
+      if (domain && !seenDomains.has(domain)) {
+        seenDomains.add(domain);
+        return true;
+      }
+      return false;
+    });
+
+    // Build data structure
+    const competitorData = {
+      success: true,
+      competitors: uniqueCompetitors,
+      analysis: res.competitorAnalysis.analysis || {},
+      geminiAnalysis: res.competitorAnalysis.geminiAnalysis || {},
+      eliteTabIntelligence: res.competitorAnalysis.eliteTabIntelligence || 
+                            res.competitorAnalysis.analysis?.eliteTabIntelligence || null,
+      overview: res.competitorAnalysis.overview || null,
+      dashboardCharts: res.competitorAnalysis.dashboardCharts || null,
+      yourDomain: res.competitorAnalysis.yourDomain || '',
+      metadata: {
+        competitorCount: uniqueCompetitors.length,
+        timestamp: res.competitorAnalysis.timestamp,
+        source: 'saved'
+      }
+    };
+
+    // Store globally
+    window.competitorIntelligenceData = competitorData;
+    window.currentCompetitorData = competitorData;
+    window.currentProjectData = {
+      projectId: res.projectId || projectName,
+      keyword: res.keyword || res.primaryKeyword || '',
+      domain: res.domain || res.userDomain || ''
+    };
+
+    // Render with delay
+    setTimeout(function() {
+      if (typeof window.renderCompetitorIntelligence === 'function') {
+        window.renderCompetitorIntelligence(competitorData);
+        window.showToast?.('✅ Competitor analysis loaded');
+      }
+    }, 300);
+  }
+
+  /**
+   * Save current project
+   */
+  window.doSaveProject = function() {
+    const nameInput = document.getElementById('projectNameInput');
+    const selectEl = document.getElementById('projectSelect');
+    const saveStatus = document.getElementById('saveStatus');
+    
+    const name = nameInput?.value.trim() || selectEl?.value.trim();
+    
+    if (!name) {
+      window.showToast?.('Name your project first.');
+      nameInput?.focus();
+      return;
+    }
+
+    const data = window.collectFormData?.() || {};
+    if (saveStatus) saveStatus.textContent = 'Saving…';
+
+    if (typeof google === 'undefined' || !google.script?.run) {
+      console.log('Local save:', name);
+      if (saveStatus) saveStatus.textContent = 'Saved locally (preview)';
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (saveStatus) saveStatus.textContent = 'Saved at ' + new Date(res.updatedAt).toLocaleTimeString();
+        window.showToast?.('Project "' + name + '" saved.');
+        window.refreshProjectList?.();
+      })
+      .saveProject(name, data);
+  };
+
+  /**
+   * Create new blank project
+   */
+  window.doNewProject = function() {
+    const nameInput = document.getElementById('projectNameInput');
+    const selectEl = document.getElementById('projectSelect');
+    const saveStatus = document.getElementById('saveStatus');
+
+    if (nameInput) nameInput.value = '';
+    if (selectEl) selectEl.value = '';
+    
+    window.fillFormData?.({});
+    
+    if (saveStatus) saveStatus.textContent = 'New project (not saved)';
+    window.recalcScores?.();
+    nameInput?.focus();
+  };
+
+  /**
+   * Rename existing project
+   */
+  window.doRenameProject = function() {
+    const selectEl = document.getElementById('projectSelect');
+    const nameInput = document.getElementById('projectNameInput');
+    
+    const oldName = selectEl?.value;
+    const newName = nameInput?.value.trim();
+
+    if (!oldName || !newName) {
+      window.showToast?.('Select a project and type a new name.');
+      return;
+    }
+
+    if (typeof google === 'undefined' || !google.script?.run) {
+      window.showToast?.('Local preview: cannot rename');
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        window.showToast?.('Renamed to "' + res.name + '"');
+        window.refreshProjectList?.();
+      })
+      .renameProject(oldName, newName);
+  };
+
+  /**
+   * Delete project
+   */
+  window.doDeleteProject = function() {
+    const selectEl = document.getElementById('projectSelect');
+    const name = selectEl?.value;
+
+    if (!name) {
+      window.showToast?.('Select a project to delete.');
+      return;
+    }
+
+    if (!confirm('Delete project "' + name + '"? This cannot be undone.')) return;
+
+    if (typeof google === 'undefined' || !google.script?.run) {
+      window.showToast?.('Local preview: cannot delete');
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function() {
+        window.showToast?.('Deleted "' + name + '"');
+        window.doNewProject?.();
+        window.refreshProjectList?.();
+      })
+      .deleteProject(name);
+  };
+
+  console.log('✅ CORE_Project_Manager.html loaded');
+</script>

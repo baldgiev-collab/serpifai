@@ -1,0 +1,283 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     DATA_Real_Metrics.html - v4.0
+     Elite Data Extraction with Forensic Fallbacks
+     
+     FUNCTIONS:
+     - extractRealMetrics: Standardizes data extraction from all API sources
+     - getDataSourceBadge: Generates styled badge HTML for data sources
+     - getScoreColor: Returns color based on score thresholds
+     
+     DEPENDENCIES: 
+     - DATA_Forensic_Engine.html (generateForensicEstimates)
+     - DATA_Elite_Traffic.html (extractEliteTrafficMetrics)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ELITE DATA EXTRACTION HELPER - v4.0 (with Forensic Fallbacks)
+   * Standardizes data extraction from all API sources with data source tracking
+   * Supports both PHP gateway format AND raw Lighthouse format
+   * Now includes forensic estimation when API data is unavailable
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  function extractRealMetrics(comp) {
+    // Access all data layers
+    const pm = comp.processedMetrics || {};
+    const apiData = comp.apiData || {};
+    const synthesized = comp.synthesized || {};
+    const stages = comp.stages || {};
+    const snapshot = comp.snapshot || {};
+
+    // PageSpeed data - try multiple locations
+    const pageSpeedStage = stages.pageSpeed?.data || {};
+    const pageSpeedAPI = apiData.pageSpeed || {};
+    const pageSpeed = { ...pageSpeedAPI, ...pageSpeedStage };
+
+    // PHP gateway format: {scores: {}, metrics: {}, core_web_vitals: {}}
+    const psScores = pageSpeed.scores || {};
+    const psMetrics = pageSpeed.metrics || {};
+    const cwv = pageSpeed.core_web_vitals || {};
+
+    // Raw Lighthouse format (if available)
+    const lhr = pageSpeed.lighthouseResult || {};
+    const categories = lhr.categories || {};
+    const audits = lhr.audits || {};
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CRITICAL: Check organized data for this competitor's SERP data first
+    // ═══════════════════════════════════════════════════════════════════
+    const organizedData = window._organizedData || window._eliteTabIntelligence?.organizedData || [];
+    const compDomain = (comp.domain || '').replace(/^www\./, '');
+    const organizedComp = organizedData?.find?.(o => 
+      (o.domain || '').replace(/^www\./, '') === compDomain ||
+      o.domain === comp.domain
+    );
+    const organizedRawData = organizedComp?.tabData?.keywordStrategy?.rawData || {};
+
+    // Serper data - prioritize organized data which has actual API responses
+    const serper = apiData.serper || stages.serper?.data || {};
+    
+    // V8.5: Check synthesized.seo for merged serperBrand data (contains PAA, Related, Featured Snippets from brand search)
+    const synthSeo = synthesized.seo || {};
+    
+    const organic = synthSeo.organic || organizedRawData.serpResults || serper.organic || [];
+    const paa = synthSeo.peopleAlsoAsk || organizedRawData.paaQuestions || serper.peopleAlsoAsk || [];
+    const relatedSearches = synthSeo.relatedSearches || organizedRawData.keywords || serper.relatedSearches || [];
+    
+    // V8.5: SERP features from synthesized data (which has brand search merged)
+    const answerBox = synthSeo.answerBox || serper.answerBox || organizedRawData.featuredSnippet || null;
+    const knowledgeGraph = synthSeo.knowledgeGraph || serper.knowledgeGraph || organizedRawData.knowledgeGraph || null;
+    const sitelinks = synthSeo.sitelinks || serper.sitelinks || organizedRawData.sitelinks || {};
+    const serpFeatures = synthSeo.serpFeatures || [];
+
+    // OpenPageRank data
+    const opr = apiData.openPageRank || stages.openPageRank?.data || {};
+
+    // PHP Fetcher data
+    const phpFetcher = stages.phpFetcher?.data || {};
+    const website = synthesized.website || phpFetcher.metadata || {};
+    const content = synthesized.content || {};
+
+    // Calculate performance scores - try PHP gateway format first, then raw categories
+    const performance = psScores.performance || Math.round((categories.performance?.score || 0) * 100) || pm.performanceScore || 0;
+    const seoScore = psScores.seo || Math.round((categories.seo?.score || 0) * 100) || pm.seoScore || 0;
+    const accessibility = psScores.accessibility || Math.round((categories.accessibility?.score || 0) * 100) || 0;
+    const bestPractices = psScores.best_practices || Math.round((categories['best-practices']?.score || 0) * 100) || 0;
+
+    // Extract Core Web Vitals - try PHP gateway metrics format first
+    const fcp = psMetrics.first_contentful_paint || audits['first-contentful-paint']?.numericValue || 0;
+    const lcp = cwv.lcp || psMetrics.largest_contentful_paint || audits['largest-contentful-paint']?.numericValue || 0;
+    const cls = cwv.cls || psMetrics.cumulative_layout_shift || audits['cumulative-layout-shift']?.numericValue || 0;
+    const tbt = psMetrics.total_blocking_time || audits['total-blocking-time']?.numericValue || 0;
+    const tti = psMetrics.time_to_interactive || audits['interactive']?.numericValue || 0;
+    const si = psMetrics.speed_index || audits['speed-index']?.numericValue || 0;
+    const fid = cwv.fid || audits['max-potential-fid']?.numericValue || 0;
+
+    // Determine if we have REAL PageSpeed data
+    const hasPageSpeedData = performance > 0 || lcp > 0 || Object.keys(psScores).length > 0;
+
+    // Extract raw content metrics
+    const rawWordCount = website.wordCount || snapshot.metadata?.wordCount || pm.wordCount || 0;
+    const rawInternalLinks = content.internalLinks?.length || phpFetcher.links?.filter(l => l.internal)?.length || 0;
+    const rawExternalLinks = content.externalLinks?.length || phpFetcher.links?.filter(l => !l.internal)?.length || 0;
+
+    // OpenPageRank values for forensic estimation
+    const pageRankValue = opr.page_rank_decimal || pm.pageRank || 0;
+
+    // Generate forensic estimates for missing data
+    const forensicData = generateForensicEstimates(comp.domain, pageRankValue, seoScore, performance);
+
+    // Determine which values to use (real or forensic)
+    const useForensicContent = rawWordCount === 0 && rawInternalLinks === 0;
+    const finalWordCount = rawWordCount > 0 ? rawWordCount : forensicData.wordCount;
+    const finalInternalLinks = rawInternalLinks > 0 ? rawInternalLinks : forensicData.internalLinks;
+    const finalExternalLinks = rawExternalLinks > 0 ? rawExternalLinks : forensicData.externalLinks;
+
+    // Content source with forensic indicator
+    const contentSource = rawWordCount > 0 ? 'PHP Fetcher' :
+      pm.wordCount > 0 ? 'Cached' :
+        'Forensic Estimation';
+
+    // Build comprehensive metrics object with sources
+    return {
+      domain: comp.domain,
+
+      // TECHNICAL METRICS (Source: PageSpeed API)
+      technical: {
+        performance: performance,
+        seo: seoScore,
+        accessibility: accessibility,
+        bestPractices: bestPractices,
+        // Core Web Vitals as display values
+        fcp: fcp > 0 ? (fcp / 1000).toFixed(2) + 's' : 'N/A',
+        lcp: lcp > 0 ? (lcp / 1000).toFixed(2) + 's' : 'N/A',
+        cls: cls > 0 ? cls.toFixed(3) : 'N/A',
+        tbt: tbt > 0 ? Math.round(tbt) + 'ms' : 'N/A',
+        tti: tti > 0 ? (tti / 1000).toFixed(1) + 's' : 'N/A',
+        si: si > 0 ? (si / 1000).toFixed(1) + 's' : 'N/A',
+        fid: fid > 0 ? Math.round(fid) + 'ms' : 'N/A',
+        // Raw numeric values for calculations
+        lcpMs: lcp,
+        fcpMs: fcp,
+        clsValue: cls,
+        tbtMs: tbt,
+        source: hasPageSpeedData ? 'PageSpeed API' : (pm.performanceScore ? 'Cached' : 'Pending')
+      },
+
+      // CONTENT METRICS (Source: PHP Fetcher + Forensic Fallback)
+      content: {
+        wordCount: finalWordCount,
+        rawWordCount: rawWordCount,
+        title: website.title || snapshot.metadata?.title || '',
+        description: website.description || snapshot.metadata?.description || '',
+        h1: website.h1 || snapshot.metadata?.h1 || '',
+        schemaTypes: website.schemaTypes || snapshot.schema?.types || [],
+        internalLinks: finalInternalLinks,
+        rawInternalLinks: rawInternalLinks,
+        externalLinks: finalExternalLinks,
+        rawExternalLinks: rawExternalLinks,
+        images: content.images?.length || phpFetcher.images?.length || 0,
+        hasHTTPS: website.https !== undefined ? website.https : true,
+        isForensic: useForensicContent,
+        source: contentSource
+      },
+
+      // SERP METRICS (Source: Serper API + Brand Search)
+      serp: {
+        organicResults: organic.length,
+        paaQuestions: paa,
+        paaCount: paa.length,
+        relatedSearches: relatedSearches,
+        relatedCount: relatedSearches.length,
+        topPages: organic.slice(0, 5),
+        estimatedKeywords: pm.estimatedKeywords || pm.geminiEstimates?.totalKeywords || 0,
+        // V8.5: SERP features from synthesized data (brand search merged)
+        hasFeaturedSnippet: !!answerBox || synthSeo.hasFeaturedSnippet || false,
+        hasKnowledgeGraph: !!knowledgeGraph || synthSeo.hasKnowledgeGraph || false,
+        hasSitelinks: Object.keys(sitelinks).length > 0 || (sitelinks.inline?.length > 0) || (sitelinks.expanded?.length > 0) || (Array.isArray(sitelinks) && sitelinks.length > 0),
+        answerBox: answerBox,
+        knowledgeGraph: knowledgeGraph,
+        sitelinks: sitelinks,
+        serpFeatures: serpFeatures,
+        // V8.5: Additional SERP features from brand search
+        hasVideos: (synthSeo.videos?.length > 0) || false,
+        hasTopStories: (synthSeo.topStories?.length > 0) || false,
+        hasImages: (synthSeo.images?.length > 0) || false,
+        source: (organic.length > 0 || paa.length > 0) ? 'Serper API' : (pm.estimatedKeywords ? 'Gemini Est.' : 'Pending')
+      },
+
+      // AUTHORITY METRICS (Source: OpenPageRank + Forensic)
+      authority: {
+        pageRank: pageRankValue,
+        pageRankInteger: opr.page_rank_integer || Math.floor(pageRankValue || 0),
+        rank: opr.rank || pm.globalRank || 0,
+        domainAuthority: pm.domainAuthority || pm.authorityScore || (pageRankValue * 10) || 0,
+        // Authority tier based on page rank
+        authorityTier: pageRankValue >= 7 ? 'Elite' : pageRankValue >= 5 ? 'High' : pageRankValue >= 3 ? 'Medium' : 'Low',
+        backlinks: pm.backlinks || finalExternalLinks * 100 || 0,
+        refDomains: pm.refDomains || Math.round((pm.backlinks || 0) / 10) || 0,
+        topicalAuthority: forensicData.topicalAuthority,
+        contentDepth: forensicData.contentDepth,
+        source: opr.page_rank_decimal ? 'OpenPageRank API' : (pm.pageRank ? 'Cached' : 'Forensic Estimation')
+      },
+
+      // GEMINI ESTIMATES (Source: Gemini AI)
+      gemini: {
+        monthlyTraffic: pm.geminiEstimates?.monthlyTraffic || pm.monthlyTraffic || 0,
+        totalKeywords: pm.geminiEstimates?.totalKeywords || pm.estimatedKeywords || 0,
+        contentDepth: pm.contentDepth || forensicData.contentDepth || 0,
+        topicalAuthority: pm.topicalAuthority || forensicData.topicalAuthority || 0,
+        source: pm.geminiEstimates ? 'Gemini AI' : 'Forensic Estimation'
+      },
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // ELITE TRAFFIC METRICS (Source: 2026 CTR Model - Ahrefs-level)
+      // ═══════════════════════════════════════════════════════════════════════
+      eliteTraffic: extractEliteTrafficMetrics(comp, synthesized, pageRankValue),
+
+      // FORENSIC INTELLIGENCE (New Elite Layer)
+      forensic: {
+        estimates: forensicData,
+        confidence: forensicData.confidence,
+        isForensicMode: useForensicContent,
+        factCheckValidity: {
+          score: forensicData.confidence.level,
+          color: forensicData.confidence.factCheckColor,
+          label: forensicData.confidence.factCheckLabel,
+          breakdown: {
+            technical: hasPageSpeedData ? 100 : 30,
+            content: rawWordCount > 0 ? 100 : 60,
+            authority: pageRankValue > 0 ? 100 : 50,
+            serp: organic.length > 0 ? 100 : 40
+          }
+        }
+      },
+
+      // RAW DATA ACCESS
+      raw: {
+        processedMetrics: pm,
+        apiData: apiData,
+        synthesized: synthesized,
+        stages: stages,
+        snapshot: snapshot,
+        pageSpeed: pageSpeed,
+        serper: serper,
+        opr: opr
+      }
+    };
+  }
+  window.extractRealMetrics = extractRealMetrics;
+
+  /**
+   * Get data source badge HTML
+   */
+  function getDataSourceBadge(source, size = 'small') {
+    const colors = {
+      'PageSpeed API': { bg: '#dcfce7', text: '#166534' },
+      'PHP Fetcher': { bg: '#dbeafe', text: '#1e40af' },
+      'Serper API': { bg: '#fef3c7', text: '#92400e' },
+      'OpenPageRank API': { bg: '#ede9fe', text: '#5b21b6' },
+      'Gemini AI': { bg: '#fce7f3', text: '#9d174d' },
+      'Gemini AI Analysis': { bg: '#fce7f3', text: '#9d174d' },
+      'Serper + Gemini': { bg: '#d4e4ff', text: '#1e3a8a' },
+      'Forensic Estimation': { bg: '#fef08a', text: '#854d0e' },
+      'Cached': { bg: '#e5e7eb', text: '#374151' },
+      'Pending': { bg: '#fee2e2', text: '#991b1b' }
+    };
+    const style = colors[source] || colors['Pending'];
+    const padding = size === 'small' ? '2px 6px' : '4px 10px';
+    const fontSize = size === 'small' ? '9px' : '11px';
+    return `<span style="background: ${style.bg}; color: ${style.text}; padding: ${padding}; border-radius: 8px; font-size: ${fontSize}; font-weight: 500;">${source}</span>`;
+  }
+  window.getDataSourceBadge = getDataSourceBadge;
+
+  /**
+   * Calculate score color
+   */
+  function getScoreColor(score, thresholds = { high: 70, mid: 50 }) {
+    if (score >= thresholds.high) return '#22c55e';
+    if (score >= thresholds.mid) return '#3b82f6';
+    return '#f59e0b';
+  }
+  window.getScoreColor = getScoreColor;
+</script>

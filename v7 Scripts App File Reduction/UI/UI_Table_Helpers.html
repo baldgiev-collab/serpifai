@@ -1,0 +1,180 @@
+<!--
+  ╔═══════════════════════════════════════════════════════════════════════════════════╗
+  ║  UI_Table_Helpers.html - Table Rendering Utilities                                ║
+  ║  Helper functions for table rendering, value formatting, and escaping             ║
+  ║                                                                                    ║
+  ║  Dependencies: None (Foundation module)                                            ║
+  ║  Exports: getNestedValue, renderFieldValue, getCompetitorColor, truncateDomain,   ║
+  ║           escapeHtml, formatNumber, getSourceColor                                 ║
+  ╚═══════════════════════════════════════════════════════════════════════════════════╝
+-->
+<script>
+  /**
+   * Helper: Get nested value from object using dot notation
+   * @param {Object} obj - Source object
+   * @param {string} path - Dot-notation path like "technical.performance"
+   * @returns {*} The value at path or null
+   */
+  window.getNestedValue = function(obj, path) {
+    if (!obj || !path) return null;
+    return path.split('.').reduce((o, k) => (o && o[k] !== undefined) ? o[k] : null, obj);
+  };
+
+  /**
+   * Helper: Format large numbers with K/M suffixes
+   * @param {number} num - Number to format
+   * @returns {string} Formatted string
+   */
+  window.formatNumber = function(num) {
+    if (num === null || num === undefined || isNaN(num)) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  };
+
+  /**
+   * Helper: Render field value based on type
+   * @param {*} value - The value to render
+   * @param {string} type - Type (text, number, score, boolean, list, etc.)
+   * @param {boolean} isWinner - Whether this value is the best
+   * @returns {string} HTML string
+   */
+  window.renderFieldValue = function(value, type, isWinner) {
+    // Handle null, undefined, empty values
+    if (value === null || value === undefined || value === '') {
+      return `<span style="color: #94a3b8; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #f1f5f9; border-radius: 6px; cursor: pointer;" title="Data pending from API fetch">
+        <span style="color: #cbd5e1;">📊</span> Pending
+      </span>`;
+    }
+    
+    // Handle "Unknown", "N/A", "undefined" string values
+    const strValue = String(value).toLowerCase().trim();
+    if (strValue === 'unknown' || strValue === 'n/a' || strValue === 'undefined' || strValue === 'null' || strValue === 'nan') {
+      return `<span style="color: #94a3b8; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #fef3c7; border-radius: 6px; cursor: pointer;" title="Data not available from source">
+        <span style="color: #f59e0b;">⚠️</span> Not Available
+      </span>`;
+    }
+    
+    // Handle zero values based on type
+    if (value === 0 || strValue === '0') {
+      if (type === 'score' || type === 'number') {
+        return `<span style="color: #94a3b8; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #fee2e2; border-radius: 6px; cursor: pointer;" title="Zero or no data collected">
+          <span style="color: #ef4444;">⚡</span> 0 <span style="font-size: 10px; color: #9ca3af;">(none)</span>
+        </span>`;
+      }
+    }
+    
+    // Handle empty arrays
+    if (Array.isArray(value) && value.length === 0) {
+      return `<span style="color: #94a3b8; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #f1f5f9; border-radius: 6px;" title="No items found">
+        <span style="color: #cbd5e1;">📋</span> None Found
+      </span>`;
+    }
+
+    const winnerBadge = isWinner ? `<span style="margin-left: 6px; background: #10b981; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 600;">🏆</span>` : '';
+
+    switch (type) {
+      case 'text':
+        const textVal = String(value).substring(0, 120);
+        return `<span style="word-break: break-word;">${window.escapeHtml(textVal)}${value.length > 120 ? '...' : ''}${winnerBadge}</span>`;
+      
+      case 'text-long':
+        const longVal = String(value).substring(0, 200);
+        return `<div style="font-size: 12px; line-height: 1.4; word-break: break-word;">${window.escapeHtml(longVal)}${value.length > 200 ? '...' : ''}${winnerBadge}</div>`;
+      
+      case 'number':
+        const numVal = parseFloat(value) || 0;
+        return `<span style="font-weight: 600; color: ${numVal > 0 ? '#1e40af' : '#9ca3af'};">${window.formatNumber(numVal)}${winnerBadge}</span>`;
+      
+      case 'score':
+        const score = parseInt(value) || 0;
+        const scoreColor = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : score >= 1 ? '#3b82f6' : '#9ca3af';
+        return `<span style="display: inline-block; background: ${scoreColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${score}${winnerBadge}</span>`;
+      
+      case 'boolean':
+        return value ? `<span style="color: #10b981; font-weight: 600;">✅ Yes${winnerBadge}</span>` : `<span style="color: #ef4444;">❌ No</span>`;
+      
+      case 'list':
+        if (!Array.isArray(value)) value = [value];
+        const listCount = value.length;
+        if (listCount === 0) return `<span style="color: #9ca3af; font-size: 11px;">None</span>`;
+        return `<div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+          <span style="background: #2563eb; color: white; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="Click to view all ${listCount} items">${listCount} items</span>
+          ${value.slice(0, 3).map(v => 
+          `<span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 8px; font-size: 11px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${window.escapeHtml(String(v).substring(0, 30))}</span>`
+        ).join('')}${value.length > 3 ? `<span style="color: #6b7280; font-size: 11px;">+${value.length - 3}</span>` : ''}${winnerBadge}</div>`;
+      
+      case 'list-heading':
+        if (!Array.isArray(value)) value = [value];
+        return `<ul style="margin: 0; padding-left: 16px; font-size: 12px;">${value.slice(0, 3).map(v => 
+          `<li style="margin-bottom: 4px; color: #1e293b;">${window.escapeHtml(String(v).substring(0, 60))}</li>`
+        ).join('')}${value.length > 3 ? `<li style="color: #6b7280; font-style: italic;">+${value.length - 3} more</li>` : ''}</ul>${winnerBadge}`;
+      
+      case 'link-count':
+        const count = parseInt(value) || 0;
+        const countColor = count > 50 ? '#10b981' : count > 20 ? '#3b82f6' : count > 0 ? '#f59e0b' : '#9ca3af';
+        return `<span style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" title="Click to view all ${count} links">
+          <span style="background: ${countColor}; color: white; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;">${count}</span>
+          <span style="font-size: 10px; color: #64748b;">links</span>
+          ${winnerBadge}
+        </span>`;
+      
+      default:
+        return `<span>${window.escapeHtml(String(value).substring(0, 100))}${winnerBadge}</span>`;
+    }
+  };
+
+  /**
+   * Helper: Get color for competitor index
+   * @param {number} idx - Competitor index (0-5)
+   * @returns {string} Hex color
+   */
+  window.getCompetitorColor = function(idx) {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    return colors[idx % colors.length];
+  };
+
+  /**
+   * Helper: Truncate domain for display
+   * @param {string} domain - Full domain URL
+   * @returns {string} Truncated display string
+   */
+  window.truncateDomain = function(domain) {
+    if (!domain) return 'Unknown';
+    const clean = domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+    return clean.length > 20 ? clean.substring(0, 18) + '...' : clean;
+  };
+
+  /**
+   * Helper: Escape HTML entities for safe rendering
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped HTML
+   */
+  window.escapeHtml = function(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+  };
+
+  /**
+   * Helper: Get color scheme for data sources
+   * @param {string} source - Source name (PageSpeed API, Serper API, etc.)
+   * @returns {Object} { bg, text } color values
+   */
+  window.getSourceColor = function(source) {
+    const colors = {
+      'PageSpeed API': { bg: '#dcfce7', text: '#166534' },
+      'PHP Fetcher': { bg: '#dbeafe', text: '#1e40af' },
+      'Serper API': { bg: '#fef3c7', text: '#92400e' },
+      'OpenPageRank API': { bg: '#ede9fe', text: '#5b21b6' },
+      'Gemini AI': { bg: '#fce7f3', text: '#9d174d' },
+      'Forensic Estimation': { bg: '#fef08a', text: '#854d0e' },
+      'Cached': { bg: '#e5e7eb', text: '#374151' },
+      'Pending': { bg: '#fee2e2', text: '#991b1b' }
+    };
+    return colors[source] || { bg: '#e5e7eb', text: '#374151' };
+  };
+
+  console.log('✅ UI_Table_Helpers.html loaded');
+</script>

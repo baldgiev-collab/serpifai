@@ -1,0 +1,731 @@
+<!-- ELITE_Data_Organizer.html -->
+<!-- Data Normalization & Organization Module -->
+<!-- Unifies all Elite Fetcher outputs for Gemini & UI consumption -->
+<!-- Priority: Normalize → Validate → Format → Ready for UI/Gemini -->
+
+<script>
+/**
+ * ELITE DATA ORGANIZER
+ * Central hub for normalizing, validating, and organizing all fetcher data
+ * Prepares unified data structures for Gemini prompts and UI rendering
+ */
+class EliteDataOrganizer {
+  constructor() {
+    this.name = 'EliteDataOrganizer';
+    this.version = '1.0.0';
+    
+    // Data source registry
+    this.sources = {
+      backlinks: window.eliteBacklinkFetcher,
+      keywords: window.eliteKeywordFetcher,
+      technical: window.eliteTechnicalFetcher,
+      content: window.eliteContentFetcher
+    };
+    
+    // Confidence thresholds
+    this.confidenceThresholds = {
+      high: 80,
+      medium: 50,
+      low: 25
+    };
+    
+    // UI color palette
+    this.colors = {
+      excellent: '#17a2b8',
+      good: '#28a745',
+      warning: '#ffc107',
+      danger: '#dc3545',
+      neutral: '#6c757d'
+    };
+  }
+
+  // ============================================
+  // UNIFIED DATA COLLECTION
+  // ============================================
+  
+  async collectAllData(url, htmlContent, options = {}) {
+    const startTime = Date.now();
+    const collection = {
+      url: url,
+      timestamp: new Date().toISOString(),
+      version: this.version,
+      data: {},
+      summary: {},
+      confidence: {},
+      processingTime: 0
+    };
+    
+    try {
+      // Collect from all sources in parallel
+      const [backlinks, keywords, technical, content] = await Promise.allSettled([
+        this.sources.backlinks?.analyzeBacklinks(url, options),
+        this.sources.keywords?.analyzeKeywords(url, htmlContent, options),
+        this.sources.technical?.analyzeTechnical(url, htmlContent, options),
+        this.sources.content?.analyzeContent(url, htmlContent, options)
+      ]);
+      
+      // Process results
+      if (backlinks.status === 'fulfilled' && backlinks.value) {
+        collection.data.backlinks = this.normalizeBacklinkData(backlinks.value);
+        collection.confidence.backlinks = backlinks.value.confidence || 0;
+      }
+      
+      if (keywords.status === 'fulfilled' && keywords.value) {
+        collection.data.keywords = this.normalizeKeywordData(keywords.value);
+        collection.confidence.keywords = keywords.value.confidence || 0;
+      }
+      
+      if (technical.status === 'fulfilled' && technical.value) {
+        collection.data.technical = this.normalizeTechnicalData(technical.value);
+        collection.confidence.technical = technical.value.confidence || 0;
+      }
+      
+      if (content.status === 'fulfilled' && content.value) {
+        collection.data.content = this.normalizeContentData(content.value);
+        collection.confidence.content = content.value.confidence || 0;
+      }
+      
+      // Generate summary
+      collection.summary = this.generateSummary(collection.data);
+      collection.processingTime = Date.now() - startTime;
+      
+      return collection;
+      
+    } catch (error) {
+      console.error(`[${this.name}] Collection error:`, error);
+      collection.error = error.message;
+      collection.processingTime = Date.now() - startTime;
+      return collection;
+    }
+  }
+
+  // ============================================
+  // DATA NORMALIZATION
+  // ============================================
+  
+  normalizeBacklinkData(raw) {
+    if (!raw || !raw.analysis) return this.getDefaultBacklinkData();
+    
+    const a = raw.analysis;
+    return {
+      metrics: {
+        domainRating: this.normalizeScore(a.metrics?.domainRating, 0, 100),
+        totalBacklinks: a.metrics?.totalBacklinks || 0,
+        referringDomains: a.metrics?.referringDomains || 0,
+        dofollow: a.metrics?.dofollow || 0,
+        nofollow: a.metrics?.nofollow || 0
+      },
+      quality: {
+        trustScore: this.normalizeScore(a.trustSignals?.trustScore, 0, 100),
+        spamScore: this.normalizeScore(a.spamDetection?.spamScore, 0, 100),
+        linkVelocity: a.linkVelocity || 'stable'
+      },
+      distribution: {
+        anchors: this.normalizeAnchors(a.anchorText?.distribution || []),
+        types: a.linkTypes || { contextual: 0, image: 0, sitewide: 0 }
+      },
+      topLinks: (a.topBacklinks || []).slice(0, 10).map(link => ({
+        domain: link.domain || link.url,
+        dr: link.dr || 0,
+        anchor: link.anchor || '',
+        type: link.type || 'dofollow'
+      })),
+      gaps: a.gapAnalysis?.opportunities || []
+    };
+  }
+
+  normalizeKeywordData(raw) {
+    if (!raw || !raw.analysis) return this.getDefaultKeywordData();
+    
+    const a = raw.analysis;
+    return {
+      primary: (a.keywords || []).slice(0, 5).map(kw => ({
+        keyword: kw.keyword,
+        volume: kw.volume || 0,
+        difficulty: kw.difficulty || 50,
+        intent: kw.intent || 'informational',
+        position: kw.position || null
+      })),
+      secondary: (a.keywords || []).slice(5, 15).map(kw => ({
+        keyword: kw.keyword,
+        volume: kw.volume || 0,
+        difficulty: kw.difficulty || 50
+      })),
+      intents: a.intents || { informational: 0, commercial: 0, transactional: 0, navigational: 0 },
+      serpFeatures: a.serpFeatures || [],
+      clusters: (a.clusters || []).slice(0, 5),
+      gaps: a.gaps || []
+    };
+  }
+
+  normalizeTechnicalData(raw) {
+    if (!raw || !raw.analysis) return this.getDefaultTechnicalData();
+    
+    const a = raw.analysis;
+    return {
+      coreWebVitals: {
+        lcp: this.normalizeMetric(a.coreWebVitals?.lcp, 'ms', 2500, 4000),
+        fid: this.normalizeMetric(a.coreWebVitals?.fid, 'ms', 100, 300),
+        cls: this.normalizeMetric(a.coreWebVitals?.cls, '', 0.1, 0.25),
+        ttfb: this.normalizeMetric(a.coreWebVitals?.ttfb, 'ms', 800, 1800),
+        overallScore: a.coreWebVitals?.score || 0
+      },
+      mobile: {
+        score: a.mobileReadiness?.score || 0,
+        viewport: a.mobileReadiness?.hasViewport || false,
+        touchTargets: a.mobileReadiness?.touchTargets || 0,
+        fontSizes: a.mobileReadiness?.fontSizes || 0
+      },
+      security: {
+        score: a.security?.score || 0,
+        https: a.security?.https || false,
+        headers: a.security?.headers || {}
+      },
+      schema: {
+        types: a.schema?.types || [],
+        count: a.schema?.count || 0,
+        hasArticle: a.schema?.hasArticle || false
+      },
+      ragReadiness: {
+        score: a.ragReadiness?.score || 0,
+        factors: a.ragReadiness?.factors || {}
+      },
+      healthScore: a.healthScore || 0
+    };
+  }
+
+  normalizeContentData(raw) {
+    if (!raw || !raw.analysis) return this.getDefaultContentData();
+    
+    const a = raw.analysis;
+    return {
+      quality: {
+        wordCount: a.quality?.wordCount || 0,
+        score: a.quality?.qualityScore || 0,
+        rating: a.quality?.wordCountRating || { label: 'Unknown' }
+      },
+      structure: {
+        headings: a.structure?.headings || {},
+        hierarchyScore: a.structure?.hierarchyScore || 0,
+        paragraphs: a.structure?.paragraphs || 0,
+        lists: a.structure?.lists || {}
+      },
+      readability: {
+        grade: a.readability?.fleschKincaidGrade || 0,
+        ease: a.readability?.fleschReadingEase || 0,
+        level: a.readability?.gradeLevel || { label: 'Unknown' }
+      },
+      eeat: {
+        score: a.eeat?.overallScore || 0,
+        rating: a.eeat?.rating || { label: 'Unknown' },
+        signals: a.eeat?.signals || {}
+      },
+      media: {
+        images: a.media?.images?.total || 0,
+        altCoverage: a.media?.images?.altCoverage || 0,
+        videos: a.media?.videos || 0,
+        score: a.media?.mediaScore || 0
+      },
+      topics: (a.topics?.topWords || []).slice(0, 10),
+      freshness: {
+        age: a.freshness?.ageInDays || null,
+        score: a.freshness?.freshnessScore || 50,
+        rating: a.freshness?.freshnessRating || { label: 'Unknown' }
+      },
+      overallScore: a.overallContentScore || 0
+    };
+  }
+
+  // ============================================
+  // HELPER NORMALIZATION FUNCTIONS
+  // ============================================
+  
+  normalizeScore(value, min = 0, max = 100) {
+    if (value === undefined || value === null) return 0;
+    return Math.max(min, Math.min(max, Math.round(value)));
+  }
+
+  normalizeMetric(value, unit, good, poor) {
+    const numValue = parseFloat(value) || 0;
+    let status = 'good';
+    let color = this.colors.good;
+    
+    if (numValue > poor) {
+      status = 'poor';
+      color = this.colors.danger;
+    } else if (numValue > good) {
+      status = 'needs-improvement';
+      color = this.colors.warning;
+    }
+    
+    return {
+      value: numValue,
+      unit: unit,
+      status: status,
+      color: color,
+      display: `${numValue}${unit}`
+    };
+  }
+
+  normalizeAnchors(distribution) {
+    return distribution.slice(0, 10).map(anchor => ({
+      text: anchor.text || anchor.anchor || 'Unknown',
+      count: anchor.count || 0,
+      percentage: anchor.percentage || 0
+    }));
+  }
+
+  // ============================================
+  // DEFAULT DATA STRUCTURES
+  // ============================================
+  
+  getDefaultBacklinkData() {
+    return {
+      metrics: { domainRating: 0, totalBacklinks: 0, referringDomains: 0, dofollow: 0, nofollow: 0 },
+      quality: { trustScore: 0, spamScore: 0, linkVelocity: 'unknown' },
+      distribution: { anchors: [], types: {} },
+      topLinks: [],
+      gaps: []
+    };
+  }
+
+  getDefaultKeywordData() {
+    return {
+      primary: [],
+      secondary: [],
+      intents: { informational: 0, commercial: 0, transactional: 0, navigational: 0 },
+      serpFeatures: [],
+      clusters: [],
+      gaps: []
+    };
+  }
+
+  getDefaultTechnicalData() {
+    return {
+      coreWebVitals: { lcp: {}, fid: {}, cls: {}, ttfb: {}, overallScore: 0 },
+      mobile: { score: 0, viewport: false },
+      security: { score: 0, https: false },
+      schema: { types: [], count: 0 },
+      ragReadiness: { score: 0 },
+      healthScore: 0
+    };
+  }
+
+  getDefaultContentData() {
+    return {
+      quality: { wordCount: 0, score: 0 },
+      structure: { headings: {}, hierarchyScore: 0 },
+      readability: { grade: 0, ease: 0 },
+      eeat: { score: 0 },
+      media: { images: 0, videos: 0 },
+      topics: [],
+      freshness: { score: 50 },
+      overallScore: 0
+    };
+  }
+
+  // ============================================
+  // SUMMARY GENERATION
+  // ============================================
+  
+  generateSummary(data) {
+    const scores = {
+      backlinks: data.backlinks?.metrics?.domainRating || 0,
+      keywords: this.calculateKeywordScore(data.keywords),
+      technical: data.technical?.healthScore || 0,
+      content: data.content?.overallScore || 0
+    };
+    
+    const overallScore = Math.round(
+      (scores.backlinks * 0.25) +
+      (scores.keywords * 0.25) +
+      (scores.technical * 0.25) +
+      (scores.content * 0.25)
+    );
+    
+    return {
+      scores: scores,
+      overallScore: overallScore,
+      rating: this.getOverallRating(overallScore),
+      highlights: this.generateHighlights(data),
+      concerns: this.generateConcerns(data),
+      opportunities: this.generateOpportunities(data)
+    };
+  }
+
+  calculateKeywordScore(keywordData) {
+    if (!keywordData || !keywordData.primary) return 0;
+    const primaryCount = keywordData.primary.length;
+    const avgDifficulty = keywordData.primary.reduce((sum, kw) => sum + (kw.difficulty || 50), 0) / Math.max(1, primaryCount);
+    return Math.min(100, primaryCount * 10 + (100 - avgDifficulty) * 0.5);
+  }
+
+  getOverallRating(score) {
+    if (score >= 80) return { label: 'Excellent', color: this.colors.excellent, icon: '🏆', grade: 'A' };
+    if (score >= 60) return { label: 'Good', color: this.colors.good, icon: '✅', grade: 'B' };
+    if (score >= 40) return { label: 'Fair', color: this.colors.warning, icon: '⚠️', grade: 'C' };
+    if (score >= 20) return { label: 'Poor', color: this.colors.danger, icon: '🔻', grade: 'D' };
+    return { label: 'Critical', color: this.colors.danger, icon: '🚨', grade: 'F' };
+  }
+
+  generateHighlights(data) {
+    const highlights = [];
+    
+    if (data.backlinks?.metrics?.domainRating >= 50) {
+      highlights.push({ area: 'Backlinks', text: `Strong DR of ${data.backlinks.metrics.domainRating}`, icon: '🔗' });
+    }
+    if (data.technical?.coreWebVitals?.overallScore >= 80) {
+      highlights.push({ area: 'Technical', text: 'Excellent Core Web Vitals', icon: '⚡' });
+    }
+    if (data.content?.eeat?.score >= 70) {
+      highlights.push({ area: 'Content', text: 'Strong E-E-A-T signals', icon: '🎓' });
+    }
+    if (data.content?.quality?.wordCount >= 2000) {
+      highlights.push({ area: 'Content', text: 'Comprehensive content depth', icon: '📚' });
+    }
+    
+    return highlights.slice(0, 5);
+  }
+
+  generateConcerns(data) {
+    const concerns = [];
+    
+    if (data.backlinks?.quality?.spamScore > 30) {
+      concerns.push({ area: 'Backlinks', text: 'High spam score detected', severity: 'high', icon: '⚠️' });
+    }
+    if (data.technical?.coreWebVitals?.lcp?.status === 'poor') {
+      concerns.push({ area: 'Technical', text: 'Poor LCP performance', severity: 'high', icon: '🐌' });
+    }
+    if (data.content?.quality?.wordCount < 300) {
+      concerns.push({ area: 'Content', text: 'Thin content detected', severity: 'medium', icon: '📄' });
+    }
+    if (data.content?.eeat?.score < 40) {
+      concerns.push({ area: 'Content', text: 'Weak E-E-A-T signals', severity: 'medium', icon: '📉' });
+    }
+    
+    return concerns.slice(0, 5);
+  }
+
+  generateOpportunities(data) {
+    const opportunities = [];
+    
+    if (data.keywords?.gaps?.length > 0) {
+      opportunities.push({ area: 'Keywords', text: `${data.keywords.gaps.length} keyword gaps to target`, impact: 'high', icon: '🎯' });
+    }
+    if (data.backlinks?.gaps?.length > 0) {
+      opportunities.push({ area: 'Backlinks', text: `${data.backlinks.gaps.length} link building opportunities`, impact: 'high', icon: '🔗' });
+    }
+    if (data.content?.media?.videos === 0) {
+      opportunities.push({ area: 'Content', text: 'Add video content for engagement', impact: 'medium', icon: '🎬' });
+    }
+    if (data.technical?.schema?.count === 0) {
+      opportunities.push({ area: 'Technical', text: 'Implement structured data', impact: 'medium', icon: '📊' });
+    }
+    
+    return opportunities.slice(0, 5);
+  }
+
+  // ============================================
+  // UI FORMATTING
+  // ============================================
+  
+  formatForUI(collection) {
+    return {
+      header: this.formatHeader(collection),
+      cards: this.formatCards(collection),
+      tables: this.formatTables(collection),
+      charts: this.formatChartData(collection),
+      modals: this.formatModalData(collection)
+    };
+  }
+
+  formatHeader(collection) {
+    const summary = collection.summary || {};
+    return {
+      url: collection.url,
+      overallScore: summary.overallScore || 0,
+      rating: summary.rating || { label: 'Unknown', grade: '?' },
+      confidence: this.formatConfidence(collection.confidence),
+      timestamp: collection.timestamp,
+      processingTime: `${collection.processingTime}ms`
+    };
+  }
+
+  formatConfidence(confidence) {
+    const avg = Object.values(confidence || {}).reduce((a, b) => a + b, 0) / Math.max(1, Object.keys(confidence || {}).length);
+    return {
+      average: Math.round(avg),
+      badge: this.getConfidenceBadge(avg),
+      breakdown: confidence
+    };
+  }
+
+  getConfidenceBadge(score) {
+    if (score >= this.confidenceThresholds.high) {
+      return { label: 'High Confidence', color: this.colors.good, icon: '✓✓' };
+    }
+    if (score >= this.confidenceThresholds.medium) {
+      return { label: 'Medium Confidence', color: this.colors.warning, icon: '✓' };
+    }
+    return { label: 'Low Confidence', color: this.colors.danger, icon: '?' };
+  }
+
+  formatCards(collection) {
+    const data = collection.data || {};
+    const cards = [];
+    
+    // Backlinks Card
+    if (data.backlinks) {
+      cards.push({
+        id: 'backlinks',
+        title: 'Backlink Profile',
+        icon: '🔗',
+        score: data.backlinks.metrics?.domainRating || 0,
+        metrics: [
+          { label: 'Domain Rating', value: data.backlinks.metrics?.domainRating || 0, format: 'score' },
+          { label: 'Total Backlinks', value: data.backlinks.metrics?.totalBacklinks || 0, format: 'number' },
+          { label: 'Referring Domains', value: data.backlinks.metrics?.referringDomains || 0, format: 'number' },
+          { label: 'Trust Score', value: data.backlinks.quality?.trustScore || 0, format: 'percent' }
+        ]
+      });
+    }
+    
+    // Keywords Card
+    if (data.keywords) {
+      cards.push({
+        id: 'keywords',
+        title: 'Keyword Intelligence',
+        icon: '🎯',
+        score: collection.summary?.scores?.keywords || 0,
+        metrics: [
+          { label: 'Primary Keywords', value: data.keywords.primary?.length || 0, format: 'number' },
+          { label: 'SERP Features', value: data.keywords.serpFeatures?.length || 0, format: 'number' },
+          { label: 'Keyword Clusters', value: data.keywords.clusters?.length || 0, format: 'number' },
+          { label: 'Gap Opportunities', value: data.keywords.gaps?.length || 0, format: 'number' }
+        ]
+      });
+    }
+    
+    // Technical Card
+    if (data.technical) {
+      cards.push({
+        id: 'technical',
+        title: 'Technical Health',
+        icon: '⚡',
+        score: data.technical.healthScore || 0,
+        metrics: [
+          { label: 'CWV Score', value: data.technical.coreWebVitals?.overallScore || 0, format: 'score' },
+          { label: 'Mobile Score', value: data.technical.mobile?.score || 0, format: 'score' },
+          { label: 'Security Score', value: data.technical.security?.score || 0, format: 'score' },
+          { label: 'RAG Readiness', value: data.technical.ragReadiness?.score || 0, format: 'score' }
+        ]
+      });
+    }
+    
+    // Content Card
+    if (data.content) {
+      cards.push({
+        id: 'content',
+        title: 'Content Quality',
+        icon: '📝',
+        score: data.content.overallScore || 0,
+        metrics: [
+          { label: 'Word Count', value: data.content.quality?.wordCount || 0, format: 'number' },
+          { label: 'E-E-A-T Score', value: data.content.eeat?.score || 0, format: 'score' },
+          { label: 'Readability', value: data.content.readability?.ease || 0, format: 'score' },
+          { label: 'Media Score', value: data.content.media?.score || 0, format: 'score' }
+        ]
+      });
+    }
+    
+    return cards;
+  }
+
+  formatTables(collection) {
+    const data = collection.data || {};
+    return {
+      keywords: (data.keywords?.primary || []).map((kw, i) => ({
+        rank: i + 1,
+        keyword: kw.keyword,
+        volume: this.formatNumber(kw.volume),
+        difficulty: kw.difficulty,
+        intent: this.formatIntent(kw.intent),
+        position: kw.position || '-'
+      })),
+      backlinks: (data.backlinks?.topLinks || []).map((link, i) => ({
+        rank: i + 1,
+        domain: link.domain,
+        dr: link.dr,
+        anchor: link.anchor,
+        type: link.type
+      })),
+      topics: (data.content?.topics || []).map(topic => ({
+        word: topic.word,
+        count: topic.count,
+        density: `${topic.density}%`
+      }))
+    };
+  }
+
+  formatChartData(collection) {
+    const data = collection.data || {};
+    return {
+      scoreRadar: {
+        labels: ['Backlinks', 'Keywords', 'Technical', 'Content'],
+        data: [
+          collection.summary?.scores?.backlinks || 0,
+          collection.summary?.scores?.keywords || 0,
+          collection.summary?.scores?.technical || 0,
+          collection.summary?.scores?.content || 0
+        ]
+      },
+      intentPie: data.keywords?.intents || {},
+      cwvBar: {
+        labels: ['LCP', 'FID', 'CLS', 'TTFB'],
+        data: [
+          data.technical?.coreWebVitals?.lcp?.value || 0,
+          data.technical?.coreWebVitals?.fid?.value || 0,
+          data.technical?.coreWebVitals?.cls?.value || 0,
+          data.technical?.coreWebVitals?.ttfb?.value || 0
+        ]
+      }
+    };
+  }
+
+  formatModalData(collection) {
+    const data = collection.data || {};
+    return {
+      backlinksModal: {
+        title: 'Backlink Analysis Details',
+        sections: [
+          { title: 'Top Referring Domains', data: data.backlinks?.topLinks || [] },
+          { title: 'Anchor Text Distribution', data: data.backlinks?.distribution?.anchors || [] },
+          { title: 'Link Building Opportunities', data: data.backlinks?.gaps || [] }
+        ]
+      },
+      keywordsModal: {
+        title: 'Keyword Intelligence Details',
+        sections: [
+          { title: 'Primary Keywords', data: data.keywords?.primary || [] },
+          { title: 'Keyword Clusters', data: data.keywords?.clusters || [] },
+          { title: 'Keyword Gaps', data: data.keywords?.gaps || [] }
+        ]
+      }
+    };
+  }
+
+  // ============================================
+  // GEMINI PROMPT PREPARATION
+  // ============================================
+  
+  formatForGemini(collection, promptType = 'analysis') {
+    const data = collection.data || {};
+    const summary = collection.summary || {};
+    
+    const context = {
+      url: collection.url,
+      overallScore: summary.overallScore,
+      scores: summary.scores,
+      highlights: summary.highlights,
+      concerns: summary.concerns,
+      opportunities: summary.opportunities,
+      keyMetrics: this.extractKeyMetrics(data)
+    };
+    
+    const prompts = {
+      analysis: this.buildAnalysisPrompt(context),
+      recommendations: this.buildRecommendationsPrompt(context),
+      competitive: this.buildCompetitivePrompt(context),
+      content: this.buildContentPrompt(context)
+    };
+    
+    return prompts[promptType] || prompts.analysis;
+  }
+
+  extractKeyMetrics(data) {
+    return {
+      domainRating: data.backlinks?.metrics?.domainRating || 0,
+      backlinks: data.backlinks?.metrics?.totalBacklinks || 0,
+      referringDomains: data.backlinks?.metrics?.referringDomains || 0,
+      wordCount: data.content?.quality?.wordCount || 0,
+      eeatScore: data.content?.eeat?.score || 0,
+      technicalHealth: data.technical?.healthScore || 0,
+      keywordCount: (data.keywords?.primary?.length || 0) + (data.keywords?.secondary?.length || 0)
+    };
+  }
+
+  buildAnalysisPrompt(context) {
+    return `Analyze this website's SEO performance:
+URL: ${context.url}
+Overall Score: ${context.overallScore}/100
+
+Key Metrics:
+- Domain Rating: ${context.keyMetrics.domainRating}
+- Backlinks: ${context.keyMetrics.backlinks}
+- Referring Domains: ${context.keyMetrics.referringDomains}
+- Word Count: ${context.keyMetrics.wordCount}
+- E-E-A-T Score: ${context.keyMetrics.eeatScore}
+- Technical Health: ${context.keyMetrics.technicalHealth}
+- Keywords Tracked: ${context.keyMetrics.keywordCount}
+
+Highlights: ${JSON.stringify(context.highlights)}
+Concerns: ${JSON.stringify(context.concerns)}
+Opportunities: ${JSON.stringify(context.opportunities)}
+
+Provide a comprehensive SEO analysis with actionable insights.`;
+  }
+
+  buildRecommendationsPrompt(context) {
+    return `Based on this SEO data, provide prioritized recommendations:
+URL: ${context.url}
+Overall Score: ${context.overallScore}/100
+Scores: ${JSON.stringify(context.scores)}
+Concerns: ${JSON.stringify(context.concerns)}
+
+Generate 5 prioritized recommendations with expected impact and effort level.`;
+  }
+
+  buildCompetitivePrompt(context) {
+    return `Analyze competitive positioning for: ${context.url}
+Domain Rating: ${context.keyMetrics.domainRating}
+Backlinks: ${context.keyMetrics.backlinks}
+Keywords: ${context.keyMetrics.keywordCount}
+
+Suggest competitive strategies and identify market positioning opportunities.`;
+  }
+
+  buildContentPrompt(context) {
+    return `Analyze content quality for: ${context.url}
+Word Count: ${context.keyMetrics.wordCount}
+E-E-A-T Score: ${context.keyMetrics.eeatScore}
+
+Provide content optimization recommendations focusing on depth, expertise, and user value.`;
+  }
+
+  // ============================================
+  // UTILITY FUNCTIONS
+  // ============================================
+  
+  formatNumber(num) {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  }
+
+  formatIntent(intent) {
+    const icons = {
+      informational: '📚',
+      commercial: '🛍️',
+      transactional: '💰',
+      navigational: '🧭'
+    };
+    return { label: intent, icon: icons[intent] || '❓' };
+  }
+}
+
+// Export to window
+window.EliteDataOrganizer = EliteDataOrganizer;
+window.eliteDataOrganizer = new EliteDataOrganizer();
+
+console.log('✅ ELITE_Data_Organizer.html loaded - Data Organization Module v1.0.0');
+</script>

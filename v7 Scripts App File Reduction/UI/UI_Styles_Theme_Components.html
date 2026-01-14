@@ -1,0 +1,247 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  UI_Styles_Theme_Components.html
+  Main Panel, Project Toolbar & Form Components
+  
+  PURPOSE: CSS for main content area, project management, forms, and workflow
+  
+  DEPENDENCIES: UI_Styles_Theme_Core.html (CSS variables)
+  
+  PROVIDES:
+    - Main panel & topbar styles
+    - Theme switcher
+    - Project toolbar & workflow stages
+    - Form inputs & AI-populated field styles
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<style>
+  /* =================================== */
+  /* MAIN PANEL & CONTENT (FIXED)
+  /* =================================== */
+  .main-panel{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    max-height:100vh;
+  }
+  .topbar{
+    padding:4px 12px 3px;
+    display:flex;align-items:center;justify-content:space-between;
+    backdrop-filter:blur(18px);
+    background:var(--surface-glass);
+    border-bottom:1px solid var(--border-subtle);
+    position:sticky;top:0;z-index:20;
+    flex-shrink: 0;
+  }
+  body[data-theme="dark"] .topbar,
+  body[data-theme="aurora"] .topbar {
+    background:linear-gradient(to bottom,rgba(15,23,42,0.96),rgba(15,23,42,0.9));
+    border-bottom-color:rgba(30,64,175,0.7);
+  }
+  body[data-theme="neon"] .topbar {
+    background: var(--surface-glass);
+    border-bottom-color: var(--border-subtle);
+  }
+
+  .breadcrumb{font-size:11px;color:var(--text-muted);}
+  .topbar-right{display:flex;gap:10px;align-items:center;}
+  
+  .theme-switcher-new {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-soft);
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+  }
+  .btn-theme {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  .btn-theme:hover {
+    background: var(--surface);
+    color: var(--text-primary);
+  }
+  .btn-theme.active {
+    background: var(--brand-primary);
+    color: #fff;
+    box-shadow: var(--shadow-soft);
+  }
+  body[data-theme="neon"] .btn-theme.active {
+      background: var(--brand-fuchsia);
+  }
+
+  .main-content{
+    padding:8px 12px 20px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    flex-grow: 1;
+    display:flex;flex-direction:column;gap:14px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  .card{
+    background:var(--surface);
+    border-radius:var(--radius-lg);
+    border:1px solid var(--border-subtle);
+    padding:8px 12px 10px;
+    box-shadow:var(--shadow-soft);
+    position:relative;
+    overflow:visible;
+  }
+  body[data-theme="dark"] .card,
+  body[data-theme="aurora"] .card,
+  body[data-theme="neon"] .card{
+    background:var(--surface-elevated);
+    backdrop-filter:blur(18px);
+  }
+  .card h2{margin:0 0 2px;font-size:12px;}
+  .card-sub{font-size:10px;color:var(--text-muted);}
+
+  /* Auto-hide Project Manager when viewing results */
+  #tab-results.active ~ #projectCard,
+  .tab.active#tab-results ~ #projectCard {
+    display: none !important;
+  }
+  
+  /* Compact mode for Project Manager on other tabs */
+  #projectCard {
+    transition: all 0.3s ease;
+  }
+  
+  #projectCard.compact .card-sub,
+  #projectCard.compact .project-actions button:not(#saveProjectBtnTop) {
+    display: none;
+  }
+  
+  #projectCard.compact .project-toolbar {
+    padding: 3px 6px;
+    margin-bottom: 2px;
+  }
+
+  .tab{display:none;opacity:0;transform:translateY(4px) scale(0.995);pointer-events:none;}
+  .tab.active{display:block;pointer-events:auto;animation:tabIn 220ms var(--transition-med) forwards;}
+  @keyframes tabIn{
+    from{opacity:0;transform:translateY(8px) scale(0.99);}
+    to{opacity:1;transform:translateY(0) scale(1);}
+  }
+
+  /* =================================== */
+  /* PROJECT & WORKFLOW STYLES
+  /* =================================== */
+  .project-toolbar{
+    margin-top:2px;margin-bottom:4px;
+    padding:4px 8px;border-radius:12px;
+    background:linear-gradient(135deg,rgba(79,70,229,0.18),rgba(16,185,129,0.16));
+    border:1px solid rgba(148,163,184,0.5);
+    display:flex;gap:10px;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;
+  }
+  .project-main{display:flex;flex-direction:column;gap:4px;min-width:220px;}
+  .project-main label{font-size:11px;color:var(--text-muted);}
+  .project-main select,
+  .project-main input[type="text"]{
+    width:100%;border-radius:999px;border:1px solid var(--border-subtle);
+    padding:5px 9px;font-size:12px;background:var(--surface-soft);color:var(--text-primary);
+  }
+  .project-ai-model{display:flex;flex-direction:column;gap:4px;min-width:160px;}
+  .project-ai-model label{font-size:11px;color:var(--text-muted);font-weight:600;}
+  .model-select-compact{
+    width:100%;border-radius:999px;border:1px solid var(--border-subtle);
+    padding:5px 9px;font-size:11px;background:var(--surface-soft);color:var(--text-primary);
+    cursor:pointer;transition:all var(--transition-fast);
+  }
+  .model-select-compact:hover{
+    border-color:var(--brand-primary);
+  }
+  .model-select-compact:focus{
+    border-color:var(--brand-primary);
+    box-shadow:0 0 0 2px rgba(79,69,227,0.1);
+    outline:none;
+  }
+  .project-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center;}
+  .btn-small{font-size:11px;padding:5px 9px;border-radius:999px;}
+  #saveStatus{font-size:11px;color:var(--text-muted);}
+
+  .stage-list{display:flex;flex-direction:column;gap:10px;margin-top:8px;margin-bottom:20px;}
+  .stage-panel{
+    border-radius:var(--radius-md);
+    border:1px solid var(--border-subtle);
+    background:var(--surface-elevated);
+    overflow:visible;
+    transition:border-color var(--transition-fast),box-shadow var(--transition-fast),transform var(--transition-fast);
+    margin-bottom:10px;
+  }
+  .stage-panel:hover{transform:translateY(-1px);}
+  .stage-panel.open{
+    border-color:var(--brand-accent);
+    box-shadow:var(--shadow-strong);
+    overflow:visible;
+  }
+
+  .stage-header{
+    padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  }
+  .stage-title-group{display:flex;flex-direction:column;}
+  .stage-kicker{font-size:11px;color:var(--text-muted);}
+  .stage-title{font-size:13px;font-weight:500;color:var(--text-secondary);}
+  .stage-meta{display:flex;align-items:center;gap:8px;}
+  .stage-pill{
+    font-size:11px;padding:2px 8px;border-radius:999px;
+    background:var(--surface-soft);border:1px solid var(--border-subtle);color:var(--text-muted);
+  }
+  .stage-chevron{font-size:13px;color:var(--text-muted);transition:transform var(--transition-fast);}
+  .stage-panel.open .stage-chevron{transform:rotate(90deg);}
+
+  .stage-body{
+    padding:0 12px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:10px 12px;
+    height:0;
+    opacity:0;
+    overflow:hidden;
+    transform:translateY(-4px);
+    transition:opacity 260ms ease-out,transform 220ms ease-out,padding-bottom 220ms ease-out;
+  }
+  .stage-panel.open .stage-body{
+    height:auto;
+    opacity:1;
+    transform:translateY(0);
+    padding-bottom:12px;
+    overflow:visible;
+  }
+  .field{display:flex;flex-direction:column;gap:3px;}
+  .field-label{font-size:11px;color:var(--text-muted);}
+  
+  input[type="text"],textarea,select{
+    width:100%;border-radius:10px;border:1px solid var(--border-subtle);
+    padding:7px 9px;font-size:13px;background:var(--surface-soft);
+    color:var(--text-primary);outline:none;
+    transition:border-color var(--transition-fast),box-shadow var(--transition-fast),background var(--transition-fast),transform var(--transition-fast);
+  }
+  textarea{min-height:78px;resize:vertical;}
+  input:focus,textarea:focus,select:focus{
+    border-color:var(--brand-primary);
+    box-shadow:0 0 0 1px rgba(79,70,229,0.4);
+    background:var(--surface);
+    transform:translateY(-0.5px);
+  }
+  
+  /* AI-populated field styling */
+  input.ai-populated,textarea.ai-populated,select.ai-populated{
+    border-color:rgba(16,185,129,0.5);
+    background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(79,70,229,0.05));
+    position:relative;
+  }
+  input.ai-populated:focus,textarea.ai-populated:focus,select.ai-populated:focus{
+    border-color:var(--brand-emerald);
+    box-shadow:0 0 0 1px rgba(16,185,129,0.4);
+  }
+</style>

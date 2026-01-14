@@ -1,0 +1,441 @@
+<!--
+  UI_Nav_Handlers.html
+  Navigation Event Wiring & Project Management Functions
+  Extracted from UI_Scripts_App.html (Phase 3)
+  
+  Functions exposed to window scope:
+  - refreshProjectList, loadProject, doSaveProject
+  - doNewProject, doRenameProject, doDeleteProject
+  - loadGeminiModels, saveGeminiModel
+  - initNavigationHandlers
+-->
+<script>
+  console.log('🔧 UI_Nav_Handlers.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROJECT MANAGEMENT FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  window.refreshProjectList = function() {
+    console.log('🔄 Refreshing project list...');
+    var projectSelect = document.getElementById('projectSelect');
+    
+    if (!projectSelect) {
+      console.error('❌ projectSelect element not found');
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(projects) {
+        console.log('📋 Projects loaded:', projects ? projects.length : 0);
+        projectSelect.innerHTML = '<option value="">-- Select Project --</option>';
+        
+        if (projects && projects.length > 0) {
+          projects.forEach(function(project) {
+            var option = document.createElement('option');
+            option.value = project.name || project;
+            option.textContent = project.name || project;
+            projectSelect.appendChild(option);
+          });
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Failed to load projects:', error);
+        window.showToast('Failed to load projects: ' + error, 'error');
+      })
+      .getProjectList();
+  };
+
+  window.loadProject = function(name) {
+    if (!name) {
+      console.log('⚠️ No project name provided');
+      window.fillFormData?.({});
+      window.recalcScores?.();
+      return;
+    }
+
+    console.log('📂 Loading project:', name);
+    window.showLoadingIndicator?.(name);
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        window.hideLoadingIndicator?.();
+        
+        console.log('✅ loadProject SUCCESS');
+        console.log('📦 Has data?', res && res.data);
+        
+        if (res && res.data) {
+          window.fillFormData?.(res.data);
+          
+          window.currentProjectName = name;
+          window.currentProjectData = res;
+          
+          const saveStatus = document.getElementById('saveStatus');
+          if (saveStatus) {
+            saveStatus.textContent = res.updatedAt 
+              ? 'Loaded · ' + new Date(res.updatedAt).toLocaleTimeString()
+              : 'Loaded';
+          }
+          
+          window.recalcScores?.();
+          window.showToast?.('Project "' + name + '" loaded', 'success');
+          
+          // Auto-load saved competitor analysis
+          if (res.competitorAnalysis && res.competitorAnalysis.success && res.competitorAnalysis.competitors) {
+            console.log('🎯 Found saved competitor analysis!');
+            window.competitorIntelligenceData = {
+              success: true,
+              competitors: res.competitorAnalysis.competitors,
+              analysis: res.competitorAnalysis.analysis || res.competitorAnalysis.geminiAnalysis || {},
+              geminiAnalysis: res.competitorAnalysis.geminiAnalysis || res.competitorAnalysis.analysis || {}
+            };
+            
+            if (typeof window.renderCompetitorIntelligence === 'function') {
+              const resultsDiv = document.getElementById('comp-results');
+              const emptyState = document.getElementById('comp-empty-state');
+              if (resultsDiv && emptyState) {
+                emptyState.style.display = 'none';
+                resultsDiv.style.display = 'block';
+                window.renderCompetitorIntelligence(window.competitorIntelligenceData);
+              }
+            }
+          }
+        } else {
+          console.warn('⚠️ Project data is empty');
+          window.showToast?.('Project not found or empty', 'warning');
+        }
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator?.();
+        console.error('❌ Failed to load project:', error);
+        window.showToast?.('Failed to load project: ' + error, 'error');
+      })
+      .loadProject(name);
+  };
+
+  window.doSaveProject = function() {
+    var projectSelect = document.getElementById('projectSelect');
+    var projectName = projectSelect ? projectSelect.value : null;
+    
+    if (!projectName) {
+      window.showToast('Please select a project first', 'warning');
+      return;
+    }
+
+    console.log('💾 Saving project:', projectName);
+    var formData = window.collectFormData();
+
+    window.showLoadingIndicator('Saving...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project saved:', projectName);
+        window.showToast('Project "' + projectName + '" saved successfully', 'success');
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to save project:', error);
+        window.showToast('Failed to save project: ' + error, 'error');
+      })
+      .saveProject(projectName, formData);
+  };
+
+  window.doNewProject = function() {
+    var projectNameInput = document.getElementById('projectNameInput');
+    var newName = projectNameInput ? projectNameInput.value.trim() : '';
+    
+    if (!newName) {
+      window.showToast('Please enter a project name', 'warning');
+      return;
+    }
+
+    console.log('➕ Creating new project:', newName);
+    window.showLoadingIndicator('Creating...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project created:', newName);
+        window.showToast('Project "' + newName + '" created', 'success');
+        
+        if (projectNameInput) projectNameInput.value = '';
+        window.refreshProjectList();
+        
+        setTimeout(function() {
+          var projectSelect = document.getElementById('projectSelect');
+          if (projectSelect) {
+            projectSelect.value = newName;
+            window.loadProject(newName);
+          }
+        }, 500);
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to create project:', error);
+        window.showToast('Failed to create project: ' + error, 'error');
+      })
+      .createProject(newName);
+  };
+
+  window.doRenameProject = function() {
+    var projectSelect = document.getElementById('projectSelect');
+    var projectNameInput = document.getElementById('projectNameInput');
+    var oldName = projectSelect ? projectSelect.value : '';
+    var newName = projectNameInput ? projectNameInput.value.trim() : '';
+    
+    if (!oldName) {
+      window.showToast('Please select a project to rename', 'warning');
+      return;
+    }
+    
+    if (!newName) {
+      window.showToast('Please enter a new name', 'warning');
+      return;
+    }
+
+    if (oldName === newName) {
+      window.showToast('New name is same as old name', 'warning');
+      return;
+    }
+
+    console.log('✏️ Renaming project:', oldName, '→', newName);
+    window.showLoadingIndicator('Renaming...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project renamed:', oldName, '→', newName);
+        window.showToast('Project renamed to "' + newName + '"', 'success');
+        
+        if (projectNameInput) projectNameInput.value = '';
+        window.refreshProjectList();
+        
+        setTimeout(function() {
+          var projectSelect = document.getElementById('projectSelect');
+          if (projectSelect) {
+            projectSelect.value = newName;
+          }
+        }, 500);
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to rename project:', error);
+        window.showToast('Failed to rename project: ' + error, 'error');
+      })
+      .renameProject(oldName, newName);
+  };
+
+  window.doDeleteProject = function() {
+    var projectSelect = document.getElementById('projectSelect');
+    var projectName = projectSelect ? projectSelect.value : '';
+    
+    if (!projectName) {
+      window.showToast('Please select a project to delete', 'warning');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete "' + projectName + '"? This cannot be undone.')) {
+      return;
+    }
+
+    console.log('🗑️ Deleting project:', projectName);
+    window.showLoadingIndicator('Deleting...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project deleted:', projectName);
+        window.showToast('Project "' + projectName + '" deleted', 'success');
+        
+        window.currentProjectName = null;
+        window.currentProjectData = null;
+        
+        window.refreshProjectList();
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to delete project:', error);
+        window.showToast('Failed to delete project: ' + error, 'error');
+      })
+      .deleteProject(projectName);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GEMINI MODEL SELECTION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  window.loadGeminiModels = function() {
+    console.log('🤖 Loading Gemini models...');
+    
+    var geminiModelSelect = document.getElementById('geminiModelSelect');
+    if (!geminiModelSelect) {
+      console.warn('⚠️ geminiModelSelect element not found');
+      return;
+    }
+    
+    geminiModelSelect.innerHTML = '<option value="">Loading models...</option>';
+    geminiModelSelect.disabled = true;
+    
+    google.script.run
+      .withSuccessHandler(function(response) {
+        console.log('📦 Gemini models response:', response);
+        
+        if (response && response.success && response.models && response.models.length > 0) {
+          geminiModelSelect.innerHTML = '';
+          
+          response.models.forEach(function(model) {
+            var option = document.createElement('option');
+            option.value = model.name;
+            option.textContent = model.displayName || model.name;
+            if (model.name === response.currentModel) {
+              option.selected = true;
+            }
+            geminiModelSelect.appendChild(option);
+          });
+          
+          geminiModelSelect.disabled = false;
+          console.log('✅ Loaded ' + response.models.length + ' Gemini models');
+          window.showToast?.('✅ Loaded ' + response.models.length + ' Gemini models');
+        } else {
+          geminiModelSelect.innerHTML = '<option value="gemini-3-flash-preview">Gemini 3 Flash Preview ⚡🆕</option><option value="gemini-3-pro-preview">Gemini 3 Pro Preview 🧠🆕</option><option value="gemini-2.5-flash">Gemini 2.5 Flash ⚡</option><option value="gemini-2.5-pro">Gemini 2.5 Pro 🧠</option>';
+          geminiModelSelect.disabled = false;
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Failed to load Gemini models:', error);
+        geminiModelSelect.innerHTML = '<option value="gemini-3-flash-preview">Gemini 3 Flash Preview ⚡</option><option value="gemini-2.5-flash">Gemini 2.5 Flash ⚡</option>';
+        geminiModelSelect.disabled = false;
+      })
+      .getGeminiModels();
+  };
+
+  window.saveGeminiModel = function(modelName) {
+    localStorage.setItem('serpifai-gemini-model', modelName);
+    console.log('💾 Saved Gemini model preference:', modelName);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NAVIGATION EVENT WIRING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  window.initNavigationHandlers = function() {
+    console.log('🔌 Wiring navigation handlers...');
+
+    var navBtns = document.querySelectorAll('.nav-btn');
+    navBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tabName = btn.dataset.tab;
+        if (tabName) {
+          window.setActiveTab(tabName);
+        }
+      });
+    });
+
+    document.querySelectorAll('.nav-subbtn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tabName = btn.dataset.tab;
+        if (tabName) {
+          window.setActiveTab(tabName);
+        }
+      });
+    });
+
+    document.querySelectorAll('.stage-panel').forEach(function(panel) {
+      const header = panel.querySelector('.stage-header');
+      if (header) {
+        header.addEventListener('click', function(e) {
+          // Don't toggle if clicking the Run button
+          if (e.target.classList.contains('btn-run-stage')) return;
+          panel.classList.toggle('open');
+        });
+      }
+    });
+
+    document.querySelectorAll('.btn-run-stage').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation(); // Prevent accordion toggle
+        var stageNum = parseInt(btn.dataset.stage);
+        if (stageNum && window.runStage) {
+          window.runStage(stageNum, btn);
+        }
+      });
+    });
+
+    document.querySelectorAll('.results-tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var resultTab = btn.dataset.result;
+        if (resultTab) {
+          document.querySelectorAll('.results-tab-btn').forEach(function(b) {
+            b.classList.remove('active');
+          });
+          btn.classList.add('active');
+          
+          document.querySelectorAll('.result-panel').forEach(function(panel) {
+            panel.classList.remove('active');
+          });
+          var targetPanel = document.getElementById('result-' + resultTab);
+          if (targetPanel) {
+            targetPanel.classList.add('active');
+          }
+        }
+      });
+    });
+
+    var themeBtns = document.querySelectorAll('.btn-theme');
+    themeBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var theme = btn.dataset.theme;
+        if (theme) {
+          window.switchTheme(theme);
+        }
+      });
+    });
+
+    var newProjectBtn = document.getElementById('newProjectBtn');
+    if (newProjectBtn) {
+      newProjectBtn.addEventListener('click', window.doNewProject);
+    }
+
+    var renameProjectBtn = document.getElementById('renameProjectBtn');
+    if (renameProjectBtn) {
+      renameProjectBtn.addEventListener('click', window.doRenameProject);
+    }
+
+    var deleteProjectBtn = document.getElementById('deleteProjectBtn');
+    if (deleteProjectBtn) {
+      deleteProjectBtn.addEventListener('click', window.doDeleteProject);
+    }
+
+    var saveProjectBtn = document.getElementById('saveProjectBtn');
+    if (saveProjectBtn) {
+      saveProjectBtn.addEventListener('click', window.doSaveProject);
+    }
+
+    var saveProjectBtnTop = document.getElementById('saveProjectBtnTop');
+    if (saveProjectBtnTop) {
+      saveProjectBtnTop.addEventListener('click', window.doSaveProject);
+    }
+
+    var projectSelect = document.getElementById('projectSelect');
+    if (projectSelect) {
+      projectSelect.addEventListener('change', function() {
+        window.loadProject(projectSelect.value);
+      });
+    }
+
+    var geminiModelSelect = document.getElementById('geminiModelSelect');
+    if (geminiModelSelect) {
+      geminiModelSelect.addEventListener('change', function() {
+        window.saveGeminiModel(geminiModelSelect.value);
+      });
+    }
+
+    console.log('✅ Navigation handlers wired');
+  };
+
+  console.log('✅ UI_Nav_Handlers.html loaded');
+  console.log('   Exposed: refreshProjectList, loadProject, doSaveProject');
+  console.log('   Exposed: doNewProject, doRenameProject, doDeleteProject');
+  console.log('   Exposed: loadGeminiModels, saveGeminiModel, initNavigationHandlers');
+</script>

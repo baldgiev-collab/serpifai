@@ -1,0 +1,150 @@
+<script>
+(function () {
+  window.SerpifAI = window.SerpifAI || {};
+  const root = window.SerpifAI;
+  root.utils = root.utils || {};
+  root.utils.markdown = root.utils.markdown || {};
+
+  function parseMarkdownSections(markdown) {
+    const sections = [];
+    const parts = String(markdown || '').split(/###\s+/);
+
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+
+      const lines = part.split('\n');
+      let title = lines[0].trim();
+
+      title = title.replace(/^\d+[\.\-]+\s*/, '');
+      title = title.replace(/^[\d\-]+\s*/, '');
+
+      const content = lines.slice(1).join('\n').trim();
+      sections.push({ title, content });
+    }
+
+    console.log('Parsed sections:', sections.map((s, i) => `${i + 1}. ${s.title}`));
+    return sections;
+  }
+
+  function formatMarkdownContent(text) {
+    let html = String(text || '');
+
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+
+    html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+    html = html
+      .split('\n\n')
+      .map(p => (p.trim() ? `<p>${p.replace(/\n/g, '<br>')}</p>` : ''))
+      .join('');
+
+    return html;
+  }
+
+  function cleanReportForDisplay(text) {
+    if (!text) return '';
+
+    let cleaned = String(text);
+
+    cleaned = cleaned.replace(/```json[\s\S]*?```/gi, '');
+    cleaned = cleaned.replace(/\{[\s\S]*?"name"[\s\S]*?"description"[\s\S]*?\}/g, '');
+
+    cleaned = cleaned.replace(/\$\d+/g, '');
+    cleaned = cleaned.replace(/\$\$/g, '');
+
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    cleaned = cleaned.replace(/^\s+/gm, '');
+
+    cleaned = cleaned.replace(/---+/g, '');
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, '');
+
+    return cleaned.trim();
+  }
+
+  function formatMarkdownReport(markdown) {
+    if (!markdown) return '<p class="no-content">No report available</p>';
+
+    let html = String(markdown);
+
+    html = html.replace(/```json[\s\S]*?```/g, '');
+    html = html.replace(/```[\s\S]*?```/g, '');
+
+    html = html.replace(/###\s*(\d+)\.\s*([^\n]+)/g, function (match, num, title) {
+      const icons = ['🎯', '💡', '🔄', '✨', '🗺️', '📋', '🏆', '💼', '📊', '🎨', '🔍', '⚡', '📈', '🌟', '💎'];
+      const icon = icons[parseInt(num) - 1] || '📌';
+      return `<div class="report-section-divider"></div><h3 class="report-section-heading"><span class="section-icon">${icon}</span><span class="section-number">${num}.</span> <span class="section-title">${title.trim()}</span></h3>`;
+    });
+
+    html = html.replace(/##\s+([^\n]+)/g, function (match, title) {
+      return `<h2 class="report-main-heading">${title.trim()}</h2>`;
+    });
+
+    html = html.replace(/####\s+([^\n]+)/g, function (match, title) {
+      return `<h4 class="report-subheading">${title.trim()}</h4>`;
+    });
+
+    html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong class="report-emphasis">$1</strong>');
+    html = html.replace(/\*([^*\n]+)\*/g, '<em class="report-italic">$1</em>');
+    html = html.replace(/`([^`]+)`/g, '<code class="report-code">$1</code>');
+
+    html = html.replace(/^\s*[\*\-]\s+(.+)$/gm, '<li class="report-list-item">$1</li>');
+    html = html.replace(/^\s*\d+\.\s+(.+)$/gm, '<li class="report-list-item-numbered">$1</li>');
+
+    html = html.replace(/(<li class="report-list-item">.*?<\/li>(?:\s*\n)?)+/gs, function (match) {
+      return `<ul class="report-list">${match}</ul>`;
+    });
+    html = html.replace(/(<li class="report-list-item-numbered">.*?<\/li>(?:\s*\n)?)+/gs, function (match) {
+      return `<ol class="report-list-numbered">${match}</ol>`;
+    });
+
+    html = html.replace(/^---+$/gm, '<hr class="report-divider">');
+    html = html.replace(/^>\s+(.+)$/gm, '<blockquote class="report-quote">$1</blockquote>');
+
+    html = html
+      .split('\n\n')
+      .map(para => {
+        para = para.trim();
+        if (
+          para &&
+          !para.includes('<h') &&
+          !para.includes('<ul') &&
+          !para.includes('<ol') &&
+          !para.includes('<div') &&
+          !para.includes('<hr') &&
+          !para.includes('<blockquote')
+        ) {
+          return `<p class="report-paragraph">${para.replace(/\n/g, '<br>')}</p>`;
+        }
+        return para;
+      })
+      .join('\n');
+
+    return `<div class="report-content-enhanced report-elite-typography">${html}</div>`;
+  }
+
+  root.utils.markdown.parseMarkdownSections = root.utils.markdown.parseMarkdownSections || parseMarkdownSections;
+  root.utils.markdown.formatMarkdownContent = root.utils.markdown.formatMarkdownContent || formatMarkdownContent;
+  root.utils.markdown.cleanReportForDisplay = root.utils.markdown.cleanReportForDisplay || cleanReportForDisplay;
+  root.utils.markdown.formatMarkdownReport = root.utils.markdown.formatMarkdownReport || formatMarkdownReport;
+
+  if (root._exportGlobal) {
+    root._exportGlobal('parseMarkdownSections', root.utils.markdown.parseMarkdownSections);
+    root._exportGlobal('formatMarkdownContent', root.utils.markdown.formatMarkdownContent);
+    root._exportGlobal('cleanReportForDisplay', root.utils.markdown.cleanReportForDisplay);
+    root._exportGlobal('formatMarkdownReport', root.utils.markdown.formatMarkdownReport);
+  } else {
+    window.parseMarkdownSections = window.parseMarkdownSections || root.utils.markdown.parseMarkdownSections;
+    window.formatMarkdownContent = window.formatMarkdownContent || root.utils.markdown.formatMarkdownContent;
+    window.cleanReportForDisplay = window.cleanReportForDisplay || root.utils.markdown.cleanReportForDisplay;
+    window.formatMarkdownReport = window.formatMarkdownReport || root.utils.markdown.formatMarkdownReport;
+  }
+})();
+</script>

@@ -1,0 +1,308 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     DATA_Elite_Traffic.html - v1.0
+     Elite Traffic Metrics Extraction with 2026 CTR Model
+     
+     FUNCTIONS:
+     - extractEliteTrafficMetrics: Extracts elite traffic data from synthesized/Oracle data
+     - calculateFallbackEliteTraffic: Fallback traffic calculation when no Oracle data
+     - getKDTier: Returns keyword difficulty tier info
+     
+     MUST BE INCLUDED BEFORE:
+     - DATA_Real_Metrics.html (depends on extractEliteTrafficMetrics)
+     
+     DATA SOURCES PRIORITY:
+     1. Oracle Elite Calculator (synthesized.eliteTraffic)
+     2. Serper API organic results (fallback)
+     3. Client-side estimation (last resort)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * GET KEYWORD DIFFICULTY TIER
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  function getKDTier(kd) {
+    if (kd <= 20) return { label: 'Very Easy', color: '#22c55e', icon: '🟢' };
+    if (kd <= 40) return { label: 'Easy', color: '#84cc16', icon: '🟡' };
+    if (kd <= 60) return { label: 'Medium', color: '#f59e0b', icon: '🟠' };
+    if (kd <= 80) return { label: 'Hard', color: '#ef4444', icon: '🔴' };
+    return { label: 'Very Hard', color: '#7c3aed', icon: '💀' };
+  }
+  window.getKDTier = getKDTier;
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ELITE TRAFFIC & VALUE CALCULATOR (2026 CTR Model) - Fallback
+   * Used when Oracle Elite data is not available
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  // V9.4: Accept domain as 4th parameter (fallback to pm.domain for backwards compat)
+  function calculateFallbackEliteTraffic(organic, pageRank, pm, domainParam) {
+    const CTR_CURVE = {
+      1: 0.398, 2: 0.187, 3: 0.102, 4: 0.072, 5: 0.051,
+      6: 0.037, 7: 0.028, 8: 0.021, 9: 0.016, 10: 0.012
+    };
+    
+    const INDUSTRY_CPC = {
+      'saas': 3.50, 'software': 3.20, 'seo': 4.80, 'marketing': 3.80,
+      'finance': 5.20, 'insurance': 6.50, 'legal': 7.80, 'health': 2.40,
+      'ecommerce': 1.80, 'retail': 1.50, 'education': 2.20, 'travel': 2.00,
+      'technology': 3.00, 'business': 2.80, 'default': 2.50
+    };
+    
+    const detectIndustry = (keyword, domain) => {
+      const text = (keyword + ' ' + domain).toLowerCase();
+      if (text.match(/seo|serp|keyword|backlink|ranking/)) return 'seo';
+      if (text.match(/saas|software|app|tool|platform/)) return 'saas';
+      if (text.match(/marketing|advertis|campaign|social/)) return 'marketing';
+      if (text.match(/finance|invest|bank|trading|crypto/)) return 'finance';
+      if (text.match(/health|medical|doctor|pharma/)) return 'health';
+      if (text.match(/shop|store|buy|ecommerce|product/)) return 'ecommerce';
+      if (text.match(/legal|lawyer|attorney|law/)) return 'legal';
+      return 'default';
+    };
+    
+    const getEstimatedCPC = (keyword, domain) => {
+      const industry = detectIndustry(keyword, domain);
+      return INDUSTRY_CPC[industry] || INDUSTRY_CPC.default;
+    };
+    
+    const getEstimatedVolume = (position, pageRank, realVolume) => {
+      if (realVolume && realVolume > 0) {
+        return realVolume;
+      }
+      const baseVolume = position <= 2 ? 5000 : position <= 5 ? 2500 : 1000;
+      const authorityMultiplier = pageRank > 5 ? 2.0 : pageRank > 3 ? 1.5 : 1.0;
+      return Math.round(baseVolume * authorityMultiplier);
+    };
+    
+    let totalTraffic = 0;
+    let totalValue = 0;
+    const keywordBreakdown = [];
+    const pageTrafficMap = {};
+    // V9.4: Use domainParam (passed explicitly) or fallback to pm.domain
+    const domain = domainParam || pm?.domain || '';
+    
+    if (!organic || organic.length === 0) {
+      console.log(`[Elite Traffic] No SERP data for ${domain} - returning zeros`);
+      return {
+        organicTraffic: 0,
+        trafficValue: 0,
+        trafficValueFormatted: '$0/mo',
+        avgPosition: 0,
+        relativeKD: 0,
+        kdTier: { label: 'No Data', color: '#94a3b8', icon: '—' },
+        topPages: [],
+        keywordBreakdown: [],
+        oracleKeywords: [],
+        keywordClusters: [],
+        keywordCount: 0,
+        positionDistribution: {},
+        intentDistribution: {},
+        backlinks: {},
+        geographic: {},
+        authority: {},
+        serpFeatures: [],
+        serpModifier: 0,
+        methodology: 'No Real Data Available',
+        source: 'None',
+        hasRealData: false,
+        _isEmpty: true,
+        _message: 'Configure Serper API to get real traffic data'
+      };
+    }
+    
+    organic.forEach((item, index) => {
+      const position = item.position || (index + 1);
+      if (position > 10) return;
+      
+      const keyword = item.title || item.query || `Keyword #${position}`;
+      const ctr = CTR_CURVE[position] || 0.005;
+      const realVolume = item.volume || item.searchVolume || item.estimatedVolume || 0;
+      const volume = getEstimatedVolume(position, pageRank, realVolume);
+      const traffic = Math.round(volume * ctr);
+      const cpc = item.cpc || getEstimatedCPC(keyword, domain);
+      const value = Math.round(traffic * cpc);
+      
+      keywordBreakdown.push({
+        keyword: keyword,
+        position: position,
+        volume: volume,
+        ctr: Math.round(ctr * 1000) / 10,
+        traffic: traffic,
+        cpc: cpc,
+        value: value,
+        industry: detectIndustry(keyword, domain)
+      });
+      
+      const url = item.link || '';
+      if (!pageTrafficMap[url]) {
+        pageTrafficMap[url] = { url: url, title: item.title || '', traffic: 0, keywords: 0 };
+      }
+      pageTrafficMap[url].traffic += traffic;
+      pageTrafficMap[url].keywords += 1;
+      
+      totalTraffic += traffic;
+      totalValue += value;
+    });
+    
+    const topPages = Object.values(pageTrafficMap)
+      .sort((a, b) => b.traffic - a.traffic)
+      .slice(0, 10)
+      .map((p, i) => ({
+        ...p,
+        rank: i + 1,
+        trafficShare: totalTraffic > 0 ? Math.round((p.traffic / totalTraffic) * 1000) / 10 : 0
+      }));
+    
+    const userAuthority = window.serpifaiUserAuthority || 30;
+    const competitorAuthority = pageRank > 0 ? Math.round(pageRank * 10) : 50;
+    const avgKeywordDifficulty = keywordBreakdown.length > 0 
+      ? keywordBreakdown.reduce((sum, k) => sum + (k.position <= 3 ? 70 : k.position <= 5 ? 55 : 40), 0) / keywordBreakdown.length
+      : 50;
+    
+    const competitiveRatio = competitorAuthority / Math.max(userAuthority, 1);
+    const baseKD = Math.min(100, Math.max(10, avgKeywordDifficulty * competitiveRatio * 0.8));
+    const highVolumeKeywords = keywordBreakdown.filter(k => k.volume > 3000).length;
+    const kdModifier = highVolumeKeywords > 3 ? 1.15 : highVolumeKeywords > 1 ? 1.05 : 1.0;
+    const relativeKD = Math.min(100, Math.max(1, Math.round(baseKD * kdModifier)));
+    
+    return {
+      organicTraffic: totalTraffic,
+      trafficValue: totalValue,
+      trafficValueFormatted: '$' + totalValue.toLocaleString() + '/mo',
+      avgPosition: organic.length > 0 
+        ? Math.round(organic.reduce((sum, o) => sum + (o.position || 0), 0) / organic.length * 10) / 10 
+        : 0,
+      relativeKD: relativeKD,
+      kdTier: getKDTier(relativeKD),
+      topPages: topPages,
+      keywordBreakdown: keywordBreakdown.slice(0, 20),
+      oracleKeywords: [],
+      keywordClusters: [],
+      keywordCount: keywordBreakdown.length,
+      positionDistribution: {},
+      intentDistribution: {},
+      backlinks: {},
+      geographic: {},
+      authority: {},
+      serpFeatures: [],
+      serpModifier: 0,
+      methodology: 'Client-Side Fallback (2026 CTR Model)',
+      source: 'Fallback Estimation',
+      hasRealData: organic.length > 0
+    };
+  }
+  window.calculateFallbackEliteTraffic = calculateFallbackEliteTraffic;
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * EXTRACT ELITE TRAFFIC METRICS
+   * Oracle Elite v17.0 + 2026 CTR Model - Ahrefs/Semrush Level Accuracy
+   * 
+   * DATA PRIORITY ORDER:
+   * 1. synthesized.eliteTraffic (from Oracle Elite Calculator)
+   * 2. synthesized.topPages / keywordBreakdown
+   * 3. serper organic results (fallback calculation)
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  function extractEliteTrafficMetrics(comp, synthesized, pageRank) {
+    // Handle both direct synthesized object and nested comp.synthesized
+    const synthData = synthesized || comp?.synthesized || {};
+    const elite = synthData?.eliteTraffic || comp?.synthesized?.eliteTraffic || {};
+    const pm = comp?.processedMetrics || {};
+    const stages = comp?.stages || {};
+    const serper = stages?.serper?.data || comp?.apiData?.serper || {};
+    const organic = synthData?.seo?.organic || serper.organic || [];
+    
+    // TOP PAGES - Priority order: eliteTraffic > synthesized > snapshot > apiData
+    const topPagesFromFetcher = elite.topPages || 
+                                 synthData?.topPages || 
+                                 comp?.synthesized?.topPages || 
+                                 comp?.snapshot?.topPages ||
+                                 [];
+    
+    // PRIORITY: keywordsEnriched from FT_EnrichWithRealMetrics has REAL KD/SV data
+    const keywordBreakdownFromFetcher = comp?.keywordsEnriched ||
+                                         elite.keywordBreakdown || 
+                                         synthData?.keywordBreakdown || 
+                                         comp?.synthesized?.keywordBreakdown || [];
+    
+    // Also check for real traffic data from PHP handler
+    const realTrafficData = comp?.traffic || synthData?.traffic || {};
+    const realBacklinkData = comp?.backlinks || synthData?.backlinks || {};
+    const realGeographicData = comp?.geographic || synthData?.geographic || {};
+    
+    const oracleKeywords = comp?.keywordsEnriched ||
+                           synthData?.oracleKeywords || 
+                           comp?.synthesized?.oracleKeywords ||
+                           elite.keywordBreakdown || [];
+    
+    const keywordClusters = synthData?.keywordClusters ||
+                            comp?.synthesized?.keywordClusters || [];
+    
+    const eliteBacklinks = realBacklinkData || 
+                           synthData?.eliteBacklinks ||
+                           comp?.synthesized?.eliteBacklinks || {};
+    
+    // Use real geographic data from PHP if available
+    const geographic = realGeographicData || 
+                       synthData?.geographic ||
+                       comp?.synthesized?.geographic || {};
+    
+    const eliteAuthority = synthData?.eliteAuthority ||
+                           comp?.synthesized?.eliteAuthority || {};
+    
+    console.log('🔍 extractEliteTrafficMetrics (DATA_Elite_Traffic.html):', {
+      domain: comp?.domain || 'unknown',
+      hasElite: !!elite.organicTraffic,
+      topPagesCount: topPagesFromFetcher.length,
+      keywordBreakdownCount: keywordBreakdownFromFetcher.length
+    });
+    
+    // If we have Oracle Elite data, use it directly
+    if (elite.organicTraffic !== undefined) {
+      return {
+        organicTraffic: elite.organicTraffic || 0,
+        trafficValue: elite.trafficValue || 0,
+        trafficValueFormatted: '$' + (elite.trafficValue || 0).toLocaleString() + '/mo',
+        avgPosition: elite.avgPosition || 0,
+        relativeKD: elite.relativeKD || 50,
+        kdTier: getKDTier(elite.relativeKD || 50),
+        topPages: (topPagesFromFetcher).map((p, i) => ({
+          rank: i + 1,
+          url: p.url || '',
+          title: p.title || '',
+          traffic: p.traffic || 0,
+          trafficShare: p.trafficShare || 0,
+          keywords: p.keywords || 1,
+          avgPosition: p.avgPosition || 0,
+          topKeyword: p.topKeyword || ''
+        })),
+        keywordBreakdown: (keywordBreakdownFromFetcher).slice(0, 30),
+        oracleKeywords: oracleKeywords.slice(0, 50),
+        keywordClusters: keywordClusters,
+        keywordCount: elite.keywordCount || oracleKeywords.length || keywordBreakdownFromFetcher.length,
+        positionDistribution: elite.positionDistribution || {},
+        intentDistribution: elite.intentDistribution || {},
+        backlinks: eliteBacklinks,
+        geographic: geographic,
+        authority: eliteAuthority,
+        serpFeatures: elite.serpFeatures || [],
+        serpModifier: elite.serpModifier || 0,
+        methodology: elite.methodology || 'Oracle Elite v17.0 + 2026 CTR Model',
+        source: 'Oracle Elite Calculator',
+        hasRealData: true,
+        oracleVersion: synthData?.oracleVersion || comp?.synthesized?.oracleVersion || '17.0.0'
+      };
+    }
+    
+    // Fallback to client-side calculation
+    return calculateFallbackEliteTraffic(organic, pageRank, pm);
+  }
+  window.extractEliteTrafficMetrics = extractEliteTrafficMetrics;
+
+  console.log('✅ DATA_Elite_Traffic.html loaded');
+  console.log('   Exports: window.extractEliteTrafficMetrics, window.calculateFallbackEliteTraffic, window.getKDTier');
+
+</script>

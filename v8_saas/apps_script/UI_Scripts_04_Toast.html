@@ -1,0 +1,49 @@
+<script>
+(function () {
+  window.SerpifAI = window.SerpifAI || {};
+  const root = window.SerpifAI;
+  root.ui = root.ui || {};
+
+  function showToast(msg, type) {
+    var t = document.createElement('div');
+    t.className = 'toast' + (type ? ' toast-' + type : '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function () {
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(-50%) translateY(12px)';
+      setTimeout(function () { t.remove(); }, 2200);
+    }, 2000);
+  }
+
+  function showLoadingIndicator(projectName) {
+    var indicator = document.getElementById('projectLoadingIndicator');
+    var nameEl = document.getElementById('loadingProjectName');
+    if (indicator && nameEl) {
+      nameEl.textContent = projectName || '';
+      indicator.classList.add('visible');
+    }
+  }
+
+  function hideLoadingIndicator() {
+    var indicator = document.getElementById('projectLoadingIndicator');
+    if (indicator) {
+      indicator.classList.remove('visible');
+    }
+  }
+
+  root.ui.showToast = root.ui.showToast || showToast;
+  root.ui.showLoadingIndicator = root.ui.showLoadingIndicator || showLoadingIndicator;
+  root.ui.hideLoadingIndicator = root.ui.hideLoadingIndicator || hideLoadingIndicator;
+
+  if (root._exportGlobal) {
+    root._exportGlobal('showToast', root.ui.showToast);
+    root._exportGlobal('showLoadingIndicator', root.ui.showLoadingIndicator);
+    root._exportGlobal('hideLoadingIndicator', root.ui.hideLoadingIndicator);
+  } else {
+    window.showToast = window.showToast || root.ui.showToast;
+    window.showLoadingIndicator = window.showLoadingIndicator || root.ui.showLoadingIndicator;
+    window.hideLoadingIndicator = window.hideLoadingIndicator || root.ui.hideLoadingIndicator;
+  }
+})();
+</script>

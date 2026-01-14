@@ -1,0 +1,205 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Strategy_Fallback.html - Fallback PAA and Keyword Generators                -->
+<!-- Part of 1% Strategy Engine - Fallback data generation when API unavailable     -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Generate fallback PAA questions from competitor content when API data is unavailable
+   */
+  function generateFallbackPAAQuestions(competitors, tabName) {
+    const allQuestions = [];
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0: Check organized data for REAL PAA questions first
+    // ═══════════════════════════════════════════════════════════════════════════
+    const organizedData = window._organizedData || window._eliteTabIntelligence?.organizedData || [];
+    const kwRawData = window._kwStrategyRawData || {};
+    
+    // Try global PAA data first (most reliable)
+    if (kwRawData.allPAA?.length > 0) {
+      kwRawData.allPAA.forEach(paa => {
+        const question = typeof paa === 'string' ? paa : (paa.question || paa.text || paa);
+        if (question && question.length > 10) {
+          allQuestions.push({ 
+            question: question, 
+            source: paa.source || 'Serper API',
+            intent: paa.intent || 'Informational'
+          });
+        }
+      });
+    }
+    
+    // Try organized data per competitor
+    if (allQuestions.length < 10 && organizedData?.length > 0) {
+      organizedData.forEach(comp => {
+        const rawData = comp?.tabData?.keywordStrategy?.rawData || {};
+        if (rawData.paaQuestions?.length > 0) {
+          rawData.paaQuestions.forEach(paa => {
+            const question = typeof paa === 'string' ? paa : (paa.question || paa.text || paa);
+            if (question && question.length > 10) {
+              allQuestions.push({ 
+                question: question, 
+                source: rawData.paaSource || comp.domain || 'Serper API',
+                intent: paa.intent || 'Informational'
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    // If we already have enough real PAA, return them (don't generate from headings)
+    if (allQuestions.length >= 8) {
+      console.log(`✅ Using ${allQuestions.length} REAL PAA questions from Serper API`);
+      const seen = new Set();
+      return allQuestions.filter(q => {
+        const key = q.question.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, 10);
+    }
+    
+    // FALLBACK: Extract questions from competitor headings (H2, H3) only if no real PAA
+    if (allQuestions.length < 8) {
+      console.log(`ℹ️ Found ${allQuestions.length} PAA from API, generating additional from headings...`);
+    }
+    (competitors || []).forEach(comp => {
+      const website = comp.synthesized?.website || {};
+      const h2s = website.h2 || [];
+      const h3s = website.h3 || [];
+      const title = website.title || comp.domain || '';
+      
+      // Convert headings to questions
+      [...h2s, ...h3s].forEach(heading => {
+        if (heading && heading.length > 10) {
+          const cleanHeading = heading.replace(/<[^>]*>/g, '').trim();
+          if (!cleanHeading.includes('?')) {
+            allQuestions.push({ question: `What is ${cleanHeading.toLowerCase()}?`, source: comp.domain });
+            allQuestions.push({ question: `How does ${cleanHeading.toLowerCase()} work?`, source: comp.domain });
+          } else {
+            allQuestions.push({ question: cleanHeading, source: comp.domain });
+          }
+        }
+      });
+      
+      // Generate questions from title
+      if (title) {
+        allQuestions.push({ question: `What is ${title.split('—')[0].trim()}?`, source: comp.domain });
+        allQuestions.push({ question: `How to use ${title.split('—')[0].trim()}?`, source: comp.domain });
+      }
+    });
+    
+    // Tab-specific fallback questions
+    const tabQuestions = {
+      technical: ['What are Core Web Vitals?', 'How to improve page speed?', 'What is LCP optimization?', 'How to fix CLS issues?', 'What is mobile-first indexing?', 'How to optimize for FCP?', 'What affects site performance?', 'How to improve SEO score?'],
+      content: ['What makes content rank well?', 'How long should content be?', 'What is content depth?', 'How to structure content for SEO?', 'What is topical authority?', 'How to optimize headings?', 'What is E-E-A-T content?', 'How to improve content quality?'],
+      keywords: ['How to find keyword gaps?', 'What is keyword difficulty?', 'How to target long-tail keywords?', 'What is search intent?', 'How to do keyword clustering?', 'What is keyword cannibalization?', 'How to prioritize keywords?', 'What keywords should I target?'],
+      conversion: ['How to improve conversion rate?', 'What is CRO?', 'How to optimize landing pages?', 'What affects conversion?', 'How to reduce bounce rate?', 'What is funnel optimization?', 'How to increase conversions?', 'What is A/B testing?'],
+      distribution: ['How to get more backlinks?', 'What is link building?', 'How to increase domain authority?', 'What are referral sources?', 'How to build brand awareness?', 'What is content distribution?', 'How to get organic traffic?', 'What drives website traffic?'],
+      audience: ['Who is my target audience?', 'How to identify user intent?', 'What is audience segmentation?', 'How to create buyer personas?', 'What motivates my audience?', 'How to understand customer needs?', 'What is audience research?', 'How to reach my target market?'],
+      geoaeo: ['What is GEO optimization?', 'How to rank in AI Overviews?', 'What is Answer Engine Optimization?', 'How to appear in featured snippets?', 'What is schema markup?', 'How to optimize for voice search?', 'What is local SEO?', 'How to rank for local queries?'],
+      geo: ['What is GEO optimization?', 'How to rank in AI Overviews?', 'What is Answer Engine Optimization?', 'How to appear in featured snippets?', 'What is schema markup?', 'How to optimize for voice search?', 'What is local SEO?', 'How to rank for local queries?'],
+      authority: ['How to build domain authority?', 'What is E-E-A-T?', 'How to establish expertise?', 'What builds trust signals?', 'How to become an authority?', 'What is topical authority?', 'How to improve brand reputation?', 'What are trust factors?'],
+      performance: ['How to measure SEO performance?', 'What metrics matter for SEO?', 'How to track rankings?', 'What is organic traffic growth?', 'How to measure ROI?', 'What are key performance indicators?', 'How to analyze traffic?', 'What drives SEO success?'],
+      brand: ['What is brand positioning?', 'How to differentiate your brand?', 'What is brand strategy?', 'How to build brand authority?', 'What makes a brand memorable?', 'How to create brand awareness?', 'What is brand voice?', 'How to develop brand messaging?'],
+      systems: ['What is a content system?', 'How to scale content production?', 'What is content workflow?', 'How to automate content?', 'What is editorial calendar?', 'How to organize content?', 'What is content governance?', 'How to manage content teams?'],
+      default: ['How to improve SEO?', 'What is search engine optimization?', 'How to rank higher on Google?', 'What affects search rankings?', 'How to get more organic traffic?', 'What is on-page SEO?', 'How to optimize a website?', 'What is technical SEO?']
+    };
+    
+    // Add tab-specific questions
+    const baseQuestions = tabQuestions[tabName] || tabQuestions.default;
+    baseQuestions.forEach(q => allQuestions.push({ question: q, source: 'Industry Best Practice' }));
+    
+    // Deduplicate and return
+    const seen = new Set();
+    return allQuestions.filter(q => {
+      const key = q.question.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 10);
+  }
+  
+  /**
+   * Generate fallback keywords from competitor content when API data is unavailable
+   */
+  function generateFallbackKeywords(competitors, tabName) {
+    const allKeywords = [];
+    
+    // Extract keywords from competitor content
+    (competitors || []).forEach(comp => {
+      const website = comp.synthesized?.website || {};
+      const h1 = website.h1 || '';
+      const h2s = website.h2 || [];
+      const h3s = website.h3 || [];
+      const title = website.title || '';
+      
+      // Extract meaningful phrases from headings
+      [...(Array.isArray(h1) ? h1 : [h1]), ...h2s, ...h3s].forEach(heading => {
+        if (heading && heading.length > 3) {
+          const clean = heading.replace(/<[^>]*>/g, '').trim().toLowerCase();
+          if (clean.length > 3 && clean.length < 60) {
+            // No random volumes - real data comes from Oracle/Serper
+            allKeywords.push({ keyword: clean, volume: 0, source: comp.domain, isExtracted: true });
+          }
+        }
+      });
+      
+      // Extract from title
+      if (title) {
+        const titleWords = title.split(/[—\-|:,]/).map(t => t.trim().toLowerCase()).filter(t => t.length > 3);
+        // No random volumes - real data only
+        titleWords.forEach(kw => allKeywords.push({ keyword: kw, volume: 0, source: comp.domain, isExtracted: true }));
+      }
+    });
+    
+    // Tab-specific fallback keywords
+    const tabKeywords = {
+      technical: ['page speed optimization', 'core web vitals', 'mobile optimization', 'site performance', 'technical seo audit', 'lcp optimization', 'cls fix', 'fcp improvement', 'rag readiness', 'crawl efficiency'],
+      content: ['content strategy', 'content optimization', 'topical authority', 'content depth', 'e-e-a-t content', 'semantic seo', 'content quality', 'heading optimization', 'content structure', 'keyword density'],
+      keywords: ['keyword research', 'keyword gap analysis', 'long-tail keywords', 'keyword difficulty', 'search intent', 'keyword clustering', 'money keywords', 'informational keywords', 'commercial keywords', 'transactional keywords'],
+      conversion: ['conversion optimization', 'landing page optimization', 'cro strategy', 'funnel optimization', 'lead generation', 'call to action', 'conversion rate', 'user experience', 'form optimization', 'checkout optimization'],
+      distribution: ['link building', 'backlink strategy', 'domain authority', 'referral traffic', 'content distribution', 'outreach strategy', 'guest posting', 'brand mentions', 'social signals', 'pr outreach'],
+      audience: ['target audience', 'buyer persona', 'user intent', 'customer journey', 'audience segmentation', 'market research', 'user behavior', 'customer needs', 'audience insights', 'demographic targeting'],
+      geoaeo: ['ai overview optimization', 'featured snippets', 'answer engine optimization', 'schema markup', 'voice search optimization', 'local seo', 'rich results', 'knowledge panel', 'faq schema', 'geo targeting'],
+      geo: ['ai overview optimization', 'featured snippets', 'answer engine optimization', 'schema markup', 'voice search optimization', 'local seo', 'rich results', 'knowledge panel', 'faq schema', 'geo targeting'],
+      authority: ['domain authority', 'e-e-a-t', 'brand authority', 'trust signals', 'expertise demonstration', 'author authority', 'citation building', 'reputation management', 'thought leadership', 'industry authority'],
+      performance: ['seo metrics', 'ranking tracking', 'traffic analysis', 'performance monitoring', 'kpi tracking', 'organic growth', 'roi measurement', 'conversion tracking', 'analytics setup', 'reporting dashboard'],
+      brand: ['brand positioning', 'brand differentiation', 'brand strategy', 'brand messaging', 'brand voice', 'brand identity', 'competitive positioning', 'value proposition', 'brand awareness', 'market positioning'],
+      systems: ['content production', 'content workflow', 'editorial calendar', 'content automation', 'content governance', 'team collaboration', 'content scaling', 'publishing schedule', 'content management', 'workflow optimization'],
+      default: ['seo strategy', 'organic traffic', 'search rankings', 'google optimization', 'on-page seo', 'off-page seo', 'technical seo', 'content marketing', 'keyword targeting', 'serp visibility']
+    };
+    
+    // Add tab-specific keywords with realistic volumes
+    const baseKeywords = tabKeywords[tabName] || tabKeywords.default;
+    // Tab-specific keywords are contextual suggestions, not volume data
+    baseKeywords.forEach((kw, i) => allKeywords.push({ 
+      keyword: kw, 
+      volume: 0,  // No fake volumes - these are suggestion keywords
+      source: 'Contextual Suggestion',
+      isSuggestion: true
+    }));
+    
+    // Deduplicate and sort by volume
+    const seen = new Set();
+    return allKeywords
+      .filter(k => {
+        const key = k.keyword.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+      .slice(0, 20);
+  }
+
+  // Export functions globally
+  window.generateFallbackPAAQuestions = generateFallbackPAAQuestions;
+  window.generateFallbackKeywords = generateFallbackKeywords;
+
+})();
+</script>

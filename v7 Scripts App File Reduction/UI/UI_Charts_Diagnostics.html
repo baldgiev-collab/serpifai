@@ -1,0 +1,194 @@
+<!--
+  UI_Charts_Diagnostics.html
+  Chart.js Diagnostic Tools & Interval/Timeout Monitoring
+  Extracted from UI_Scripts_App.html (Lines 1-197)
+  Phase 1 of Proxy Barrel Refactoring
+-->
+<script>
+  // CRITICAL: Track page load time for true initial load detection
+  window._pageLoadTime = Date.now();
+  console.log('⏰ Page load timestamp:', window._pageLoadTime);
+
+  // ============================================================
+  // CHART.JS DIAGNOSTIC FUNCTION - Call from console: diagnoseCharts()
+  // ============================================================
+  window.diagnoseCharts = function () {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔬 CHART.JS DIAGNOSTIC REPORT');
+    console.log('═══════════════════════════════════════════════════════');
+
+    // 1. Check if Chart.js is loaded
+    console.log('\n📦 1. CHART.JS LIBRARY STATUS:');
+    if (typeof Chart === 'undefined') {
+      console.log('   ❌ Chart.js is NOT loaded!');
+      return;
+    } else {
+      console.log('   ✅ Chart.js is loaded (version: ' + Chart.version + ')');
+    }
+
+    // 2. Check canvas elements
+    console.log('\n🖼️ 2. CANVAS ELEMENTS STATUS:');
+    const canvasIds = [
+      'chart-authority-comparison',
+      'chart-traffic-comparison', 
+      'chart-keyword-distribution',
+      'chart-backlink-profile',
+      'chart-content-depth',
+      'chart-technical-scores'
+    ];
+
+    let found = 0, missing = 0;
+    canvasIds.forEach(id => {
+      const canvas = document.getElementById(id);
+      if (canvas) {
+        console.log('   ✅ ' + id + ' - Found (visible: ' + (canvas.offsetParent !== null) + ')');
+        found++;
+      } else {
+        console.log('   ❌ ' + id + ' - NOT FOUND');
+        missing++;
+      }
+    });
+    console.log('   📊 Summary: ' + found + ' found, ' + missing + ' missing');
+
+    // 3. Check window.competitorCharts
+    console.log('\n📈 3. CHART INSTANCES (window.competitorCharts):');
+    if (!window.competitorCharts) {
+      console.log('   ⚠️ window.competitorCharts is undefined');
+    } else {
+      const chartKeys = Object.keys(window.competitorCharts);
+      console.log('   📊 Total chart instances: ' + chartKeys.length);
+      chartKeys.forEach(key => {
+        const chart = window.competitorCharts[key];
+        console.log('   • ' + key + ': ' + (chart ? 'Active' : 'Null'));
+      });
+    }
+
+    // 4. Check if competitor tabs have been populated
+    console.log('\n📋 4. TAB CONTAINER STATUS:');
+    const containers = [
+      'comp-overview-metrics',
+      'comp-technical-metrics',
+      'comp-content-metrics',
+      'comp-keywords-metrics'
+    ];
+    containers.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        console.log('   • ' + id + ': ' + (el.innerHTML.length > 100 ? 'Populated' : 'Empty'));
+      } else {
+        console.log('   • ' + id + ': NOT FOUND');
+      }
+    });
+
+    // 5. Try creating a test chart
+    console.log('\n🧪 5. TEST CHART CREATION:');
+    const testCanvas = document.createElement('canvas');
+    testCanvas.id = 'diagnostic-test-chart';
+    testCanvas.style.width = '200px';
+    testCanvas.style.height = '100px';
+    document.body.appendChild(testCanvas);
+
+    try {
+      const testChart = new Chart(testCanvas, {
+        type: 'bar',
+        data: {
+          labels: ['Test'],
+          datasets: [{
+            label: 'Test',
+            data: [100],
+            backgroundColor: '#3b82f6'
+          }]
+        },
+        options: { responsive: false }
+      });
+      console.log('   ✅ Test chart created successfully');
+      testChart.destroy();
+      testCanvas.remove();
+    } catch (e) {
+      console.log('   ❌ Test chart creation failed: ' + e.message);
+      testCanvas.remove();
+    }
+
+    console.log('\n═══════════════════════════════════════════════════════');
+    console.log('💡 INSTRUCTIONS:');
+    console.log('   1. Run competitor analysis first');
+    console.log('   2. Click on the "Content Intel" tab');
+    console.log('   3. Run diagnoseCharts() again to see updated canvas status');
+    console.log('   4. Charts should render when you click each tab');
+    console.log('═══════════════════════════════════════════════════════');
+
+    // 6. Check cached data
+    console.log('\n💾 6. CACHED COMPETITOR DATA:');
+    if (window._lastCompetitorData) {
+      console.log('   ✅ Cached data exists');
+      console.log('   📊 Competitors:', window._lastCompetitorData.competitors?.length || 0);
+    } else {
+      console.log('   ⚠️ No cached competitor data found');
+    }
+  };
+
+  // Auto-run diagnostic after 5 seconds
+  setTimeout(function () {
+    console.log('\n🔬 AUTO-DIAGNOSTIC: Running chart diagnosis...');
+    window.diagnoseCharts();
+  }, 5000);
+
+  // DIAGNOSTIC: Intercept google.script.run to track ALL backend calls
+  window._googleScriptCallCount = 0;
+  window._googleScriptCalls = [];
+
+  // Track setInterval/setTimeout to detect polling
+  window._intervals = [];
+  window._timeouts = [];
+
+  const originalSetInterval = window.setInterval;
+  window.setInterval = function (fn, delay) {
+    const stack = new Error().stack;
+    window._intervals.push({ fn: fn.toString().substr(0, 100), delay, stack });
+    console.log('⏱️ setInterval registered:', delay + 'ms', fn.toString().substr(0, 50));
+    return originalSetInterval(fn, delay);
+  };
+
+  const originalSetTimeout = window.setTimeout;
+  window.setTimeout = function (fn, delay) {
+    const stack = new Error().stack;
+    window._timeouts.push({ fn: fn.toString().substr(0, 100), delay, stack });
+    return originalSetTimeout(fn, delay);
+  };
+
+  // Wait for google object to be available, then wrap it
+  originalSetTimeout(function () {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      const originalRun = google.script.run;
+      
+      google.script.run = new Proxy(originalRun, {
+        get: function(target, prop) {
+          if (prop === 'withSuccessHandler' || prop === 'withFailureHandler' || prop === 'withUserObject') {
+            return function(handler) {
+              return new Proxy(target[prop](handler), this);
+            }.bind(this);
+          }
+          
+          if (typeof target[prop] === 'function') {
+            return function(...args) {
+              window._googleScriptCallCount++;
+              const callInfo = {
+                method: prop,
+                args: args.map(a => typeof a === 'object' ? JSON.stringify(a).substr(0, 100) : a),
+                timestamp: new Date().toISOString(),
+                stack: new Error().stack
+              };
+              window._googleScriptCalls.push(callInfo);
+              console.log('📡 google.script.run.' + prop + '() called (#' + window._googleScriptCallCount + ')');
+              return target[prop].apply(target, args);
+            };
+          }
+          
+          return target[prop];
+        }
+      });
+      
+      console.log('✅ google.script.run interceptor installed');
+    }
+  }, 100);
+</script>

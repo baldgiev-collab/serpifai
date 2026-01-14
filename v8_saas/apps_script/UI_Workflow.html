@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Workflow</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; color: var(--text-primary); }
+    
+    .workflow-stages {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .stage-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      transition: all 0.2s;
+    }
+    .stage-card:hover { border-color: var(--accent); }
+    .stage-card.completed { border-left: 4px solid var(--success); }
+    .stage-card.in-progress { border-left: 4px solid var(--warning); }
+    .stage-card.locked { opacity: 0.6; }
+    
+    .stage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .stage-number {
+      background: var(--accent);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 12px;
+    }
+    .stage-card.completed .stage-number { background: var(--success); }
+    .stage-card.locked .stage-number { background: var(--text-secondary); }
+    
+    .stage-title-wrap { display: flex; align-items: center; flex: 1; }
+    .stage-title { font-size: 16px; font-weight: 600; }
+    .stage-status {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: var(--bg-tertiary);
+    }
+    .stage-status.completed { background: var(--success); color: white; }
+    .stage-status.in-progress { background: var(--warning); color: black; }
+    
+    .stage-description {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    .stage-actions { display: flex; gap: 10px; }
+    
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled {
+      background: var(--text-secondary);
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border); }
+    
+    .progress-bar {
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      height: 8px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    .progress-fill {
+      background: var(--accent);
+      height: 100%;
+      transition: width 0.3s;
+    }
+    .progress-text {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+    .loading.active { display: block; }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Workflow Stages</h1>
+    
+    <div id="message" class="message"></div>
+    
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+    </div>
+    <div class="progress-text" id="progressText">0% Complete</div>
+    
+    <div class="workflow-stages" id="stagesContainer">
+      <div class="loading active" id="loading">Loading workflow...</div>
+    </div>
+  </div>
+
+  <script>
+    const STAGES = [
+      { number: 1, name: 'Strategic Foundation', desc: 'Keyword research, niche analysis, and strategy development' },
+      { number: 2, name: 'Competitive Intelligence', desc: 'Competitor analysis, gap identification, and benchmarking' },
+      { number: 3, name: 'Content Architecture', desc: 'Topic clusters, site structure, and content mapping' },
+      { number: 4, name: 'Content Creation', desc: 'AI content generation, optimization, and quality checks' },
+      { number: 5, name: 'Technical Optimization', desc: 'Technical SEO, performance, and schema markup' }
+    ];
+    
+    let currentProjectId = null;
+    let workflowStatus = { completedStages: [], currentStage: 0 };
+    
+    function init() {
+      // Get projectId from URL or use default
+      const urlParams = new URLSearchParams(window.location.search);
+      currentProjectId = urlParams.get('projectId') || getActiveProjectId();
+      
+      if (currentProjectId) {
+        loadWorkflowStatus();
+      } else {
+        showMessage('No project selected. Please select a project first.', 'error');
+        renderStages();
+      }
+    }
+    
+    function getActiveProjectId() {
+      // Try to get from parent or storage
+      try {
+        return localStorage.getItem('activeProjectId');
+      } catch (e) {
+        return null;
+      }
+    }
+    
+    function loadWorkflowStatus() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            workflowStatus = result;
+            updateProgress();
+            renderStages();
+          } else {
+            showMessage(result.error || 'Failed to load workflow', 'error');
+            renderStages();
+          }
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error: ' + error.message, 'error');
+          renderStages();
+        })
+        .DB_WF_getStatus({ projectId: currentProjectId });
+    }
+    
+    function updateProgress() {
+      const completed = workflowStatus.completedStages?.length || 0;
+      const total = STAGES.length;
+      const percent = Math.round((completed / total) * 100);
+      
+      document.getElementById('progressFill').style.width = percent + '%';
+      document.getElementById('progressText').textContent = percent + '% Complete (' + completed + '/' + total + ' stages)';
+    }
+    
+    function renderStages() {
+      const container = document.getElementById('stagesContainer');
+      document.getElementById('loading').style.display = 'none';
+      
+      const completedStages = workflowStatus.completedStages || [];
+      const currentStage = workflowStatus.currentStage || 0;
+      
+      container.innerHTML = STAGES.map(stage => {
+        const isCompleted = completedStages.includes(stage.number);
+        const isLocked = stage.number > currentStage + 1 && !isCompleted;
+        const isInProgress = stage.number === currentStage + 1;
+        
+        let statusClass = isCompleted ? 'completed' : (isLocked ? 'locked' : (isInProgress ? 'in-progress' : ''));
+        let statusText = isCompleted ? 'Completed' : (isLocked ? 'Locked' : (isInProgress ? 'In Progress' : 'Ready'));
+        
+        return `
+          <div class="stage-card ${statusClass}">
+            <div class="stage-header">
+              <div class="stage-title-wrap">
+                <div class="stage-number">${stage.number}</div>
+                <span class="stage-title">${stage.name}</span>
+              </div>
+              <span class="stage-status ${statusClass}">${statusText}</span>
+            </div>
+            <p class="stage-description">${stage.desc}</p>
+            <div class="stage-actions">
+              <button class="btn btn-primary" onclick="runStage(${stage.number})" ${isLocked ? 'disabled' : ''}>
+                ${isCompleted ? 'Re-run Stage' : 'Run Stage ' + stage.number}
+              </button>
+              <button class="btn btn-secondary" onclick="viewStageData(${stage.number})" ${!isCompleted ? 'disabled' : ''}>
+                View Results
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function runStage(stageNumber) {
+      showMessage('Running Stage ' + stageNumber + '...', 'success');
+      
+      const action = 'workflow:runStage' + stageNumber;
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showMessage('Stage ' + stageNumber + ' completed successfully!', 'success');
+            loadWorkflowStatus();
+          } else {
+            showMessage('Stage failed: ' + (result.error || 'Unknown error'), 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error: ' + error.message, 'error');
+        })
+        .DB_WF_handleRoute(action, { projectId: currentProjectId });
+    }
+    
+    function viewStageData(stageNumber) {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok && result.data) {
+            alert(JSON.stringify(result.data, null, 2));
+          } else {
+            showMessage('No data available for this stage', 'error');
+          }
+        })
+        .DB_WF_getStageData(stageNumber, { projectId: currentProjectId });
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+    }
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

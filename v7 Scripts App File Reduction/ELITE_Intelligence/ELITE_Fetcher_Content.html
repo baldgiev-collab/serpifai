@@ -1,0 +1,812 @@
+<!-- ELITE_Fetcher_Content.html -->
+<!-- Content Structure & Quality Intelligence Module -->
+<!-- Extends EliteFetcher for deep content analysis -->
+<!-- Priority: Elite → PHP Fetcher → Gemini Analysis -->
+
+<script>
+/**
+ * ELITE CONTENT FETCHER
+ * Advanced content structure, quality, and E-E-A-T analysis
+ * Surpasses Ahrefs/SEMrush with depth scoring and topic coverage
+ */
+class EliteContentFetcher extends window.EliteFetcher {
+  constructor() {
+    super();
+    this.name = 'EliteContentFetcher';
+    this.version = '1.0.0';
+    
+    // Content analysis thresholds
+    this.thresholds = {
+      minWordCount: 300,
+      optimalWordCount: 1500,
+      excellentWordCount: 2500,
+      minReadingLevel: 6,
+      maxReadingLevel: 14,
+      minTopicCoverage: 0.6,
+      minEEATScore: 0.5
+    };
+    
+    // E-E-A-T signal weights
+    this.eeatWeights = {
+      experience: 0.25,
+      expertise: 0.30,
+      authoritativeness: 0.25,
+      trustworthiness: 0.20
+    };
+  }
+
+  // ============================================
+  // MAIN CONTENT ANALYSIS
+  // ============================================
+  
+  async analyzeContent(url, htmlContent, options = {}) {
+    const startTime = Date.now();
+    const results = {
+      url: url,
+      timestamp: new Date().toISOString(),
+      sources: [],
+      confidence: 0,
+      analysis: {}
+    };
+    
+    try {
+      // Source 1: Direct HTML parsing (highest priority)
+      const htmlAnalysis = this.parseHTMLContent(htmlContent);
+      if (htmlAnalysis) {
+        results.sources.push({ name: 'HTMLParser', weight: 0.40, data: htmlAnalysis });
+      }
+      
+      // Source 2: PHP Fetcher content extraction
+      const phpData = await this.fetchFromPHP(url, 'content');
+      if (phpData && phpData.content) {
+        results.sources.push({ name: 'PHPFetcher', weight: 0.35, data: phpData });
+      }
+      
+      // Source 3: Gemini deep analysis (semantic understanding)
+      if (options.useGemini !== false) {
+        const geminiAnalysis = await this.fetchGeminiContentAnalysis(url, htmlContent);
+        if (geminiAnalysis) {
+          results.sources.push({ name: 'Gemini', weight: 0.25, data: geminiAnalysis });
+        }
+      }
+      
+      // Aggregate all sources
+      results.analysis = this.aggregateContentAnalysis(results.sources);
+      results.confidence = this.calculateConfidence(results.sources);
+      results.processingTime = Date.now() - startTime;
+      
+      // Cache the results
+      this.cacheResult(`content_${url}`, results, 3600000); // 1 hour cache
+      
+      return results;
+      
+    } catch (error) {
+      console.error(`[${this.name}] Content analysis error:`, error);
+      return this.getDefaultContentResults(url, error.message);
+    }
+  }
+
+  // ============================================
+  // HTML CONTENT PARSING
+  // ============================================
+  
+  parseHTMLContent(htmlContent) {
+    if (!htmlContent) return null;
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, 'text/html');
+    
+    return {
+      structure: this.analyzeStructure(doc),
+      quality: this.analyzeQuality(doc),
+      depth: this.analyzeDepth(doc),
+      readability: this.calculateReadability(doc),
+      eeat: this.detectEEATSignals(doc),
+      media: this.analyzeMedia(doc),
+      topics: this.extractTopics(doc),
+      freshness: this.analyzeFreshness(doc)
+    };
+  }
+
+  analyzeStructure(doc) {
+    const headings = {
+      h1: doc.querySelectorAll('h1').length,
+      h2: doc.querySelectorAll('h2').length,
+      h3: doc.querySelectorAll('h3').length,
+      h4: doc.querySelectorAll('h4').length,
+      h5: doc.querySelectorAll('h5').length,
+      h6: doc.querySelectorAll('h6').length
+    };
+    
+    const headingTexts = [];
+    doc.querySelectorAll('h1, h2, h3').forEach(h => {
+      headingTexts.push({
+        level: h.tagName.toLowerCase(),
+        text: h.textContent.trim().substring(0, 100)
+      });
+    });
+    
+    // Analyze heading hierarchy
+    const hierarchyScore = this.scoreHeadingHierarchy(headings);
+    
+    return {
+      headings: headings,
+      headingTexts: headingTexts.slice(0, 20),
+      totalHeadings: Object.values(headings).reduce((a, b) => a + b, 0),
+      hasH1: headings.h1 > 0,
+      multipleH1: headings.h1 > 1,
+      hierarchyScore: hierarchyScore,
+      paragraphs: doc.querySelectorAll('p').length,
+      lists: {
+        ordered: doc.querySelectorAll('ol').length,
+        unordered: doc.querySelectorAll('ul').length,
+        items: doc.querySelectorAll('li').length
+      },
+      tables: doc.querySelectorAll('table').length,
+      blockquotes: doc.querySelectorAll('blockquote').length
+    };
+  }
+
+  scoreHeadingHierarchy(headings) {
+    let score = 100;
+    
+    // Penalize missing H1
+    if (headings.h1 === 0) score -= 25;
+    
+    // Penalize multiple H1s
+    if (headings.h1 > 1) score -= 15;
+    
+    // Reward H2s (subheadings)
+    if (headings.h2 >= 2 && headings.h2 <= 10) score += 10;
+    
+    // Check logical flow (H2 before H3, etc.)
+    if (headings.h3 > 0 && headings.h2 === 0) score -= 10;
+    if (headings.h4 > 0 && headings.h3 === 0) score -= 5;
+    
+    return Math.max(0, Math.min(100, score));
+  }
+
+  analyzeQuality(doc) {
+    const body = doc.body;
+    const text = body ? body.textContent || '' : '';
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    
+    const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+    const sentences = cleanText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const sentenceCount = sentences.length;
+    
+    // Average sentence length
+    const avgSentenceLength = sentenceCount > 0 ? wordCount / sentenceCount : 0;
+    
+    // Average word length
+    const avgWordLength = wordCount > 0 ? words.join('').length / wordCount : 0;
+    
+    // Content depth indicators
+    const hasNumbers = /\d+/.test(cleanText);
+    const hasStatistics = /\d+%|\d+ percent/i.test(cleanText);
+    const hasQuotes = doc.querySelectorAll('blockquote, q').length > 0;
+    const hasCitations = /\[\d+\]|citation|source:|according to/i.test(cleanText);
+    
+    // Calculate quality score
+    let qualityScore = 50;
+    if (wordCount >= this.thresholds.minWordCount) qualityScore += 10;
+    if (wordCount >= this.thresholds.optimalWordCount) qualityScore += 15;
+    if (wordCount >= this.thresholds.excellentWordCount) qualityScore += 10;
+    if (hasStatistics) qualityScore += 5;
+    if (hasCitations) qualityScore += 10;
+    if (avgSentenceLength >= 10 && avgSentenceLength <= 25) qualityScore += 5;
+    
+    return {
+      wordCount: wordCount,
+      sentenceCount: sentenceCount,
+      avgSentenceLength: Math.round(avgSentenceLength * 10) / 10,
+      avgWordLength: Math.round(avgWordLength * 10) / 10,
+      hasNumbers: hasNumbers,
+      hasStatistics: hasStatistics,
+      hasQuotes: hasQuotes,
+      hasCitations: hasCitations,
+      qualityScore: Math.min(100, qualityScore),
+      wordCountRating: this.rateWordCount(wordCount)
+    };
+  }
+
+  rateWordCount(count) {
+    if (count < this.thresholds.minWordCount) return { label: 'Thin', color: '#dc3545', icon: '⚠️' };
+    if (count < this.thresholds.optimalWordCount) return { label: 'Adequate', color: '#ffc107', icon: '📄' };
+    if (count < this.thresholds.excellentWordCount) return { label: 'Comprehensive', color: '#28a745', icon: '📚' };
+    return { label: 'In-Depth', color: '#17a2b8', icon: '🏆' };
+  }
+
+  analyzeDepth(doc) {
+    const body = doc.body;
+    const text = body ? body.textContent || '' : '';
+    
+    // Depth indicators
+    const indicators = {
+      examples: (text.match(/for example|for instance|such as|like|e\.g\./gi) || []).length,
+      explanations: (text.match(/because|therefore|thus|hence|as a result/gi) || []).length,
+      comparisons: (text.match(/compared to|versus|vs\.|unlike|similar to/gi) || []).length,
+      steps: (text.match(/step \d|first,|second,|third,|finally,|next,/gi) || []).length,
+      definitions: (text.match(/means|refers to|is defined as|known as/gi) || []).length,
+      dataPoints: (text.match(/\d+%|\$\d+|\d+ million|\d+ billion/gi) || []).length
+    };
+    
+    // Calculate depth score
+    const totalIndicators = Object.values(indicators).reduce((a, b) => a + b, 0);
+    const depthScore = Math.min(100, totalIndicators * 3);
+    
+    return {
+      indicators: indicators,
+      totalIndicators: totalIndicators,
+      depthScore: depthScore,
+      depthRating: this.rateDepth(depthScore)
+    };
+  }
+
+  rateDepth(score) {
+    if (score < 20) return { label: 'Surface-Level', color: '#dc3545', icon: '📋' };
+    if (score < 40) return { label: 'Moderate', color: '#ffc107', icon: '📖' };
+    if (score < 70) return { label: 'Detailed', color: '#28a745', icon: '📚' };
+    return { label: 'Expert-Level', color: '#17a2b8', icon: '🎓' };
+  }
+
+  calculateReadability(doc) {
+    const body = doc.body;
+    const text = body ? body.textContent || '' : '';
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    
+    const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+    const sentences = cleanText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const sentenceCount = Math.max(1, sentences.length);
+    
+    // Count syllables (simplified)
+    const syllables = words.reduce((total, word) => {
+      return total + this.countSyllables(word);
+    }, 0);
+    
+    // Flesch-Kincaid Grade Level
+    const fkGrade = wordCount > 0 ? 
+      0.39 * (wordCount / sentenceCount) + 11.8 * (syllables / wordCount) - 15.59 : 0;
+    
+    // Flesch Reading Ease
+    const fkEase = wordCount > 0 ?
+      206.835 - 1.015 * (wordCount / sentenceCount) - 84.6 * (syllables / wordCount) : 0;
+    
+    return {
+      fleschKincaidGrade: Math.max(0, Math.round(fkGrade * 10) / 10),
+      fleschReadingEase: Math.max(0, Math.min(100, Math.round(fkEase))),
+      gradeLevel: this.getGradeLevel(fkGrade),
+      readingEaseLabel: this.getReadingEaseLabel(fkEase),
+      isOptimal: fkGrade >= this.thresholds.minReadingLevel && fkGrade <= this.thresholds.maxReadingLevel
+    };
+  }
+
+  countSyllables(word) {
+    word = word.toLowerCase().replace(/[^a-z]/g, '');
+    if (word.length <= 3) return 1;
+    
+    word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
+    word = word.replace(/^y/, '');
+    
+    const matches = word.match(/[aeiouy]{1,2}/g);
+    return matches ? matches.length : 1;
+  }
+
+  getGradeLevel(grade) {
+    if (grade <= 6) return { label: 'Elementary', audience: '6th grade or below', icon: '📗' };
+    if (grade <= 8) return { label: 'Middle School', audience: '7th-8th grade', icon: '📘' };
+    if (grade <= 12) return { label: 'High School', audience: '9th-12th grade', icon: '📙' };
+    if (grade <= 16) return { label: 'College', audience: 'Undergraduate', icon: '📕' };
+    return { label: 'Graduate', audience: 'Advanced degree', icon: '🎓' };
+  }
+
+  getReadingEaseLabel(ease) {
+    if (ease >= 90) return { label: 'Very Easy', description: 'Easily understood' };
+    if (ease >= 80) return { label: 'Easy', description: 'Conversational' };
+    if (ease >= 70) return { label: 'Fairly Easy', description: 'Plain English' };
+    if (ease >= 60) return { label: 'Standard', description: 'Average reader' };
+    if (ease >= 50) return { label: 'Fairly Difficult', description: 'Complex' };
+    if (ease >= 30) return { label: 'Difficult', description: 'Academic' };
+    return { label: 'Very Difficult', description: 'Professional/Technical' };
+  }
+
+  // ============================================
+  // E-E-A-T SIGNALS DETECTION
+  // ============================================
+  
+  detectEEATSignals(doc) {
+    const signals = {
+      experience: this.detectExperienceSignals(doc),
+      expertise: this.detectExpertiseSignals(doc),
+      authoritativeness: this.detectAuthoritySignals(doc),
+      trustworthiness: this.detectTrustSignals(doc)
+    };
+    
+    // Calculate weighted E-E-A-T score
+    const overallScore = 
+      signals.experience.score * this.eeatWeights.experience +
+      signals.expertise.score * this.eeatWeights.expertise +
+      signals.authoritativeness.score * this.eeatWeights.authoritativeness +
+      signals.trustworthiness.score * this.eeatWeights.trustworthiness;
+    
+    return {
+      signals: signals,
+      overallScore: Math.round(overallScore),
+      rating: this.rateEEAT(overallScore),
+      recommendations: this.generateEEATRecommendations(signals)
+    };
+  }
+
+  detectExperienceSignals(doc) {
+    const text = doc.body ? doc.body.textContent || '' : '';
+    const signals = [];
+    let score = 0;
+    
+    // First-person experience markers
+    if (/I have (used|tried|tested|worked)/i.test(text)) {
+      signals.push('First-hand experience mentioned');
+      score += 20;
+    }
+    
+    // Years of experience
+    if (/\d+ years? (of )?(experience|expertise)/i.test(text)) {
+      signals.push('Years of experience cited');
+      score += 15;
+    }
+    
+    // Case studies / examples
+    if (/case study|real example|in my experience/i.test(text)) {
+      signals.push('Case studies or real examples');
+      score += 20;
+    }
+    
+    // Images showing process
+    const processImages = doc.querySelectorAll('img[alt*="screenshot"], img[alt*="process"], img[alt*="result"]');
+    if (processImages.length > 0) {
+      signals.push('Visual evidence of process');
+      score += 15;
+    }
+    
+    return { score: Math.min(100, score), signals: signals };
+  }
+
+  detectExpertiseSignals(doc) {
+    const text = doc.body ? doc.body.textContent || '' : '';
+    const signals = [];
+    let score = 0;
+    
+    // Author credentials
+    const authorBox = doc.querySelector('.author, .author-bio, [class*="author"]');
+    if (authorBox) {
+      signals.push('Author biography present');
+      score += 15;
+      
+      const bioText = authorBox.textContent || '';
+      if (/Ph\.?D|M\.?D|certified|licensed|professor|expert/i.test(bioText)) {
+        signals.push('Author credentials cited');
+        score += 20;
+      }
+    }
+    
+    // Technical depth
+    const codeBlocks = doc.querySelectorAll('pre, code, .code-block');
+    if (codeBlocks.length > 0) {
+      signals.push('Technical code examples');
+      score += 15;
+    }
+    
+    // References/Citations
+    if (doc.querySelectorAll('a[href*="pubmed"], a[href*="doi.org"], a[href*="scholar.google"]').length > 0) {
+      signals.push('Academic citations');
+      score += 20;
+    }
+    
+    // Specialized terminology
+    const hasTerminology = /algorithm|methodology|implementation|optimization|framework/i.test(text);
+    if (hasTerminology) {
+      signals.push('Technical terminology used');
+      score += 10;
+    }
+    
+    return { score: Math.min(100, score), signals: signals };
+  }
+
+  detectAuthoritySignals(doc) {
+    const signals = [];
+    let score = 0;
+    
+    // Brand mentions
+    const text = doc.body ? doc.body.textContent || '' : '';
+    if (/featured in|as seen on|mentioned by|partner with/i.test(text)) {
+      signals.push('Media mentions or partnerships');
+      score += 15;
+    }
+    
+    // Awards/Recognition
+    if (/award|winner|best|top \d+|recognized/i.test(text)) {
+      signals.push('Awards or recognition');
+      score += 15;
+    }
+    
+    // External links to authority sites
+    const authorityLinks = doc.querySelectorAll('a[href*="gov"], a[href*="edu"], a[href*="org"]');
+    if (authorityLinks.length >= 2) {
+      signals.push('Links to authoritative sources');
+      score += 15;
+    }
+    
+    // Social proof
+    const socialProof = doc.querySelectorAll('[class*="testimonial"], [class*="review"], [class*="rating"]');
+    if (socialProof.length > 0) {
+      signals.push('Social proof elements');
+      score += 20;
+    }
+    
+    // Schema markup
+    const schemaScript = doc.querySelector('script[type="application/ld+json"]');
+    if (schemaScript) {
+      try {
+        const schema = JSON.parse(schemaScript.textContent);
+        if (schema['@type'] === 'Article' || schema['@type'] === 'BlogPosting') {
+          signals.push('Article structured data');
+          score += 10;
+        }
+      } catch (e) {}
+    }
+    
+    return { score: Math.min(100, score), signals: signals };
+  }
+
+  detectTrustSignals(doc) {
+    const signals = [];
+    let score = 0;
+    
+    // Contact information
+    const hasContact = doc.querySelector('a[href^="tel:"], a[href^="mailto:"], [class*="contact"]');
+    if (hasContact) {
+      signals.push('Contact information available');
+      score += 15;
+    }
+    
+    // Privacy/Terms links
+    const legalLinks = doc.querySelectorAll('a[href*="privacy"], a[href*="terms"], a[href*="policy"]');
+    if (legalLinks.length > 0) {
+      signals.push('Legal policies linked');
+      score += 10;
+    }
+    
+    // HTTPS indicator (check meta)
+    const canonical = doc.querySelector('link[rel="canonical"]');
+    if (canonical && canonical.href && canonical.href.startsWith('https')) {
+      signals.push('HTTPS secure');
+      score += 10;
+    }
+    
+    // About page link
+    const aboutLink = doc.querySelector('a[href*="/about"], a[href*="/team"], a[href*="/company"]');
+    if (aboutLink) {
+      signals.push('About page accessible');
+      score += 10;
+    }
+    
+    // Date information
+    const hasDate = doc.querySelector('time, [class*="date"], [class*="published"]');
+    if (hasDate) {
+      signals.push('Publication date shown');
+      score += 15;
+    }
+    
+    // Fact-check indicators
+    const text = doc.body ? doc.body.textContent || '' : '';
+    if (/fact-check|verified|updated \d{4}|reviewed by/i.test(text)) {
+      signals.push('Fact-checking or review indicators');
+      score += 20;
+    }
+    
+    return { score: Math.min(100, score), signals: signals };
+  }
+
+  rateEEAT(score) {
+    if (score < 25) return { label: 'Poor', color: '#dc3545', icon: '🔴', recommendation: 'Significant improvements needed' };
+    if (score < 50) return { label: 'Fair', color: '#ffc107', icon: '🟡', recommendation: 'Several areas need attention' };
+    if (score < 75) return { label: 'Good', color: '#28a745', icon: '🟢', recommendation: 'Minor improvements possible' };
+    return { label: 'Excellent', color: '#17a2b8', icon: '💎', recommendation: 'Strong E-E-A-T signals' };
+  }
+
+  generateEEATRecommendations(signals) {
+    const recommendations = [];
+    
+    if (signals.experience.score < 50) {
+      recommendations.push('Add first-person experience and case studies');
+    }
+    if (signals.expertise.score < 50) {
+      recommendations.push('Include author credentials and technical depth');
+    }
+    if (signals.authoritativeness.score < 50) {
+      recommendations.push('Add citations from authoritative sources');
+    }
+    if (signals.trustworthiness.score < 50) {
+      recommendations.push('Improve transparency with contact info and policies');
+    }
+    
+    return recommendations;
+  }
+
+  // ============================================
+  // MEDIA ANALYSIS
+  // ============================================
+  
+  analyzeMedia(doc) {
+    const images = doc.querySelectorAll('img');
+    const videos = doc.querySelectorAll('video, iframe[src*="youtube"], iframe[src*="vimeo"]');
+    const infographics = doc.querySelectorAll('img[alt*="infographic"], img[src*="infographic"], svg');
+    
+    let imagesWithAlt = 0;
+    let imagesWithSize = 0;
+    const imageDetails = [];
+    
+    images.forEach((img, i) => {
+      if (i < 10) {
+        imageDetails.push({
+          src: (img.src || '').substring(0, 100),
+          alt: (img.alt || '').substring(0, 50),
+          hasAlt: !!img.alt,
+          hasDimensions: !!(img.width || img.height)
+        });
+      }
+      if (img.alt) imagesWithAlt++;
+      if (img.width || img.height) imagesWithSize++;
+    });
+    
+    const mediaScore = this.calculateMediaScore(images.length, videos.length, imagesWithAlt, images.length);
+    
+    return {
+      images: {
+        total: images.length,
+        withAlt: imagesWithAlt,
+        withDimensions: imagesWithSize,
+        altCoverage: images.length > 0 ? Math.round((imagesWithAlt / images.length) * 100) : 0,
+        details: imageDetails
+      },
+      videos: videos.length,
+      infographics: infographics.length,
+      mediaScore: mediaScore,
+      hasRichMedia: videos.length > 0 || infographics.length > 0
+    };
+  }
+
+  calculateMediaScore(imageCount, videoCount, altCount, totalImages) {
+    let score = 0;
+    
+    if (imageCount >= 1) score += 20;
+    if (imageCount >= 3) score += 15;
+    if (videoCount >= 1) score += 25;
+    if (totalImages > 0 && (altCount / totalImages) >= 0.8) score += 20;
+    if (imageCount >= 5) score += 10;
+    
+    return Math.min(100, score);
+  }
+
+  // ============================================
+  // TOPIC EXTRACTION
+  // ============================================
+  
+  extractTopics(doc) {
+    const text = doc.body ? doc.body.textContent || '' : '';
+    const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
+    
+    // Common stop words to filter
+    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'their', 'we', 'us', 'our', 'you', 'your', 'he', 'him', 'his', 'she', 'her', 'who', 'which', 'what', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'not', 'only', 'same', 'so', 'than', 'too', 'very', 'just', 'also']);
+    
+    // Count word frequencies
+    const wordFreq = {};
+    words.forEach(word => {
+      if (word.length >= 4 && !stopWords.has(word)) {
+        wordFreq[word] = (wordFreq[word] || 0) + 1;
+      }
+    });
+    
+    // Sort by frequency
+    const sortedWords = Object.entries(wordFreq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([word, count]) => ({ word, count, density: Math.round((count / words.length) * 10000) / 100 }));
+    
+    return {
+      topWords: sortedWords,
+      uniqueWords: Object.keys(wordFreq).length,
+      totalWords: words.length,
+      topicDiversity: Math.min(100, Math.round((Object.keys(wordFreq).length / words.length) * 100))
+    };
+  }
+
+  // ============================================
+  // FRESHNESS ANALYSIS
+  // ============================================
+  
+  analyzeFreshness(doc) {
+    let publishDate = null;
+    let modifiedDate = null;
+    
+    // Check meta tags
+    const metaPublished = doc.querySelector('meta[property="article:published_time"], meta[name="date"], meta[name="DC.date.issued"]');
+    const metaModified = doc.querySelector('meta[property="article:modified_time"], meta[name="last-modified"]');
+    
+    if (metaPublished) publishDate = new Date(metaPublished.content);
+    if (metaModified) modifiedDate = new Date(metaModified.content);
+    
+    // Check schema
+    const schemaScript = doc.querySelector('script[type="application/ld+json"]');
+    if (schemaScript) {
+      try {
+        const schema = JSON.parse(schemaScript.textContent);
+        if (schema.datePublished) publishDate = new Date(schema.datePublished);
+        if (schema.dateModified) modifiedDate = new Date(schema.dateModified);
+      } catch (e) {}
+    }
+    
+    // Check time elements
+    const timeEl = doc.querySelector('time[datetime]');
+    if (timeEl && !publishDate) {
+      publishDate = new Date(timeEl.datetime);
+    }
+    
+    const now = new Date();
+    let ageInDays = null;
+    let freshnessScore = 50;
+    
+    if (publishDate && !isNaN(publishDate)) {
+      ageInDays = Math.floor((now - publishDate) / (1000 * 60 * 60 * 24));
+      
+      if (ageInDays <= 30) freshnessScore = 100;
+      else if (ageInDays <= 90) freshnessScore = 85;
+      else if (ageInDays <= 180) freshnessScore = 70;
+      else if (ageInDays <= 365) freshnessScore = 55;
+      else if (ageInDays <= 730) freshnessScore = 40;
+      else freshnessScore = 25;
+    }
+    
+    return {
+      publishDate: publishDate ? publishDate.toISOString() : null,
+      modifiedDate: modifiedDate ? modifiedDate.toISOString() : null,
+      ageInDays: ageInDays,
+      freshnessScore: freshnessScore,
+      freshnessRating: this.rateFreshness(freshnessScore)
+    };
+  }
+
+  rateFreshness(score) {
+    if (score >= 85) return { label: 'Fresh', color: '#28a745', icon: '🌟' };
+    if (score >= 60) return { label: 'Recent', color: '#17a2b8', icon: '📅' };
+    if (score >= 40) return { label: 'Aging', color: '#ffc107', icon: '⏳' };
+    return { label: 'Outdated', color: '#dc3545', icon: '📆' };
+  }
+
+  // ============================================
+  // DATA AGGREGATION
+  // ============================================
+  
+  aggregateContentAnalysis(sources) {
+    if (sources.length === 0) return this.getDefaultAnalysis();
+    
+    // Use highest weight source as primary, merge others
+    sources.sort((a, b) => b.weight - a.weight);
+    const primary = sources[0].data;
+    
+    // Aggregate quality scores with weighted average
+    let totalQuality = 0;
+    let totalWeight = 0;
+    
+    sources.forEach(s => {
+      if (s.data.quality && s.data.quality.qualityScore) {
+        totalQuality += s.data.quality.qualityScore * s.weight;
+        totalWeight += s.weight;
+      }
+    });
+    
+    const aggregatedQualityScore = totalWeight > 0 ? Math.round(totalQuality / totalWeight) : 50;
+    
+    // Merge all analysis data
+    return {
+      structure: primary.structure || {},
+      quality: { ...primary.quality, aggregatedScore: aggregatedQualityScore },
+      depth: primary.depth || {},
+      readability: primary.readability || {},
+      eeat: primary.eeat || {},
+      media: primary.media || {},
+      topics: primary.topics || {},
+      freshness: primary.freshness || {},
+      overallContentScore: this.calculateOverallScore(primary)
+    };
+  }
+
+  calculateOverallScore(analysis) {
+    const weights = {
+      quality: 0.25,
+      depth: 0.20,
+      readability: 0.15,
+      eeat: 0.25,
+      media: 0.10,
+      freshness: 0.05
+    };
+    
+    let score = 0;
+    
+    if (analysis.quality) score += (analysis.quality.qualityScore || 50) * weights.quality;
+    if (analysis.depth) score += (analysis.depth.depthScore || 50) * weights.depth;
+    if (analysis.readability) score += (analysis.readability.fleschReadingEase || 50) * weights.readability;
+    if (analysis.eeat) score += (analysis.eeat.overallScore || 50) * weights.eeat;
+    if (analysis.media) score += (analysis.media.mediaScore || 50) * weights.media;
+    if (analysis.freshness) score += (analysis.freshness.freshnessScore || 50) * weights.freshness;
+    
+    return Math.round(score);
+  }
+
+  getDefaultAnalysis() {
+    return {
+      structure: { headings: {}, hierarchyScore: 0 },
+      quality: { wordCount: 0, qualityScore: 0 },
+      depth: { depthScore: 0 },
+      readability: { fleschKincaidGrade: 0, fleschReadingEase: 0 },
+      eeat: { overallScore: 0 },
+      media: { images: { total: 0 }, mediaScore: 0 },
+      topics: { topWords: [] },
+      freshness: { freshnessScore: 0 },
+      overallContentScore: 0
+    };
+  }
+
+  getDefaultContentResults(url, error) {
+    return {
+      url: url,
+      timestamp: new Date().toISOString(),
+      sources: [],
+      confidence: 0,
+      analysis: this.getDefaultAnalysis(),
+      error: error
+    };
+  }
+
+  // ============================================
+  // GEMINI INTEGRATION
+  // ============================================
+  
+  async fetchGeminiContentAnalysis(url, htmlContent) {
+    if (!window.geminiClient) return null;
+    
+    try {
+      // Extract key content for Gemini
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlContent, 'text/html');
+      const mainContent = doc.body ? doc.body.textContent.substring(0, 5000) : '';
+      
+      const prompt = `Analyze this content for quality, expertise, and trustworthiness. Provide JSON with: contentQuality (0-100), topicRelevance (0-100), expertiseLevel (beginner/intermediate/expert), keyTopics (array of 5), improvementSuggestions (array of 3). Content: ${mainContent}`;
+      
+      const response = await window.geminiClient.generateContent(prompt);
+      return this.parseGeminiResponse(response);
+      
+    } catch (error) {
+      console.warn(`[${this.name}] Gemini analysis failed:`, error);
+      return null;
+    }
+  }
+
+  parseGeminiResponse(response) {
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {}
+    return null;
+  }
+}
+
+// Export to window
+window.EliteContentFetcher = EliteContentFetcher;
+window.eliteContentFetcher = new EliteContentFetcher();
+
+console.log('✅ ELITE_Fetcher_Content.html loaded - Content Intelligence Module v1.0.0');
+</script>

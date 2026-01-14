@@ -1,0 +1,525 @@
+<section class="card tab" id="tab-workflow">
+  <h2>5‑Stage Workflow</h2>
+  <p class="card-sub">From market narrative to content asset ready for AI‑guided generation.</p>
+  <div class="stage-list">
+    <div class="stage-panel open" data-stage="1">
+      <div class="stage-header">
+        <div class="stage-title-group">
+          <div class="stage-kicker">Stage 1 · Market Research & Strategy</div>
+          <div class="stage-title">Narrative, Pillars & Offer Matrix</div>
+        </div>
+        <div class="stage-meta">
+          <div class="stage-pill">22 fields</div>
+          <button class="btn-run-stage" data-stage="1" title="Run Market Research & Strategy">▶ Run Stage 1</button>
+          <div class="stage-chevron">›</div>
+        </div>
+      </div>
+      <div class="stage-body">
+        <!-- REQUIRED FIELDS -->
+        <div class="field required-field">
+          <label class="field-label" for="brandName">Brand Name * <span class="field-tooltip" title="Your brand or company name">ℹ️</span></label>
+          <input type="text" id="brandName" required placeholder="e.g., Serpifai" />
+        </div>
+        <div class="field required-field">
+          <label class="field-label" for="targetAudience">Target Audience * <span class="field-tooltip" title="Primary audience persona(s)">ℹ️</span></label>
+          <textarea id="targetAudience" required placeholder="e.g., SEO professionals managing enterprise content operations"></textarea>
+        </div>
+        <div class="field required-field">
+          <label class="field-label" for="audiencePains">Audience Current Pains * <span class="field-tooltip" title="What problems are they facing?">ℹ️</span></label>
+          <textarea id="audiencePains" required placeholder="e.g., Manual workflow bottlenecks, lack of strategic systems"></textarea>
+        </div>
+        <div class="field required-field">
+          <label class="field-label" for="audienceDesired">Audience Desired State * <span class="field-tooltip" title="What do they want to achieve?">ℹ️</span></label>
+          <textarea id="audienceDesired" required placeholder="e.g., Automated SEO operations, strategic AI-powered workflows"></textarea>
+        </div>
+        <div class="field required-field">
+          <label class="field-label" for="productOrService">Product/Service * <span class="field-tooltip" title="What are you offering?">ℹ️</span></label>
+          <textarea id="productOrService" required placeholder="e.g., AI-powered SEO workflow automation platform"></textarea>
+        </div>
+        <div class="field required-field">
+          <label class="field-label" for="coreTopic">Core Topic * <span class="field-tooltip" title="Main subject matter for content">ℹ️</span></label>
+          <textarea id="coreTopic" required placeholder="e.g., AI SEO automation, strategic content operations"></textarea>
+        </div>
+        <div class="field required-field">
+          <label class="field-label" for="quarterlyObjective">Quarterly Business Objective * <span class="field-tooltip" title="What's your Q goal?">ℹ️</span></label>
+          <textarea id="quarterlyObjective" required placeholder="e.g., Generate 50 qualified leads through strategic SEO content"></textarea>
+        </div>
+        
+        <!-- OPTIONAL STRATEGIC FIELDS -->
+        <div class="field">
+          <label class="field-label" for="brandIdeology">Brand Ideology <span class="field-tooltip" title="Core belief system">ℹ️</span></label>
+          <textarea id="brandIdeology" placeholder="e.g., Systems beat speed. Architecture beats tactics."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="brandArchetype">Brand Archetype <span class="field-tooltip" title="Creator, Sage, Innovator, etc.">ℹ️</span></label>
+          <input type="text" id="brandArchetype" placeholder="e.g., The Architect" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="brandArchetype">Brand Archetype <span class="field-tooltip" title="Creator, Sage, Innovator, etc.">ℹ️</span></label>
+          <input type="text" id="brandArchetype" placeholder="e.g., The Architect" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="brandLexicon">Brand Lexicon & Voice <span class="field-tooltip" title="Key phrases and tone">ℹ️</span></label>
+          <textarea id="brandLexicon" placeholder="e.g., 'architect' not 'build', 'systems' not 'tools'"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="uvp">Unique Value Proposition (UVP) <span class="field-tooltip" title="What makes you different?">ℹ️</span></label>
+          <textarea id="uvp" placeholder="e.g., Architect your SEO authority. Win with systems, not just speed."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="existingMessaging">Existing Messaging <span class="field-tooltip" title="Current brand messages">ℹ️</span></label>
+          <textarea id="existingMessaging" placeholder="e.g., Headlines, taglines, key copy"></textarea>
+        </div>
+        
+        <!-- AUDIENCE INTELLIGENCE -->
+        <div class="field">
+          <label class="field-label" for="secondaryAudience">Secondary Audience <span class="field-tooltip" title="Additional personas">ℹ️</span></label>
+          <textarea id="secondaryAudience" placeholder="e.g., Marketing directors, content strategists"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="customerDemographics">Customer Demographics <span class="field-tooltip" title="Age, location, role, etc.">ℹ️</span></label>
+          <textarea id="customerDemographics" placeholder="e.g., 30-50 years old, US/UK, senior marketing roles"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="geographicFocus">Geographic Focus <span class="field-tooltip" title="Target regions">ℹ️</span></label>
+          <input type="text" id="geographicFocus" placeholder="e.g., North America, EMEA" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="industryVertical">Industry Vertical <span class="field-tooltip" title="Your industry/niche">ℹ️</span></label>
+          <input type="text" id="industryVertical" placeholder="e.g., MarTech, SaaS, SEO Tools" />
+        </div>
+        
+        <!-- COMPETITIVE ADVANTAGE -->
+        <div class="field">
+          <label class="field-label" for="competitiveAdvantages">Competitive Advantages <span class="field-tooltip" title="What you do better">ℹ️</span></label>
+          <textarea id="competitiveAdvantages" placeholder="e.g., AI-native platform, integrated workflow engine"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="keyCompetitors">Key Competitors <span class="field-tooltip" title="2-6 competitor URLs for deep analysis">ℹ️</span></label>
+          <input type="text" id="keyCompetitors" placeholder="ahrefs.com/blog, semrush.com/blog, ..." />
+          <button 
+            type="button" 
+            class="btn-analyze-competitors" 
+            id="btnAnalyzeCompetitors"
+            data-tooltip="Elite competitor intelligence: 15 intelligence categories including Market Position, Brand Strategy, Technical SEO, Content Intelligence, Keyword Strategy, Content Systems, Conversion, Distribution, Audience Psychology, GEO/AEO, Authority, Performance & Strategic Opportunities">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-text">Analyze Competitors</span>
+          </button>
+        </div>
+        <div class="field">
+          <label class="field-label" for="coreMarketProblem">Core Market Problem <span class="field-tooltip" title="The problem you solve">ℹ️</span></label>
+          <textarea id="coreMarketProblem" placeholder="e.g., SEO teams drowning in manual work, lack of strategic systems"></textarea>
+        </div>
+        
+        <!-- GOALS & CHANNELS -->
+        <div class="field">
+          <label class="field-label" for="northStarKpis">North Star Marketing KPIs <span class="field-tooltip" title="Key success metrics">ℹ️</span></label>
+          <textarea id="northStarKpis" placeholder="e.g., MQLs, organic traffic, conversion rate"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="contentGoals">Content Goals <span class="field-tooltip" title="What content should achieve">ℹ️</span></label>
+          <textarea id="contentGoals" placeholder="e.g., Generate leads, establish thought leadership"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="primaryChannels">Primary Distribution Channels <span class="field-tooltip" title="Where you'll distribute">ℹ️</span></label>
+          <textarea id="primaryChannels" placeholder="e.g., Blog, LinkedIn, YouTube"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="contentFormats">Content Formats <span class="field-tooltip" title="Types of content">ℹ️</span></label>
+          <textarea id="contentFormats" placeholder="e.g., Long-form guides, case studies, video tutorials"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="seasonality">Seasonality <span class="field-tooltip" title="Timing considerations">ℹ️</span></label>
+          <textarea id="seasonality" placeholder="e.g., Q4 peak planning season, January strategy refresh"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="futureVision">Future Vision <span class="field-tooltip" title="Where you're headed">ℹ️</span></label>
+          <textarea id="futureVision" placeholder="e.g., SEO professionals as AI-powered architects"></textarea>
+        </div>
+        
+        <!-- OFFER DETAILS (OPTIONAL) -->
+        <div class="field">
+          <label class="field-label" for="offerMatrix">Offer Matrix (Markdown)</label>
+          <textarea id="offerMatrix" placeholder="| Offer Name | Offer Type | Target Audience | Key Benefit |"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="primaryOffer">Primary Offer for this Asset</label>
+          <input type="text" id="primaryOfferName" placeholder="AI-Ops Blueprint Bundle" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="primaryOfferPrice">Primary Offer Price</label>
+          <input type="text" id="primaryOfferPrice" placeholder="$97" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="upsellOffer">Upsell Offer Name</label>
+          <input type="text" id="upsellOffer" placeholder="Done-For-You SEO Services" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="upsellPrice">Upsell Offer Price</label>
+          <input type="text" id="upsellPrice" placeholder="$2,997" />
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-panel" data-stage="2">
+      <div class="stage-header">
+        <div class="stage-title-group">
+          <div class="stage-kicker">Stage 2 · Keyword Discovery</div>
+          <div class="stage-title">Keywords, Entities & Market Intelligence</div>
+        </div>
+        <div class="stage-meta">
+          <div class="stage-pill">10 fields</div>
+          <button class="btn-run-stage" data-stage="2" title="Run Keyword Discovery">▶ Run Stage 2</button>
+          <div class="stage-chevron">›</div>
+        </div>
+      </div>
+      <div class="stage-body">
+        <div class="field">
+          <label class="field-label" for="coreStrategicQuestion">Core Strategic Question</label>
+          <textarea id="coreStrategicQuestion" placeholder="Where is the biggest untapped, data-proven opportunity?"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="thesis">Thesis (Pro Angle)</label>
+          <textarea id="thesis" placeholder="AI tools are dramatically increasing efficiency..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="antithesis">Antithesis (Con Angle)</label>
+          <textarea id="antithesis" placeholder="AI tools are increasing manual workloads..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="keyMarketData">Key Market Data / Statistic</label>
+          <textarea id="keyMarketData" placeholder="77% of employees report AI increased workload - Upwork 2024"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="categoryDefinition">Category Definition</label>
+          <textarea id="categoryDefinition" placeholder="Strategic SEO Operations category..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="coreMarketProblem">Core Market Problem</label>
+          <textarea id="coreMarketProblem" placeholder="Lack of cohesive intelligent system..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="futureVision">Future State Vision</label>
+          <textarea id="futureVision" placeholder="SEO professionals as 'Architects'..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="primaryKeyword">Primary Keyword *</label>
+          <input type="text" id="primaryKeyword" placeholder="AI SEO prompts" required />
+        </div>
+        <div class="field">
+          <label class="field-label" for="secondaryKeywords">Secondary KWs & Entities</label>
+          <textarea id="secondaryKeywords" placeholder="prompt engineering, ChatGPT for SEO workflows, AI content brief generator..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="keywordsEntities">Keywords & Entities List (Full Research Output)</label>
+          <textarea id="keywordsEntities" rows="4" placeholder="Paste the key research output from Prompt 2..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-panel" data-stage="3">
+      <div class="stage-header">
+        <div class="stage-title-group">
+          <div class="stage-kicker">Stage 3 · Clustering & Architecture</div>
+          <div class="stage-title">Content Pillars, Clustering & Internal Linking</div>
+        </div>
+        <div class="stage-meta">
+          <div class="stage-pill">10 fields</div>
+          <button class="btn-run-stage" data-stage="3" title="Run Clustering & Architecture">▶ Run Stage 3</button>
+          <div class="stage-chevron">›</div>
+        </div>
+      </div>
+      <div class="stage-body">
+        <div class="field">
+          <label class="field-label" for="assetTitle">Specific Title of this Asset</label>
+          <input type="text" id="assetTitle" placeholder="AI as Your SEO Copilot: How to Guide, Not Just Generate" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="foundationalPillars">Foundational Content Pillars</label>
+          <textarea id="foundationalPillars" rows="6" placeholder="1. Systems > Speed&#10;2. Copilot, Not Autopilot&#10;3. Defensibility is the Future&#10;4. From Fragmented Tools to One Fluent Engine"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="campaignNarrative">Campaign Narrative</label>
+          <textarea id="campaignNarrative" placeholder="Evolution from 'tactician' to 'Architect'"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="pillarContext">Pillar Context</label>
+          <textarea id="pillarContext" placeholder="Supports 'Copilot, Not Autopilot' pillar..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="parentPillarUrl">Parent Pillar URL</label>
+          <input type="text" id="parentPillarUrl" placeholder="https://serpifai.com/ai-seo-copilot" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="childSpokeUrls">Child Spoke URLs</label>
+          <textarea id="childSpokeUrls" placeholder="/why-autopilot-fails&#10;/3-layer-qa-system&#10;/chatgpt-prompts"></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="internalLinkingStrategy">Internal Linking Strategy</label>
+          <textarea id="internalLinkingStrategy" placeholder="Link to cluster posts with semantic anchors..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="funnelStage">Funnel Stage</label>
+          <select id="funnelStage">
+            <option value="">Select stage...</option>
+            <option value="ToFU">ToFU</option>
+            <option value="MoFU">MoFU</option>
+            <option value="BoFU">BoFU</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="timeframePlan">Timeframe for Plan</label>
+          <input type="text" id="timeframePlan" placeholder="4 months" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="contentType">Type of Content</label>
+          <select id="contentType">
+            <option value="">Select type...</option>
+            <option value="Pillar">Pillar</option>
+            <option value="Cluster">Cluster</option>
+            <option value="Landing Page">Landing Page</option>
+            <option value="Guide">Guide</option>
+            <option value="Case Study">Case Study</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-panel" data-stage="4">
+      <div class="stage-header">
+        <div class="stage-title-group">
+          <div class="stage-kicker">Stage 4 · Content Calendar</div>
+          <div class="stage-title">Calendar Planning & Visual Strategy</div>
+        </div>
+        <div class="stage-meta">
+          <div class="stage-pill">3 fields</div>
+          <button class="btn-run-stage" data-stage="4" title="Run Content Calendar">▶ Run Stage 4</button>
+          <div class="stage-chevron">›</div>
+        </div>
+      </div>
+      <div class="stage-body">
+        <div class="field">
+          <label class="field-label" for="calendarHorizon">Time Horizon</label>
+          <select id="calendarHorizon">
+            <option value="">Select horizon...</option>
+            <option value="1 Week">1 Week</option>
+            <option value="1 Month">1 Month</option>
+            <option value="3 Months">3 Months</option>
+            <option value="6 Months">6 Months</option>
+            <option value="1 Year">1 Year</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="postsPerWeek">Posts per Week</label>
+          <input type="number" id="postsPerWeek" min="1" max="14" value="5" placeholder="5" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="visualHooks">Visual Hooks</label>
+          <textarea id="visualHooks" placeholder="1. Diagram: Autopilot vs Copilot workflow&#10;2. Screenshot of AI content brief"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-panel" data-stage="5">
+      <div class="stage-header">
+        <div class="stage-title-group">
+          <div class="stage-kicker">Stage 5 · Content Generation</div>
+          <div class="stage-title">Generation Settings & E-E-A-T Credibility</div>
+        </div>
+        <div class="stage-meta">
+          <div class="stage-pill">36 fields</div>
+          <button class="btn-run-stage" data-stage="5" title="Run Content Generation">▶ Run Stage 5</button>
+          <div class="stage-chevron">›</div>
+        </div>
+      </div>
+      <div class="stage-body">
+        <div class="field">
+          <label class="field-label" for="contentFormat">Content Format to Generate</label>
+          <select id="contentFormat">
+            <option value="">Select format…</option>
+            <option>Blog Post</option>
+            <option>Video Script</option>
+            <option>Email Series</option>
+            <option>Social Media</option>
+            <option>Landing Page</option>
+            <option>LinkedIn Post</option>
+            <option>Twitter/X Thread</option>
+            <option>YouTube Script</option>
+            <option>Podcast Outline</option>
+            <option>Case Study</option>
+            <option>Lead Magnet</option>
+            <option>TikTok Script</option>
+            <option>E‑commerce Product Page</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="contentSubcategory">Subcategory / Variant</label>
+          <select id="contentSubcategory">
+            <option value="">Select subtype…</option>
+            <option>How‑to / Tutorial</option>
+            <option>Case study recap</option>
+            <option>Thought leadership</option>
+            <option>Comparison / vs piece</option>
+            <option>Problem‑Agitate‑Solve</option>
+            <option>FAQ explainer</option>
+            <option>Launch announcement</option>
+            <option>Objection handling</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="persuasionFramework">Persuasion Framework</label>
+          <select id="persuasionFramework">
+            <option value="">Select framework...</option>
+            <option value="PAS">PAS (Problem-Agitate-Solve)</option>
+            <option value="AIDA">AIDA</option>
+            <option value="FAB">FAB (Features-Advantages-Benefits)</option>
+            <option value="Before-After-Bridge">Before-After-Bridge</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="uniqueMechanism">Unique Mechanism</label>
+          <textarea id="uniqueMechanism" placeholder="The Serpifai Authority Engine™..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="readabilityDirectives">Readability Directives</label>
+          <textarea id="readabilityDirectives" placeholder="9th-grade level, short sentences, bullet points..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="platformContext">Platform‑Specific Context</label>
+          <textarea id="platformContext" placeholder="Target subreddit or Quora question..."></textarea>
+        </div>
+        <div class="field">
+          <label class="field-label" for="forbiddenTerms">Forbidden Terms</label>
+          <input type="text" id="forbiddenTerms" placeholder="hack, trick, secret, unleash, supercharge" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="aiPersonaContext">AI Persona Context</label>
+          <textarea id="aiPersonaContext" placeholder="You are an expert SEO strategist with 10+ years experience..."></textarea>
+        </div>
+        
+        <!-- E-E-A-T & Credibility Signals -->
+        <div class="field">
+          <label class="field-label">Schema Markup</label>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;">
+            <input type="checkbox" id="schemaArticle"> Article Schema (JSON-LD)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;">
+            <input type="checkbox" id="schemaFaq"> FAQ Schema (JSON-LD)
+          </label>
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="authorBio">Author Bio (Detailed w/ Achievements)</label>
+          <textarea id="authorBio" placeholder="John Smith, 10+ years SEO experience, optimized 500+ websites..."></textarea>
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="primarySource1">Primary Source Link 1 (e.g., MIT Study)</label>
+          <input type="text" id="primarySource1" placeholder="https://example.com/study" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="primarySource2">Primary Source Link 2 (e.g., HubSpot Survey)</label>
+          <input type="text" id="primarySource2" placeholder="https://example.com/survey" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="expertQuote1">External Authority Quote 1 (e.g., Rand Fishkin)</label>
+          <input type="text" id="expertQuote1" placeholder="According to Rand Fishkin, 'The future of SEO is...'" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="expertQuote2">External Authority Quote 2 (e.g., AI Ethicist)</label>
+          <input type="text" id="expertQuote2" placeholder="Dr. Jane Doe, AI Ethics researcher at Stanford..." />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="proprietaryData">Proprietary Data Point</label>
+          <input type="text" id="proprietaryData" placeholder="Our analysis of 1,000+ sites shows..." />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="caseStudy1">Case Study Snippet 1 (e.g., DTC)</label>
+          <textarea id="caseStudy1" placeholder="DTC skincare brand: 240% organic traffic increase in 6 months..."></textarea>
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="caseStudy2">Case Study Snippet 2 (e.g., B2B SaaS)</label>
+          <textarea id="caseStudy2" placeholder="B2B SaaS scaled from 5 to 50 monthly posts..."></textarea>
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="caseStudy3">Case Study Snippet 3 (e.g., Agency)</label>
+          <textarea id="caseStudy3" placeholder="SEO agency reduced production time by 60%..."></textarea>
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="trustAnchors">Trust Anchors ('Trusted By...')</label>
+          <input type="text" id="trustAnchors" placeholder="Google, Shopify, HubSpot, Adobe" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="socialProof">Social Proof Snippet</label>
+          <textarea id="socialProof" placeholder="Join 10,000+ SEO professionals who trust Serpifai..."></textarea>
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="testimonial1">Testimonial 1</label>
+          <textarea id="testimonial1" placeholder="'Serpifai transformed how we think about AI in SEO.' - Sarah M., SEO Director"></textarea>
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="testimonial2">Testimonial 2</label>
+          <textarea id="testimonial2" placeholder="'The Blueprint Bundle saved us 20+ hours per week.' - Mike T., Agency Owner"></textarea>
+        </div>
+        
+        <!-- Landing Page & Bundle Components -->
+        <div class="field">
+          <label class="field-label" for="leadMagnetName">Lead Magnet Name</label>
+          <input type="text" id="leadMagnetName" placeholder="The Authority Checkbook" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle1Name">Bundle Component 1 Name</label>
+          <input type="text" id="bundle1Name" placeholder="AI-Ops Prompt Library" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle1Value">Bundle Component 1 Value</label>
+          <input type="text" id="bundle1Value" placeholder="$47 value" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle2Name">Bundle Component 2 Name</label>
+          <input type="text" id="bundle2Name" placeholder="Content Calendar Template" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle2Value">Bundle Component 2 Value</label>
+          <input type="text" id="bundle2Value" placeholder="$29 value" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle3Name">Bundle Component 3 Name</label>
+          <input type="text" id="bundle3Name" placeholder="E-E-A-T Audit Checklist" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle3Value">Bundle Component 3 Value</label>
+          <input type="text" id="bundle3Value" placeholder="$37 value" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle4Name">Bundle Component 4 Name</label>
+          <input type="text" id="bundle4Name" placeholder="QA Workflow System" />
+        </div>
+        
+        <div class="field">
+          <label class="field-label" for="bundle4Value">Bundle Component 4 Value</label>
+          <input type="text" id="bundle4Value" placeholder="$67 value" />
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</section>

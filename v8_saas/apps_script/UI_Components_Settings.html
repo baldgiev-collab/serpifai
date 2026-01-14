@@ -1,0 +1,219 @@
+<section class="tab" id="tab-settings">
+  <div class="settings-header">
+    <div class="settings-header-content">
+      <div class="settings-title-group">
+        <h1 class="settings-title">⚙️ Account Settings</h1>
+        <p class="settings-subtitle">Manage your license, credits, and preferences</p>
+      </div>
+      <button class="btn btn-refresh" id="settingsRefreshBtn">
+        <span>🔄</span>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </div>
+  
+  <div class="settings-container">
+    
+    <!-- Loading State -->
+    <div id="settingsLoading" class="loading-state">
+      <div class="spinner-large"></div>
+      <p class="loading-text">Loading your account...</p>
+      <span class="loading-subtext">This will only take a moment</span>
+    </div>
+    
+    <!-- Settings Content -->
+    <div id="settingsContent" style="display:none;">
+      
+      <!-- Account Overview - Premium Hero Section -->
+      <div class="account-hero">
+        <div class="hero-status">
+          <span class="status-badge-large" id="accountStatusBadge">Loading...</span>
+        </div>
+        <div class="hero-content">
+          <div class="hero-main">
+            <div class="hero-label">Account Email</div>
+            <div class="hero-value" id="accountEmail">—</div>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat">
+              <div class="stat-icon">💎</div>
+              <div class="stat-content">
+                <div class="stat-label">Credits Available</div>
+                <div class="stat-value" id="accountCredits">—</div>
+              </div>
+            </div>
+            <div class="hero-stat">
+              <div class="stat-icon">🌐</div>
+              <div class="stat-content">
+                <div class="stat-label">API Connection</div>
+                <div class="stat-value" id="apiStatus">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- License Management Section -->
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">🔑 License Management</h2>
+        </div>
+        
+        <!-- Active License Display -->
+        <div id="activeLicenseDisplay" style="display:none;">
+          <div class="license-active-card">
+            <div class="license-active-header">
+              <div class="license-icon-wrap">
+                <span class="license-icon">✓</span>
+              </div>
+              <div class="license-details">
+                <div class="license-label">Active License Key</div>
+                <div class="license-key-display" id="licenseKeyDisplay">
+                  <span class="masked-key">SERP-FAI-****-****-****</span>
+                </div>
+              </div>
+            </div>
+            <button class="btn-remove-license" id="removeLicenseBtn">
+              <span>🗑️</span>
+              <span>Remove License</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- License Activation Form -->
+        <div id="licenseActivationForm">
+          <div class="activation-card">
+            <div class="activation-header">
+              <div class="activation-icon">🔐</div>
+              <div class="activation-text">
+                <h3>Activate Your License</h3>
+                <p>Enter your credentials to unlock all features</p>
+              </div>
+            </div>
+            
+            <div class="activation-form">
+              <div class="form-group-modern">
+                <label for="settingsEmailInput" class="form-label-modern">
+                  <span class="label-icon">📧</span>
+                  <span>Email Address</span>
+                </label>
+                <input 
+                  type="email" 
+                  id="settingsEmailInput" 
+                  class="form-input-modern" 
+                  placeholder="Enter your email address"
+                  autocomplete="email"
+                />
+              </div>
+
+              <div class="form-group-modern">
+                <label for="settingsLicenseInput" class="form-label-modern">
+                  <span class="label-icon">🔑</span>
+                  <span>License Key</span>
+                </label>
+                <input 
+                  type="text" 
+                  id="settingsLicenseInput" 
+                  class="form-input-modern" 
+                  placeholder="SERP-FAI-XXXX-XXXX-XXXX"
+                  autocomplete="off"
+                />
+                <small class="form-hint">License keys are case-sensitive</small>
+              </div>
+
+              <button class="btn-activate" id="activateLicenseBtn">
+                <span class="btn-icon">✨</span>
+                <span class="btn-text">Activate License</span>
+                <span class="btn-arrow">→</span>
+              </button>
+            </div>
+
+            <div class="activation-footer">
+              <span class="footer-icon">💡</span>
+              <span>Need help? Contact <strong>support@serpifai.com</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions Grid -->
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">⚡ Quick Actions</h2>
+        </div>
+        <div class="quick-actions-grid">
+          <button class="action-card" id="refreshAccountBtn">
+            <div class="action-icon">🔄</div>
+            <div class="action-label">Refresh Account</div>
+            <div class="action-desc">Update account data</div>
+          </button>
+          <button class="action-card" id="clearCacheBtn">
+            <div class="action-icon">🧹</div>
+            <div class="action-label">Clear Cache</div>
+            <div class="action-desc">Free up space</div>
+          </button>
+          <button class="action-card" id="runDiagnosticsBtn">
+            <div class="action-icon">🔍</div>
+            <div class="action-label">Run Diagnostics</div>
+            <div class="action-desc">Check system health</div>
+          </button>
+          <button class="action-card" id="viewProjectsBtn">
+            <div class="action-icon">📁</div>
+            <div class="action-label">View Projects</div>
+            <div class="action-desc">Browse all projects</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- System Information -->
+      <div class="settings-section">
+        <div class="section-header">
+          <h2 class="section-title">ℹ️ System Information</h2>
+        </div>
+        <div class="system-info-grid">
+          <div class="info-card">
+            <div class="info-card-icon">📦</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Version</div>
+              <div class="info-card-value" id="systemVersion">v6.0.0</div>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-card-icon">📅</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Last Updated</div>
+              <div class="info-card-value" id="systemLastUpdated">—</div>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-card-icon">💾</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Storage</div>
+              <div class="info-card-value">Google Sheets + MySQL</div>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="info-card-icon">🔗</div>
+            <div class="info-card-content">
+              <div class="info-card-label">Data Source</div>
+              <div class="info-card-value" id="systemDataSource">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Error State -->
+    <div id="settingsError" style="display:none;" class="error-state">
+      <div class="error-icon-large">⚠️</div>
+      <h3 class="error-title">Unable to Load Settings</h3>
+      <p class="error-message" id="settingsErrorMessage">An error occurred while loading your settings.</p>
+      <button class="btn-retry" id="retrySettingsBtn">
+        <span>🔄</span>
+        <span>Try Again</span>
+      </button>
+    </div>
+
+  </div>
+</section>

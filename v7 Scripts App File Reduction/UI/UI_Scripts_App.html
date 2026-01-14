@@ -1,0 +1,618 @@
+﻿<!--
+  +-----------------------------------------------------------------------------------+
+  │  UI_Scripts_App.html - Elite Modular Architecture v7.0 - Phase 11                │
+  │  Main Barrel/Proxy File - Orchestrates All Modular Includes                      │
+  │                                                                                    │
+  │  Architecture Pattern: Include-Based Module System                                 │
+  │  Each module provides window.* global functions                                    │
+  │  This file is a thin shell that wires event listeners and initializes             │
+  +-----------------------------------------------------------------------------------+
+-->
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER -1: External Libraries (Must load FIRST)                                   -->
+<!-- ------------------------------------------------------------------------------- -->
+<!-- D3.js for Force-Directed Visualizations (Mind Map, Topic Galaxy) -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 0: Theme & Style System (CSS - Must load first)                            -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Styles_Theme_Core'); ?>
+<?!= include('UI_Styles_Theme_Components'); ?>
+<?!= include('UI_Styles_Theme_UI'); ?>
+<?!= include('UI_Styles_Theme_Competitor'); ?>
+<?!= include('UI_Styles_Theme_Settings'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 1: Foundation Modules (No dependencies)                                    -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Charts_Diagnostics'); ?>
+<?!= include('CORE_State_Global'); ?>
+<?!= include('UI_Loading_Utils'); ?>
+<?!= include('UI_Table_Helpers'); ?>
+<?!= include('UI_Accuracy_Trends'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 1.5: ELITE Design System & Components (Required by all tabs)               -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('ELITE_Config'); ?>
+<?!= include('ELITE_Helpers'); ?>
+<?!= include('ELITE_Styles'); ?>
+<?!= include('ELITE_Executive'); ?>
+<?!= include('ELITE_Strategic'); ?>
+<?!= include('ELITE_Tab_Strategic'); ?>
+<?!= include('ELITE_Forensics'); ?>
+<?!= include('ELITE_TabRenderers'); ?>
+<?!= include('ELITE_Proof'); ?>
+<?!= include('ELITE_SERP'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 2: Core Utilities (Foundation dependencies only)                           -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Core_Utils'); ?>
+<?!= include('UI_Markdown_Utils'); ?>
+<?!= include('CORE_Form_Data'); ?>
+<?!= include('UI_Raw_Data_Tables'); ?>
+<?!= include('UI_Executive_Config'); ?>
+<?!= include('UI_Executive_Renderer'); ?>
+<?!= include('UI_Modal_System'); ?>
+<?!= include('UI_Evidence_Extraction'); ?>
+<?!= include('UI_Evidence_Render1'); ?>
+<?!= include('UI_Evidence_Render2'); ?>
+<?!= include('UI_Strategy_Schema'); ?>
+<?!= include('UI_Strategy_HubSpoke'); ?>
+<?!= include('UI_Strategy_AIO'); ?>
+<?!= include('UI_Strategy_Fallback'); ?>
+<?!= include('UI_Strategy_Panel'); ?>
+<?!= include('UI_Gemini_Insights'); ?>
+<?!= include('UI_Forensic_Render'); ?>
+<?!= include('UI_Tab_Insights'); ?>
+<?!= include('UI_Strategic_Display'); ?>
+<?!= include('UI_Elite_Overlays'); ?>
+<?!= include('UI_Kill_Moves'); ?>
+<?!= include('UI_Gemini_Parser'); ?>
+<?!= include('KW_Forensic_Matrix'); ?>
+<?!= include('KW_Market_Gravity'); ?>
+<?!= include('KW_Money_Moat'); ?>
+<?!= include('KW_SGE_Resilience'); ?>
+<?!= include('KW_LongTail_LLM'); ?>
+<?!= include('KW_Moat_Analysis'); ?>
+<?!= include('KW_Forensic_Primary'); ?>
+<?!= include('KW_Forensic_LongTail'); ?>
+<?!= include('KW_Strategy_Helpers'); ?>
+<?!= include('KW_Strategy_Payload'); ?>
+<?!= include('DATA_Forensic_Engine'); ?>
+<?!= include('DATA_Elite_Traffic'); ?>
+<?!= include('DATA_Real_Metrics'); ?>
+<?!= include('UI_Elite_Modals'); ?>
+<?!= include('ELITE_Modals_Enhanced'); ?>
+<?!= include('UI_Elite_Opportunity_Engine'); ?>
+<?!= include('UI_Forensic_Grid'); ?>
+<?!= include('UI_Tab_Technical'); ?>
+
+<?!= include('UI_Tab_Brand'); ?>
+<?!= include('UI_Tab_ContentSystems'); ?>
+<?!= include('UI_Tab_Conversion'); ?>
+<?!= include('UI_Tab_Audience'); ?>
+<?!= include('UI_Tab_AuthPerf'); ?>
+<?!= include('UI_Tab_CategoryIntel'); ?>
+<?!= include('UI_Tab_Scoring'); ?>
+<?!= include('UI_Tab_ContentIntel'); ?>
+<?!= include('UI_Tab_ContentIntel_Charts'); ?>
+<?!= include('UI_Tab_Overview'); ?>
+<?!= include('UI_Tab_KeywordStrategy'); ?>
+<?!= include('UI_Charts_Renderers'); ?>
+<?!= include('UI_Charts_Overview'); ?>
+<?!= include('UI_KW_Strategy_Charts'); ?>
+<?!= include('UI_Competitor_Tabs'); ?>
+<?!= include('UI_Charts_Competitor'); ?>
+<?!= include('UI_Charts_Competitor_Extended'); ?>
+<?!= include('UI_Elite_Renderer'); ?>
+<?!= include('ELITE_UIRenderer'); ?>
+<?!= include('UI_Chart_Fullscreen'); ?>
+<?!= include('UI_Chart_Info'); ?>
+<?!= include('UI_PDF_Export'); ?>
+<?!= include('UI_Elite_Integration'); ?>
+<?!= include('UI_ProjectAutoPopulation'); ?>
+<?!= include('UI_Data_Mapper'); ?>
+<?!= include('UI_Styles_DataBadges'); ?>
+<?!= include('UI_Scripts_Settings'); ?>
+<!-- UI_Components_Settings removed - already in UI_Dashboard.html -->
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 3: Business Logic (Depends on Core Utilities)                              -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('CORE_Project_Manager'); ?>
+<?!= include('UI_Gemini_Models'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 4: Chart System (Full dependency chain)                                    -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Chart_Config'); ?>
+<?!= include('UI_Chart_Generator'); ?>
+
+<!-- Elite Charts System (Competitor Intelligence Visualizations) -->
+<?!= include('UI_Elite_Charts_Utils'); ?>
+<?!= include('UI_Elite_Charts_Core'); ?>
+<?!= include('UI_Elite_Charts_Market'); ?>
+<?!= include('UI_Elite_Charts_Brand'); ?>
+<?!= include('UI_Elite_Charts_Content'); ?>
+<?!= include('UI_Elite_Charts_Strategic'); ?>
+<?!= include('UI_Elite_Charts_Authority'); ?>
+<?!= include('ELITE_Charts_Enhanced'); ?>
+<?!= include('UI_Overview_Table_Elite'); ?>
+
+<!-- D3.js Visualizations -->
+<?!= include('UI_D3_TopicGalaxy'); ?>
+<?!= include('UI_D3_MindMap'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 5: Stage Workflow System                                                   -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Stage_Runner'); ?>
+<?!= include('UI_Stage1_Renderer'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 6: Navigation & Event Handlers                                             -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Nav_Handlers'); ?>
+<?!= include('UI_Navigation_Project_Handlers'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- INITIALIZATION IIFE - Thin Shell (Event Wiring Only)                           -->
+<!-- ------------------------------------------------------------------------------- -->
+<script>
+  // @ts-nocheck
+  (function() {
+    'use strict';
+    console.log('?? UI_Scripts_App.html Initialization IIFE starting...');
+    console.log('   All modules loaded via includes - wiring events only');
+
+    // ---------------------------------------------------------------------------
+    // DOM ELEMENT REFERENCES (Local scope for event wiring)
+    // ---------------------------------------------------------------------------
+    const projectSelect = document.getElementById('projectSelect');
+    const newProjectBtn = document.getElementById('newProjectBtn');
+    const renameProjectBtn = document.getElementById('renameProjectBtn');
+    const deleteProjectBtn = document.getElementById('deleteProjectBtn');
+    const saveProjectBtn = document.getElementById('saveProjectBtn');
+    const saveProjectBtnTop = document.getElementById('saveProjectBtnTop');
+    const themeBtns = document.querySelectorAll('.btn-theme');
+
+    // ---------------------------------------------------------------------------
+    // EVENT WIRING: Project Management Buttons
+    // ---------------------------------------------------------------------------
+    if (newProjectBtn) newProjectBtn.addEventListener('click', () => window.doNewProject?.());
+    if (renameProjectBtn) renameProjectBtn.addEventListener('click', () => window.doRenameProject?.());
+    if (deleteProjectBtn) deleteProjectBtn.addEventListener('click', () => window.doDeleteProject?.());
+    
+    if (projectSelect) {
+      projectSelect.addEventListener('change', () => window.loadProject?.(projectSelect.value));
+    }
+
+    // ---------------------------------------------------------------------------
+    // EVENT WIRING: Save Buttons (Both sidebar and top bar)
+    // ---------------------------------------------------------------------------
+    function handleSaveProject() {
+      const nameInput = document.getElementById('projectNameInput');
+      const selectEl = document.getElementById('projectSelect');
+      const projectName = (nameInput?.value.trim()) || (selectEl?.value.trim());
+
+      if (!projectName) {
+        window.showToast?.('?? Please name your project first');
+        nameInput?.focus();
+        return;
+      }
+
+      window.showToast?.('?? Saving project...');
+      const formData = window.collectFormData?.() || {};
+
+      if (typeof google !== 'undefined' && google.script?.run) {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (result?.ok) {
+              window.showToast?.('? Project "' + projectName + '" saved!');
+              const statusEl = document.getElementById('saveStatus');
+              if (statusEl) statusEl.textContent = '? Saved at ' + new Date().toLocaleTimeString();
+              window.refreshProjectList?.();
+              window.refreshCreditDisplay?.();
+            } else {
+              window.showToast?.('? Save failed: ' + (result?.error || 'Unknown error'));
+            }
+          })
+          .withFailureHandler(function(error) {
+            window.showToast?.('? Error: ' + error.message);
+          })
+          .saveProject(projectName, formData);
+      } else {
+        window.showToast?.('? Save unavailable in preview mode');
+      }
+    }
+
+    if (saveProjectBtn) saveProjectBtn.addEventListener('click', handleSaveProject);
+    if (saveProjectBtnTop) saveProjectBtnTop.addEventListener('click', handleSaveProject);
+
+    // ---------------------------------------------------------------------------
+    // EVENT WIRING: Theme Buttons
+    // ---------------------------------------------------------------------------
+    themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.switchTheme?.(btn.getAttribute('data-theme-target'));
+      });
+    });
+
+    // ---------------------------------------------------------------------------
+    // INITIALIZATION SEQUENCE
+    // ---------------------------------------------------------------------------
+    console.log('?? Running initialization sequence...');
+
+    // 0. Wire up navigation handlers (CRITICAL - enables tab clicks)
+    window.initNavigationHandlers?.();
+
+    // 1. Initialize workflow menu collapse
+    window.initWorkflowMenuCollapse?.();
+
+    // 2. Initialize auto-save system
+    window.initAutoSave?.();
+
+    // 3. Initialize Gemini model dropdown
+    window.initGeminiModelSelect?.();
+    
+    // 4. Load Gemini models
+    window.loadGeminiModels?.();
+
+    // 5. Refresh project list and set initial tab
+    window.refreshProjectList?.();
+    window.setActiveTab?.('workflow');
+
+    // 6. Safety check: Ensure at least one tab is visible
+    setTimeout(function() {
+      const visibleTabs = document.querySelectorAll('.tab.active');
+      if (visibleTabs.length === 0) {
+        console.warn('?? No active tabs detected, forcing workflow tab visible');
+        const workflowTab = document.getElementById('tab-workflow');
+        if (workflowTab) {
+          workflowTab.classList.add('active');
+          workflowTab.style.display = 'block';
+        }
+      }
+    }, 100);
+
+    // 7. Check for Settings hash
+    if (window.location.hash === '#settings') {
+      window.setActiveTab?.('settings');
+      window.location.hash = '';
+    }
+
+    console.log('? UI_Scripts_App.html Initialization complete');
+  })();
+</script>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 7: Competitor Intelligence System                                          -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_ParallelEngine'); ?>
+<?!= include('COMP_Analysis_Init'); ?>
+<?!= include('COMP_Tab_Render'); ?>
+<?!= include('COMP_ActionBar'); ?>
+<?!= include('COMP_PDF_Generator'); ?>
+<?!= include('COMP_Export_Sort'); ?>
+<?!= include('COMP_Gap_Analysis'); ?>
+
+<!-- Evidence Collection and Rendering extracted to UI_Evidence_Extraction.html, UI_Evidence_Render1.html, UI_Evidence_Render2.html -->
+
+<!-- 1% Strategy Engine extracted to UI_Strategy_Schema.html, UI_Strategy_HubSpoke.html, UI_Strategy_AIO.html, UI_Strategy_Fallback.html, UI_Strategy_Panel.html -->
+
+<!-- ELITE GEMINI INSIGHTS, STRATEGIC DISPLAY, and ELITE OVERLAYS extracted to UI_Gemini_Insights.html, UI_Forensic_Render.html, UI_Tab_Insights.html, UI_Strategic_Display.html, UI_Elite_Overlays.html, UI_Kill_Moves.html -->
+
+<!-- parseGeminiAnalysis and buildEliteInsightsDisplay extracted to UI_Gemini_Parser.html -->
+
+
+<!-- calculateTopicalScore, generateForensicKeywordMatrix, runDataDiagnostic extracted to KW_Forensic_Matrix.html -->
+
+<!-- calculateMarketGravityPositions, extractNicheFromCompetitor extracted to KW_Market_Gravity.html -->
+
+
+<!-- generateTip, generateMoneyMoatKWs extracted to KW_Money_Moat.html -->
+
+
+<!-- generateSGEResilienceKWs extracted to KW_SGE_Resilience.html -->
+
+
+<!-- generateLongTailVelocityKWs, generateLLMCitationGapKWs extracted to KW_LongTail_LLM.html -->
+
+<!-- generateForensicPrimaryKWs, generateForensicSecondaryKWs, generateForensicLongTailKWs, generateForensicFAQKWs, analyzeCompetitorMoat, buildMarketGravityMap, extractPrimaryKeywords, extractSecondarySemantic, extractLongTailKeywords, extractFAQKeywords, classifyIntent, buildKeywordComparisonMatrix, generateKillerStrategicMove, generateKillerInsight, buildCompetitorComparison extracted to KW_Moat_Analysis.html, KW_Forensic_Primary.html, KW_Forensic_LongTail.html -->
+
+<!-- generateKWStrategyUIPayload, generateForensicUIPayload, calculateAIORisk, getClusterColor, buildEntityRelationshipGraph, classifyIntentLayers, classifyKeywordIntent, mapIntentToFunnel, deriveEntityId, calculateRadarCoordinates, calculateAIORisk10Scale, generateKillerAdvantage extracted to KW_Strategy_Payload.html and KW_Strategy_Helpers.html -->
+
+<script>
+  // @ts-nocheck
+
+  // generateForensicEstimates, detectEconomicMoats extracted to DATA_Forensic_Engine.html
+  // extractRealMetrics, getDataSourceBadge, getScoreColor extracted to DATA_Real_Metrics.html
+  // Elite Traffic Modals extracted to UI_Elite_Modals.html
+  // Elite Traffic Engine extracted to UI_Elite_Traffic_Engine.html
+  // calculateEliteAuthorityScore, getKDTier, calculateFallbackEliteTraffic, calculateOpportunityScore, showOpportunityModal extracted to UI_Elite_Opportunity_Engine.html
+  // filterKWModule, showSkeletonLoading, streamKeywordsToGrid, buildForensicReservoir, calculateRealClashScore, load450KWReservoir, startKeywordStreaming, stopKeywordStreaming, streamNewKeywords, appendKeywordToGrid, updateStreamingProgress, renderForensicGrid, updateFilterCounts, getIntentColor, showAllKeywords extracted to UI_Forensic_Grid.html
+
+  /**
+   * Render empty state when no data available
+   */
+  window.renderEmptyState = function (message) {
+    const displayMessage = message || 'No keywords loaded yet';
+    const subMessage = message ? 'Click "Analyze Competitors" to start' : 'Run the analysis to populate this grid';
+
+    ['money-kw-grid', 'sge-kw-grid', 'tail-kw-grid', 'llm-kw-grid'].forEach(id => {
+      const container = document.getElementById(id);
+      if (container) {
+        container.innerHTML = `
+              <div style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.5);">
+                <div style="font-size: 32px; margin-bottom: 12px;">??</div>
+                <div style="font-size: 12px;">${displayMessage}</div>
+                <div style="font-size: 10px; margin-top: 8px;">${subMessage}</div>
+              </div>
+            `;
+      }
+    });
+  };
+
+  /**
+   * Get Sync Status tooltip content
+   */
+  window.getSyncStatusTooltip = function () {
+    return '[i] Real-time synchronization with MySQL Cluster and Master GSheet. ' +
+      'Keywords are persisted to both storage systems with UPSERT logic. ' +
+      'Green checkmark (?) indicates MySQL confirmation.';
+  };
+
+  /**
+   * Copy UI Payload JSON to Clipboard
+   * Used by Task 4 UI Payload Export section
+   */
+  window.copyUIPayloadJSON = function () {
+    const jsonEl = document.getElementById('ui-payload-json');
+    if (!jsonEl) {
+      console.warn('?? UI Payload JSON element not found');
+      return;
+    }
+
+    const jsonText = jsonEl.textContent || jsonEl.innerText;
+
+    // Modern clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(jsonText)
+        .then(() => {
+          console.log('?? UI Payload JSON copied to clipboard');
+          // Visual feedback
+          const btn = event.target;
+          const originalText = btn.innerHTML;
+          btn.innerHTML = '? Copied!';
+          btn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+          }, 2000);
+        })
+        .catch(err => {
+          console.error('? Failed to copy:', err);
+          fallbackCopyToClipboard(jsonText);
+        });
+    } else {
+      fallbackCopyToClipboard(jsonText);
+    }
+  };
+
+  /**
+   * Fallback clipboard copy for older browsers
+   */
+  function fallbackCopyToClipboard(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      console.log('?? UI Payload JSON copied (fallback method)');
+    } catch (err) {
+      console.error('? Fallback copy failed:', err);
+    }
+    document.body.removeChild(textarea);
+  }
+
+  /**
+   * Populate All Tabs From Structured Categories (v6 format)
+   * Maps Gemini's 15 elite categories to UI tabs
+   * @param {Array} categories - Array of 15 intelligence categories
+   * @param {Array} competitors - Competitor data for metrics
+   */
+  function populateAllTabsFromCategories(categories, competitors) {
+    console.log('?? Populating all tabs from categories...');
+    console.log('   Categories:', categories ? categories.length : 0);
+    console.log('   Competitors:', competitors ? competitors.length : 0);
+
+    if (!categories || !Array.isArray(categories)) {
+      console.warn('?? No categories array provided');
+      return;
+    }
+
+    // Define tab mapping: category name ? tab ID
+    const tabMapping = {
+      'Market Position': 'market',
+      'Market Positioning': 'market',
+      'Category Intelligence': 'market',
+      'Brand Strategy': 'brand',
+      'Brand Positioning': 'brand',
+      'Brand Intelligence': 'brand',
+      'Technical SEO': 'technical',
+      'Technical Analysis': 'technical',
+      'Site Performance': 'technical',
+      'Content Intelligence': 'content',
+      'Content Strategy': 'content',
+      'Content Analysis': 'content',
+      'Keyword Strategy': 'keywords',
+      'Keyword Analysis': 'keywords',
+      'Search Strategy': 'keywords',
+      'Content Systems': 'systems',
+      'Content Engineering': 'systems',
+      'Content Operations': 'systems',
+      'Conversion': 'conversion',
+      'Conversion Strategy': 'conversion',
+      'CRO': 'conversion',
+      'Distribution': 'distribution',
+      'Distribution Channels': 'distribution',
+      'Marketing Channels': 'distribution',
+      'Audience Psychology': 'audience',
+      'Audience Intelligence': 'audience',
+      'Audience Analysis': 'audience',
+      'GEO/AEO': 'geo-aeo',
+      'AI Optimization': 'geo-aeo',
+      'Search Optimization': 'geo-aeo',
+      'Authority': 'authority',
+      'Domain Authority': 'authority',
+      'Trust': 'authority',
+      'Performance': 'performance',
+      'Performance Analysis': 'performance',
+      'Metrics': 'performance',
+      'Strategic Opportunities': 'opportunities',
+      'Opportunities': 'opportunities',
+      'Gaps': 'opportunities',
+      'Scoring': 'scoring',
+      'Overall Score': 'scoring',
+      'Competitive Score': 'scoring'
+    };
+
+    // Group categories by tab
+    const tabsData = {};
+
+    categories.forEach(category => {
+      const categoryName = category.name || category.category || '';
+      const tabId = tabMapping[categoryName] || null;
+
+      if (tabId) {
+        if (!tabsData[tabId]) tabsData[tabId] = [];
+        tabsData[tabId].push(category);
+      }
+    });
+
+    console.log('   Mapped to tabs:', Object.keys(tabsData).join(', '));
+
+    // Populate each tab
+    Object.keys(tabsData).forEach(tabId => {
+      const tabCategories = tabsData[tabId];
+      populateTabFromCategory(tabId, tabCategories, competitors);
+    });
+
+    console.log('? All tabs populated from categories');
+  }
+
+  /**
+   * Populate a specific tab from category data
+   * @param {string} tabId - The tab identifier (market, brand, technical, etc.)
+   * @param {Array} categories - Categories for this tab
+   * @param {Array} competitors - Competitor data
+   */
+  function populateTabFromCategory(tabId, categories, competitors) {
+    const metricsDiv = document.getElementById(`comp-${tabId}-metrics`);
+    const insightsDiv = document.getElementById(`comp-${tabId}-insights`);
+
+    if (!metricsDiv || !insightsDiv) {
+      console.warn(`?? Tab ${tabId} containers not found`);
+      return;
+    }
+
+    console.log(`   ?? Populating ${tabId} tab...`);
+
+    // Build metrics HTML
+    let metricsHtml = '';
+
+    // Build insights HTML
+    let insightsHtml = '';
+
+    categories.forEach(category => {
+      const categoryName = category.name || category.category || 'Category';
+      const description = category.description || category.summary || category.insight || '';
+      const keyInsights = category.keyInsights || category.findings || [];
+      const recommendations = category.recommendations || category.actionableSteps || [];
+
+      // Add category card
+      insightsHtml += `
+            <div style="background: white; padding: 24px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #667eea;">
+              <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700; color: #111827;">${categoryName}</h4>
+              <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.7; color: #374151;">${description}</p>
+          `;
+
+      // Add key insights
+      if (keyInsights && keyInsights.length > 0) {
+        insightsHtml += `
+              <div style="margin-bottom: 16px;">
+                <h5 style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #666;">?? Key Insights</h5>
+                <ul style="margin: 0; padding-left: 20px; color: #555;">
+            `;
+        keyInsights.forEach(insight => {
+          insightsHtml += `<li style="margin-bottom: 8px; font-size: 14px; line-height: 1.6;">${insight}</li>`;
+        });
+        insightsHtml += `</ul></div>`;
+      }
+
+      // Add recommendations
+      if (recommendations && recommendations.length > 0) {
+        insightsHtml += `
+              <div style="margin-top: 16px;">
+                <h5 style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #666;">? Recommendations</h5>
+                <ol style="margin: 0; padding-left: 20px; color: #555;">
+            `;
+        recommendations.forEach(rec => {
+          insightsHtml += `<li style="margin-bottom: 8px; font-size: 14px; line-height: 1.6;">${rec}</li>`;
+        });
+        insightsHtml += `</ol></div>`;
+      }
+
+      insightsHtml += `</div>`;
+    });
+
+    if (!insightsHtml) {
+      insightsHtml = `
+            <div style="padding: 40px; text-align: center; color: #666;">
+              <div style="font-size: 48px; margin-bottom: 16px;">??</div>
+              <p style="font-size: 16px; margin: 0;">Category insights will appear here once analysis is complete.</p>
+            </div>
+          `;
+    }
+
+    // Update DOM
+    insightsDiv.innerHTML = insightsHtml;
+    console.log(`   ? ${tabId} tab populated`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // populateOverviewTab moved to UI_Tab_Overview.html
+  // ---------------------------------------------------------------------------
+
+
+  // ---------------------------------------------------------------------------
+  // populateKeywordStrategyTab moved to UI_Tab_KeywordStrategy.html
+  // ---------------------------------------------------------------------------
+
+  // Render Keyword Strategy Charts with real data
+  // ---------------------------------------------------------------------------
+  // renderKeywordStrategyCharts moved to UI_KW_Strategy_Charts.html
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Competitor Tabs moved to UI_Competitor_Tabs.html
+  // ---------------------------------------------------------------------------
+  window.initiateCompetitorAnalysis = initiateCompetitorAnalysis;
+
+  // ---------------------------------------------------------------------------
+  // Chart Fullscreen & Info moved to UI_Chart_Fullscreen.html & UI_Chart_Info.html
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // PDF Export & DIAG Tools moved to UI_PDF_Export.html
+  // ---------------------------------------------------------------------------
+
+</script>
+</body>
+

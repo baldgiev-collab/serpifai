@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Competitor Gaps</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    h3 { font-size: 16px; margin-bottom: 10px; }
+    
+    .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    
+    .form-group { margin-bottom: 15px; }
+    .form-label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    
+    .competitor-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    
+    .gap-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .summary-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .summary-value { font-size: 36px; font-weight: bold; color: var(--accent); }
+    .summary-label { font-size: 13px; color: var(--text-secondary); margin-top: 5px; }
+    
+    .gap-table {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .table-header {
+      display: grid;
+      grid-template-columns: 2fr 100px 100px 100px 1fr;
+      gap: 10px;
+      padding: 12px 15px;
+      background: var(--bg-tertiary);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 2fr 100px 100px 100px 1fr;
+      gap: 10px;
+      padding: 15px;
+      border-top: 1px solid var(--border);
+      align-items: center;
+    }
+    .table-row:hover { background: rgba(255,255,255,0.02); }
+    
+    .keyword-cell { font-weight: 500; }
+    .volume-badge {
+      background: rgba(88, 166, 255, 0.2);
+      color: var(--info);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .difficulty-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .difficulty-badge.easy { background: rgba(35, 134, 54, 0.2); color: var(--success); }
+    .difficulty-badge.medium { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+    .difficulty-badge.hard { background: rgba(248, 81, 73, 0.2); color: var(--error); }
+    
+    .opportunity-score {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .score-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .score-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+    
+    .competitor-rank { text-align: center; font-weight: 500; }
+    .rank-gap { color: var(--text-secondary); font-size: 12px; }
+    
+    .tab-container { margin-bottom: 20px; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+    .tab {
+      padding: 10px 20px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+    .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .loading { text-align: center; padding: 40px; display: none; }
+    .loading.active { display: block; }
+    .message { padding: 12px 16px; border-radius: 6px; margin-bottom: 15px; display: none; }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-row">
+      <h1>🎯 Competitor Gap Analysis</h1>
+    </div>
+    <div id="message" class="message"></div>
+    
+    <div class="section">
+      <div class="form-group">
+        <label class="form-label">Your Domain</label>
+        <input type="text" class="form-input" id="yourDomain" placeholder="yourdomain.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Competitor Domains</label>
+        <div class="competitor-inputs">
+          <input type="text" class="form-input" id="comp1" placeholder="competitor1.com">
+          <input type="text" class="form-input" id="comp2" placeholder="competitor2.com">
+          <input type="text" class="form-input" id="comp3" placeholder="competitor3.com">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="analyzeGaps()">🔍 Find Keyword Gaps</button>
+    </div>
+    
+    <div class="loading" id="loading"><p>🔄 Analyzing competitor keywords...</p></div>
+    
+    <div id="results" style="display:none;">
+      <div class="gap-summary">
+        <div class="summary-card">
+          <div class="summary-value" id="totalGaps">0</div>
+          <div class="summary-label">Keyword Gaps Found</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-value" id="easyWins">0</div>
+          <div class="summary-label">Easy Wins</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-value" id="totalVolume">0</div>
+          <div class="summary-label">Potential Traffic</div>
+        </div>
+      </div>
+      
+      <div class="tab-container">
+        <div class="tabs">
+          <div class="tab active" onclick="showTab('missing')">Missing Keywords</div>
+          <div class="tab" onclick="showTab('weak')">Weak Positions</div>
+          <div class="tab" onclick="showTab('content')">Content Gaps</div>
+        </div>
+        
+        <div id="missing" class="tab-content active">
+          <div class="gap-table">
+            <div class="table-header">
+              <div>Keyword</div>
+              <div>Volume</div>
+              <div>Difficulty</div>
+              <div>Competitors</div>
+              <div>Opportunity</div>
+            </div>
+            <div id="missingList"></div>
+          </div>
+        </div>
+        
+        <div id="weak" class="tab-content">
+          <div class="gap-table">
+            <div class="table-header">
+              <div>Keyword</div>
+              <div>Your Rank</div>
+              <div>Best Competitor</div>
+              <div>Gap</div>
+              <div>Action</div>
+            </div>
+            <div id="weakList"></div>
+          </div>
+        </div>
+        
+        <div id="content" class="tab-content">
+          <div id="contentGaps"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.tab[onclick*="' + tabId + '"]').classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+    
+    function analyzeGaps() {
+      const yourDomain = document.getElementById('yourDomain').value.trim();
+      const competitors = [
+        document.getElementById('comp1').value.trim(),
+        document.getElementById('comp2').value.trim(),
+        document.getElementById('comp3').value.trim()
+      ].filter(c => c);
+      
+      if (!yourDomain) { showMessage('Please enter your domain', 'error'); return; }
+      if (competitors.length === 0) { showMessage('Please enter at least one competitor', 'error'); return; }
+      
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('results').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(e => {
+          document.getElementById('loading').classList.remove('active');
+          showMessage(e.message, 'error');
+        })
+        .FT_analyzeCompetitorGaps({ domain: yourDomain, competitors: competitors });
+    }
+    
+    function displayResults(result) {
+      document.getElementById('loading').classList.remove('active');
+      if (!result.ok) { showMessage(result.error, 'error'); return; }
+      
+      document.getElementById('results').style.display = 'block';
+      
+      // Summary
+      const missing = result.missing || [];
+      const weak = result.weak || [];
+      const easyWins = missing.filter(m => m.difficulty < 40).length;
+      const totalVol = missing.reduce((s, m) => s + (m.volume || 0), 0);
+      
+      document.getElementById('totalGaps').textContent = missing.length + weak.length;
+      document.getElementById('easyWins').textContent = easyWins;
+      document.getElementById('totalVolume').textContent = formatNumber(totalVol);
+      
+      // Missing keywords
+      document.getElementById('missingList').innerHTML = missing.map(kw => {
+        const diffClass = kw.difficulty < 40 ? 'easy' : kw.difficulty < 60 ? 'medium' : 'hard';
+        const oppScore = Math.round((kw.volume / 100) * (100 - kw.difficulty) / 100);
+        
+        return `
+          <div class="table-row">
+            <div class="keyword-cell">${kw.keyword}</div>
+            <div><span class="volume-badge">${formatNumber(kw.volume)}</span></div>
+            <div><span class="difficulty-badge ${diffClass}">${kw.difficulty}</span></div>
+            <div class="competitor-rank">${kw.competitorCount} have it</div>
+            <div class="opportunity-score">
+              <div class="score-bar"><div class="score-fill" style="width:${Math.min(100, oppScore)}%"></div></div>
+              <span>${oppScore}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Weak positions
+      document.getElementById('weakList').innerHTML = weak.map(kw => `
+        <div class="table-row">
+          <div class="keyword-cell">${kw.keyword}</div>
+          <div class="competitor-rank">#${kw.yourRank}</div>
+          <div class="competitor-rank">#${kw.bestCompetitorRank}<div class="rank-gap">${kw.bestCompetitor}</div></div>
+          <div class="competitor-rank" style="color:var(--error);">-${kw.gap} positions</div>
+          <div><button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;">Optimize</button></div>
+        </div>
+      `).join('');
+      
+      // Content gaps
+      document.getElementById('contentGaps').innerHTML = (result.contentGaps || []).map(gap => `
+        <div class="section">
+          <h3>📝 ${gap.topic}</h3>
+          <p style="color:var(--text-secondary);margin-bottom:10px;">${gap.description}</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            ${gap.keywords.map(k => `<span class="volume-badge">${k}</span>`).join('')}
+          </div>
+        </div>
+      `).join('') || '<p style="color:var(--text-secondary);">No content gaps found.</p>';
+    }
+    
+    function formatNumber(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return n.toString();
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => msg.className = 'message', 3000);
+    }
+  </script>
+</body>
+</html>

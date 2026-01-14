@@ -1,0 +1,266 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Gemini_Insights.html - Elite Gemini Insights Extraction System               -->
+<!-- Extracts and displays deep strategic insights from Gemini analysis              -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ELITE GEMINI INSIGHTS EXTRACTION SYSTEM
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 
+   * These functions extract and display deep strategic insights from Gemini
+   * analysis for each tab. The data flow is:
+   * 
+   * 1. PHP Fetcher + Free APIs collect data FIRST
+   * 2. Data is saved to storage
+   * 3. Gemini analyzes the collected data (deep research)
+   * 4. Gemini results are saved with categories array
+   * 5. Each tab extracts its relevant category using these functions
+   * 6. Rich HTML is rendered with full strategic insights
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+
+  /**
+   * Extract Gemini insights for a specific tab
+   * Maps tab names to Gemini category IDs AND Elite intelligence objects
+   * @param {Object} data - Full competitor analysis data
+   * @param {string} tabName - Tab identifier
+   * @returns {string|null} - HTML string or null if no insights
+   */
+  function getGeminiInsightsForTab(data, tabName) {
+    console.log(`🔍 Extracting Gemini insights for tab: ${tabName}`);
+
+    // Map tabs to their corresponding Gemini category IDs AND Elite intelligence keys
+    const tabToCategoryMap = {
+      'content': { names: ['Content Strategy', 'Content Intelligence', 'Content', 'Content Strategy & Quality'], id: 4, eliteKey: 'contentStrategy' },
+      'technical': { names: ['Technical SEO', 'Technical SEO Analysis'], id: 3, eliteKey: 'technicalSeo' },
+      'keywords': { names: ['Keyword Strategy', 'Keyword Strategy Analysis'], id: 5, eliteKey: 'keywordIntelligence' },
+      'market': { names: ['Market Position', 'Market Position Intelligence'], id: 1, eliteKey: 'marketIntelligence' },
+      'brand': { names: ['Brand Strategy', 'Brand Strategy & Messaging'], id: 2, eliteKey: 'brandStrategy' },
+      'systems': { names: ['Content Production', 'Content Production Systems'], id: 6, eliteKey: 'contentSystems' },
+      'conversion': { names: ['Conversion Optimization', 'Conversion'], id: 7, eliteKey: 'conversionMonetization' },
+      'distribution': { names: ['User Experience', 'UX', 'Distribution'], id: 8, eliteKey: 'distributionVisibility' },
+      'audience': { names: ['Link Building', 'Audience', 'Audience Psychology', 'Link Building Strategy'], id: 9, eliteKey: 'audienceIntelligence' },
+      'geo': { names: ['Local SEO', 'GEO', 'AEO', 'Local SEO (if applicable)'], id: 10, eliteKey: 'geoAeo' },
+      'authority': { names: ['Social Media', 'Authority', 'Authority & Trust', 'Social Media Integration'], id: 11, eliteKey: 'authorityTrust' },
+      'performance': { names: ['Analytics', 'Performance', 'Performance & Metrics', 'Analytics & Tracking'], id: 12, eliteKey: 'performance' },
+      'opportunity': { names: ['Technology Stack', 'Strategic Opportunities', 'Paid Search', 'Competitive Gaps', 'Paid Search Strategy'], ids: [13, 14], eliteKey: 'strategicOpportunities' },
+      'scoring': { names: ['Content Distribution', 'Actionable Recommendations', 'Scoring', 'Content Distribution & Promotion'], id: 15, eliteKey: 'scoringEngine' }
+    };
+
+    // Get category mapping for this tab
+    const mapping = tabToCategoryMap[tabName];
+    if (!mapping) {
+      console.log(`⚠️ No category mapping for tab: ${tabName}`);
+      return null;
+    }
+
+    // Get analysis object from various locations
+    const analysis = data.analysis || data.geminiAnalysis || data.eliteTabIntelligence || {};
+
+    // ELITE FORMAT: Try to extract from specific intelligence objects FIRST
+    if (mapping.eliteKey) {
+      const eliteData = analysis[mapping.eliteKey] || 
+                       data.eliteTabIntelligence?.[mapping.eliteKey] ||
+                       data.analysis?.[mapping.eliteKey];
+      
+      if (eliteData && Object.keys(eliteData).length > 0) {
+        console.log(`✅ Found Elite intelligence data for ${tabName}: ${mapping.eliteKey}`);
+        return buildEliteInsightsHTML(eliteData, tabName, mapping.eliteKey);
+      }
+    }
+
+    // LEGACY FORMAT: Try to find categories array
+    let categories = null;
+    const sources = [
+      analysis?.categories,
+      data.geminiAnalysis?.categories,
+      data.eliteTabIntelligence?.categories,
+      data.categories,
+      Array.isArray(data.analysis) ? data.analysis : null
+    ];
+
+    for (const source of sources) {
+      if (source && Array.isArray(source) && source.length > 0) {
+        categories = source;
+        break;
+      }
+    }
+
+    // Final fallback: Look inside the first competitor
+    if (!categories && data.competitors?.[0]?.categories) {
+      categories = data.competitors[0].categories;
+    }
+
+    if (!categories) {
+      console.log(`ℹ️ No legacy categories array found for ${tabName} - using Elite format instead`);
+      return null;
+    }
+
+    console.log(`✅ Found ${categories.length} categories in analysis`);
+
+    // Find the matching category
+    let category = categories.find(c => {
+      const nameMatch = mapping.names.some(name =>
+        (c.name || '').toLowerCase().includes(name.toLowerCase())
+      );
+      if (nameMatch) return true;
+      if (mapping.ids && Array.isArray(mapping.ids)) {
+        return mapping.ids.includes(c.id);
+      }
+      return c.id === mapping.id;
+    });
+
+    if (!category) {
+      console.log(`⚠️ Category not found for ${tabName} (tried: ${mapping.names.join(', ')})`);
+      return null;
+    }
+
+    console.log(`✅ Found category: ${category.name} (ID: ${category.id})`);
+
+    // Build the strategic HTML
+    return window.buildTabInsightsHTML ? window.buildTabInsightsHTML(category, tabName) : '';
+  }
+
+  /**
+   * Build HTML from Elite Intelligence data format
+   */
+  function buildEliteInsightsHTML(eliteData, tabName, eliteKey) {
+    let html = '<div class="elite-insights" style="padding: 20px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; margin-bottom: 20px;">';
+    
+    if (eliteKey === 'marketIntelligence') {
+      html += renderMarketIntelligenceInsights(eliteData);
+    } else if (eliteKey === 'keywordIntelligence') {
+      html += renderKeywordIntelligenceInsights(eliteData);
+    } else if (eliteKey === 'geoAeo') {
+      html += renderGeoAeoInsights(eliteData);
+    } else {
+      html += renderGenericEliteInsights(eliteData, tabName);
+    }
+    
+    html += '</div>';
+    return html;
+  }
+
+  /**
+   * Render Market Intelligence insights from Elite format
+   */
+  function renderMarketIntelligenceInsights(data) {
+    let html = '<h4 style="margin: 0 0 16px; color: #1e293b; font-size: 16px;">🌍 Market Intelligence Insights</h4>';
+    
+    if (data.categoryMapping) {
+      html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
+        <div style="font-weight: 600; color: #3b82f6; margin-bottom: 8px;">Category: ${data.categoryMapping.primaryCategory || 'N/A'}</div>
+        ${data.categoryMapping.subCategories ? `<div style="font-size: 13px; color: #64748b;">Sub-categories: ${data.categoryMapping.subCategories.join(', ')}</div>` : ''}
+      </div>`;
+    }
+    
+    if (data.narrativeAudit?.recommendedNarrative) {
+      html += `<div style="background: #eef2ff; padding: 16px; border-radius: 10px; border-left: 4px solid #6366f1;">
+        <div style="font-weight: 600; color: #4f46e5; margin-bottom: 6px;">💡 Recommended Narrative</div>
+        <div style="font-size: 14px; color: #1e293b;">${data.narrativeAudit.recommendedNarrative}</div>
+      </div>`;
+    }
+    
+    if (data.categoryGaps?.priorityGaps?.length > 0) {
+      html += `<div style="margin-top: 12px;">
+        <div style="font-weight: 600; color: #dc2626; margin-bottom: 8px;">🎯 Priority Gaps</div>
+        ${data.categoryGaps.priorityGaps.map(gap => `<div style="background: #fef2f2; padding: 10px; border-radius: 8px; margin-bottom: 6px; font-size: 13px;">• ${gap}</div>`).join('')}
+      </div>`;
+    }
+    
+    return html;
+  }
+
+  /**
+   * Render Keyword Intelligence insights from Elite format
+   */
+  function renderKeywordIntelligenceInsights(data) {
+    let html = '<h4 style="margin: 0 0 16px; color: #1e293b; font-size: 16px;">🔑 Keyword Intelligence Insights</h4>';
+    
+    if (data.primaryKeywords?.length > 0) {
+      html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
+        <div style="font-weight: 600; color: #059669; margin-bottom: 8px;">Top Keywords</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          ${data.primaryKeywords.slice(0, 10).map(kw => `<span style="background: #ecfdf5; color: #065f46; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${typeof kw === 'string' ? kw : kw.keyword || kw.term || kw}</span>`).join('')}
+        </div>
+      </div>`;
+    }
+    
+    if (data.keywordGaps?.length > 0) {
+      html += `<div style="background: #fef3c7; padding: 16px; border-radius: 10px;">
+        <div style="font-weight: 600; color: #92400e; margin-bottom: 8px;">⚠️ Keyword Gaps</div>
+        ${data.keywordGaps.slice(0, 5).map(gap => `<div style="font-size: 13px; color: #78350f; margin-bottom: 4px;">• ${typeof gap === 'string' ? gap : gap.keyword || gap.gap || JSON.stringify(gap)}</div>`).join('')}
+      </div>`;
+    }
+    
+    return html;
+  }
+
+  /**
+   * Render GEO/AEO insights from Elite format
+   */
+  function renderGeoAeoInsights(data) {
+    let html = '<h4 style="margin: 0 0 16px; color: #1e293b; font-size: 16px;">🤖 GEO + AEO Intelligence Insights</h4>';
+    
+    if (data.aiReadinessScores?.length > 0) {
+      html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
+        <div style="font-weight: 600; color: #06b6d4; margin-bottom: 8px;">AI Readiness Scores</div>
+        ${data.aiReadinessScores.map(score => `<div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
+          <span>${score.domain || score.competitor}</span>
+          <span style="font-weight: 600; color: ${(score.score || score.readiness) >= 70 ? '#059669' : '#f59e0b'};">${score.score || score.readiness}%</span>
+        </div>`).join('')}
+      </div>`;
+    }
+    
+    if (data.schemaRecommendations?.length > 0) {
+      html += `<div style="background: #ecfeff; padding: 16px; border-radius: 10px;">
+        <div style="font-weight: 600; color: #0891b2; margin-bottom: 8px;">📋 Schema Recommendations</div>
+        ${data.schemaRecommendations.slice(0, 5).map(rec => `<div style="font-size: 13px; color: #0e7490; margin-bottom: 4px;">• ${typeof rec === 'string' ? rec : rec.schema || rec.recommendation || JSON.stringify(rec)}</div>`).join('')}
+      </div>`;
+    }
+    
+    return html;
+  }
+
+  /**
+   * Generic renderer for Elite Intelligence data
+   */
+  function renderGenericEliteInsights(data, tabName) {
+    let html = `<h4 style="margin: 0 0 16px; color: #1e293b; font-size: 16px;">📊 ${tabName.charAt(0).toUpperCase() + tabName.slice(1)} Intelligence</h4>`;
+    
+    const priorityKeys = ['summary', 'overview', 'recommendations', 'insights', 'findings', 'opportunities', 'gaps', 'analysis'];
+    
+    for (const key of priorityKeys) {
+      if (data[key]) {
+        const value = data[key];
+        if (typeof value === 'string') {
+          html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
+            <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">${key.charAt(0).toUpperCase() + key.slice(1)}</div>
+            <div style="font-size: 14px; color: #1e293b;">${value}</div>
+          </div>`;
+        } else if (Array.isArray(value) && value.length > 0) {
+          html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
+            <div style="font-weight: 600; color: #475569; margin-bottom: 8px;">${key.charAt(0).toUpperCase() + key.slice(1)}</div>
+            ${value.slice(0, 5).map(item => `<div style="font-size: 13px; color: #374151; margin-bottom: 4px; padding-left: 12px; border-left: 2px solid #e5e7eb;">• ${typeof item === 'string' ? item : JSON.stringify(item)}</div>`).join('')}
+          </div>`;
+        }
+      }
+    }
+    
+    return html;
+  }
+
+  // Export functions globally
+  window.getGeminiInsightsForTab = getGeminiInsightsForTab;
+  window.buildEliteInsightsHTML = buildEliteInsightsHTML;
+  window.renderMarketIntelligenceInsights = renderMarketIntelligenceInsights;
+  window.renderKeywordIntelligenceInsights = renderKeywordIntelligenceInsights;
+  window.renderGeoAeoInsights = renderGeoAeoInsights;
+  window.renderGenericEliteInsights = renderGenericEliteInsights;
+
+})();
+</script>

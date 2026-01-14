@@ -1,0 +1,378 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ELITE SERP MODULE
+ * SERP Feature Ownership, Strategic Insight, Backlinks, Content Gap Analysis
+ * Requires: ELITE_Config.html, ELITE_Helpers.html
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Render SERP Feature Ownership Section
+ */
+function renderSerpFeatureOwnership(data) {
+  if (!data || !Array.isArray(data) || data.length === 0) return '';
+
+  return `
+  <div class="elite-serp-features" style="margin-bottom: 40px; animation: eliteFadeInScale 0.6s ease-out;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h4 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800; letter-spacing: -0.02em;">🎯 SERP Feature Ownership</h4>
+        <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Featured Snippets, PAA, Rich Results & SERP Real Estate Analysis</p>
+      </div>
+      <span style="background: linear-gradient(135deg, #1e40af, #1d4ed8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">SERP PROOF</span>
+    </div>
+    
+    <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 900px;">
+          <thead>
+            <tr style="background: linear-gradient(135deg, #0f172a, #1e3a5f);">
+              <th style="padding: 16px; text-align: left; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 0.05em; position: sticky; left: 0; background: #0f172a;">Competitor</th>
+              ${['Featured Snippet', 'PAA', 'Image Pack', 'Video', 'Knowledge Panel', 'Local Pack', 'Sitelinks', 'FAQ', 'Reviews', 'News'].map(feature => `
+                <th style="padding: 16px; text-align: center; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.9); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;">${feature}</th>
+              `).join('')}
+              <th style="padding: 16px; text-align: center; font-size: 11px; font-weight: 700; color: white; text-transform: uppercase;">Total Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.slice(0, 6).map((comp, idx) => {
+              const features = comp.features || {};
+              const featureKeys = ['featuredSnippet', 'paa', 'imagePack', 'videoPack', 'knowledgePanel', 'localPack', 'sitelinks', 'faqRichResult', 'reviewRichResult', 'newsCarousel'];
+              const totalScore = comp.totalSerpScore || featureKeys.reduce((sum, key) => sum + (features[key]?.owned ? 10 : 0), 0);
+              const scoreColor = totalScore >= 60 ? '#10b981' : totalScore >= 30 ? '#f59e0b' : '#ef4444';
+              
+              return `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                  <td style="padding: 16px; font-weight: 700; color: #1e293b; font-size: 13px; position: sticky; left: 0; background: inherit;">${comp.domain || 'Unknown'}</td>
+                  ${featureKeys.map(key => {
+                    const feature = features[key] || {};
+                    const owned = feature.owned;
+                    const eligibilityScore = feature.eligibilityScore || 0;
+                    
+                    let cellBg, cellColor, cellIcon;
+                    if (owned) {
+                      cellBg = '#dcfce7'; cellColor = '#166534'; cellIcon = '✓';
+                    } else if (eligibilityScore >= 70) {
+                      cellBg = '#fef3c7'; cellColor = '#92400e'; cellIcon = '◐';
+                    } else {
+                      cellBg = '#f1f5f9'; cellColor = '#94a3b8'; cellIcon = '○';
+                    }
+                    
+                    return `
+                      <td style="padding: 12px; text-align: center;">
+                        <div style="display: inline-flex; flex-direction: column; align-items: center; padding: 8px 12px; background: ${cellBg}; border-radius: 8px; min-width: 50px;">
+                          <span style="font-size: 16px; font-weight: 800; color: ${cellColor};">${cellIcon}</span>
+                          <span style="font-size: 9px; color: ${cellColor}; font-weight: 600; margin-top: 2px;">${eligibilityScore}%</span>
+                        </div>
+                      </td>
+                    `;
+                  }).join('')}
+                  <td style="padding: 16px; text-align: center;">
+                    <div style="display: inline-block; padding: 10px 16px; background: ${scoreColor}15; border-radius: 12px;">
+                      <span style="font-size: 20px; font-weight: 900; color: ${scoreColor};">${totalScore}</span>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div style="display: flex; gap: 24px; margin-top: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="width: 24px; height: 24px; background: #dcfce7; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #166534;">✓</span>
+        <span style="font-size: 11px; color: #475569;">Owns Feature</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="width: 24px; height: 24px; background: #fef3c7; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #92400e;">◐</span>
+        <span style="font-size: 11px; color: #475569;">High Eligibility (70%+)</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="width: 24px; height: 24px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #94a3b8;">○</span>
+        <span style="font-size: 11px; color: #475569;">Low Eligibility</span>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+/**
+ * Render Section Strategic Insight Panel (SWOT)
+ */
+function renderSectionStrategicInsight(insight, sectionName) {
+  if (!insight) return '';
+
+  const swot = insight.swot || {};
+  const recommendations = insight.recommendations || [];
+  const opportunityScore = insight.opportunityScore || 0;
+  const oppColor = opportunityScore >= 70 ? '#10b981' : opportunityScore >= 40 ? '#f59e0b' : '#ef4444';
+  
+  return `
+  <div class="elite-strategic-insight" style="margin: 24px 0; padding: 28px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%); border-radius: 20px; border: 1px solid #7dd3fc; box-shadow: 0 4px 20px rgba(14, 165, 233, 0.1);">
+    
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          <span style="font-size: 28px;">🧠</span>
+          <h4 style="margin: 0; color: #0c4a6e; font-size: 18px; font-weight: 800;">Strategic Analysis${sectionName ? ': ' + sectionName : ''}</h4>
+        </div>
+        <p style="margin: 0; color: #0369a1; font-size: 13px;">${insight.executiveSummary || 'AI-powered strategic insights for board-level decision making.'}</p>
+      </div>
+      <div style="text-align: center; padding: 16px 24px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div style="font-size: 36px; font-weight: 900; color: ${oppColor}; line-height: 1;">${opportunityScore}</div>
+        <div style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">Opportunity Score</div>
+      </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+      <div style="background: #dcfce7; border-radius: 16px; padding: 16px; border: 1px solid #86efac;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span style="font-size: 18px;">💪</span>
+          <span style="font-size: 12px; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.05em;">Strengths</span>
+        </div>
+        <ul style="margin: 0; padding-left: 16px; color: #15803d; font-size: 11px; line-height: 1.6;">
+          ${(swot.strengths || ['Data collection active']).slice(0, 3).map(s => `<li>${s}</li>`).join('')}
+        </ul>
+      </div>
+      
+      <div style="background: #fef2f2; border-radius: 16px; padding: 16px; border: 1px solid #fecaca;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span style="font-size: 18px;">⚠️</span>
+          <span style="font-size: 12px; font-weight: 800; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em;">Weaknesses</span>
+        </div>
+        <ul style="margin: 0; padding-left: 16px; color: #b91c1c; font-size: 11px; line-height: 1.6;">
+          ${(swot.weaknesses || ['Analysis in progress']).slice(0, 3).map(w => `<li>${w}</li>`).join('')}
+        </ul>
+      </div>
+      
+      <div style="background: #eff6ff; border-radius: 16px; padding: 16px; border: 1px solid #bfdbfe;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span style="font-size: 18px;">🚀</span>
+          <span style="font-size: 12px; font-weight: 800; color: #1e40af; text-transform: uppercase; letter-spacing: 0.05em;">Opportunities</span>
+        </div>
+        <ul style="margin: 0; padding-left: 16px; color: #1d4ed8; font-size: 11px; line-height: 1.6;">
+          ${(swot.opportunities || ['Market analysis pending']).slice(0, 3).map(o => `<li>${o}</li>`).join('')}
+        </ul>
+      </div>
+      
+      <div style="background: #fef3c7; border-radius: 16px; padding: 16px; border: 1px solid #fde68a;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span style="font-size: 18px;">🎯</span>
+          <span style="font-size: 12px; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 0.05em;">Threats</span>
+        </div>
+        <ul style="margin: 0; padding-left: 16px; color: #b45309; font-size: 11px; line-height: 1.6;">
+          ${(swot.threats || ['Competitive monitoring active']).slice(0, 3).map(t => `<li>${t}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+    
+    ${recommendations.length > 0 ? `
+      <div style="background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <span style="font-size: 18px;">📋</span>
+          <span style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Priority Recommendations</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          ${recommendations.slice(0, 4).map((rec) => {
+            const priorityColors = { HIGH: '#dc2626', MEDIUM: '#f59e0b', LOW: '#10b981' };
+            return `
+              <div style="display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: #f8fafc; border-radius: 12px; border-left: 4px solid ${priorityColors[rec.priority] || '#3b82f6'};">
+                <span style="font-size: 12px; font-weight: 800; color: ${priorityColors[rec.priority] || '#3b82f6'}; min-width: 60px;">${rec.priority || 'MEDIUM'}</span>
+                <div style="flex: 1;">
+                  <div style="font-size: 13px; font-weight: 600; color: #1e293b;">${rec.action || rec}</div>
+                  ${rec.effort ? `<div style="font-size: 10px; color: #64748b; margin-top: 4px;">Effort: ${rec.effort} | Impact: ${rec.impact || 'High'}</div>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    ` : ''}
+    
+    ${insight.aiInsight ? `
+      <div style="margin-top: 20px; padding: 16px 20px; background: linear-gradient(135deg, #faf5ff, #ede9fe); border-radius: 12px; border: 1px solid #c4b5fd;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="font-size: 16px;">✨</span>
+          <span style="font-size: 11px; font-weight: 700; color: #6d28d9; text-transform: uppercase;">Gemini Strategic Insight</span>
+        </div>
+        <p style="margin: 0; font-size: 13px; color: #5b21b6; line-height: 1.6; font-style: italic;">${insight.aiInsight}</p>
+      </div>
+    ` : ''}
+  </div>
+  `;
+}
+
+/**
+ * Render Backlink Profile Forensics
+ */
+function renderBacklinkProfileForensics(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+  
+  const competitors = data.competitors || data || [];
+  
+  let html = `
+  <div class="elite-backlink-forensics" style="margin-top: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h3 style="margin: 0; color: #0f172a; font-size: 22px; font-weight: 800;">🔗 Backlink Profile Forensics</h3>
+        <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">SEMrush-Level Link Analysis with Anchor Distribution & Velocity</p>
+      </div>
+      <span style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: 700;">PHASE 4</span>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
+      ${(Array.isArray(competitors) ? competitors : []).slice(0, 6).map(comp => renderBacklinkCard(comp)).join('')}
+    </div>
+  </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
+function renderBacklinkCard(comp) {
+  const profile = comp.backlinkProfile || comp;
+  const anchors = profile.anchorDistribution || {};
+  const linkTypes = profile.linkTypes || {};
+  
+  return `
+  <div class="backlink-card" style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+    <div style="padding: 16px 20px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+      <div style="font-weight: 700; color: #0f172a; font-size: 14px;">${comp.domain || 'Unknown'}</div>
+      <span style="padding: 6px 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border-radius: 20px; font-size: 11px; font-weight: 700;">
+        DR ${profile.domainRating || profile.domainAuthority || 0}
+      </span>
+    </div>
+    
+    <div style="padding: 16px 20px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+        <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 10px;">
+          <div style="font-size: 18px; font-weight: 800; color: #0f172a;">${(profile.totalBacklinks || 0).toLocaleString()}</div>
+          <div style="font-size: 9px; color: #64748b; text-transform: uppercase;">Backlinks</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 10px;">
+          <div style="font-size: 18px; font-weight: 800; color: #0f172a;">${(profile.referringDomains || 0).toLocaleString()}</div>
+          <div style="font-size: 9px; color: #64748b; text-transform: uppercase;">Ref Domains</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: ${(profile.velocity || 0) > 0 ? '#dcfce7' : '#fef2f2'}; border-radius: 10px;">
+          <div style="font-size: 18px; font-weight: 800; color: ${(profile.velocity || 0) > 0 ? '#10b981' : '#ef4444'};">
+            ${(profile.velocity || 0) > 0 ? '+' : ''}${profile.velocity || 0}
+          </div>
+          <div style="font-size: 9px; color: #64748b; text-transform: uppercase;">30d Velocity</div>
+        </div>
+      </div>
+      
+      ${Object.keys(anchors).length > 0 ? `
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Anchor Distribution</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${Object.entries(anchors).slice(0, 5).map(([type, pct]) => `
+              <span style="padding: 4px 10px; background: #e0f2fe; color: #0369a1; border-radius: 12px; font-size: 10px; font-weight: 600;">${type}: ${pct}%</span>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      
+      ${Object.keys(linkTypes).length > 0 ? `
+        <div>
+          <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Link Types</div>
+          <div style="display: flex; gap: 12px;">
+            ${Object.entries(linkTypes).slice(0, 3).map(([type, pct]) => `
+              <div style="flex: 1; text-align: center; padding: 8px; background: #f1f5f9; border-radius: 8px;">
+                <div style="font-size: 14px; font-weight: 700; color: #0f172a;">${pct}%</div>
+                <div style="font-size: 9px; color: #64748b; text-transform: capitalize;">${type}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  </div>
+  `;
+}
+
+/**
+ * Render Content Gap Analysis
+ */
+function renderContentGapAnalysis(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+  
+  const gaps = data.gaps || data.contentGaps || data || [];
+  const clusters = data.topicClusters || [];
+  
+  let html = `
+  <div class="elite-content-gap" style="margin-top: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h3 style="margin: 0; color: #0f172a; font-size: 22px; font-weight: 800;">📊 Content Gap Analysis</h3>
+        <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Topic Clusters, Keyword Gaps & Content Freshness Analysis</p>
+      </div>
+      <span style="background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: 700;">CONTENT INTEL</span>
+    </div>
+    
+    ${clusters.length > 0 ? `
+      <div style="margin-bottom: 24px;">
+        <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">Topic Clusters</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+          ${clusters.slice(0, 8).map(cluster => `
+            <span style="padding: 8px 16px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: #047857; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid #a7f3d0;">
+              ${cluster.name || cluster} (${cluster.count || cluster.keywords || '?'})
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+      ${(Array.isArray(gaps) ? gaps : []).slice(0, 6).map(gap => renderContentGapCard(gap)).join('')}
+    </div>
+  </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
+function renderContentGapCard(gap) {
+  const severity = gap.severity || gap.priority || 'medium';
+  const colors = { high: '#dc2626', critical: '#dc2626', medium: '#f59e0b', low: '#10b981' };
+  
+  return `
+  <div class="content-gap-card" style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 16px 20px; border-left: 4px solid ${colors[severity] || '#f59e0b'};">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+      <div style="font-size: 14px; font-weight: 700; color: #0f172a;">${gap.topic || gap.keyword || 'Content Gap'}</div>
+      <span style="padding: 4px 10px; background: ${colors[severity]}15; color: ${colors[severity]}; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase;">${severity}</span>
+    </div>
+    
+    <div style="font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 12px;">${gap.description || gap.opportunity || 'Content opportunity identified'}</div>
+    
+    <div style="display: flex; gap: 16px; font-size: 11px;">
+      ${gap.searchVolume ? `<span style="color: #475569;">📊 ${gap.searchVolume.toLocaleString()} vol</span>` : ''}
+      ${gap.difficulty ? `<span style="color: #475569;">💪 KD ${gap.difficulty}</span>` : ''}
+      ${gap.competitorsCovering ? `<span style="color: #475569;">🏢 ${gap.competitorsCovering} covering</span>` : ''}
+    </div>
+    
+    ${gap.recommendedAction ? `
+      <div style="margin-top: 12px; padding: 10px 14px; background: #f0f9ff; border-radius: 8px; font-size: 11px; color: #0369a1;">
+        💡 ${gap.recommendedAction}
+      </div>
+    ` : ''}
+  </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderSerpFeatureOwnership = renderSerpFeatureOwnership;
+window.renderSectionStrategicInsight = renderSectionStrategicInsight;
+window.renderBacklinkProfileForensics = renderBacklinkProfileForensics;
+window.renderBacklinkCard = renderBacklinkCard;
+window.renderContentGapAnalysis = renderContentGapAnalysis;
+window.renderContentGapCard = renderContentGapCard;
+
+console.log('✅ ELITE_SERP.html loaded');
+</script>

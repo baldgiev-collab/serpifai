@@ -1,0 +1,698 @@
+<!--
+  COMP_Analysis_Init.html
+  Competitor Analysis Initialization & Button Progress Functions
+  Extracted from UI_Scripts_App.html (Lines 3789-4350)
+  Phase 5 of Proxy Barrel Refactoring
+  
+  Functions exposed to window scope:
+  - initiateCompetitorAnalysis
+  - transformButtonToProgress
+  - startButtonProgressAnimation
+  - restoreButton
+  - handleCompetitorAnalysisSuccess
+-->
+<script>
+  console.log('🔧 COMP_Analysis_Init.html loading...');
+
+  // ================================================================
+  // COMPETITOR INTELLIGENCE FUNCTIONS - BUTTON-BASED PROGRESS
+  // ================================================================
+
+  /**
+   * Initiate competitor analysis process with button progress
+   */
+  window.initiateCompetitorAnalysis = function() {
+    console.log('🚀 Starting Competitor Analysis...');
+
+    // Get competitor domains from input field
+    const competitorsInput = document.getElementById('keyCompetitors');
+    if (!competitorsInput || !competitorsInput.value.trim()) {
+      showToast('⚠️ Please enter at least 2 competitor domains');
+      return;
+    }
+
+    // Parse competitors (comma-separated)
+    const competitors = competitorsInput.value
+      .split(',')
+      .map(c => c.trim())
+      .filter(c => c.length > 0);
+
+    if (competitors.length < 2 || competitors.length > 6) {
+      showToast('⚠️ Please enter 2-6 competitor domains');
+      return;
+    }
+
+    // Get current project ID
+    const projectId = getCurrentProjectId();
+    if (!projectId) {
+      showToast('⚠️ Please save your project first');
+      return;
+    }
+
+    // Get your domain (from targetKeyword or project data)
+    const yourDomain = document.getElementById('targetKeyword')?.value || 'Your Site';
+
+    // Transform button to progress mode
+    window.transformButtonToProgress(competitors.length);
+
+    // Collect project context from form
+    const projectContext = {
+      brandName: yourDomain,
+      projectId: projectId,
+      targetAudience: document.getElementById('targetAudience')?.value || '',
+      productOrService: document.getElementById('productOrService')?.value || '',
+      coreTopic: document.getElementById('coreTopic')?.value || ''
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v22.0 PARALLEL ENGINE - Fire parallel google.script.run calls
+    // This bypasses the 6-minute timeout by running each competitor separately
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('🚀 Using v22.0 Parallel Engine for timeout-proof execution...');
+    console.log('   Competitors:', competitors.length);
+    console.log('   Your Domain:', yourDomain);
+
+    // Check if ParallelEngine is available
+    if (typeof ParallelEngine !== 'undefined' && ParallelEngine.startAnalysis) {
+      console.log('   ⚡ ParallelEngine detected - using parallel execution');
+      
+      // Start parallel analysis with callbacks
+      ParallelEngine.startAnalysis(projectId, competitors, yourDomain, {
+        onStart: function(data) {
+          console.log('📡 ParallelEngine started:', data);
+        },
+        
+        onJobCreated: function(data) {
+          console.log('📋 Job created:', data.jobToken);
+        },
+        
+        onCompetitorStarted: function(data) {
+          console.log(`   → Started: ${data.domain}`);
+          window.updateButtonPhase && window.updateButtonPhase(`Analyzing: ${data.domain}...`);
+        },
+        
+        onCompetitorComplete: function(data) {
+          console.log(`   ✅ Complete: ${data.domain} (${data.executionTimeMs}ms)`);
+        },
+        
+        onCompetitorFailed: function(data) {
+          console.warn(`   ⚠️ Failed: ${data.domain}:`, data.error);
+        },
+        
+        onProgress: function(data) {
+          const pct = Math.round((data.completedCount / data.totalCount) * 100);
+          window.updateButtonProgress && window.updateButtonProgress(pct);
+        },
+        
+        onComplete: function(result) {
+          console.log('🏁 ParallelEngine complete:', result);
+          
+          // Build response in the format handleCompetitorAnalysisSuccess expects
+          const response = {
+            success: true,
+            competitors: result.comparisonMatrix || [],
+            overview: result.overview || {},
+            dashboardCharts: result.dashboardCharts || {},
+            analysis: {},
+            eliteTabIntelligence: null,
+            storage: { mysql: true, sheets: false },
+            metadata: {
+              competitorCount: result.competitorCount,
+              savedToMySQL: true,
+              totalTimeMs: result.totalTimeMs,
+              executionMode: 'parallel-v22'
+            }
+          };
+          
+          window.handleCompetitorAnalysisSuccess(response);
+        },
+        
+        onError: function(data) {
+          console.error('❌ ParallelEngine error:', data);
+          window.handleCompetitorAnalysisError(new Error(data.error || 'Parallel execution failed'));
+        },
+        
+        onTimeout: function(data) {
+          console.error('⏰ ParallelEngine timeout:', data);
+          window.handleCompetitorAnalysisError(new Error(
+            `Analysis timeout after ${Math.round(data.elapsedMs / 1000)}s. ` +
+            `Completed ${data.completedCount}/${data.totalCount} competitors.`
+          ));
+        }
+      });
+      
+    } else {
+      // Fallback to legacy single-call method (may timeout with 5+ competitors)
+      console.log('   ⚠️ ParallelEngine not available - using legacy method');
+      console.log('   Warning: May timeout with 5+ competitors');
+      
+      google.script.run
+        .withSuccessHandler(window.handleCompetitorAnalysisSuccess)
+        .withFailureHandler(window.handleCompetitorAnalysisError)
+        .runEliteCompetitorAnalysis(competitors, projectContext);
+    }
+  };
+
+  /**
+   * Transform button to progress display mode
+   */
+  window.transformButtonToProgress = function(competitorCount) {
+    console.log('  Transforming button to progress mode for', competitorCount, 'competitors');
+
+    const button = document.getElementById('btnAnalyzeCompetitors');
+    if (!button) {
+      console.error('❌ Button not found: btnAnalyzeCompetitors');
+      return;
+    }
+
+    // Store original button content
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+
+    // Disable button
+    button.disabled = true;
+    button.style.position = 'relative';
+    button.style.minHeight = '80px';
+    button.style.padding = '12px 20px';
+    button.style.display = 'flex';
+    button.style.flexDirection = 'column';
+    button.style.alignItems = 'stretch';
+    button.style.gap = '8px';
+    button.style.cursor = 'not-allowed';
+    button.style.opacity = '0.95';
+
+    // Calculate estimated time (45 seconds per competitor)
+    const totalSeconds = competitorCount * 45;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const estimatedTime = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+    // Insert progress UI into button
+    button.innerHTML = `
+          <style>
+            .btn-progress-phase {
+              font-size: 13px;
+              font-weight: 600;
+              color: #ffffff;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+              text-align: left;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .btn-progress-icon {
+              font-size: 16px;
+              animation: pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes pulse {
+              0%, 100% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.15); opacity: 0.8; }
+            }
+            .btn-progress-bar-container {
+              width: 100%;
+              height: 10px;
+              background: rgba(0,0,0,0.2);
+              border-radius: 5px;
+              overflow: hidden;
+              position: relative;
+              box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            }
+            .btn-progress-bar-fill {
+              height: 100%;
+              background: linear-gradient(90deg, #34a853 0%, #4caf50 50%, #8bc34a 100%);
+              border-radius: 5px;
+              transition: width 0.3s ease-out;
+              width: 0%;
+              box-shadow: 0 1px 3px rgba(52,168,83,0.5);
+            }
+            .btn-progress-details {
+              display: flex;
+              justify-content: space-between;
+              font-size: 12px;
+            }
+            .btn-progress-percentage {
+              font-weight: 700;
+              color: #ffffff;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            }
+            .btn-progress-time {
+              color: #ffffff;
+              opacity: 0.9;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            }
+          </style>
+          <div class="btn-progress-phase" id="btnProgressPhase">
+            <span class="btn-progress-icon">📊</span>
+            <span id="btnProgressPhaseText">Collecting competitor data...</span>
+          </div>
+          <div class="btn-progress-bar-container">
+            <div class="btn-progress-bar-fill" id="btnProgressBarFill"></div>
+          </div>
+          <div class="btn-progress-details">
+            <span class="btn-progress-percentage" id="btnProgressPercentage">0%</span>
+            <span class="btn-progress-time" id="btnProgressTime">Est: ${estimatedTime}</span>
+          </div>
+        `;
+
+    // Start progress animation
+    window.startButtonProgressAnimation(competitorCount, totalSeconds);
+
+    // Open Competitor Intelligence tab
+    if (typeof openCompetitorIntelligenceTab === 'function') {
+      openCompetitorIntelligenceTab();
+    }
+
+    // Hide empty state in competitor tab
+    const emptyState = document.getElementById('comp-empty-state');
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
+  };
+
+  /**
+   * Animate progress in button with phase tracking
+   */
+  window.startButtonProgressAnimation = function(competitorCount, totalSeconds) {
+    console.log('🎬 Starting button progress animation...');
+
+    const progressBar = document.getElementById('btnProgressBarFill');
+    const progressPercentage = document.getElementById('btnProgressPercentage');
+    const progressPhaseText = document.getElementById('btnProgressPhaseText');
+    const progressIcon = document.querySelector('.btn-progress-icon');
+    const progressTime = document.getElementById('btnProgressTime');
+
+    if (!progressBar || !progressPercentage || !progressPhaseText) {
+      console.error('❌ Progress elements not found in button');
+      return;
+    }
+
+    // Define phases with icons, labels, and progress ranges
+    const phases = [
+      {
+        start: 0,
+        end: 30,
+        icon: '📊',
+        text: 'Collecting competitor data...',
+        messages: [
+          'Fetching SEO metrics...',
+          'Analyzing technical data...',
+          'Collecting backlink profiles...',
+          'Gathering keyword rankings...'
+        ]
+      },
+      {
+        start: 30,
+        end: 55,
+        icon: '🧠',
+        text: 'AI analysis in progress...',
+        messages: [
+          'Generating competitive insights...',
+          'Analyzing content strategies...',
+          'Evaluating brand positioning...',
+          'Identifying opportunities...'
+        ]
+      },
+      {
+        start: 55,
+        end: 75,
+        icon: '📈',
+        text: 'Scoring and ranking...',
+        messages: [
+          'Calculating competitive scores...',
+          'Ranking competitors...',
+          'Building comparison matrices...',
+          'Generating recommendations...'
+        ]
+      },
+      {
+        start: 75,
+        end: 90,
+        icon: '💾',
+        text: 'Saving results...',
+        messages: [
+          'Saving to Google Sheets...',
+          'Organizing intelligence data...',
+          'Preparing visualizations...'
+        ]
+      },
+      {
+        start: 90,
+        end: 98,
+        icon: '✅',
+        text: 'Finalizing...',
+        messages: [
+          'Finalizing analysis...',
+          'Preparing dashboard...',
+          'Almost done...'
+        ]
+      }
+    ];
+
+    let progress = 0;
+    let currentPhaseIndex = 0;
+    let messageIndex = 0;
+    let startTime = Date.now();
+    let tickCount = 0;
+
+    // Calculate intelligent update interval based on total time
+    const totalTicks = Math.floor(totalSeconds / 1.5);
+    const progressPerTick = 95 / totalTicks;
+    const updateInterval = 1500;
+
+    const interval = setInterval(() => {
+      tickCount++;
+
+      // Calculate elapsed and remaining time
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, totalSeconds - elapsed);
+
+      // Calculate progress based on actual elapsed time
+      const timeBasedProgress = (elapsed / totalSeconds) * 95;
+      progress = Math.min(timeBasedProgress + progressPerTick, 95);
+
+      // Update progress bar
+      progressBar.style.width = progress + '%';
+      progressPercentage.textContent = Math.round(progress) + '%';
+
+      // Format remaining time
+      const remainingMin = Math.floor(remaining / 60);
+      const remainingSec = remaining % 60;
+      const remainingText = remaining > 0
+        ? (remainingMin > 0
+          ? `${remainingMin}m ${remainingSec}s left`
+          : `${remainingSec}s left`)
+        : 'Completing...';
+      progressTime.textContent = remainingText;
+
+      // Find current phase based on progress
+      const activePhase = phases.find(p => progress >= p.start && progress < p.end);
+
+      if (activePhase && phases.indexOf(activePhase) !== currentPhaseIndex) {
+        currentPhaseIndex = phases.indexOf(activePhase);
+        messageIndex = 0;
+
+        // Update phase display
+        progressIcon.textContent = activePhase.icon;
+        progressPhaseText.textContent = activePhase.text;
+
+        console.log(`📍 Phase ${currentPhaseIndex + 1}: ${activePhase.text} (${Math.round(progress)}%)`);
+      }
+
+      // Rotate messages within phase every 3 seconds
+      if (activePhase && tickCount % 2 === 0) {
+        messageIndex = (messageIndex + 1) % activePhase.messages.length;
+        progressPhaseText.textContent = activePhase.messages[messageIndex];
+      }
+
+    }, updateInterval);
+
+    // Store interval ID for later cleanup
+    window.competitorProgressInterval = interval;
+
+    console.log(`✅ Button progress animation started (${totalSeconds}s estimated, updating every ${updateInterval}ms)`);
+  };
+
+  /**
+   * Restore button to original state
+   */
+  window.restoreButton = function(success) {
+    if (success === undefined) success = true;
+    
+    const button = document.getElementById('btnAnalyzeCompetitors');
+    if (!button) return;
+
+    // Clear progress interval
+    if (window.competitorProgressInterval) {
+      clearInterval(window.competitorProgressInterval);
+      window.competitorProgressInterval = null;
+    }
+
+    // Restore original content
+    if (button.dataset.originalHtml) {
+      button.innerHTML = button.dataset.originalHtml;
+    } else {
+      button.innerHTML = '<span class="btn-icon">⚡</span><span class="btn-text">Competitor Analysis</span>';
+    }
+
+    // Re-enable button
+    button.disabled = false;
+    button.style.cursor = 'pointer';
+    button.style.opacity = '1';
+    button.style.minHeight = '';
+    button.style.padding = '';
+    button.style.display = '';
+    button.style.flexDirection = '';
+    button.style.alignItems = '';
+    button.style.gap = '';
+
+    if (success) {
+      // Briefly show success state
+      button.innerHTML = '<span class="btn-icon">✅</span><span class="btn-text">Analysis Complete!</span>';
+      button.style.background = 'linear-gradient(135deg, #34a853 0%, #0f9d58 100%)';
+
+      setTimeout(() => {
+        button.innerHTML = button.dataset.originalHtml || '<span class="btn-icon">⚡</span><span class="btn-text">Competitor Analysis</span>';
+        button.style.background = '';
+      }, 2000);
+    }
+
+    console.log('✅ Button restored to original state');
+  };
+
+  /**
+   * Handle successful competitor analysis
+   */
+  window.handleCompetitorAnalysisSuccess = function(response) {
+    console.log('✅ Competitor Analysis Complete:', response);
+    console.log('   Response keys:', Object.keys(response || {}).join(', '));
+
+    // Restore button to success state
+    window.restoreButton(true);
+
+    // Check if response has error (backend returned error object)
+    if (response && response.error) {
+      console.error('Backend returned error:', response);
+      window.handleCompetitorAnalysisError(response.error, response.stack);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RESPONSE FORMAT DETECTION - Handle multiple possible response structures
+    // ═══════════════════════════════════════════════════════════════════════════
+    let intelligenceData = null;
+    let competitors = null;
+
+    // Format 1: Direct intelligence object
+    if (response && response.intelligence) {
+      console.log('✅ Format 1: Direct intelligence data');
+      intelligenceData = response;
+      competitors = response.intelligence.competitors || [];
+    }
+    // Format 2: Wrapped response with data property
+    else if (response && response.success && response.data) {
+      console.log('✅ Format 2: Wrapped data response');
+      intelligenceData = response.data;
+      competitors = response.data.competitors || [];
+    }
+    // Format 3: ACTUAL FORMAT FROM DB_COMP_Main.gs - success + competitors + analysis
+    else if (response && response.success && response.competitors) {
+      console.log('✅ Format 3: DB_COMP_Main.gs response with competitors array');
+      console.log('   Competitors count:', response.competitors.length);
+      console.log('   Has analysis:', !!response.analysis);
+      console.log('   Has eliteTabIntelligence:', !!response.eliteTabIntelligence);
+      console.log('   Has overview:', !!response.overview);
+      console.log('   Has dashboardCharts:', !!response.dashboardCharts);
+      
+      // Build intelligence data structure for renderCompetitorIntelligence
+      intelligenceData = {
+        competitors: response.competitors,
+        analysis: response.analysis,
+        eliteTabIntelligence: response.eliteTabIntelligence,
+        overview: response.overview,
+        dashboardCharts: response.dashboardCharts,
+        storage: response.storage,
+        metadata: response.metadata,
+        timestamp: new Date().toISOString()
+      };
+      competitors = response.competitors;
+    }
+    // Format 4: Fallback - any object with competitors property
+    else if (response && response.competitors && Array.isArray(response.competitors)) {
+      console.log('✅ Format 4: Fallback with competitors array');
+      intelligenceData = response;
+      competitors = response.competitors;
+    }
+    
+    // Validate we have data
+    if (!intelligenceData) {
+      console.error('❌ Unknown response format:', response);
+      window.handleCompetitorAnalysisError('Unexpected response format from backend');
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STORE DATA GLOBALLY - For access across tabs and project saves
+    // ═══════════════════════════════════════════════════════════════════════════
+    window.competitorIntelligenceData = intelligenceData;
+    console.log('💾 Stored competitor intelligence data globally');
+    console.log('   Competitors count:', competitors ? competitors.length : 0);
+    console.log('   Has overview:', !!intelligenceData.overview);
+    console.log('   Has dashboardCharts:', !!intelligenceData.dashboardCharts);
+    console.log('   Has eliteTabIntelligence:', !!intelligenceData.eliteTabIntelligence);
+    console.log('   Has analysis:', !!intelligenceData.analysis);
+
+    // Show results container, hide empty state
+    const emptyState = document.getElementById('comp-empty-state');
+    const resultsDiv = document.getElementById('comp-results');
+
+    if (emptyState) emptyState.style.display = 'none';
+    if (resultsDiv) resultsDiv.style.display = 'block';
+
+    // Render the competitor intelligence UI
+    if (typeof renderCompetitorIntelligence === 'function') {
+      renderCompetitorIntelligence(intelligenceData);
+    }
+
+    // Load the 450-KW Forensic Reservoir into the grid
+    console.log('🔄 Loading 450-KW Forensic Reservoir...');
+    if (typeof window.load450KWReservoir === 'function') {
+      setTimeout(() => window.load450KWReservoir(), 500);
+    }
+
+    // Show success toast
+    try {
+      if (typeof showToast === 'function') {
+        showToast('✅ Competitor Analysis Complete!');
+      }
+    } catch (e) {
+      console.warn('Toast not available:', e);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUTO-SAVE PROJECT - Ensure competitor analysis is saved with the project
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('💾 Auto-saving project with competitor analysis data...');
+    try {
+      const projectName = typeof getCurrentProjectId === 'function' ? getCurrentProjectId() : null;
+      if (projectName) {
+        if (typeof autoSaveProject === 'function') {
+          setTimeout(() => {
+            autoSaveProject();
+            console.log('✅ Project auto-saved with competitor analysis');
+          }, 1000);
+        } else if (typeof debounceAutoSave === 'function') {
+          debounceAutoSave();
+          console.log('✅ Project save triggered via debounce');
+        }
+      } else {
+        console.warn('⚠️ No project selected - competitor analysis not saved to project');
+      }
+    } catch (saveError) {
+      console.warn('⚠️ Could not auto-save project:', saveError);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SAVE TREND DATA - Store daily snapshots for historical analysis
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('📊 Saving competitor trend data for sparklines...');
+    try {
+      if (intelligenceData.competitors && Array.isArray(intelligenceData.competitors)) {
+        const trendPromises = intelligenceData.competitors.slice(0, 10).map(async (comp) => {
+          const domain = comp.domain || comp.url || '';
+          if (!domain) return;
+          
+          const pm = comp.processedMetrics || {};
+          const metrics = {
+            traffic: pm.estimatedTraffic || pm.organicTraffic || 0,
+            authority: pm.authorityScore || pm.pageRank * 10 || 0,
+            keywords: pm.organicKeywords || 0,
+            backlinks: pm.backlinks || pm.estimatedBacklinks || 0,
+            trafficValue: pm.trafficValue || 0,
+            health: pm.siteHealth || pm.seoScore || 0
+          };
+          
+          // Call PHP to save trend
+          return new Promise((resolve) => {
+            google.script.run
+              .withSuccessHandler(resolve)
+              .withFailureHandler((e) => {
+                console.warn(`Trend save failed for ${domain}:`, e);
+                resolve({ success: false });
+              })
+              .callGatewayFromClient({
+                action: 'comp:save_trend',
+                domain: domain,
+                projectId: (typeof getCurrentProjectId === 'function' ? getCurrentProjectId() : '') || '',
+                metrics: metrics,
+                date: new Date().toISOString().split('T')[0]
+              });
+          });
+        });
+        
+        // Wait for all trend saves (don't block UI)
+        Promise.all(trendPromises).then((results) => {
+          const saved = results.filter(r => r && r.success).length;
+          console.log(`✅ Saved trend data for ${saved}/${trendPromises.length} competitors`);
+        });
+      }
+    } catch (trendError) {
+      console.warn('⚠️ Could not save trend data:', trendError);
+    }
+  };
+
+  /**
+   * Handle competitor analysis error
+   */
+  window.handleCompetitorAnalysisError = function(error, stack) {
+    console.error('❌ Competitor Analysis Error:', error);
+    if (stack) {
+      console.error('Error stack:', stack);
+    }
+
+    // Restore button to error state
+    window.restoreButton(false);
+
+    // Show error in button briefly
+    const button = document.getElementById('btnAnalyzeCompetitors');
+    if (button) {
+      button.innerHTML = '<span class="btn-icon">❌</span><span class="btn-text">Analysis Failed</span>';
+      button.style.background = 'linear-gradient(135deg, #ea4335 0%, #d32f2f 100%)';
+    }
+
+    // Show error message
+    const errorMsg = typeof error === 'string' ? error : (error.message || error.toString() || 'Unknown error');
+    const stackTrace = stack ? `<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto; max-height: 200px; font-size: 12px;">${stack}</pre>` : '';
+
+    // Show empty state with error message
+    const emptyState = document.getElementById('comp-empty-state');
+    if (emptyState) {
+      emptyState.innerHTML = `
+            <div class="empty-state-icon" style="color: #f44336;">⚠️</div>
+            <h3 class="empty-state-title" style="color: #f44336;">Analysis Failed</h3>
+            <p class="empty-state-text">
+              ${errorMsg}
+            </p>
+            ${stackTrace}
+            <button onclick="location.reload()" style="margin-top: 20px; padding: 12px 24px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+              🔄 Reload & Try Again
+            </button>
+          `;
+      emptyState.style.display = 'flex';
+    }
+
+    // Show error toast
+    try {
+      if (typeof showToast === 'function') {
+        showToast(`❌ ${errorMsg}`, 'error');
+      }
+    } catch (e) {
+      console.warn('Toast not available:', e);
+    }
+  };
+
+  console.log('✅ COMP_Analysis_Init.html loaded');
+  console.log('   Exposed: initiateCompetitorAnalysis, transformButtonToProgress');
+  console.log('   Exposed: startButtonProgressAnimation, restoreButton');
+  console.log('   Exposed: handleCompetitorAnalysisSuccess, handleCompetitorAnalysisError');
+</script>

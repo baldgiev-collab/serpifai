@@ -1,0 +1,481 @@
+<!--
+  ELITE_Fetcher_Core.html
+  ═══════════════════════════════════════════════════════════════════════════
+  SERPIFAI Elite Intelligence Collector v1.0
+  Primary data source - runs BEFORE Serper/OpenPageRank APIs
+  
+  Features:
+  - Branded EliteFetcher class with intelligent request management
+  - Multi-source data aggregation with confidence scoring
+  - Cross-validation between sources
+  - Fallback chain: Elite → Serper → OpenPageRank → Gemini Estimation
+  - Data freshness tracking
+  
+  Dependencies: None (this is the foundation layer)
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<script>
+(function() {
+  'use strict';
+  
+  console.log('🚀 ELITE_Fetcher_Core.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ELITE FETCHER CLASS - Primary Intelligence Collector
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  class EliteFetcher {
+    constructor(config = {}) {
+      this.version = '1.0.0';
+      this.brandName = 'SERPIFAI Elite';
+      
+      // Configuration
+      this.config = {
+        maxConcurrent: config.maxConcurrent || 3,
+        requestDelay: config.requestDelay || 500,
+        timeout: config.timeout || 30000,
+        retryAttempts: config.retryAttempts || 2,
+        enableCaching: config.enableCaching !== false,
+        cacheExpiry: config.cacheExpiry || 3600000, // 1 hour
+        ...config
+      };
+      
+      // State
+      this.requestQueue = [];
+      this.activeRequests = 0;
+      this.cache = new Map();
+      this.metrics = {
+        totalRequests: 0,
+        successfulRequests: 0,
+        failedRequests: 0,
+        cacheHits: 0,
+        avgResponseTime: 0
+      };
+      
+      // Data sources priority chain
+      this.dataSources = [
+        { id: 'elite', name: 'SERPIFAI Elite', priority: 1, confidence: 95 },
+        { id: 'phpFetcher', name: 'PHP Backend', priority: 2, confidence: 90 },
+        { id: 'serper', name: 'Serper API', priority: 3, confidence: 85 },
+        { id: 'openPageRank', name: 'OpenPageRank', priority: 4, confidence: 80 },
+        { id: 'pageSpeed', name: 'PageSpeed API', priority: 5, confidence: 90 },
+        { id: 'gemini', name: 'Gemini Estimation', priority: 6, confidence: 70 }
+      ];
+      
+      console.log(`   ✅ ${this.brandName} v${this.version} initialized`);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // REQUEST QUEUE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async enqueue(request) {
+      return new Promise((resolve, reject) => {
+        const queueItem = {
+          id: this.generateRequestId(),
+          request,
+          resolve,
+          reject,
+          timestamp: Date.now(),
+          retries: 0
+        };
+        this.requestQueue.push(queueItem);
+        this.processQueue();
+      });
+    }
+    
+    async processQueue() {
+      if (this.activeRequests >= this.config.maxConcurrent) return;
+      
+      const nextItem = this.requestQueue.shift();
+      if (!nextItem) return;
+      
+      this.activeRequests++;
+      
+      try {
+        const result = await this.executeRequest(nextItem);
+        nextItem.resolve(result);
+      } catch (error) {
+        if (nextItem.retries < this.config.retryAttempts) {
+          nextItem.retries++;
+          console.log(`   🔄 Retry ${nextItem.retries}/${this.config.retryAttempts} for request ${nextItem.id}`);
+          this.requestQueue.unshift(nextItem);
+        } else {
+          nextItem.reject(error);
+        }
+      } finally {
+        this.activeRequests--;
+        if (this.requestQueue.length > 0) {
+          setTimeout(() => this.processQueue(), this.config.requestDelay);
+        }
+      }
+    }
+    
+    async executeRequest(queueItem) {
+      const { request, id } = queueItem;
+      const startTime = Date.now();
+      this.metrics.totalRequests++;
+      
+      // Check cache first
+      const cacheKey = this.generateCacheKey(request);
+      if (this.config.enableCaching) {
+        const cached = this.getFromCache(cacheKey);
+        if (cached) {
+          this.metrics.cacheHits++;
+          console.log(`   📦 Cache hit for ${request.domain || request.url}`);
+          return cached;
+        }
+      }
+      
+      try {
+        const result = await this.fetchWithTimeout(request);
+        this.metrics.successfulRequests++;
+        const responseTime = Date.now() - startTime;
+        this.metrics.avgResponseTime = 
+          (this.metrics.avgResponseTime * (this.metrics.successfulRequests - 1) + responseTime) / 
+          this.metrics.successfulRequests;
+        
+        if (this.config.enableCaching && result) {
+          this.setCache(cacheKey, result);
+        }
+        return result;
+      } catch (error) {
+        this.metrics.failedRequests++;
+        throw error;
+      }
+    }
+    
+    async fetchWithTimeout(request) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+      try {
+        const result = await this.performFetch(request, controller.signal);
+        return result;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+    
+    async performFetch(request, signal) {
+      // Override in subclasses - default implementation extracts from existing data
+      const domain = this.normalizeDomain(request.domain || request.url);
+      return this.extractFromExistingData(domain);
+    }
+    
+    extractFromExistingData(domain) {
+      // Check all available data sources
+      const sources = [];
+      
+      // 1. PHP Fetcher cache
+      if (window._phpFetcherCache?.[domain]) {
+        sources.push({
+          id: 'phpFetcher',
+          data: window._phpFetcherCache[domain],
+          confidence: 90
+        });
+      }
+      
+      // 2. Competitor data from global state
+      const competitors = window._competitorData || window.globalData?.competitors || [];
+      const compData = competitors.find(c => 
+        this.normalizeDomain(c.domain || c.url) === domain
+      );
+      if (compData) {
+        sources.push({
+          id: 'elite',
+          data: compData,
+          confidence: 85
+        });
+      }
+      
+      return sources.length > 0 ? this.aggregateData(sources) : null;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MULTI-SOURCE DATA AGGREGATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    aggregateData(sources) {
+      const aggregated = {
+        _meta: {
+          sources: [],
+          aggregatedAt: new Date().toISOString(),
+          overallConfidence: 0
+        }
+      };
+      
+      const fieldValues = {};
+      
+      sources.forEach(source => {
+        if (!source.data) return;
+        
+        aggregated._meta.sources.push({
+          id: source.id,
+          name: this.dataSources.find(s => s.id === source.id)?.name || source.id,
+          confidence: source.confidence,
+          timestamp: source.timestamp || Date.now()
+        });
+        
+        const flatData = this.flattenObject(source.data);
+        Object.entries(flatData).forEach(([key, value]) => {
+          if (value === null || value === undefined || value === 'N/A') return;
+          if (!fieldValues[key]) fieldValues[key] = [];
+          fieldValues[key].push({
+            value,
+            confidence: source.confidence,
+            sourceId: source.id
+          });
+        });
+      });
+      
+      Object.entries(fieldValues).forEach(([key, values]) => {
+        const result = this.selectBestValue(key, values);
+        aggregated[key] = result.value;
+        aggregated[`_${key}_meta`] = {
+          confidence: result.confidence,
+          source: result.sourceId,
+          alternativeCount: values.length - 1
+        };
+      });
+      
+      const confidenceValues = Object.keys(aggregated)
+        .filter(k => k.startsWith('_') && k.endsWith('_meta') && aggregated[k].confidence)
+        .map(k => aggregated[k].confidence);
+      
+      aggregated._meta.overallConfidence = confidenceValues.length > 0
+        ? Math.round(confidenceValues.reduce((a, b) => a + b, 0) / confidenceValues.length)
+        : 0;
+      
+      return aggregated;
+    }
+    
+    flattenObject(obj, prefix = '') {
+      const result = {};
+      for (const [key, value] of Object.entries(obj)) {
+        const newKey = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          Object.assign(result, this.flattenObject(value, newKey));
+        } else {
+          result[newKey] = value;
+        }
+      }
+      return result;
+    }
+    
+    selectBestValue(fieldName, values) {
+      if (values.length === 0) return { value: null, confidence: 0, sourceId: 'none' };
+      if (values.length === 1) return values[0];
+      
+      const numericValues = values.filter(v => typeof v.value === 'number');
+      if (numericValues.length === values.length && numericValues.length > 1) {
+        const avg = numericValues.reduce((a, b) => a + b.value, 0) / numericValues.length;
+        const variance = numericValues.reduce((a, b) => a + Math.pow(b.value - avg, 2), 0) / numericValues.length;
+        const coeffOfVar = avg !== 0 ? Math.sqrt(variance) / Math.abs(avg) : 0;
+        
+        if (coeffOfVar < 0.3) {
+          const totalWeight = numericValues.reduce((a, b) => a + b.confidence, 0);
+          const weightedAvg = numericValues.reduce((a, b) => a + (b.value * b.confidence), 0) / totalWeight;
+          return {
+            value: Math.round(weightedAvg * 100) / 100,
+            confidence: Math.min(95, Math.round(totalWeight / numericValues.length) + 5),
+            sourceId: 'aggregated'
+          };
+        }
+      }
+      return values.sort((a, b) => b.confidence - a.confidence)[0];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONFIDENCE SCORING SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    calculateConfidence(data, sourceId) {
+      const baseConfidence = this.dataSources.find(s => s.id === sourceId)?.confidence || 50;
+      let adjustments = 0;
+      
+      const fields = Object.keys(data).filter(k => !k.startsWith('_'));
+      const filledFields = fields.filter(k => data[k] !== null && data[k] !== undefined && data[k] !== 'N/A');
+      const completeness = filledFields.length / Math.max(fields.length, 1);
+      adjustments += (completeness - 0.5) * 20;
+      
+      if (data._timestamp) {
+        const ageHours = (Date.now() - new Date(data._timestamp).getTime()) / 3600000;
+        if (ageHours < 1) adjustments += 5;
+        else if (ageHours < 24) adjustments += 2;
+        else if (ageHours > 168) adjustments -= 10;
+      }
+      
+      return Math.max(0, Math.min(100, Math.round(baseConfidence + adjustments)));
+    }
+    
+    getConfidenceLabel(score) {
+      if (score >= 90) return { label: 'Very High', color: '#22c55e', icon: '✅' };
+      if (score >= 75) return { label: 'High', color: '#84cc16', icon: '🟢' };
+      if (score >= 60) return { label: 'Medium', color: '#f59e0b', icon: '🟡' };
+      if (score >= 40) return { label: 'Low', color: '#f97316', icon: '🟠' };
+      return { label: 'Very Low', color: '#ef4444', icon: '🔴' };
+    }
+    
+    renderConfidenceBadge(score, size = 'small') {
+      const { label, color, icon } = this.getConfidenceLabel(score);
+      const padding = size === 'small' ? '2px 6px' : '4px 10px';
+      const fontSize = size === 'small' ? '10px' : '12px';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;background:${color}15;color:${color};padding:${padding};border-radius:8px;font-size:${fontSize};font-weight:600;">${icon} ${score}%</span>`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA FRESHNESS TRACKING
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    trackFreshness(data) {
+      const now = Date.now();
+      return {
+        ...data,
+        _freshness: {
+          fetchedAt: new Date(now).toISOString(),
+          expiresAt: new Date(now + this.config.cacheExpiry).toISOString(),
+          ageLabel: 'Fresh'
+        }
+      };
+    }
+    
+    getFreshnessLabel(timestamp) {
+      if (!timestamp) return { label: 'Unknown', color: '#9ca3af' };
+      const ageMs = Date.now() - new Date(timestamp).getTime();
+      const ageHours = ageMs / 3600000;
+      if (ageHours < 1) return { label: 'Just now', color: '#22c55e' };
+      if (ageHours < 24) return { label: `${Math.round(ageHours)}h ago`, color: '#84cc16' };
+      if (ageHours < 168) return { label: `${Math.round(ageHours / 24)}d ago`, color: '#f59e0b' };
+      return { label: `${Math.round(ageHours / 168)}w ago`, color: '#ef4444' };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FALLBACK CHAIN MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async fetchWithFallback(domain, fetchersConfig) {
+      const results = [];
+      let lastError = null;
+      
+      console.log(`🔗 Fetching data for ${domain} with fallback chain...`);
+      
+      for (const fetcherConfig of fetchersConfig) {
+        const { id, fetcher, required } = fetcherConfig;
+        try {
+          console.log(`   📡 Trying ${id}...`);
+          const data = await fetcher(domain);
+          if (data && Object.keys(data).length > 0) {
+            const source = this.dataSources.find(s => s.id === id);
+            results.push({
+              id,
+              name: source?.name || id,
+              confidence: this.calculateConfidence(data, id),
+              data: this.trackFreshness(data),
+              timestamp: Date.now()
+            });
+            console.log(`   ✅ ${id} returned ${Object.keys(data).length} fields`);
+          }
+        } catch (error) {
+          console.log(`   ⚠️ ${id} failed: ${error.message}`);
+          lastError = error;
+          if (required) throw new Error(`Required source ${id} failed: ${error.message}`);
+        }
+      }
+      
+      if (results.length === 0) throw lastError || new Error('All data sources failed');
+      
+      const aggregated = this.aggregateData(results);
+      console.log(`   📊 Aggregated from ${results.length} sources, confidence: ${aggregated._meta.overallConfidence}%`);
+      return aggregated;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CACHE MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    getFromCache(key) {
+      const cached = this.cache.get(key);
+      if (!cached) return null;
+      if (Date.now() > cached.expiresAt) {
+        this.cache.delete(key);
+        return null;
+      }
+      return cached.data;
+    }
+    
+    setCache(key, data) {
+      this.cache.set(key, {
+        data,
+        cachedAt: Date.now(),
+        expiresAt: Date.now() + this.config.cacheExpiry
+      });
+    }
+    
+    clearCache() {
+      this.cache.clear();
+      console.log('   🗑️ Cache cleared');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // UTILITY METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    generateRequestId() {
+      return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    generateCacheKey(request) {
+      const parts = [
+        request.domain || request.url || '',
+        request.type || 'default',
+        JSON.stringify(request.options || {})
+      ];
+      return parts.join('::');
+    }
+    
+    normalizeDomain(input) {
+      if (!input) return '';
+      return input.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0].toLowerCase().trim();
+    }
+    
+    getMetrics() {
+      return {
+        ...this.metrics,
+        cacheSize: this.cache.size,
+        queueLength: this.requestQueue.length,
+        activeRequests: this.activeRequests
+      };
+    }
+    
+    getDataSourceInfo(sourceId) {
+      return this.dataSources.find(s => s.id === sourceId) || null;
+    }
+    
+    renderDataSourceBadge(sourceId) {
+      const source = this.getDataSourceInfo(sourceId);
+      if (!source) return '';
+      const colors = {
+        elite: '#8b5cf6',
+        phpFetcher: '#06b6d4',
+        serper: '#f59e0b',
+        openPageRank: '#22c55e',
+        gemini: '#3b82f6'
+      };
+      const color = colors[sourceId] || '#6b7280';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;background:${color}15;color:${color};padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;">${source.name}</span>`;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GLOBAL EXPORT
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.EliteFetcher = EliteFetcher;
+  window.eliteFetcher = new EliteFetcher();
+  
+  console.log('✅ ELITE_Fetcher_Core.html loaded');
+  console.log('   Exported: window.EliteFetcher (class)');
+  console.log('   Exported: window.eliteFetcher (instance)');
+
+})();
+</script>

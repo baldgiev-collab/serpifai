@@ -1,0 +1,1938 @@
+<section class="card tab" id="tab-results">
+  <h2>Workflow Results</h2>
+  
+  <!-- Stage 1 Results: Unified Scrollable Layout with Embedded Charts -->
+  <div class="results-panel active" data-results-panel="1">
+    <div class="results-header-unified">
+      <div class="results-header-content">
+        <h2>📊 Stage 1: Market Research & Strategic Intelligence</h2>
+        <span class="results-timestamp" id="stage1-timestamp">Not yet run</span>
+      </div>
+      <button class="btn-export" onclick="exportStage1Report()" style="display:none;" id="export-stage1-btn">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+        </svg>
+        Export Report
+      </button>
+    </div>
+    
+    <!-- UNIFIED SCROLLABLE CONTAINER -->
+    <div class="results-unified-scroll" id="stage1-unified-container">
+      <!-- Report content will be dynamically rendered here with embedded charts -->
+      <div class="report-placeholder-unified">
+        <div class="placeholder-icon-large">📋</div>
+        <h3>Strategic Analysis Ready</h3>
+        <p>Run Stage 1 to generate your comprehensive market research report</p>
+        <p class="placeholder-hint">Each insight will be paired with its corresponding data visualization</p>
+      </div>
+    </div>
+    
+    <!-- Hidden chart canvases - will be moved into report sections dynamically -->
+    <div style="display:none;" id="stage1-chart-storage">
+      <canvas id="chart-emotional-pains"></canvas>
+      <canvas id="chart-hidden-desires"></canvas>
+      <canvas id="chart-mindset-shifts"></canvas>
+      <canvas id="chart-jtbd-impact"></canvas>
+      <canvas id="chart-competitor-gaps"></canvas>
+      <canvas id="chart-format-usage"></canvas>
+      <canvas id="chart-brand-positioning"></canvas>
+      <canvas id="chart-value-proposition"></canvas>
+      <canvas id="chart-content-pillars"></canvas>
+      <canvas id="chart-priority-matrix"></canvas>
+      <canvas id="chart-opportunity-gaps"></canvas>
+      <canvas id="chart-tactical-roadmap"></canvas>
+      <canvas id="chart-impact-matrix"></canvas>
+      <canvas id="chart-resource-allocation"></canvas>
+    </div>
+  </div>
+
+  <!-- Stage 2 Results: Hidden until completed -->
+  <div class="results-panel" data-results-panel="2" style="display:none;">
+    <div class="results-header">
+      <h3>Stage 2: Keyword Discovery</h3>
+      <span class="results-timestamp" id="stage2-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Keyword Data Export</h4>
+        <div class="json-viewer" id="stage2-json">
+          <div class="json-placeholder">Run Stage 2 to see keyword insights</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Complete Keyword Analysis</h4>
+        <div class="report-viewer" id="stage2-report">
+          <div class="report-placeholder">Run Stage 2 to generate keyword analysis</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 3 Results: Hidden until completed -->
+  <div class="results-panel" data-results-panel="3" style="display:none;">
+    <div class="results-header">
+      <h3>Stage 3: Clustering & Architecture</h3>
+      <span class="results-timestamp" id="stage3-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Architecture Data Export</h4>
+        <div class="json-viewer" id="stage3-json">
+          <div class="json-placeholder">Run Stage 3 to see architecture insights</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Complete Content Architecture</h4>
+        <div class="report-viewer" id="stage3-report">
+          <div class="report-placeholder">Run Stage 3 to generate content architecture</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 4 Results: Hidden until completed -->
+  <div class="results-panel" data-results-panel="4" style="display:none;">
+    <div class="results-header">
+      <h3>Stage 4: Content Calendar</h3>
+      <span class="results-timestamp" id="stage4-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Calendar Data Export</h4>
+        <div class="json-viewer" id="stage4-json">
+          <div class="json-placeholder">Run Stage 4 to see calendar insights</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Complete Content Calendar</h4>
+        <div class="report-viewer" id="stage4-report">
+          <div class="report-placeholder">Run Stage 4 to generate content calendar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 5 Results: Hidden until completed -->
+  <div class="results-panel" data-results-panel="5" style="display:none;">
+    <div class="results-header">
+      <h3>Stage 5: Content Generation</h3>
+      <span class="results-timestamp" id="stage5-timestamp">Not yet run</span>
+    </div>
+    
+    <div class="results-content">
+      <div class="results-section">
+        <h4>📊 Content Data Export</h4>
+        <div class="json-viewer" id="stage5-json">
+          <div class="json-placeholder">Run Stage 5 to see content insights</div>
+        </div>
+      </div>
+      
+      <div class="results-section">
+        <h4>📝 Generated Content</h4>
+        <div class="report-viewer" id="stage5-report">
+          <div class="report-placeholder">Run Stage 5 to generate content</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ELITE RESULTS LAYOUT - STAGE 1
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.results-header-elite {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.results-header-elite h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.results-timestamp {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* ============================================
+   STAGE 1: UNIFIED SCROLLABLE RESULTS LAYOUT
+   60/40 Text-to-Chart Embedded Design
+   ============================================ */
+
+/* Header - Unified Design */
+.results-header-unified {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-secondary) 100%);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.results-header-content {
+  flex: 1;
+}
+
+.results-header-content h2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.results-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.results-timestamp {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.results-timestamp::before {
+  content: '🕒';
+  font-size: 14px;
+}
+
+.reading-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reading-time::before {
+  content: '📖';
+}
+
+.progress-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.btn-export {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-export:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* PDF Export Button Container */
+.pdf-export-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 0;
+  margin-bottom: 32px;
+}
+
+.btn-export-pdf {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-export-pdf::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-export-pdf:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.4),
+              0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.btn-export-pdf:hover::before {
+  left: 100%;
+}
+
+.btn-export-pdf:active {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.btn-export-pdf svg {
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.btn-export-pdf:hover svg {
+  transform: translateY(2px);
+}
+
+.btn-export-pdf span {
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* PDF Loading Modal */
+.pdf-loading-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.pdf-loading-content {
+  background: white;
+  padding: 48px;
+  border-radius: 24px;
+  text-align: center;
+  max-width: 500px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+}
+
+.pdf-loading-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.pdf-loading-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 12px 0;
+}
+
+.pdf-loading-text {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 24px 0;
+}
+
+.pdf-progress-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.pdf-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.pdf-progress-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b82f6;
+}
+
+/* Executive Summary Cards */
+/* ============================================
+   ELITE EXECUTIVE SUMMARY - OPTIMIZED SIZE
+   ============================================ */
+
+.executive-summary.elite {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;  /* Reduced from 24px */
+  margin-bottom: 40px;  /* Reduced from 56px */
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Metric Cards (Row 1) - Core Performance Indicators */
+.summary-card.metric-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  padding: 20px;  /* Reduced from 28px */
+  border-radius: 16px;  /* Reduced from 20px */
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05),
+              0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.summary-card.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;  /* Reduced from 4px */
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.summary-card.metric-card:hover {
+  transform: translateY(-4px) scale(1.01);  /* Reduced from -6px and 1.02 */
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.12),
+              0 3px 10px rgba(59, 130, 246, 0.08);
+}
+
+.summary-card.metric-card:hover::before {
+  opacity: 1;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;  /* Reduced from 16px */
+}
+
+.summary-card-icon {
+  font-size: 32px;  /* Reduced from 40px */
+  line-height: 1;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+.trend-indicator {
+  padding: 3px 10px;  /* Reduced from 4px 12px */
+  border-radius: 16px;
+  font-size: 10px;  /* Reduced from 11px */
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.trend-indicator.positive {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.trend-indicator.neutral {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+}
+
+.trend-indicator.negative {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.summary-card-value {
+  font-size: 38px;  /* Reduced from 48px */
+  font-weight: 900;
+  color: #111827;
+  margin: 0 0 6px 0;  /* Reduced from 8px */
+  line-height: 1;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.summary-card-value .unit {
+  font-size: 16px;  /* Reduced from 18px */
+  font-weight: 600;
+  color: #6b7280;
+  margin-left: 3px;
+}
+
+.summary-card-label {
+  font-size: 12px;  /* Reduced from 14px */
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;  /* Reduced from 16px */
+}
+
+.card-footer {
+  margin-top: 12px;  /* Reduced from 16px */
+  padding-top: 12px;  /* Reduced from 16px */
+  border-top: 1px solid #e5e7eb;
+}
+
+.confidence-bar {
+  height: 5px;  /* Reduced from 6px */
+  background: #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 6px;  /* Reduced from 8px */
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 8px;
+  transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: fillAnimation 1.5s ease-out;
+}
+
+@keyframes fillAnimation {
+  from { width: 0; }
+}
+
+.confidence-label {
+  font-size: 10px;  /* Reduced from 11px */
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.meta-text {
+  font-size: 11px;  /* Reduced from 12px */
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;  /* Reduced from 4px 10px */
+  border-radius: 10px;
+  font-size: 10px;  /* Reduced from 11px */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.priority-badge.high {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #78350f;
+}
+
+.micro-chart {
+  height: 32px;  /* Reduced from 40px */
+  background: linear-gradient(90deg, 
+    var(--accent-primary) 0%, 
+    var(--accent-primary) 30%, 
+    transparent 30%, 
+    transparent 40%,
+    var(--accent-secondary) 40%,
+    var(--accent-secondary) 70%,
+    transparent 70%,
+    transparent 80%,
+    #10b981 80%,
+    #10b981 100%
+  );
+  border-radius: 6px;
+  opacity: 0.3;
+}
+
+/* KPI Cards (Row 2) - Strategic Intelligence */
+.summary-card.kpi-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  padding: 18px;  /* Reduced from 24px */
+  border-radius: 16px;  /* Reduced from 20px */
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.summary-card.kpi-card:hover {
+  transform: translateY(-5px);  /* Reduced from -8px */
+  border-color: var(--accent-primary);
+  box-shadow: 0 12px 36px rgba(59, 130, 246, 0.18),
+              0 3px 12px rgba(59, 130, 246, 0.09);
+}
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;  /* Reduced from 10px */
+  margin-bottom: 14px;  /* Reduced from 20px */
+}
+
+.kpi-icon {
+  font-size: 24px;  /* Reduced from 28px */
+}
+
+.kpi-title {
+  font-size: 11px;  /* Reduced from 13px */
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.kpi-value-container {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 12px;  /* Reduced from 16px */
+}
+
+.kpi-value {
+  font-size: 44px;  /* Reduced from 56px */
+  font-weight: 900;
+  color: #111827;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.kpi-max {
+  font-size: 18px;  /* Reduced from 20px */
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.kpi-gauge {
+  width: 100%;
+  height: 42px;  /* Reduced from 50px */
+  margin: 12px 0;  /* Reduced from 16px */
+}
+
+.gauge-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.gauge-fill {
+  transition: stroke-dasharray 1.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: gaugeAnimation 1.8s ease-out;
+}
+
+@keyframes gaugeAnimation {
+  from { stroke-dasharray: 0 200; }
+}
+
+.kpi-description {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Responsive Grid */
+@media (max-width: 1400px) {
+  .executive-summary.elite {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .executive-summary.elite {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .summary-card-value {
+    font-size: 40px;
+  }
+  
+  .kpi-value {
+    font-size: 48px;
+  }
+}
+
+/* Unified Scrollable Container */
+.results-unified-scroll {
+  height: calc(100vh - 100px);  /* Reduced from 220px - much taller now */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 32px 48px;  /* Reduced from 48px 64px for more space */
+  background: var(--bg-primary);
+  scroll-behavior: smooth;
+}
+
+/* Smooth scrollbar styling */
+.results-unified-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.results-unified-scroll::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+}
+
+.results-unified-scroll::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 10px;
+  border: 3px solid var(--bg-secondary);
+}
+
+.results-unified-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
+}
+
+/* Placeholder State */
+.report-placeholder-unified {
+  text-align: center;
+  padding: 120px 40px;
+  color: var(--text-secondary);
+}
+
+.placeholder-icon-large {
+  font-size: 72px;
+  margin-bottom: 24px;
+  opacity: 0.6;
+}
+
+.report-placeholder-unified h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.report-placeholder-unified p {
+  font-size: 16px;
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+.placeholder-hint {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* ============================================
+   SECTION-CHART EMBEDDED LAYOUT
+   Each section has 60% text, 40% chart
+   ============================================ */
+
+.report-section-with-chart {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: 40px;  /* Golden ratio spacing */
+  margin-bottom: 64px;  /* 40 * 1.6 = 64 */
+  padding: 40px;
+  background: var(--card-bg);
+  border-radius: 24px;  /* More premium */
+  border: 2px solid var(--border-color);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);  /* Inner highlight */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: visible;  /* Allow shadows to show */
+}
+
+.report-section-with-chart::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 24px 24px 0 0;
+}
+
+.report-section-with-chart::after {
+  content: attr(data-section-num);
+  position: absolute;
+  top: -12px;
+  left: 32px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  letter-spacing: 0.05em;
+}
+
+.report-section-with-chart:hover::before {
+  opacity: 1;
+}
+
+.report-section-with-chart:hover {
+  transform: translateY(-8px) scale(1.01);  /* Lift + subtle scale */
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.15),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    0 0 0 3px var(--accent-primary);  /* Outline glow */
+  border-color: transparent;
+  z-index: 10;
+}
+
+/* Text Content Area (55%) - Optimal Line Length */
+.section-text-content {
+  padding-right: 32px;
+  max-width: 75ch;  /* Optimal reading: 60-75 characters per line */
+}
+
+/* Chart Container Area (40%) */
+/* ELITE CHART CONTAINER - Interactive & Feature-Rich */
+.section-chart-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 28px;
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 2px solid var(--border-color);
+  position: relative;  /* Changed from sticky for better control */
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;  /* Allow tooltips to overflow */
+}
+
+.section-chart-container:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transform: translateY(-2px);
+}
+
+/* Chart Action Bar - Export, Fullscreen, Info */
+.chart-action-bar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.section-chart-container:hover .chart-action-bar {
+  opacity: 1;
+}
+
+.chart-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #6b7280;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.chart-action-btn:hover {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.chart-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Chart Loading State */
+.chart-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.chart-loading-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+/* Enhanced Canvas Styling */
+.section-chart-container canvas {
+  max-width: 100%;
+  min-height: 420px !important;  /* Increased from 380px */
+  max-height: 650px !important;  /* Increased from 600px */
+  height: auto !important;
+  cursor: crosshair;  /* Interactive cursor */
+  transition: opacity 0.3s ease;
+}
+
+.section-chart-container canvas:hover {
+  opacity: 1;
+}
+
+/* Chart Data Badge - Shows key metrics */
+.chart-data-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(139, 92, 246, 0.95));
+  color: white;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.section-chart-container:hover .chart-data-badge {
+  opacity: 1;
+}
+
+.chart-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* ============================================
+   ENHANCED TYPOGRAPHY FOR REPORT CONTENT
+   ============================================ */
+
+.report-content-unified {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Main Report Header */
+.report-main-header {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 0 0 40px 0;
+  text-align: center;
+  letter-spacing: -0.03em;
+  padding-bottom: 24px;
+  border-bottom: 3px solid var(--accent-primary);
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section Heading with Icon */
+.section-heading-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.section-icon-large {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.section-number {
+  color: var(--accent-primary);
+  font-weight: 900;
+  font-size: 20px;
+}
+
+/* Section Content */
+.section-content p {
+  margin: 16px 0;
+  line-height: 1.9;
+  color: var(--text-primary);
+}
+
+.section-content strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.section-content em {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* Lists in sections */
+.section-content ul,
+.section-content ol {
+  margin: 20px 0;
+  padding-left: 32px;
+}
+
+.section-content li {
+  margin: 12px 0;
+  line-height: 1.8;
+  color: var(--text-primary);
+}
+
+.section-content ul li::marker {
+  color: var(--accent-primary);
+  font-size: 20px;
+}
+
+.section-content ol li::marker {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+/* Code and technical elements */
+.section-content code {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+  font-size: 14px;
+  color: var(--accent-primary);
+}
+
+/* Blockquotes */
+.section-content blockquote {
+  border-left: 4px solid var(--accent-primary);
+  padding: 16px 24px;
+  margin: 24px 0;
+  background: var(--bg-secondary);
+  border-radius: 0 12px 12px 0;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* Key Takeaways Section */
+.key-takeaways {
+  margin-top: 48px;
+  padding: 32px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 16px;
+  color: white;
+}
+
+.key-takeaways h3 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 16px 0;
+  color: white;
+}
+
+.key-takeaways p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* ============================================
+   THEME VARIATIONS - LIGHT/DARK/NEON/AURORA
+   ============================================ */
+
+/* Light Theme (Default) */
+:root,
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --card-bg: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --accent-hover: #2563eb;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --card-bg: #1e293b;
+  --text-primary: #f8fafc;  /* Brighter for better contrast */
+  --text-secondary: #cbd5e1;  /* Brighter for readability */
+  --border-color: #475569;
+  --accent-primary: #60a5fa;
+  --accent-secondary: #a78bfa;
+  --accent-hover: #3b82f6;
+}
+
+[data-theme="dark"] .report-section-with-chart {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .report-section-with-chart:hover {
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+}
+
+/* Neon Theme */
+[data-theme="neon"] {
+  --bg-primary: #0a0a0a;  /* Pure dark for maximum contrast */
+  --bg-secondary: #1a1a1a;
+  --card-bg: #1a1a1a;
+  --text-primary: #ffffff;  /* White for maximum readability */
+  --text-secondary: #e0e0e0;  /* Light gray for secondary text */
+  --border-color: #00ff9f;
+  --accent-primary: #00ff9f;  /* Cyan-green for primary */
+  --accent-secondary: #00d4ff;  /* Cyan for secondary */
+  --accent-hover: #00ffff;
+}
+
+[data-theme="neon"] .report-section-with-chart {
+  border: 2px solid rgba(0, 255, 159, 0.6);
+  box-shadow: 0 0 15px rgba(0, 255, 159, 0.2), inset 0 0 15px rgba(0, 255, 159, 0.05);
+  background: rgba(26, 26, 26, 0.95);  /* Semi-transparent for depth */
+}
+
+[data-theme="neon"] .report-section-with-chart:hover {
+  box-shadow: 0 0 30px rgba(0, 255, 159, 0.4), 0 0 40px rgba(0, 212, 255, 0.3);
+  transform: translateY(-4px);
+  border-color: #00ffff;
+}
+
+[data-theme="neon"] .section-heading-with-icon {
+  text-shadow: 0 0 8px rgba(0, 255, 159, 0.8);
+  color: #ffffff;  /* White text with glow */
+}
+
+[data-theme="neon"] .section-body {
+  color: #ffffff;  /* White body text */
+}
+
+[data-theme="neon"] .btn-export {
+  background: linear-gradient(135deg, #00ff9f, #00d4ff);
+  box-shadow: 0 0 20px rgba(0, 255, 159, 0.4);
+  color: #000000;  /* Dark text on bright button */
+}
+
+/* Aurora Theme */
+[data-theme="aurora"] {
+  --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-secondary: rgba(255, 255, 255, 0.15);
+  --card-bg: rgba(255, 255, 255, 0.12);
+  --text-primary: #ffffff;  /* Pure white for maximum contrast */
+  --text-secondary: #f0f0f0;  /* Very light gray */
+  --border-color: rgba(255, 255, 255, 0.3);
+  --accent-primary: #fbbf24;
+  --accent-secondary: #f59e0b;
+  --accent-hover: #fcd34d;
+}
+
+[data-theme="aurora"] .results-unified-scroll {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+}
+
+[data-theme="aurora"] .report-section-with-chart {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="aurora"] .report-section-with-chart:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 12px 48px rgba(251, 191, 36, 0.3);
+  transform: translateY(-4px);
+}
+
+[data-theme="aurora"] .section-heading-with-icon {
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="aurora"] .section-body {
+  color: #ffffff;  /* White body text */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);  /* Subtle shadow for depth */
+}
+
+[data-theme="aurora"] .section-chart-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+[data-theme="aurora"] {
+  --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-secondary: rgba(255, 255, 255, 0.1);
+  --card-bg: rgba(255, 255, 255, 0.15);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --border-color: rgba(255, 255, 255, 0.2);
+  --accent-primary: #fbbf24;
+  --accent-secondary: #f59e0b;
+  --accent-hover: #f59e0b;
+}
+
+[data-theme="aurora"] .results-unified-scroll {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+}
+
+[data-theme="aurora"] .report-section-with-chart {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+}
+
+[data-theme="aurora"] .report-section-with-chart:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 12px 48px rgba(251, 191, 36, 0.4);
+}
+
+[data-theme="aurora"] .section-chart-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 1400px) {
+  .report-section-with-chart {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 32px;
+  }
+  
+  .section-chart-container {
+    position: relative;
+    top: 0;
+    max-height: 550px;
+    min-height: 350px;
+  }
+  
+  .section-chart-container canvas {
+    max-height: 550px !important;  /* Increased for text */
+    min-height: 360px !important;  /* More space */
+  }
+  
+  .section-text-content {
+    padding-right: 0;
+  }
+  
+  .section-heading {
+    font-size: 20px;  /* Slightly smaller on tablet */
+  }
+}
+
+@media (max-width: 768px) {
+  .results-unified-scroll {
+    padding: 20px 16px;
+  }
+  
+  .report-section-with-chart {
+    padding: 24px;
+    margin-bottom: 36px;
+    gap: 24px;
+    border-radius: 16px;
+  }
+  
+  .section-heading {
+    font-size: 18px;
+    gap: 10px;
+  }
+  
+  .section-number {
+    min-width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  
+  .section-body {
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  
+  .section-chart-container {
+    padding: 20px;
+    min-height: 280px;
+    border-radius: 14px;
+  }
+  
+  .section-chart-container canvas {
+    min-height: 320px !important;  /* More space on mobile */
+    max-height: 480px !important;  /* Increased max */
+  }
+  
+  .report-main-header {
+    font-size: 22px;
+  }
+}
+
+/* ============================================
+   LOADING & ANIMATION STATES
+   ============================================ */
+
+.section-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.section-loading::before {
+  content: "";
+  width: 32px;
+  height: 32px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Chart placeholder styling */
+.chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.chart-placeholder:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.chart-placeholder p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Fade-in animation for sections - INSTANT for better UX */
+.report-section-with-chart {
+  animation: fadeInUp 0.3s ease-out forwards;  /* Fast animation */
+  opacity: 1;  /* Start visible */
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0.85;  /* Start mostly visible */
+    transform: translateY(8px);  /* Minimal movement */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chartFadeIn {
+  0% {
+    opacity: 0.8;  /* Start mostly visible */
+    transform: scale(0.98);  /* Minimal scale */
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Remove all animation delays for instant rendering */
+.report-section-with-chart:nth-child(1) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(2) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(3) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(4) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(5) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(6) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(7) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(8) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(9) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(10) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(11) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(12) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(13) { animation-delay: 0s; }
+.report-section-with-chart:nth-child(14) { animation-delay: 0s; }
+</style>
+
+<script>
+// Export Stage 1 Report to PDF
+function exportStage1Report() {
+  const container = document.getElementById('stage1-unified-container');
+  if (!container) return;
+  
+  const content = container.innerText || container.textContent;
+  if (!content || content.includes('Strategic Analysis Ready')) {
+    showToast('⚠️ No report to export. Run Stage 1 first.');
+    return;
+  }
+  
+  // Create downloadable text file
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Stage1-Strategic-Analysis-' + new Date().toISOString().split('T')[0] + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showToast('✅ Report exported successfully');
+}
+</script>
+
+<!-- Legacy CSS kept for backwards compatibility but hidden -->
+<style style="display:none;">
+/* OLD STYLES - NOT RENDERED */
+.results-analysis-panel {
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.analysis-header h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.report-viewer-elite {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.report-viewer-elite h1,
+.report-viewer-elite h2 {
+  color: #111827;
+  font-weight: 700;
+  margin-top: 32px;
+  margin-bottom: 16px;
+}
+
+.report-viewer-elite h3,
+.report-viewer-elite h4 {
+  color: #1f2937;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+
+.report-viewer-elite ul,
+.report-viewer-elite ol {
+  padding-left: 24px;
+  margin: 16px 0;
+}
+
+.report-viewer-elite li {
+  margin: 8px 0;
+}
+
+.report-viewer-elite strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.report-viewer-elite code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.report-placeholder {
+  text-align: center;
+  padding: 80px 40px;
+  color: #9ca3af;
+}
+
+.placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.report-placeholder p {
+  font-size: 16px;
+  margin: 8px 0;
+}
+
+.placeholder-hint {
+  font-size: 14px;
+  color: #d1d5db;
+}
+
+/* RIGHT: Charts Panel */
+.results-charts-panel {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.charts-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.charts-header h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.charts-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Elite Charts Grid */
+.charts-grid-elite {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.chart-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chart-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  border-color: #3b82f6;
+}
+
+.chart-card-large {
+  grid-column: span 2;
+}
+
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chart-card-header h5 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.chart-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+}
+
+.chart-card canvas {
+  max-height: 280px;
+  animation: fadeInScale 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chart-card-large canvas {
+  max-height: 320px;
+}
+
+/* Animations */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Export Button */
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* Responsive Design */
+@media (max-width: 1400px) {
+  .results-elite-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .results-analysis-panel {
+    max-height: 600px;
+  }
+  
+  .results-charts-panel {
+    max-height: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .charts-grid-elite {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-card-large {
+    grid-column: span 1;
+  }
+}
+
+/* Loading State */
+.chart-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 280px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.chart-loading::before {
+  content: "";
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Elite Typography for Report Content */
+.report-elite-typography {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #1f2937;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.report-main-heading {
+  font-size: 28px;
+  font-weight: 800;
+  color: #111827;
+  margin: 32px 0 20px 0;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.report-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 28px 0 16px 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+}
+
+.section-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.section-number {
+  color: #3b82f6;
+  font-weight: 800;
+}
+
+.section-title {
+  flex: 1;
+}
+
+.report-subheading {
+  font-size: 17px;
+  font-weight: 600;
+  color: #374151;
+  margin: 20px 0 12px 0;
+}
+
+.report-paragraph {
+  margin: 16px 0;
+  line-height: 1.8;
+  color: #374151;
+}
+
+.report-emphasis {
+  font-weight: 600;
+  color: #111827;
+}
+
+.report-italic {
+  font-style: italic;
+  color: #4b5563;
+}
+
+.report-code {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Courier New', monospace;
+  font-size: 13px;
+  color: #dc2626;
+}
+
+.report-list,
+.report-list-numbered {
+  margin: 16px 0;
+  padding-left: 28px;
+}
+
+.report-list-item,
+.report-list-item-numbered {
+  margin: 10px 0;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.report-list-item::marker {
+  color: #3b82f6;
+  font-size: 18px;
+}
+
+.report-list-item-numbered::marker {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+.report-section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #e5e7eb 50%, transparent 100%);
+  margin: 32px 0 24px 0;
+}
+
+.report-divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #d1d5db 50%, transparent 100%);
+  margin: 24px 0;
+}
+
+.report-quote {
+  border-left: 4px solid #3b82f6;
+  padding: 12px 20px;
+  margin: 20px 0;
+  background: #f9fafb;
+  font-style: italic;
+  color: #4b5563;
+  border-radius: 0 8px 8px 0;
+}
+
+.no-content {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+  font-size: 16px;
+}
+</style>
+
+<script>
+// Export Stage 1 Report to PDF
+function exportStage1Report() {
+  const reportEl = document.getElementById('stage1-report');
+  if (!reportEl) return;
+  
+  const content = reportEl.innerText || reportEl.textContent;
+  if (!content || content.includes('Run Stage 1')) {
+    showToast('⚠️ No report to export. Run Stage 1 first.');
+    return;
+  }
+  
+  // Create downloadable text file (PDF generation would require jsPDF library)
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Stage1-Strategic-Analysis-' + new Date().toISOString().split('T')[0] + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showToast('✅ Report exported successfully');
+}
+</script>

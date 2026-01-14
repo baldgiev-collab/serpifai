@@ -1,0 +1,89 @@
+# SerpifAI v6 - Apache Configuration
+# Security & Performance Optimizations
+
+# Enable Rewrite Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /serpifai_php/
+    
+    # =========================================================================
+    # WHITELIST API GATEWAY - Process BEFORE security rules
+    # =========================================================================
+    RewriteCond %{REQUEST_URI} ^/serpifai_php/api_gateway\.php$ [NC]
+    RewriteRule ^ - [L]
+    
+    # Whitelist test files
+    RewriteCond %{REQUEST_URI} ^/serpifai_php/test_.*\.php$ [NC]
+    RewriteRule ^ - [L]
+    
+    # =========================================================================
+    # SECURITY RULES - Applied to all other requests
+    # =========================================================================
+    
+    # Block direct access to config folder
+    RewriteRule ^config/.*$ - [F,L]
+    
+    # Block direct access to database folder
+    RewriteRule ^database/.*$ - [F,L]
+    
+    # Protect against SQL injection (SAFER - only actual SQL commands)
+    RewriteCond %{QUERY_STRING} (union.*select|select.*from|insert.*into|delete.*from|drop.*table) [NC]
+    RewriteRule ^(.*)$ - [F,L]
+    
+    # Handle preflight OPTIONS requests
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+</IfModule>
+
+# Protect sensitive files
+<FilesMatch "\.(sql|log|md|json|env|ini|bak)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Protect config directory
+<DirectoryMatch "^.*/config.*">
+    Order Allow,Deny
+    Deny from all
+</DirectoryMatch>
+
+# Protect database directory
+<DirectoryMatch "^.*/database.*">
+    Order Allow,Deny
+    Deny from all
+</DirectoryMatch>
+
+# Enable CORS for API gateway
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "POST, GET, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Compression for performance
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/json application/javascript
+</IfModule>
+
+# Cache control
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType application/json "access plus 0 seconds"
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes
+
+# PHP settings
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 60
+    php_value max_input_time 60
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>

@@ -1,0 +1,676 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE_Strategic.html - Strategic Analysis Renderers
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * ELITE v4.0 - Board-Ready Strategic Functions
+ * Contains: Kill moves, opportunities, JTBD, loss leader, emotional debt,
+ *           time-to-value, programmatic moat, competitive roadmap
+ * 
+ * EXTRACTED FROM: UI_Elite_Renderer.html (Lines 3900-4660)
+ * DEPENDENCIES: ELITE_Config.html, ELITE_Helpers.html
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Render Kill Moves with Entity-Based SEO Strategy
+ */
+function renderEliteKillMoves(killMoves) {
+  let html = `
+    <div class="elite-insight-card kill-move-card animate-slide-up stagger-2">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">⚔️</div>
+          <div>
+            <h3 class="elite-insight-title">Strategic Kill Moves</h3>
+            <p class="elite-insight-subtitle">Entity-Based SEO — Own High-Intent Topics, Not Just Keywords</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">HIGH IMPACT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  killMoves.forEach((move, index) => {
+    const priority = move.urgency || move.priority || 'High';
+    const priorityClass = priority === 'Critical' ? 'priority-critical' : priority === 'High' ? 'priority-high' : 'priority-medium';
+
+    html += `
+      <div class="kill-move-item animate-fade-in stagger-${index + 1}">
+        <div class="kill-move-header">
+          <span class="kill-move-priority ${priorityClass}">${priority}</span>
+          <span class="kill-move-target">vs ${move.targetCompetitor || 'Market'}</span>
+        </div>
+        <div class="kill-move-description">
+          <h4>${translateToPlainEnglish(move.killMove || move.move || move.action || 'Strategic Move')}</h4>
+          <p>${translateToPlainEnglish(move.hiddenVulnerability || move.rationale || move.plainEnglish || '')}</p>
+        </div>
+    `;
+
+    if (move.theirApparentStrength) {
+      html += `
+        <div class="strength-vs-vulnerability">
+          <div class="svv-item apparent-strength">
+            <span class="svv-label">🛡️ Their Claimed Strength:</span>
+            <span class="svv-value">${translateToPlainEnglish(move.theirApparentStrength)}</span>
+          </div>
+          <div class="svv-item hidden-vulnerability">
+            <span class="svv-label">🎯 Hidden Vulnerability:</span>
+            <span class="svv-value">${translateToPlainEnglish(move.hiddenVulnerability || 'Not identified')}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (move.entityBasedAttack) {
+      html += `
+        <div class="entity-seo-strategy">
+          <div class="entity-seo-title">🎯 Entity-Based SEO Battle Plan</div>
+          <div class="entity-attack-description">${translateToPlainEnglish(move.entityBasedAttack)}</div>
+        </div>
+      `;
+    }
+
+    if (move.preEmptiveFrame) {
+      html += `
+        <div class="preemptive-frame">
+          <div class="frame-label">🔄 Pre-emptive Framing Strategy:</div>
+          <div class="frame-content">${translateToPlainEnglish(move.preEmptiveFrame)}</div>
+        </div>
+      `;
+    }
+
+    if (move.expectedImpact || move.impact) {
+      html += `
+        <div class="kill-move-impact">
+          <span class="impact-icon">📈</span>
+          <span class="impact-text"><strong>Expected Impact:</strong> ${translateToPlainEnglish(move.expectedImpact || move.impact)}</span>
+        </div>
+      `;
+    }
+
+    if (move.implementation) {
+      const impl = Array.isArray(move.implementation) ? move.implementation : [move.implementation];
+      html += `
+        <div class="kill-move-implementation">
+          <div class="impl-title">📋 How to Execute:</div>
+          <ol class="impl-steps">${impl.map(step => `<li>${translateToPlainEnglish(step)}</li>`).join('')}</ol>
+        </div>
+      `;
+    }
+
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Strategic Opportunities from Executive Brief
+ */
+function renderEliteOpportunities(executiveBrief) {
+  if (!executiveBrief.opportunities && !executiveBrief.criticalThreats) return '';
+
+  let html = `
+    <div class="elite-insight-card opportunity-card animate-slide-up stagger-3">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">💎</div>
+          <div>
+            <h3 class="elite-insight-title">Strategic Opportunities</h3>
+            <p class="elite-insight-subtitle">Convert Competitor Weaknesses into Your Advantages</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">GROWTH</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  const threats = executiveBrief.criticalThreats || [];
+  if (threats.length > 0) {
+    html += `
+      <div class="threats-section">
+        <h4 class="section-label">⚠️ Critical Threats to Address</h4>
+        <div class="threats-list">
+          ${threats.map(threat => {
+            const threatText = typeof threat === 'string' ? threat : threat.threat || threat.description;
+            const urgency = typeof threat === 'object' ? threat.urgency : 'Critical';
+            const mitigation = typeof threat === 'object' ? threat.mitigation : null;
+            const fromCompetitor = typeof threat === 'object' ? threat.fromCompetitor : null;
+            return `
+              <div class="threat-item">
+                <div class="threat-header">
+                  <span class="threat-badge threat-${urgency?.toLowerCase() || 'critical'}">${urgency || 'CRITICAL'}</span>
+                  ${fromCompetitor ? `<span class="threat-source">from ${fromCompetitor}</span>` : ''}
+                </div>
+                <p class="threat-description">${translateToPlainEnglish(threatText)}</p>
+                ${mitigation ? `<div class="threat-mitigation"><span class="mitigation-label">🛡️ Mitigation:</span><span class="mitigation-text">${translateToPlainEnglish(mitigation)}</span></div>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  const opportunities = executiveBrief.strategicOpportunities || executiveBrief.opportunities || [];
+  if (opportunities.length > 0) {
+    html += `
+      <div class="opportunities-section">
+        <h4 class="section-label">🚀 Growth Opportunities</h4>
+        <div class="opportunities-grid">
+          ${opportunities.map((opp, i) => {
+            const oppTitle = typeof opp === 'string' ? opp : opp.opportunity || opp.title;
+            const oppDesc = typeof opp === 'object' ? (opp.conversionSurface || opp.description) : null;
+            const topicalDominance = typeof opp === 'object' ? opp.topicalDominance : null;
+            const potentialImpact = typeof opp === 'object' ? opp.potentialImpact : null;
+            return `
+              <div class="opportunity-item animate-fade-in stagger-${i + 1}">
+                <div class="opp-number">${i + 1}</div>
+                <div class="opp-content">
+                  <h5>${translateToPlainEnglish(oppTitle)}</h5>
+                  ${oppDesc ? `<p>${translateToPlainEnglish(oppDesc)}</p>` : ''}
+                  ${topicalDominance ? `<div class="opp-topical"><span class="topical-label">🎯 Topical Dominance Target:</span><span class="topical-value">${topicalDominance}</span></div>` : ''}
+                  ${potentialImpact ? `<span class="opp-potential">${translateToPlainEnglish(potentialImpact)}</span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Jobs-to-be-Done (JTBD) Overlay
+ */
+function renderJobsToBeDone(jtbdData) {
+  if (!jtbdData || !jtbdData.unmetJobs) return '';
+
+  let html = `
+    <div class="elite-insight-card jtbd-card animate-slide-up stagger-3" style="background: linear-gradient(135deg, #fef3c7 0%, #fff 100%); border-left: 4px solid #f59e0b;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎯</div>
+          <div>
+            <h3 class="elite-insight-title">Jobs-to-be-Done (JTBD) Overlay</h3>
+            <p class="elite-insight-subtitle">Unmet Struggles Your Competitors Fail to Solve</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #f59e0b;">JTBD</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  if (jtbdData.unmetJobs && jtbdData.unmetJobs.length > 0) {
+    html += `
+      <div class="jtbd-jobs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+        ${jtbdData.unmetJobs.map(job => `
+          <div class="jtbd-job-card" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <span style="font-size: 12px; font-weight: 600; color: #666;">🏢 ${job.competitor}</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <span style="font-size: 11px; color: #999; text-transform: uppercase;">Unmet Job</span>
+              <p style="margin: 4px 0; font-size: 14px; font-weight: 600; color: #202124;">"${job.unmetJob}"</p>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <span style="font-size: 11px; color: #999; text-transform: uppercase;">Frustration</span>
+              <p style="margin: 4px 0; font-size: 13px; color: #ea4335;">${job.frustration}</p>
+            </div>
+            ${job.ourSolution ? `
+              <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; margin-top: 8px;">
+                <span style="font-size: 11px; color: #34a853; font-weight: 600;">✅ OUR SOLUTION</span>
+                <p style="margin: 4px 0 0; font-size: 13px; color: #1e7e34;">${job.ourSolution}</p>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  if (jtbdData.jtbdOpportunity) {
+    html += `
+      <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 20px; border-radius: 12px;">
+        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">🏆 BIGGEST JTBD OPPORTUNITY</div>
+        <p style="margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5;">"${jtbdData.jtbdOpportunity}"</p>
+      </div>
+    `;
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Loss Leader & Profit Center Analysis
+ */
+function renderLossLeaderAnalysis(lossLeaderData) {
+  if (!lossLeaderData) return '';
+
+  let html = `
+    <div class="elite-insight-card loss-leader-card animate-slide-up stagger-4" style="background: linear-gradient(135deg, #dbeafe 0%, #fff 100%); border-left: 4px solid #3b82f6;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">💰</div>
+          <div>
+            <h3 class="elite-insight-title">Loss Leader & Profit Center Analysis</h3>
+            <p class="elite-insight-subtitle">Monetization Strategies & CAC Disruption Opportunities</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #3b82f6;">MONETIZATION</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  if (lossLeaderData.competitorStrategies && lossLeaderData.competitorStrategies.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <h4 style="font-size: 14px; color: #3b82f6; margin: 0 0 12px; font-weight: 600;">📊 Competitor CAC Strategies</h4>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Competitor</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Loss Leader</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Profit Center</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">CAC Impact</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lossLeaderData.competitorStrategies.map(strat => `
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px; font-weight: 500;">${strat.competitor}</td>
+                  <td style="padding: 10px; color: #6b7280;">${strat.lossLeader}</td>
+                  <td style="padding: 10px; color: #059669; font-weight: 500;">${strat.profitCenter}</td>
+                  <td style="padding: 10px; font-size: 12px; color: #666;">${strat.cacImpact}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (lossLeaderData.suggestedLossLeader) {
+    const tool = lossLeaderData.suggestedLossLeader;
+    html += `
+      <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; border-radius: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span style="font-size: 20px;">🚀</span>
+          <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; opacity: 0.9;">RECOMMENDED LOSS LEADER TOOL</span>
+        </div>
+        <h4 style="margin: 0 0 8px; font-size: 18px; font-weight: 700;">${tool.tool}</h4>
+        <p style="margin: 0 0 12px; opacity: 0.9; font-size: 14px; line-height: 1.5;">${tool.description}</p>
+        ${tool.targetKeywords && tool.targetKeywords.length > 0 ? `
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+            ${tool.targetKeywords.map(kw => `<span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 12px;">${kw}</span>`).join('')}
+          </div>
+        ` : ''}
+        ${tool.competitorDisruption ? `
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-top: 8px;">
+            <span style="font-size: 11px; opacity: 0.8;">🎯 DISRUPTION TARGET</span>
+            <p style="margin: 4px 0 0; font-size: 13px;">${tool.competitorDisruption}</p>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Emotional Debt Audit
+ */
+function renderEmotionalDebtAudit(emotionalData) {
+  if (!emotionalData) return '';
+
+  let html = `
+    <div class="elite-insight-card emotional-debt-card animate-slide-up stagger-5" style="background: linear-gradient(135deg, #fce7f3 0%, #fff 100%); border-left: 4px solid #ec4899;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #ec4899, #be185d);">💔</div>
+          <div>
+            <h3 class="elite-insight-title">Emotional Debt Audit</h3>
+            <p class="elite-insight-subtitle">Turn Competitor Frustrations into Your Brand Promises</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #ec4899;">SENTIMENT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  if (emotionalData.competitorDebts && emotionalData.competitorDebts.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <h4 style="font-size: 14px; color: #ec4899; margin: 0 0 12px; font-weight: 600;">😤 Competitor Pain Points</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+          ${emotionalData.competitorDebts.map(debt => `
+            <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+              <div style="font-weight: 600; color: #202124; margin-bottom: 8px;">${debt.competitor}</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;">
+                ${(debt.negativePatterns || []).map(pattern => `<span style="background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 4px; font-size: 11px;">❌ ${pattern}</span>`).join('')}
+              </div>
+              <div style="background: #fef2f2; padding: 8px; border-radius: 6px;">
+                <span style="font-size: 11px; color: #b91c1c; font-weight: 600;">EMOTIONAL DEBT:</span>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #7f1d1d;">"${debt.emotionalDebt}"</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (emotionalData.brandPromises && emotionalData.brandPromises.length > 0) {
+    html += `
+      <div>
+        <h4 style="font-size: 14px; color: #059669; margin: 0 0 12px; font-weight: 600;">✨ Your Counter-Positioning Brand Promises</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+          ${emotionalData.brandPromises.map(promise => `
+            <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 16px; border-radius: 12px; border: 1px solid #a7f3d0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <span style="font-size: 12px; color: #666;">vs. ${promise.againstCompetitor}</span>
+                <span style="font-size: 16px;">→</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                  <span style="font-size: 10px; color: #b91c1c; text-transform: uppercase;">Their Weakness</span>
+                  <p style="margin: 4px 0; font-size: 13px; color: #dc2626; font-weight: 500;">"${promise.theirWeakness}"</p>
+                </div>
+                <div>
+                  <span style="font-size: 10px; color: #059669; text-transform: uppercase;">Your Promise</span>
+                  <p style="margin: 4px 0; font-size: 13px; color: #047857; font-weight: 600;">"${promise.ourPromise}"</p>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Time-to-Value Comparison
+ */
+function renderTimeToValue(ttvData) {
+  if (!ttvData) return '';
+
+  let html = `
+    <div class="elite-insight-card ttv-card animate-slide-up stagger-6" style="background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%); border-left: 4px solid #22c55e;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">⚡</div>
+          <div>
+            <h3 class="elite-insight-title">Time-to-Value Comparison</h3>
+            <p class="elite-insight-subtitle">Onboarding Speed & First "Aha Moment" Analysis</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #22c55e;">10X FASTER</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  if (ttvData.competitors && ttvData.competitors.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="background: #f8fafc;">
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Competitor</th>
+              <th style="padding: 10px; text-align: center; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Speed</th>
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Key Friction</th>
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Time to Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ttvData.competitors.map(comp => {
+              const speedColor = comp.onboardingSpeed === 'Fast' ? '#22c55e' : comp.onboardingSpeed === 'Slow' ? '#ef4444' : '#f59e0b';
+              const speedIcon = comp.onboardingSpeed === 'Fast' ? '🚀' : comp.onboardingSpeed === 'Slow' ? '🐢' : '🚶';
+              return `
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px; font-weight: 500;">${comp.competitor}</td>
+                  <td style="padding: 10px; text-align: center;">
+                    <span style="background: ${speedColor}20; color: ${speedColor}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${speedIcon} ${comp.onboardingSpeed}</span>
+                  </td>
+                  <td style="padding: 10px; color: #6b7280; font-size: 12px;">${comp.friction}</td>
+                  <td style="padding: 10px; font-weight: 500; color: #374151;">${comp.timeToValue}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  html += `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      ${ttvData.ourAdvantage ? `
+        <div style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 20px; border-radius: 12px;">
+          <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">⚡ OUR 10X ADVANTAGE</div>
+          <p style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5;">${ttvData.ourAdvantage}</p>
+        </div>
+      ` : ''}
+      ${ttvData.ahaOptimization ? `
+        <div style="background: white; border: 2px solid #22c55e; padding: 20px; border-radius: 12px;">
+          <div style="font-size: 12px; color: #22c55e; margin-bottom: 8px; font-weight: 600;">💡 "AHA MOMENT" OPTIMIZATION</div>
+          <p style="margin: 0; font-size: 14px; color: #202124; line-height: 1.5;">${ttvData.ahaOptimization}</p>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Programmatic SEO Moat
+ */
+function renderProgrammaticSEOMoat(moatData) {
+  if (!moatData || !moatData.opportunity) return '';
+
+  const opp = moatData.opportunity;
+
+  let html = `
+    <div class="elite-insight-card programmatic-seo-card animate-slide-up stagger-7" style="background: linear-gradient(135deg, #ede9fe 0%, #fff 100%); border-left: 4px solid #8b5cf6;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">🏰</div>
+          <div>
+            <h3 class="elite-insight-title">Programmatic SEO Moat</h3>
+            <p class="elite-insight-subtitle">Build 1,000+ Pages Without Writing Them Manually</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #8b5cf6;">SCALABLE</span>
+      </div>
+      <div class="elite-insight-body">
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+            <div>
+              <span style="font-size: 11px; color: #8b5cf6; text-transform: uppercase; font-weight: 600;">PAGE ARCHITECTURE</span>
+              <h4 style="margin: 8px 0; font-size: 18px; font-weight: 700; color: #202124;">"${opp.pageArchitecture}"</h4>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                ${(opp.variables || []).map(v => `<span style="background: #8b5cf620; color: #8b5cf6; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">[${v}]</span>`).join('')}
+              </div>
+            </div>
+            <div style="text-align: center; border-left: 1px solid #e5e7eb; padding-left: 20px;">
+              <div style="font-size: 36px; font-weight: 700; color: #8b5cf6;">${opp.estimatedPages || '500'}+</div>
+              <div style="font-size: 12px; color: #666;">Automated Pages</div>
+              ${opp.expectedTrafficLift ? `<div style="margin-top: 12px; background: #ecfdf5; padding: 8px; border-radius: 6px;"><span style="font-size: 11px; color: #059669;">📈 ${opp.expectedTrafficLift}</span></div>` : ''}
+            </div>
+          </div>
+          ${opp.targetKeywordGap ? `<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;"><span style="font-size: 11px; color: #666;">🎯 TARGET KEYWORD GAP:</span><p style="margin: 4px 0 0; font-size: 13px; color: #374151;">${opp.targetKeywordGap}</p></div>` : ''}
+        </div>
+        ${moatData.competitorVulnerability ? `<div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 16px; border-radius: 12px;"><span style="font-size: 11px; opacity: 0.9;">🛡️ WHY COMPETITORS CAN'T REPLICATE</span><p style="margin: 8px 0 0; font-size: 14px; line-height: 1.5;">${moatData.competitorVulnerability}</p></div>` : ''}
+      </div>
+    </div>
+  `;
+
+  return html;
+}
+
+/**
+ * Render Programmatic Moat Recommendations
+ */
+function renderProgrammaticMoat(moatData) {
+  let html = `
+    <div class="elite-insight-card programmatic-moat-card animate-slide-up stagger-4">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">🏰</div>
+          <div>
+            <h3 class="elite-insight-title">Programmatic Moat Strategy</h3>
+            <p class="elite-insight-subtitle">Build Defensible Advantages That Compound Over Time</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">STRATEGIC MOAT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  if (moatData.proposedTool) {
+    html += `
+      <div class="moat-section proposed-tool-section">
+        <h4 class="section-label">🛠️ Proposed Proprietary Tool</h4>
+        <div class="proposed-tool-card">
+          <h5 class="tool-name">${moatData.proposedTool}</h5>
+          ${moatData.valueProposition ? `<div class="tool-value"><span class="value-label">💡 Value to Prospects:</span><p>${translateToPlainEnglish(moatData.valueProposition)}</p></div>` : ''}
+          ${moatData.leadCapture ? `<div class="tool-leads"><span class="leads-label">📥 Lead Generation:</span><p>${translateToPlainEnglish(moatData.leadCapture)}</p></div>` : ''}
+          ${moatData.competitiveAdvantage ? `<div class="tool-advantage"><span class="advantage-label">🛡️ Competitive Advantage:</span><p>${translateToPlainEnglish(moatData.competitiveAdvantage)}</p></div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  if (moatData.talentVelocityIndex) {
+    const tvi = moatData.talentVelocityIndex;
+    html += `
+      <div class="moat-section tvi-section">
+        <h4 class="section-label">📊 Talent Velocity Index™</h4>
+        <p class="section-description">Proprietary metric measuring how fast a company can convert talent investment into product velocity</p>
+        <div class="tvi-display">
+          <div class="tvi-score">${tvi.score || 'N/A'}</div>
+          <div class="tvi-breakdown">
+            <div class="tvi-item"><span>Engineering Velocity:</span> ${tvi.engineeringVelocity || 'N/A'}</div>
+            <div class="tvi-item"><span>Talent Acquisition Rate:</span> ${tvi.talentAcquisitionRate || 'N/A'}</div>
+            <div class="tvi-item"><span>Product Iteration Speed:</span> ${tvi.productIterationSpeed || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (moatData.recommendations && moatData.recommendations.length > 0) {
+    html += `
+      <div class="moat-section recommendations-section">
+        <h4 class="section-label">🛡️ Moat Building Strategies</h4>
+        <div class="moat-recommendations">
+          ${moatData.recommendations.map((rec, i) => `
+            <div class="moat-rec-item">
+              <div class="moat-rec-icon">${i + 1}</div>
+              <div class="moat-rec-content">
+                <h5>${rec.strategy || rec}</h5>
+                ${rec.description ? `<p>${translateToPlainEnglish(rec.description)}</p>` : ''}
+                ${rec.timeframe ? `<span class="moat-timeframe">⏱️ ${rec.timeframe}</span>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Competitive Roadmap Timeline
+ */
+function renderCompetitiveRoadmap(roadmap) {
+  if (!roadmap || !roadmap.phases) return '';
+
+  let html = `
+    <div class="elite-insight-card roadmap-card animate-slide-up stagger-5">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">🗺️</div>
+          <div>
+            <h3 class="elite-insight-title">Competitive Domination Roadmap</h3>
+            <p class="elite-insight-subtitle">Phased Strategy for Market Leadership</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">ROADMAP</span>
+      </div>
+      <div class="elite-insight-body">
+        <div class="roadmap-timeline">
+  `;
+
+  const phases = roadmap.phases || [];
+
+  phases.forEach((phase, index) => {
+    const phaseIcon = index === 0 ? '🚀' : index === 1 ? '📈' : '👑';
+    const phaseTitle = phase.phase || phase.title || `Phase ${index + 1}`;
+    const actions = phase.keyActions || phase.actions || [];
+    const outcomes = phase.expectedOutcomes || (phase.expectedOutcome ? [phase.expectedOutcome] : []);
+
+    html += `
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-header">
+          <span class="phase-icon">${phaseIcon}</span>
+          <h4 class="roadmap-phase-title">${phaseTitle}</h4>
+          ${phase.timeline ? `<span class="phase-timeline">${phase.timeline}</span>` : ''}
+        </div>
+        ${phase.objectives && phase.objectives.length > 0 ? `
+          <div class="phase-objectives">
+            <span class="objectives-label">🎯 Objectives:</span>
+            <ul class="objectives-list">${phase.objectives.map(obj => `<li>${translateToPlainEnglish(obj)}</li>`).join('')}</ul>
+          </div>
+        ` : ''}
+        ${phase.goal ? `<p class="phase-goal">${translateToPlainEnglish(phase.goal)}</p>` : ''}
+        ${actions.length > 0 ? `<ul class="roadmap-list">${actions.map(action => `<li>${translateToPlainEnglish(action)}</li>`).join('')}</ul>` : ''}
+        ${outcomes.length > 0 ? `
+          <div class="phase-outcome">
+            <span class="outcome-label">📈 Expected Outcomes:</span>
+            <ul class="outcome-list">${outcomes.map(outcome => `<li>${translateToPlainEnglish(outcome)}</li>`).join('')}</ul>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  });
+
+  html += '</div></div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderEliteKillMoves = renderEliteKillMoves;
+window.renderEliteOpportunities = renderEliteOpportunities;
+window.renderJobsToBeDone = renderJobsToBeDone;
+window.renderLossLeaderAnalysis = renderLossLeaderAnalysis;
+window.renderEmotionalDebtAudit = renderEmotionalDebtAudit;
+window.renderTimeToValue = renderTimeToValue;
+window.renderProgrammaticSEOMoat = renderProgrammaticSEOMoat;
+window.renderProgrammaticMoat = renderProgrammaticMoat;
+window.renderCompetitiveRoadmap = renderCompetitiveRoadmap;
+
+console.log('✅ ELITE_Strategic.html loaded');
+</script>

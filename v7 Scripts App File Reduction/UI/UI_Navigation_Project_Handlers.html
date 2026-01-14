@@ -1,0 +1,664 @@
+<!--
+  UI_Navigation_Project_Handlers.html
+  Navigation Event Wiring & Project Management Functions
+  Extracted from UI_Scripts_App.html IIFE (Phase 3)
+  
+  Functions exposed to window scope for cross-module access:
+  - refreshProjectList, loadProject, doSaveProject
+  - doNewProject, doRenameProject, doDeleteProject
+  - runStage, displayStageResults, updateStageStatus
+-->
+<script>
+  console.log('🔧 UI_Navigation_Project_Handlers.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROJECT MANAGEMENT FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Refresh the project list dropdown from Google Sheets
+   */
+  window.refreshProjectList = function() {
+    console.log('🔄 Refreshing project list...');
+    const projectSelect = document.getElementById('projectSelect');
+    
+    if (!projectSelect) {
+      console.error('❌ projectSelect element not found');
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(projects) {
+        console.log('📋 Projects loaded:', projects ? projects.length : 0);
+        projectSelect.innerHTML = '<option value="">-- Select Project --</option>';
+        
+        if (projects && projects.length > 0) {
+          projects.forEach(function(project) {
+            const option = document.createElement('option');
+            option.value = project.name || project;
+            option.textContent = project.name || project;
+            projectSelect.appendChild(option);
+          });
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Failed to load projects:', error);
+        window.showToast('Failed to load projects: ' + error, 'error');
+      })
+      .getProjectList();
+  };
+
+  /**
+   * Load a project by name
+   * @param {string} name - Project name to load
+   */
+  window.loadProject = function(name) {
+    if (!name) {
+      console.log('⚠️ No project name provided');
+      window.fillFormData?.({});
+      window.recalcScores?.();
+      return;
+    }
+
+    console.log('📂 Loading project:', name);
+    window.showLoadingIndicator?.(name);
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+        window.hideLoadingIndicator?.();
+        
+        console.log('✅ loadProject SUCCESS handler called');
+        console.log('📦 Response type:', typeof res);
+        console.log('📦 Has data?', res && res.data);
+        
+        if (res && res.data) {
+          console.log('✅ Filling form with data...');
+          console.log('📝 Sample data keys:', Object.keys(res.data).slice(0, 10).join(', '));
+          
+          window.fillFormData?.(res.data);
+          
+          // Store current project reference
+          window.currentProjectName = name;
+          window.currentProjectData = res;
+          
+          const saveStatus = document.getElementById('saveStatus');
+          if (saveStatus) {
+            saveStatus.textContent = res.updatedAt 
+              ? 'Loaded · ' + new Date(res.updatedAt).toLocaleTimeString()
+              : 'Loaded';
+          }
+          
+          window.recalcScores?.();
+          window.showToast?.('Project "' + name + '" loaded', 'success');
+          
+          // Auto-load saved competitor analysis
+          if (res.competitorAnalysis && res.competitorAnalysis.success && res.competitorAnalysis.competitors) {
+            console.log('🎯 Found saved competitor analysis for project!');
+            console.log('   Competitors:', res.competitorAnalysis.competitors.length);
+            
+            // Clear previous competitor data
+            window._lastCompetitorData = null;
+            window._eliteTabIntelligence = null;
+            window._organizedData = null;
+            window.competitorIntelligenceData = null;
+            
+            // Build proper data structure for renderCompetitorIntelligence
+            const competitorData = {
+              success: true,
+              competitors: res.competitorAnalysis.competitors,
+              analysis: res.competitorAnalysis.analysis || res.competitorAnalysis.geminiAnalysis || {},
+              geminiAnalysis: res.competitorAnalysis.geminiAnalysis || res.competitorAnalysis.analysis || {},
+              eliteTabIntelligence: res.competitorAnalysis.eliteTabIntelligence || null,
+              overview: res.competitorAnalysis.overview || null,
+              yourDomain: res.competitorAnalysis.yourDomain || '',
+              metadata: {
+                competitorCount: res.competitorAnalysis.competitors.length,
+                timestamp: res.competitorAnalysis.timestamp,
+                source: 'saved'
+              }
+            };
+            
+            // Store and render
+            window.competitorIntelligenceData = competitorData;
+            
+            // Render if function exists
+            if (typeof window.renderCompetitorIntelligence === 'function') {
+              const resultsDiv = document.getElementById('comp-results');
+              const emptyState = document.getElementById('comp-empty-state');
+              if (resultsDiv && emptyState) {
+                emptyState.style.display = 'none';
+                resultsDiv.style.display = 'block';
+                window.renderCompetitorIntelligence(competitorData);
+              }
+            }
+          }
+        } else {
+          console.warn('⚠️ Project data is empty');
+          window.showToast?.('Project not found or empty', 'warning');
+        }
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator?.();
+        console.error('❌ Failed to load project:', error);
+        window.showToast?.('Failed to load project: ' + error, 'error');
+      })
+      .loadProject(name);
+  };
+
+  /**
+   * Save current project
+   */
+  window.doSaveProject = function() {
+    const projectSelect = document.getElementById('projectSelect');
+    const projectName = projectSelect ? projectSelect.value : null;
+    
+    if (!projectName) {
+      window.showToast('Please select a project first', 'warning');
+      return;
+    }
+
+    console.log('💾 Saving project:', projectName);
+    const formData = window.collectFormData();
+
+    window.showLoadingIndicator('Saving...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project saved:', projectName);
+        window.showToast('Project "' + projectName + '" saved successfully', 'success');
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to save project:', error);
+        window.showToast('Failed to save project: ' + error, 'error');
+      })
+      .saveProject(projectName, formData);
+  };
+
+  /**
+   * Create a new project
+   */
+  window.doNewProject = function() {
+    const projectNameInput = document.getElementById('projectNameInput');
+    const newName = projectNameInput ? projectNameInput.value.trim() : '';
+    
+    if (!newName) {
+      window.showToast('Please enter a project name', 'warning');
+      return;
+    }
+
+    console.log('➕ Creating new project:', newName);
+    window.showLoadingIndicator('Creating...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project created:', newName);
+        window.showToast('Project "' + newName + '" created', 'success');
+        
+        // Clear input and refresh list
+        if (projectNameInput) projectNameInput.value = '';
+        window.refreshProjectList();
+        
+        // Auto-select the new project
+        setTimeout(function() {
+          const projectSelect = document.getElementById('projectSelect');
+          if (projectSelect) {
+            projectSelect.value = newName;
+            window.loadProject(newName);
+          }
+        }, 500);
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to create project:', error);
+        window.showToast('Failed to create project: ' + error, 'error');
+      })
+      .createProject(newName);
+  };
+
+  /**
+   * Rename current project
+   */
+  window.doRenameProject = function() {
+    const projectSelect = document.getElementById('projectSelect');
+    const projectNameInput = document.getElementById('projectNameInput');
+    const oldName = projectSelect ? projectSelect.value : '';
+    const newName = projectNameInput ? projectNameInput.value.trim() : '';
+    
+    if (!oldName) {
+      window.showToast('Please select a project to rename', 'warning');
+      return;
+    }
+    
+    if (!newName) {
+      window.showToast('Please enter a new name', 'warning');
+      return;
+    }
+
+    if (oldName === newName) {
+      window.showToast('New name is same as old name', 'warning');
+      return;
+    }
+
+    console.log('✏️ Renaming project:', oldName, '→', newName);
+    window.showLoadingIndicator('Renaming...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project renamed:', oldName, '→', newName);
+        window.showToast('Project renamed to "' + newName + '"', 'success');
+        
+        // Clear input and refresh list
+        if (projectNameInput) projectNameInput.value = '';
+        window.refreshProjectList();
+        
+        // Auto-select the renamed project
+        setTimeout(function() {
+          const projectSelect = document.getElementById('projectSelect');
+          if (projectSelect) {
+            projectSelect.value = newName;
+          }
+        }, 500);
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to rename project:', error);
+        window.showToast('Failed to rename project: ' + error, 'error');
+      })
+      .renameProject(oldName, newName);
+  };
+
+  /**
+   * Delete current project
+   */
+  window.doDeleteProject = function() {
+    const projectSelect = document.getElementById('projectSelect');
+    const projectName = projectSelect ? projectSelect.value : '';
+    
+    if (!projectName) {
+      window.showToast('Please select a project to delete', 'warning');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to delete "' + projectName + '"? This cannot be undone.')) {
+      return;
+    }
+
+    console.log('🗑️ Deleting project:', projectName);
+    window.showLoadingIndicator('Deleting...');
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        window.hideLoadingIndicator();
+        console.log('✅ Project deleted:', projectName);
+        window.showToast('Project "' + projectName + '" deleted', 'success');
+        
+        // Clear current project reference
+        window.currentProjectName = null;
+        window.currentProjectData = null;
+        
+        // Refresh list
+        window.refreshProjectList();
+      })
+      .withFailureHandler(function(error) {
+        window.hideLoadingIndicator();
+        console.error('❌ Failed to delete project:', error);
+        window.showToast('Failed to delete project: ' + error, 'error');
+      })
+      .deleteProject(projectName);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WORKFLOW STAGE EXECUTION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Run a workflow stage
+   * @param {number} stageNum - Stage number (1-5)
+   * @param {HTMLElement} buttonEl - The button element that triggered this
+   */
+  window.runStage = function(stageNum, buttonEl) {
+    console.log('▶️ Running stage:', stageNum);
+
+    // Disable button and show loading
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      buttonEl.innerHTML = '<span class="spinner"></span> Running...';
+    }
+
+    // Collect form data for context
+    const formData = window.collectFormData();
+
+    // Get selected Gemini model
+    const geminiModelSelect = document.getElementById('geminiModelSelect');
+    const selectedModel = geminiModelSelect ? geminiModelSelect.value : 'gemini-pro';
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        console.log('✅ Stage', stageNum, 'completed');
+        
+        // Re-enable button
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = '▶ Run Stage ' + stageNum;
+        }
+
+        // Display results
+        window.displayStageResults(stageNum, result);
+        
+        // Update stage status
+        window.updateStageStatus(stageNum, 'completed');
+        
+        // Show stage in sidebar
+        window.showStageInSidebar(stageNum);
+        
+        // Show success toast
+        window.showToast('Stage ' + stageNum + ' completed successfully', 'success');
+        
+        // Trigger auto-save
+        window.debounceAutoSave();
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Stage', stageNum, 'failed:', error);
+        
+        // Re-enable button
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = '▶ Run Stage ' + stageNum;
+        }
+
+        // Update stage status
+        window.updateStageStatus(stageNum, 'error');
+        
+        // Show error toast
+        window.showToast('Stage ' + stageNum + ' failed: ' + error, 'error');
+      })
+      .runWorkflowStage(stageNum, formData, selectedModel);
+  };
+
+  /**
+   * Display stage results in the results panel
+   * @param {number} stageNum - Stage number
+   * @param {string|Object} result - Stage result data
+   */
+  window.displayStageResults = function(stageNum, result) {
+    console.log('📄 Displaying results for stage:', stageNum);
+
+    // Store result in form field
+    const resultField = document.getElementById('stage' + stageNum + 'Result');
+    if (resultField) {
+      resultField.value = typeof result === 'object' ? JSON.stringify(result) : result;
+    }
+
+    // Find or create results container
+    const resultsContainer = document.getElementById('stage-' + stageNum + '-results');
+    if (resultsContainer) {
+      // Format the result for display
+      let displayHtml = '';
+      
+      if (typeof result === 'object' && result !== null) {
+        // Handle structured result
+        if (result.report) {
+          displayHtml = window.formatMarkdownReport ? 
+            window.formatMarkdownReport(result.report) : 
+            '<pre>' + result.report + '</pre>';
+        } else {
+          displayHtml = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+        }
+      } else if (typeof result === 'string') {
+        // Handle text/markdown result
+        displayHtml = window.formatMarkdownReport ? 
+          window.formatMarkdownReport(result) : 
+          '<pre>' + result + '</pre>';
+      }
+
+      resultsContainer.innerHTML = displayHtml;
+    }
+
+    // Switch to results tab if it exists
+    const resultsTab = document.querySelector('[data-tab="results"]');
+    if (resultsTab) {
+      window.setActiveTab('results');
+    }
+  };
+
+  /**
+   * Update stage status badge
+   * @param {number} stageNum - Stage number
+   * @param {string} status - Status: 'pending', 'running', 'completed', 'error'
+   */
+  window.updateStageStatus = function(stageNum, status) {
+    const statusEl = document.querySelector('.stage-status[data-stage="' + stageNum + '"]');
+    if (!statusEl) return;
+
+    // Remove existing status classes
+    statusEl.classList.remove('status-pending', 'status-running', 'status-completed', 'status-error');
+    
+    // Add new status class
+    statusEl.classList.add('status-' + status);
+
+    // Update status text
+    const statusText = {
+      'pending': '○ Pending',
+      'running': '◐ Running...',
+      'completed': '✓ Completed',
+      'error': '✗ Error'
+    };
+    statusEl.textContent = statusText[status] || status;
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GEMINI MODEL SELECTION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Load available Gemini models
+   * Response format: { success: true, models: [{name, displayName}], currentModel: 'model-name' }
+   */
+  window.loadGeminiModels = function() {
+    console.log('🤖 Loading Gemini models...');
+    
+    const geminiModelSelect = document.getElementById('geminiModelSelect');
+    if (!geminiModelSelect) {
+      console.warn('⚠️ geminiModelSelect element not found');
+      return;
+    }
+    
+    geminiModelSelect.innerHTML = '<option value="">Loading models...</option>';
+    geminiModelSelect.disabled = true;
+    
+    google.script.run
+      .withSuccessHandler(function(response) {
+        console.log('📦 Gemini models response:', response);
+        
+        if (response && response.success && response.models && response.models.length > 0) {
+          geminiModelSelect.innerHTML = '';
+          
+          response.models.forEach(function(model) {
+            const option = document.createElement('option');
+            option.value = model.name;  // Use 'name' property (e.g., 'gemini-3-flash-preview')
+            option.textContent = model.displayName || model.name;  // Use 'displayName' for display
+            
+            // Select current model if it matches
+            if (model.name === response.currentModel) {
+              option.selected = true;
+            }
+            geminiModelSelect.appendChild(option);
+          });
+          
+          geminiModelSelect.disabled = false;
+          console.log('✅ Loaded ' + response.models.length + ' Gemini models');
+          window.showToast?.('✅ Loaded ' + response.models.length + ' Gemini models');
+        } else {
+          // Fallback options - Updated Jan 2026
+          geminiModelSelect.innerHTML = `
+            <option value="gemini-3-flash-preview">Gemini 3 Flash Preview ⚡🆕 (Latest)</option>
+            <option value="gemini-3-pro-preview">Gemini 3 Pro Preview 🧠🆕</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash ⚡ (Stable)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro 🧠 (Stable)</option>
+          `;
+          geminiModelSelect.disabled = false;
+          console.log('⚠️ Using fallback Gemini models');
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Failed to load Gemini models:', error);
+        geminiModelSelect.innerHTML = `
+          <option value="gemini-3-flash-preview">Gemini 3 Flash Preview ⚡</option>
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash ⚡</option>
+        `;
+        geminiModelSelect.disabled = false;
+        window.showToast?.('⚠️ Could not load models, using defaults');
+      })
+      .getGeminiModels();
+  };
+
+  /**
+   * Save selected Gemini model preference
+   * @param {string} modelName - Model ID to save
+   */
+  window.saveGeminiModel = function(modelName) {
+    localStorage.setItem('serpifai-gemini-model', modelName);
+    console.log('💾 Saved Gemini model preference:', modelName);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NAVIGATION EVENT WIRING HELPER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Wire up all navigation event handlers
+   * Call this after DOM is ready
+   */
+  window.initNavigationHandlers = function() {
+    console.log('🔌 Wiring navigation handlers...');
+
+    // Navigation buttons
+    const navBtns = document.querySelectorAll('.nav-btn');
+    navBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const tabName = btn.dataset.tab;
+        if (tabName) {
+          window.setActiveTab(tabName);
+        }
+      });
+    });
+
+    // Submenu navigation
+    document.querySelectorAll('.nav-subbtn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const tabName = btn.dataset.tab;
+        if (tabName) {
+          window.setActiveTab(tabName);
+        }
+      });
+    });
+
+    // Stage panel buttons
+    document.querySelectorAll('.stage-panel').forEach(function(panel) {
+      panel.addEventListener('click', function() {
+        const stageNum = panel.dataset.stage;
+        if (stageNum) {
+          // Expand stage details or switch to stage tab
+          console.log('Stage panel clicked:', stageNum);
+        }
+      });
+    });
+
+    // Run Stage buttons
+    document.querySelectorAll('.btn-run-stage').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const stageNum = parseInt(btn.dataset.stage);
+        if (stageNum) {
+          window.runStage(stageNum, btn);
+        }
+      });
+    });
+
+    // Results tab navigation
+    document.querySelectorAll('.results-tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const resultTab = btn.dataset.result;
+        if (resultTab) {
+          // Switch result sub-tab
+          document.querySelectorAll('.results-tab-btn').forEach(function(b) {
+            b.classList.remove('active');
+          });
+          btn.classList.add('active');
+          
+          document.querySelectorAll('.result-panel').forEach(function(panel) {
+            panel.classList.remove('active');
+          });
+          const targetPanel = document.getElementById('result-' + resultTab);
+          if (targetPanel) {
+            targetPanel.classList.add('active');
+          }
+        }
+      });
+    });
+
+    // Theme buttons
+    const themeBtns = document.querySelectorAll('.btn-theme');
+    themeBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const theme = btn.dataset.theme;
+        if (theme) {
+          window.switchTheme(theme);
+        }
+      });
+    });
+
+    // Project management buttons
+    const newProjectBtn = document.getElementById('newProjectBtn');
+    if (newProjectBtn) {
+      newProjectBtn.addEventListener('click', window.doNewProject);
+    }
+
+    const renameProjectBtn = document.getElementById('renameProjectBtn');
+    if (renameProjectBtn) {
+      renameProjectBtn.addEventListener('click', window.doRenameProject);
+    }
+
+    const deleteProjectBtn = document.getElementById('deleteProjectBtn');
+    if (deleteProjectBtn) {
+      deleteProjectBtn.addEventListener('click', window.doDeleteProject);
+    }
+
+    const saveProjectBtn = document.getElementById('saveProjectBtn');
+    if (saveProjectBtn) {
+      saveProjectBtn.addEventListener('click', window.doSaveProject);
+    }
+
+    const saveProjectBtnTop = document.getElementById('saveProjectBtnTop');
+    if (saveProjectBtnTop) {
+      saveProjectBtnTop.addEventListener('click', window.doSaveProject);
+    }
+
+    // Project select change handler
+    const projectSelect = document.getElementById('projectSelect');
+    if (projectSelect) {
+      projectSelect.addEventListener('change', function() {
+        window.loadProject(projectSelect.value);
+      });
+    }
+
+    // Gemini model select handler
+    const geminiModelSelect = document.getElementById('geminiModelSelect');
+    if (geminiModelSelect) {
+      geminiModelSelect.addEventListener('change', function() {
+        window.saveGeminiModel(geminiModelSelect.value);
+      });
+    }
+
+    console.log('✅ Navigation handlers wired');
+  };
+
+  console.log('✅ UI_Navigation_Project_Handlers.html loaded');
+  console.log('   Exposed: refreshProjectList, loadProject, doSaveProject');
+  console.log('   Exposed: doNewProject, doRenameProject, doDeleteProject');
+  console.log('   Exposed: runStage, displayStageResults, updateStageStatus');
+  console.log('   Exposed: loadGeminiModels, saveGeminiModel, initNavigationHandlers');
+</script>

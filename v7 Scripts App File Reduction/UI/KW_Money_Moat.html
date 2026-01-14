@@ -1,0 +1,346 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     KW_Money_Moat.html - Money Moat Keyword Generator
+     Contains: generateTip, generateMoneyMoatKWs
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 3: 90-KW MODULE GENERATORS (Bento-Grid Layout)
+  // 15 + 30 + 30 + 15 = 90 Keywords per Competitor (Zero-Repetition)
+  // JSON Schema: { kw, ui_cat: "money|sge|tail|llm", clash, aio_risk, x, y, mass, moat_type, tip }
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Generate forensic tip with clash+aio+moat context
+   * Plain-English insight for each keyword with moat-breaker action
+   */
+  function generateTip(kw, clash, aioRisk, moat, moatBreaker) {
+    const clashLevel = clash >= 7 ? 'HARD' : clash >= 4 ? 'MEDIUM' : 'EASY';
+    const aioLevel = aioRisk >= 7 ? 'HIGH' : aioRisk >= 4 ? 'MODERATE' : 'LOW';
+
+    if (clash >= 7 && aioRisk >= 7) {
+      return `🔴 FORTRESS: "${kw}" is heavily defended (Clash: ${clash}/10) with HIGH AIO risk (${aioRisk}/10). Moat: ${moat}. BREAKER: ${moatBreaker}`;
+    } else if (clash >= 7) {
+      return `🟠 CONTESTED: "${kw}" requires significant effort (Clash: ${clash}/10). ${moat} moat in play. ACTION: ${moatBreaker}`;
+    } else if (aioRisk >= 7) {
+      return `⚠️ AIO RISK: "${kw}" at risk of AI Overview cannibalization (AIO: ${aioRisk}/10). SURVIVE: ${moatBreaker}`;
+    } else if (clash <= 3) {
+      return `🟢 QUICK WIN: "${kw}" is ${clashLevel} difficulty (Clash: ${clash}/10). Low competition. DEPLOY: ${moatBreaker}`;
+    } else {
+      return `🔵 BALANCED: "${kw}" (Clash: ${clash}/10, AIO: ${aioRisk}/10). ${moat} moat. STRATEGY: ${moatBreaker}`;
+    }
+  }
+  window.generateTip = generateTip;
+
+  /**
+   * MODULE 1: MONEY MOAT - 15 High-Volume Revenue Pillars
+   * UI Category: "💰 Money Moat"
+   * Target: Competitor's revenue-driving head terms
+   * Moat-Breaker: Identifies tactical displacement opportunities
+   */
+  function generateMoneyMoatKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    const keywords = [];
+    const TARGET_COUNT = 15;
+    const kwIntel = gemini.keywordIntelligence || {};
+    const domain = comp.domain || '';
+    const cleanDomain = domain.replace(/^www\./, '');
+    const moat = analyzeCompetitorMoat(comp, gemini);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0: Check ORGANIZED DATA first (from FT_OracleDataOrganizer)
+    // This contains actual Serper API responses with real PAA/Related/SERP data
+    // ═══════════════════════════════════════════════════════════════════════════
+    const organizedData = window._organizedData || window._eliteTabIntelligence?.organizedData || [];
+    const organizedComp = organizedData.find?.(o => 
+      (o.domain || '').replace(/^www\./, '') === cleanDomain || o.domain === domain
+    );
+    const organizedRawData = organizedComp?.tabData?.keywordStrategy?.rawData || {};
+    const kwRawData = window._kwStrategyRawData || {};
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V8.5: ALSO CHECK keywordProfile from Step 2.5 (keyword-based PAA/Related)
+    // This is populated by fetchKeywordProfiles in orchestrator
+    // ═══════════════════════════════════════════════════════════════════════════
+    const kwProfile = comp.keywordProfile || {};
+    const kwProfilePAA = (kwProfile.peopleAlsoAsk || []).map(q => 
+      typeof q === 'string' ? { question: q } : q
+    );
+    const kwProfileRelated = (kwProfile.relatedSearches || []).map(q => 
+      typeof q === 'string' ? { query: q } : q
+    );
+    
+    // Merge PAA from organized data + stages + keywordProfile + global raw data
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    let relatedSearches = organizedRawData.keywords || organizedRawData.relatedSearches || 
+                          keywordSignals.relatedSearches || comp.stages?.serper?.data?.relatedSearches || 
+                          kwProfileRelated || [];
+    let serpTitles = keywordSignals.serpTitles || 
+                     (organizedRawData.serpResults || []).map(r => r.title).filter(Boolean) || [];
+    let paaQuestions = organizedRawData.paaQuestions || 
+                       keywordSignals.peopleAlsoAsk || comp.stages?.serper?.data?.peopleAlsoAsk || 
+                       kwProfilePAA || [];
+    
+    // Also check global PAA/Related if available
+    if (relatedSearches.length === 0 && kwRawData.allRelated?.length > 0) {
+      relatedSearches = kwRawData.allRelated;
+    }
+    if (paaQuestions.length === 0 && kwRawData.allPAA?.length > 0) {
+      paaQuestions = kwRawData.allPAA;
+    }
+    if (serpTitles.length === 0 && kwRawData.allOrganic?.length > 0) {
+      serpTitles = kwRawData.allOrganic.map(r => r.title).filter(Boolean);
+    }
+    
+    // ORACLE DATA: Extract H2/H3 headings as keyword sources (CRITICAL)
+    const oracleData = comp.stages?.oracleFetcher?.data || comp.synthesized?.website || {};
+    const oracleH2 = oracleData.h2 || comp.synthesized?.website?.h2 || [];
+    const oracleH3 = oracleData.h3 || comp.synthesized?.website?.h3 || [];
+
+    console.log(`   💰 MoneyMoat for ${domain}: PAA=${paaQuestions.length}, Related=${relatedSearches.length}, SERP titles=${serpTitles.length}, Oracle H2=${oracleH2.length}, H3=${oracleH3.length}`);
+
+    // CLASH LOGIC: Higher for Brand/Authority moats (harder to break)
+    const calculateClashScore = (intent, moatType) => {
+      let base = 6;
+      if (moatType === 'Brand') base += 3;
+      if (moatType === 'Authority') base += 2;
+      if (intent === 'Transactional') base += 1;
+      return Math.min(10, Math.max(1, base)); // No random variance
+    };
+
+    // AIO LOGIC: Commercial/Transactional = lower risk
+    const calculateAIOScore = () => 4; // Base value - real risk requires Gemini analysis
+
+    // Generate plain_english_desc correlated to clash_score
+    const generatePlainEnglishDesc = (clash) => {
+      if (clash >= 8) return 'Technical Moat-Breaker: Requires schema + authority signals to displace';
+      if (clash <= 4) return 'Content Velocity: Quick-win with 2500+ word guide + video embed';
+      return 'Balanced Opportunity: Build topical cluster around this head term';
+    };
+
+    // PRIORITY 0A: Extract from SERP related searches (most commercial intent)
+    relatedSearches.forEach(rs => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (typeof rs === 'string' ? rs : rs.query || rs).toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 5) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore('Commercial', moat.type);
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText,
+          intent: 'Commercial',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'money',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 70 + (compIndex * 5),
+          y: 6, // Base value - no random
+          mass: 15, // Base value - no random
+          moat_type: moat.type,
+          source: 'serper_related',
+          competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, moat.type, moat.breakerTactic),
+          _needsApiData: true
+        });
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0A.5: PAA QUESTIONS → MONEY KEYWORDS (CRITICAL FIX)
+    // PAA questions reveal high-intent queries that competitors answer
+    // ═══════════════════════════════════════════════════════════════════════════
+    paaQuestions.forEach(paa => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const question = (typeof paa === 'string' ? paa : paa.question || paa.title || paa.query || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(question) && question.length > 10) {
+        globalKeywordSet.add(question);
+        const clashScore = calculateClashScore('Commercial', moat.type);
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: question,
+          intent: 'Commercial',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'money',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 72 + (compIndex * 5),
+          y: 6, // Base value - no random
+          mass: 13, // Base value - no random
+          moat_type: moat.type,
+          source: 'serper_paa',
+          competitor: domain,
+          tip: generateTip(question, clashScore, aioRisk, moat.type, moat.breakerTactic),
+          _needsApiData: true
+        });
+      }
+    });
+
+    // PRIORITY 0B: Extract from SERP titles (high commercial relevance)
+    serpTitles.forEach(title => {
+      if (keywords.length >= TARGET_COUNT) return;
+      // Extract key phrases from title
+      const cleanTitle = (title || '').toLowerCase().replace(/[|—–:]/g, ' ').trim();
+      const phrases = cleanTitle.split(/\s+/).filter(w => w.length > 3).slice(0, 5).join(' ');
+      if (phrases.length > 10 && !globalKeywordSet.has(phrases)) {
+        globalKeywordSet.add(phrases);
+        const clashScore = calculateClashScore('Commercial', moat.type);
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: phrases,
+          intent: 'Commercial',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'money',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 68 + (compIndex * 5),
+          y: 5, // Static base value
+          mass: 10, // Static base value
+          moat_type: moat.type,
+          source: 'serper_title',
+          competitor: domain,
+          tip: generateTip(phrases, clashScore, aioRisk, moat.type, moat.breakerTactic)
+        });
+      }
+    });
+
+    // Priority 1: Extract from Gemini analysis (niche-specific if available)
+    const geminiKWs = kwIntel.primaryKeywords?.topKeywords || [];
+    geminiKWs.slice(0, 8).forEach(kw => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (kw.keyword || kw).toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 3) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore('Commercial', moat.type);
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText,
+          intent: kw.intent || 'Commercial',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'money',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 70 + (compIndex * 5),
+          y: 5, // Static base value
+          mass: 10, // Static base value
+          moat_type: moat.type,
+          source: 'gemini',
+          competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, moat.type, moat.breakerTactic)
+        });
+      }
+    });
+
+    // PRIORITY 2: Oracle H2 headings (real scraped content)
+    oracleH2.forEach(h2 => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (typeof h2 === 'string' ? h2 : h2.text || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 5 && kwText.length < 80) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore('Commercial', moat.type);
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText,
+          intent: 'Informational',
+          difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'money',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: 65 + (compIndex * 5),
+          y: 5, // Static base value
+          mass: 10, // Static base value
+          moat_type: moat.type,
+          source: 'oracle_h2',
+          competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, moat.type, moat.breakerTactic)
+        });
+      }
+    });
+
+    // FALLBACK ONLY: Fill with niche-specific templates if still below target
+    // V8.5 FIX: Add competitor-specific variants to avoid globalKeywordSet conflicts
+    if (keywords.length < TARGET_COUNT) {
+      console.log(`   ⚠️ MoneyMoat ${domain}: Using templates to fill ${TARGET_COUNT - keywords.length} remaining slots`);
+      
+      // Generate competitor-specific keyword variants
+      const domainName = cleanDomain.split('.')[0];
+      const competitorTemplates = [
+        `${domainName} alternative`,
+        `${domainName} vs competitors`,
+        `${domainName} pricing`,
+        `${domainName} features`,
+        `${domainName} reviews`,
+        `best ${niche} like ${domainName}`,
+        `${niche} tools similar to ${domainName}`,
+        `${domainName} ${niche} solution`,
+        `${domainName} comparison`,
+        `${domainName} pros cons`,
+        `switch from ${domainName}`,
+        `${domainName} integration`,
+        `${domainName} api`,
+        `${domainName} tutorial`,
+        `${domainName} guide`
+      ];
+      
+      // Use competitor-specific templates first (these are unique per competitor)
+      competitorTemplates.forEach(kwText => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const normalizedKw = kwText.toLowerCase().trim();
+        if (!globalKeywordSet.has(normalizedKw) && normalizedKw.length > 3) {
+          globalKeywordSet.add(normalizedKw);
+          const clashScore = calculateClashScore('Commercial', moat.type);
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: normalizedKw,
+            intent: 'Commercial',
+            difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'money',
+            clash: clashScore,
+            aio_risk: aioRisk,
+            x: 65 + (compIndex * 6),
+            y: 5, // Static base value
+            mass: 10, // Static base value
+            moat_type: moat.type,
+            source: 'competitor_variant',
+            competitor: domain,
+            tip: generateTip(normalizedKw, clashScore, aioRisk, moat.type, moat.breakerTactic)
+          });
+        }
+      });
+      
+      // Then use generic templates as additional fallback
+      templates.forEach(template => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const kwText = template.replace('{niche}', niche).toLowerCase().trim();
+        if (!globalKeywordSet.has(kwText) && kwText.length > 3) {
+          globalKeywordSet.add(kwText);
+          const clashScore = calculateClashScore('Commercial', moat.type);
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: kwText,
+            intent: 'Commercial',
+            difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'money',
+            clash: clashScore,
+            aio_risk: aioRisk,
+            x: 65 + (compIndex * 6),
+            y: 5, // Static base value
+            mass: 10, // Static base value
+            moat_type: moat.type,
+            source: 'template',
+            competitor: domain,
+            tip: generateTip(kwText, clashScore, aioRisk, moat.type, moat.breakerTactic)
+          });
+        }
+      });
+    }
+
+    console.log(`   ✅ MoneyMoat ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => !['template', 'competitor_variant'].includes(k.source)).length} from real data)`);
+    return keywords;
+  }
+  window.generateMoneyMoatKWs = generateMoneyMoatKWs;
+</script>

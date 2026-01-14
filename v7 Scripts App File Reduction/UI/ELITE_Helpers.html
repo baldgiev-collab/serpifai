@@ -1,0 +1,429 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE_Helpers.html - Elite UI Helper Functions
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * ELITE v4.0 - Utility functions for Elite Renderer
+ * Contains: Formatters, DOM helpers, data adapters, quality badges
+ * 
+ * NOTE: Consolidated to remove duplicates from original file
+ * 
+ * EXTRACTED FROM: UI_Elite_Renderer.html (Multiple locations - deduplicated)
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DOM HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function showElement(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'block';
+}
+
+function hideElement(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+function showError(message) {
+  const container = document.getElementById('comp-results') || 
+                    document.getElementById('analysis-container');
+  if (container) {
+    container.innerHTML = `
+      <div class="error-state">
+        <div class="error-icon">❌</div>
+        <h3>Analysis Failed</h3>
+        <p>${escapeHtml(message)}</p>
+        <button onclick="location.reload()" class="retry-btn">Retry</button>
+      </div>
+    `;
+    container.style.display = 'block';
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = String(text);
+  return div.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FORMATTING HELPERS (DEDUPLICATED - Single Source of Truth)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Format metric label from camelCase to Title Case
+ */
+function formatMetricLabel(metricKey) {
+  return metricKey
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+}
+
+/**
+ * Format breakdown key into a readable label
+ */
+function formatBreakdownLabel(key) {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .replace(/([a-z])(\d)/g, '$1 $2')
+    .trim();
+}
+
+/**
+ * Format metric value based on type - SINGLE DEFINITION
+ * Handles: numbers, arrays, objects, percentages, scores
+ */
+function formatMetricValue(value, key) {
+  if (value === null || value === undefined) return '<span style="color: #94a3b8;">—</span>';
+  
+  // Score types - show with color
+  if (key && (key.toLowerCase().includes('score') || key.toLowerCase().includes('percent'))) {
+    const numVal = parseInt(value);
+    if (!isNaN(numVal)) {
+      const color = numVal >= 70 ? '#10b981' : numVal >= 40 ? '#f59e0b' : '#ef4444';
+      return `<span style="font-size: 24px; font-weight: 800; color: ${color};">${numVal}%</span>`;
+    }
+  }
+  
+  // Number formatting
+  if (typeof value === 'number') {
+    return value % 1 === 0 ? value.toLocaleString() : value.toFixed(2);
+  }
+  
+  // Array formatting
+  if (Array.isArray(value)) {
+    return value.slice(0, 5).join(', ') + (value.length > 5 ? '...' : '');
+  }
+  
+  // Object formatting
+  if (typeof value === 'object') {
+    return JSON.stringify(value).substring(0, 100);
+  }
+  
+  return String(value);
+}
+
+/**
+ * Format cell value based on type (for tables)
+ */
+function formatCellValue(value, type, format) {
+  if (value === null || value === undefined) return '<span style="color: #94a3b8;">—</span>';
+  
+  switch(type) {
+    case 'score':
+      const numVal = parseInt(value);
+      const color = numVal >= 70 ? '#10b981' : numVal >= 40 ? '#f59e0b' : '#ef4444';
+      return `<span style="font-weight: 700; color: ${color};">${numVal}%</span>`;
+    
+    case 'number':
+      return `<span style="font-weight: 600;">${value.toLocaleString()}</span>`;
+    
+    case 'trend':
+      if (value > 0) return `<span class="trend-up">↑${value}%</span>`;
+      if (value < 0) return `<span class="trend-down">↓${Math.abs(value)}%</span>`;
+      return `<span class="trend-stable">${value}%</span>`;
+    
+    case 'badge':
+      const badgeColors = { HIGH: '#dc2626', MEDIUM: '#f59e0b', LOW: '#10b981', GOOD: '#10b981', BAD: '#ef4444' };
+      return `<span style="padding: 4px 10px; background: ${badgeColors[value] || '#64748b'}15; color: ${badgeColors[value] || '#64748b'}; border-radius: 12px; font-size: 10px; font-weight: 700;">${value}</span>`;
+    
+    case 'list':
+      if (Array.isArray(value)) {
+        return value.slice(0, 3).map(v => `<span style="display: inline-block; padding: 2px 8px; background: #f1f5f9; border-radius: 4px; font-size: 11px; margin: 2px;">${v}</span>`).join('');
+      }
+      return value;
+    
+    default:
+      return value;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA QUALITY BADGES (DEDUPLICATED - Single Definition)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get data quality for a specific metric
+ */
+function getDataQualityForMetric(dataQuality, metricKey) {
+  if (!dataQuality) return '✅ real';
+  
+  // Check for field-level quality
+  if (dataQuality.fieldQuality && dataQuality.fieldQuality[metricKey]) {
+    return dataQuality.fieldQuality[metricKey];
+  }
+  
+  // Check if there's a specific quality for this metric
+  if (dataQuality[metricKey]) {
+    return dataQuality[metricKey];
+  }
+  
+  // Otherwise return first available or default
+  return Object.values(dataQuality)[0] || '✅ real';
+}
+
+/**
+ * Render data quality badge - SINGLE DEFINITION
+ */
+function renderDataQualityBadge(dataQuality) {
+  if (!dataQuality) return '';
+  
+  const qualityStr = String(dataQuality).toLowerCase();
+  
+  if (qualityStr.includes('✅') || qualityStr.includes('real') || qualityStr.includes('verified')) {
+    return `<div class="metric-badge data-badge-real">✅ real</div>`;
+  } else if (qualityStr.includes('🤖') || qualityStr.includes('predicted')) {
+    const confidenceMatch = qualityStr.match(/(\d+)%/);
+    const confidence = confidenceMatch ? confidenceMatch[1] + '%' : '';
+    return `<div class="metric-badge data-badge-predicted">🤖 predicted ${confidence}</div>`;
+  } else if (qualityStr.includes('📊') || qualityStr.includes('calculated')) {
+    return `<div class="metric-badge data-badge-calculated">📊 calculated</div>`;
+  } else if (qualityStr.includes('inferred')) {
+    return `<div class="metric-badge data-badge-inferred">🤔 inferred</div>`;
+  } else if (qualityStr.includes('⚠️') || qualityStr.includes('unavailable')) {
+    return `<div class="metric-badge data-badge-unavailable">⚠️ unavailable</div>`;
+  } else if (qualityStr.includes('mockup')) {
+    return `<div class="metric-badge data-badge-mockup">🎨 mockup</div>`;
+  }
+  
+  return `<div class="metric-badge">${dataQuality}</div>`;
+}
+
+/**
+ * Render data source badge - SINGLE DEFINITION
+ */
+function renderDataSourceBadge(dataSource) {
+  if (!dataSource) return '';
+  
+  const source = String(dataSource).toLowerCase();
+  let badgeClass = '';
+  let icon = '📊';
+  let label = dataSource;
+  
+  if (source.includes('oracle') || source.includes('real data') || 
+      source.includes('serp') || source.includes('pagespeed') ||
+      source.includes('live') || source.includes('fetcher')) {
+    badgeClass = 'verified';
+    icon = '✓';
+    label = source.includes('live') ? 'Live Data' : dataSource;
+  } else if (source.includes('api')) {
+    badgeClass = 'verified';
+    icon = '🔗';
+    label = 'API Data';
+  } else if (source.includes('pending')) {
+    badgeClass = 'pending';
+    icon = '⏳';
+  }
+  
+  return `<span class="elite-data-source-badge ${badgeClass}">${icon} ${label}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA ADAPTERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Adapt competitor data structure for legacy chart functions
+ */
+function adaptCompetitorDataForOldCharts(competitors) {
+  if (!competitors) return [];
+  
+  // If it's an object keyed by domain, convert to array
+  if (!Array.isArray(competitors)) {
+    return Object.keys(competitors).map(domain => {
+      const comp = competitors[domain];
+      return {
+        domain: domain,
+        ...comp,
+        // Flatten nested structures for chart compatibility
+        technicalScore: extractCategoryMetric(comp, 'technicalSEO', 'overallScore', 0),
+        contentScore: extractCategoryMetric(comp, 'contentIntelligence', 'overallScore', 0),
+        authorityScore: extractCategoryMetric(comp, 'authority', 'overallScore', 0),
+        performanceScore: extractCategoryMetric(comp, 'performance', 'overallScore', 0),
+        marketScore: extractCategoryMetric(comp, 'marketPositioning', 'overallScore', 0)
+      };
+    });
+  }
+  
+  return competitors;
+}
+
+/**
+ * Extract a metric from nested category structure
+ */
+function extractCategoryMetric(competitor, categoryKey, metricKey, defaultValue) {
+  if (!competitor) return defaultValue;
+  
+  // Try direct access
+  if (competitor[categoryKey] && competitor[categoryKey][metricKey] !== undefined) {
+    return competitor[categoryKey][metricKey];
+  }
+  
+  // Try metrics sub-object
+  if (competitor[categoryKey]?.metrics?.[metricKey] !== undefined) {
+    return competitor[categoryKey].metrics[metricKey];
+  }
+  
+  return defaultValue;
+}
+
+/**
+ * Extract domain from URL
+ */
+function extractDomain(url) {
+  if (!url) return 'unknown';
+  try {
+    const urlObj = new URL(url.startsWith('http') ? url : 'https://' + url);
+    return urlObj.hostname.replace('www.', '');
+  } catch {
+    return url.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+  }
+}
+
+/**
+ * Get nested value from object by path
+ */
+function getNestedValue(obj, path) {
+  if (!obj || !path) return undefined;
+  return path.split('.').reduce((current, key) => current?.[key], obj);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHART HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Destroy a chart instance if it exists
+ */
+function destroyChart(canvasId) {
+  if (window.eliteChartInstances && window.eliteChartInstances[canvasId]) {
+    try {
+      window.eliteChartInstances[canvasId].destroy();
+      delete window.eliteChartInstances[canvasId];
+    } catch (e) {
+      console.warn('Error destroying chart:', e);
+    }
+  }
+  
+  // Also check Chart.js's own registry
+  if (typeof Chart !== 'undefined') {
+    const canvas = document.getElementById(canvasId);
+    if (canvas) {
+      const existingChart = Chart.getChart(canvas);
+      if (existingChart) {
+        existingChart.destroy();
+      }
+    }
+  }
+}
+
+/**
+ * Insert insight text below a chart
+ */
+function insertCategoryChartInsight(chartId, insight) {
+  const canvas = document.getElementById(chartId);
+  if (!canvas || !insight) return;
+  
+  const insightDiv = document.createElement('div');
+  insightDiv.className = 'chart-insight';
+  insightDiv.innerHTML = `
+    <div style="padding: 12px; background: #f0f9ff; border-radius: 8px; margin-top: 12px;">
+      <span style="font-weight: 600; color: #0369a1;">💡</span>
+      <span style="color: #0c4a6e; font-size: 13px;">${insight}</span>
+    </div>
+  `;
+  
+  canvas.parentNode.insertBefore(insightDiv, canvas.nextSibling);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEXT TRANSLATION HELPER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Translate technical jargon to plain English for executives
+ */
+function translateToPlainEnglish(text) {
+  if (!text) return '';
+  
+  const translations = {
+    // Technical SEO terms
+    'PageRank': 'website authority score',
+    'SERP': 'search results',
+    'SERPs': 'search results',
+    'SEO': 'search visibility',
+    'CTA': 'call-to-action',
+    'CTR': 'click rate',
+    'backlinks': 'links from other websites',
+    'backlink profile': 'network of sites linking to them',
+    'referring domains': 'websites linking to them',
+    'organic traffic': 'visitors from search engines',
+    'domain authority': 'website credibility score',
+    'Core Web Vitals': 'website speed and user experience',
+    'CWV': 'website speed metrics',
+    'LCP': 'page load speed',
+    'FID': 'interaction responsiveness',
+    'CLS': 'visual stability',
+    'TTFB': 'server response time',
+    // Content terms
+    'PSEO': 'programmatic content at scale',
+    'programmatic SEO': 'automated content generation',
+    'topical authority': 'subject matter expertise',
+    'semantic density': 'keyword richness',
+    'content velocity': 'publishing frequency',
+    // AI/LLM terms
+    'LLM': 'AI language model',
+    'RAG': 'AI retrieval system',
+    'AI Overview': 'Google AI answer',
+    'SGE': 'Search Generative Experience',
+    'AEO': 'Answer Engine Optimization',
+    'GEO': 'Generative Engine Optimization',
+    // Business terms
+    'JTBD': 'Jobs to Be Done',
+    'TAM': 'Total Addressable Market',
+    'ICP': 'Ideal Customer Profile',
+    'CAC': 'Customer Acquisition Cost',
+    'LTV': 'Lifetime Value',
+    'MRR': 'Monthly Recurring Revenue',
+    'ARR': 'Annual Recurring Revenue'
+  };
+  
+  let result = text;
+  Object.keys(translations).forEach(term => {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    result = result.replace(regex, translations[term]);
+  });
+  
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.showElement = showElement;
+window.hideElement = hideElement;
+window.showError = showError;
+window.escapeHtml = escapeHtml;
+window.formatMetricLabel = formatMetricLabel;
+window.formatBreakdownLabel = formatBreakdownLabel;
+window.formatMetricValue = formatMetricValue;
+window.formatCellValue = formatCellValue;
+window.getDataQualityForMetric = getDataQualityForMetric;
+window.renderDataQualityBadge = renderDataQualityBadge;
+window.renderDataSourceBadge = renderDataSourceBadge;
+window.adaptCompetitorDataForOldCharts = adaptCompetitorDataForOldCharts;
+window.extractCategoryMetric = extractCategoryMetric;
+window.extractDomain = extractDomain;
+window.getNestedValue = getNestedValue;
+window.destroyChart = destroyChart;
+window.insertCategoryChartInsight = insertCategoryChartInsight;
+window.translateToPlainEnglish = translateToPlainEnglish;
+
+console.log('✅ ELITE_Helpers.html loaded - Utility functions ready');
+</script>

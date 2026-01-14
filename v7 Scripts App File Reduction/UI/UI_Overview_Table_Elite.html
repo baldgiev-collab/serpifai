@@ -1,0 +1,496 @@
+<!--
+  UI_Overview_Table_Elite.html
+  ============================
+  B1: Enhanced Overview Table with Elite Intelligence features
+  
+  Enhancements:
+  - Data source badges showing where each metric comes from
+  - Confidence indicators for estimated values
+  - Comparison highlighting vs competitors
+  - Elite tooltip with methodology explanation
+  
+  Dependencies: 
+  - ELITE_Components_Shared.html (C1-C5 components)
+  - UI_Tab_Overview.html (base table)
+  
+  Version: 1.0.0 (January 2025)
+  Part of: Elite Intelligence System Implementation
+-->
+
+<style>
+  /* ========================================
+     B1: ELITE OVERVIEW TABLE ENHANCEMENTS
+     ======================================== */
+  
+  /* Enhanced table header with gradient */
+  .comp-table.elite-enhanced thead {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%);
+  }
+  
+  /* Data source indicator in table cells */
+  .elite-table-cell {
+    position: relative;
+    padding-right: 24px !important;
+  }
+  
+  .elite-table-source {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 10px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  
+  .comp-table tr:hover .elite-table-source {
+    opacity: 1;
+  }
+  
+  /* Confidence mini indicator */
+  .elite-mini-confidence {
+    display: inline-block;
+    width: 24px;
+    height: 4px;
+    border-radius: 2px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  
+  .elite-mini-confidence.low { background: linear-gradient(90deg, #ef4444, #fca5a5); }
+  .elite-mini-confidence.medium { background: linear-gradient(90deg, #f59e0b, #fcd34d); }
+  .elite-mini-confidence.high { background: linear-gradient(90deg, #10b981, #6ee7b7); }
+  .elite-mini-confidence.elite { background: linear-gradient(90deg, #8b5cf6, #c4b5fd); }
+  
+  /* Value with confidence styling */
+  .elite-value-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .elite-value {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  
+  .elite-value.api-data { color: #10b981; }
+  .elite-value.estimated { color: #f59e0b; }
+  .elite-value.elite-data { color: #8b5cf6; }
+  .elite-value.fallback { color: #64748b; }
+  
+  /* Methodology tooltip */
+  .elite-methodology {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #1e293b, #334155);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    min-width: 280px;
+    max-width: 360px;
+    white-space: normal;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    margin-bottom: 8px;
+    pointer-events: none;
+  }
+  
+  .elite-methodology::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: #334155;
+  }
+  
+  .elite-table-cell:hover .elite-methodology {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .elite-methodology-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  .elite-methodology-title {
+    font-weight: 700;
+    font-size: 13px;
+  }
+  
+  .elite-methodology-source {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .elite-methodology-body {
+    font-size: 11px;
+    color: rgba(255,255,255,0.8);
+  }
+  
+  .elite-methodology-factors {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  .elite-methodology-factor {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  
+  .elite-methodology-factor-label {
+    color: rgba(255,255,255,0.6);
+  }
+  
+  .elite-methodology-factor-value {
+    font-weight: 600;
+  }
+  
+  /* Comparison arrows in cells */
+  .elite-comparison-inline {
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: 4px;
+  }
+  
+  .elite-comparison-inline.winning { color: #10b981; }
+  .elite-comparison-inline.losing { color: #ef4444; }
+  .elite-comparison-inline.neutral { color: #64748b; }
+  
+  /* Elite data priority chain in header */
+  .elite-data-chain {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border-radius: 12px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.9);
+  }
+  
+  .elite-chain-label {
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  
+  .elite-chain-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+  }
+  
+  .elite-chain-item.active {
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+  }
+  
+  .elite-chain-arrow {
+    color: rgba(255,255,255,0.4);
+    font-size: 10px;
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  // ==========================================
+  // B1: ELITE TABLE VALUE RENDERING
+  // ==========================================
+  
+  /**
+   * Metric source definitions with methodology explanations
+   */
+  const METRIC_SOURCES = {
+    authority: {
+      name: 'Authority Score',
+      sources: {
+        elite: { icon: '🏆', confidence: 95, methodology: 'Elite hybrid algorithm combining PageRank, backlink quality, and trust signals' },
+        openPageRank: { icon: '📊', confidence: 85, methodology: 'OpenPageRank API - logarithmic domain authority based on backlink graph' },
+        estimated: { icon: '📈', confidence: 60, methodology: 'Estimated from traffic patterns and SERP positions using 2026 CTR model' }
+      }
+    },
+    traffic: {
+      name: 'Organic Traffic',
+      sources: {
+        elite: { icon: '🏆', confidence: 90, methodology: 'Elite 2026 CTR model with SERP feature adjustments and mobile/desktop split' },
+        serper: { icon: '🔍', confidence: 75, methodology: 'Serper API SERP analysis with position-based CTR estimation' },
+        estimated: { icon: '📈', confidence: 50, methodology: 'Estimated from keyword rankings and average CTR curves' }
+      }
+    },
+    keywords: {
+      name: 'Organic Keywords',
+      sources: {
+        elite: { icon: '🏆', confidence: 90, methodology: 'Elite keyword intelligence with intent classification and SERP feature detection' },
+        serper: { icon: '🔍', confidence: 70, methodology: 'Serper API keyword extraction from SERP results' },
+        estimated: { icon: '📈', confidence: 45, methodology: 'Estimated based on content analysis and page authority' }
+      }
+    },
+    backlinks: {
+      name: 'Backlinks',
+      sources: {
+        elite: { icon: '🏆', confidence: 92, methodology: 'Elite backlink discovery with anchor text analysis and link quality scoring' },
+        php: { icon: '⚡', confidence: 80, methodology: 'PHP backend scraper extracting actual backlink data' },
+        estimated: { icon: '📈', confidence: 55, methodology: 'Estimated from PageRank using backlink correlation model' }
+      }
+    },
+    health: {
+      name: 'Site Health',
+      sources: {
+        pageSpeed: { icon: '🚀', confidence: 98, methodology: 'Google PageSpeed Insights API - official Lighthouse audit' },
+        elite: { icon: '🏆', confidence: 88, methodology: 'Elite technical SEO scan including CWV, accessibility, and best practices' },
+        estimated: { icon: '📈', confidence: 40, methodology: 'Estimated from response time and page structure analysis' }
+      }
+    }
+  };
+  
+  /**
+   * Render elite-enhanced table cell value
+   * @param {object} config - { metric, value, source, confidence, comparisonValue, higherIsBetter }
+   * @returns {string} HTML string
+   */
+  function renderEliteTableValue(config) {
+    const {
+      metric,
+      value,
+      source = 'estimated',
+      confidence = 50,
+      comparisonValue = null,
+      higherIsBetter = true,
+      format = 'number'
+    } = config;
+    
+    const metricDef = METRIC_SOURCES[metric] || { name: metric, sources: {} };
+    const sourceDef = metricDef.sources[source] || { icon: '📈', confidence: 50, methodology: 'Estimated value' };
+    
+    // Format value
+    let formattedValue = value;
+    if (value === 'N/A' || value === null || value === undefined) {
+      formattedValue = '—';
+    } else if (format === 'number' && typeof value === 'number') {
+      formattedValue = value.toLocaleString();
+    } else if (format === 'percentage') {
+      formattedValue = `${value}%`;
+    } else if (format === 'compact') {
+      formattedValue = window.formatCompactNumber ? window.formatCompactNumber(value) : value;
+    }
+    
+    // Determine value class based on source
+    const valueClass = source === 'elite' ? 'elite-data' : 
+                       source === 'estimated' ? 'estimated' :
+                       ['openPageRank', 'serper', 'pageSpeed', 'php'].includes(source) ? 'api-data' : 'fallback';
+    
+    // Confidence level
+    const confLevel = confidence >= 90 ? 'elite' : confidence >= 75 ? 'high' : confidence >= 50 ? 'medium' : 'low';
+    
+    // Comparison indicator
+    let comparisonHtml = '';
+    if (comparisonValue !== null && value !== 'N/A' && typeof value === 'number') {
+      const diff = value - comparisonValue;
+      const percentDiff = comparisonValue !== 0 ? ((diff / comparisonValue) * 100).toFixed(0) : 0;
+      
+      if (diff > 0) {
+        const status = higherIsBetter ? 'winning' : 'losing';
+        comparisonHtml = `<span class="elite-comparison-inline ${status}">↑${Math.abs(percentDiff)}%</span>`;
+      } else if (diff < 0) {
+        const status = higherIsBetter ? 'losing' : 'winning';
+        comparisonHtml = `<span class="elite-comparison-inline ${status}">↓${Math.abs(percentDiff)}%</span>`;
+      }
+    }
+    
+    return `
+      <td class="elite-table-cell">
+        <div class="elite-value-container">
+          <span class="elite-value ${valueClass}">${formattedValue}</span>
+          <span class="elite-mini-confidence ${confLevel}" title="Confidence: ${confidence}%"></span>
+          ${comparisonHtml}
+        </div>
+        <span class="elite-table-source" title="${sourceDef.icon} ${source}">${sourceDef.icon}</span>
+        
+        <div class="elite-methodology">
+          <div class="elite-methodology-header">
+            <span class="elite-methodology-title">${metricDef.name}</span>
+            <span class="elite-methodology-source">${source}</span>
+          </div>
+          <div class="elite-methodology-body">
+            ${sourceDef.methodology}
+          </div>
+          <div class="elite-methodology-factors">
+            <div class="elite-methodology-factor">
+              <span class="elite-methodology-factor-label">Data Source</span>
+              <span class="elite-methodology-factor-value">${sourceDef.icon} ${source}</span>
+            </div>
+            <div class="elite-methodology-factor">
+              <span class="elite-methodology-factor-label">Confidence</span>
+              <span class="elite-methodology-factor-value">${confidence}%</span>
+            </div>
+            <div class="elite-methodology-factor">
+              <span class="elite-methodology-factor-label">Last Updated</span>
+              <span class="elite-methodology-factor-value">Just now</span>
+            </div>
+          </div>
+        </div>
+      </td>
+    `;
+  }
+  
+  /**
+   * Render Elite data priority chain legend
+   * @param {string} activeSource - Currently active primary source
+   * @returns {string} HTML string
+   */
+  function renderEliteDataChain(activeSource = 'elite') {
+    const chain = [
+      { key: 'elite', icon: '🏆', label: 'Elite' },
+      { key: 'php', icon: '⚡', label: 'PHP' },
+      { key: 'serper', icon: '🔍', label: 'Serper' },
+      { key: 'openPageRank', icon: '📊', label: 'PageRank' },
+      { key: 'pageSpeed', icon: '🚀', label: 'PageSpeed' },
+      { key: 'gemini', icon: '🤖', label: 'Gemini' }
+    ];
+    
+    return `
+      <div class="elite-data-chain">
+        <span class="elite-chain-label">Data Priority:</span>
+        ${chain.map((item, i) => `
+          <span class="elite-chain-item ${item.key === activeSource ? 'active' : ''}">
+            ${item.icon} ${item.label}
+          </span>
+          ${i < chain.length - 1 ? '<span class="elite-chain-arrow">→</span>' : ''}
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  /**
+   * Determine best data source for a metric
+   * @param {object} comp - Competitor data object
+   * @param {string} metric - Metric key (authority, traffic, etc.)
+   * @returns {object} { value, source, confidence }
+   */
+  function determineMetricSource(comp, metric) {
+    const apiData = comp.apiData || {};
+    const processedMetrics = comp.processedMetrics || {};
+    const synthesized = comp.synthesized || {};
+    
+    switch (metric) {
+      case 'authority': {
+        // Priority: Elite calculation > OpenPageRank > Synthesized
+        if (apiData.openPageRank?.page_rank_decimal) {
+          const pr = parseFloat(apiData.openPageRank.page_rank_decimal);
+          return { value: Math.round(pr * 10), source: 'openPageRank', confidence: 85 };
+        }
+        if (synthesized.authority?.domainRank) {
+          return { value: synthesized.authority.domainRank, source: 'estimated', confidence: 60 };
+        }
+        return { value: 'N/A', source: 'estimated', confidence: 20 };
+      }
+      
+      case 'traffic': {
+        // Priority: Elite CTR model > Serper > Estimated
+        if (processedMetrics.estimatedTraffic) {
+          return { value: processedMetrics.estimatedTraffic, source: 'elite', confidence: 90 };
+        }
+        if (apiData.serper?.estimatedTraffic) {
+          return { value: apiData.serper.estimatedTraffic, source: 'serper', confidence: 75 };
+        }
+        return { value: 'N/A', source: 'estimated', confidence: 30 };
+      }
+      
+      case 'keywords': {
+        // Priority: Elite extraction > Serper count > Estimated
+        if (processedMetrics.organicKeywords) {
+          return { value: processedMetrics.organicKeywords, source: 'elite', confidence: 88 };
+        }
+        if (synthesized.keywords?.count) {
+          return { value: synthesized.keywords.count, source: 'estimated', confidence: 50 };
+        }
+        return { value: 'N/A', source: 'estimated', confidence: 25 };
+      }
+      
+      case 'backlinks': {
+        // Priority: Elite discovery > PHP scraper > PageRank estimation
+        if (processedMetrics.backlinks) {
+          return { value: processedMetrics.backlinks, source: 'elite', confidence: 92 };
+        }
+        if (processedMetrics.estimatedBacklinks) {
+          return { value: processedMetrics.estimatedBacklinks, source: 'estimated', confidence: 55 };
+        }
+        return { value: 'N/A', source: 'estimated', confidence: 20 };
+      }
+      
+      case 'health': {
+        // Priority: PageSpeed API > Elite scan > Estimated
+        if (apiData.pageSpeed?.scores?.seo) {
+          return { value: apiData.pageSpeed.scores.seo, source: 'pageSpeed', confidence: 98 };
+        }
+        if (processedMetrics.siteHealth) {
+          return { value: processedMetrics.siteHealth, source: 'elite', confidence: 85 };
+        }
+        return { value: 'N/A', source: 'estimated', confidence: 30 };
+      }
+      
+      default:
+        return { value: 'N/A', source: 'estimated', confidence: 20 };
+    }
+  }
+  
+  /**
+   * Enhance existing overview table with Elite features
+   * Call this after the table is rendered
+   */
+  function enhanceOverviewTableWithElite() {
+    const table = document.getElementById('competitor-table');
+    if (!table) {
+      console.warn('⚠️ competitor-table not found for Elite enhancement');
+      return;
+    }
+    
+    // Add elite-enhanced class
+    table.classList.add('elite-enhanced');
+    
+    // Add data chain legend before table
+    const legendHtml = renderEliteDataChain('elite');
+    const legendContainer = document.createElement('div');
+    legendContainer.innerHTML = legendHtml;
+    table.parentNode.insertBefore(legendContainer, table);
+    
+    console.log('✅ Overview table enhanced with Elite features');
+  }
+  
+  // ==========================================
+  // EXPORT TO WINDOW
+  // ==========================================
+  
+  window.renderEliteTableValue = renderEliteTableValue;
+  window.renderEliteDataChain = renderEliteDataChain;
+  window.determineMetricSource = determineMetricSource;
+  window.enhanceOverviewTableWithElite = enhanceOverviewTableWithElite;
+  window.METRIC_SOURCES = METRIC_SOURCES;
+  
+  console.log('✅ UI_Overview_Table_Elite.html loaded - B1 Enhancement v1.0');
+  
+})();
+</script>

@@ -1,0 +1,65 @@
+<script>
+(function () {
+  window.SerpifAI = window.SerpifAI || {};
+  const root = window.SerpifAI;
+  root.utils = root.utils || {};
+
+  /**
+   * Format large numbers with K/M suffixes (Ahrefs-style)
+   */
+  function formatNumber(num) {
+    if (num === 'N/A' || num === null || num === undefined || num === '') {
+      return 'N/A';
+    }
+
+    const value = typeof num === 'string' ? parseFloat(num) : num;
+
+    if (isNaN(value)) {
+      return 'N/A';
+    }
+
+    if (value >= 1000000) {
+      return (value / 1000000).toFixed(1) + 'M';
+    } else if (value >= 1000) {
+      return (value / 1000).toFixed(1) + 'K';
+    }
+    return value.toString();
+  }
+
+  function getCompetitorColor(idx) {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    return colors[idx % colors.length];
+  }
+
+  function truncateDomain(domain) {
+    if (!domain) return 'Unknown';
+    const clean = domain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+    return clean.length > 20 ? clean.substring(0, 18) + '...' : clean;
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+  }
+
+  root.utils.formatNumber = root.utils.formatNumber || formatNumber;
+  root.utils.getCompetitorColor = root.utils.getCompetitorColor || getCompetitorColor;
+  root.utils.truncateDomain = root.utils.truncateDomain || truncateDomain;
+  root.utils.escapeHtml = root.utils.escapeHtml || escapeHtml;
+
+  // Back-compat globals (many legacy functions call these directly)
+  if (root._exportGlobal) {
+    root._exportGlobal('formatNumber', root.utils.formatNumber);
+    root._exportGlobal('getCompetitorColor', root.utils.getCompetitorColor);
+    root._exportGlobal('truncateDomain', root.utils.truncateDomain);
+    root._exportGlobal('escapeHtml', root.utils.escapeHtml);
+  } else {
+    window.formatNumber = window.formatNumber || root.utils.formatNumber;
+    window.getCompetitorColor = window.getCompetitorColor || root.utils.getCompetitorColor;
+    window.truncateDomain = window.truncateDomain || root.utils.truncateDomain;
+    window.escapeHtml = window.escapeHtml || root.utils.escapeHtml;
+  }
+})();
+</script>

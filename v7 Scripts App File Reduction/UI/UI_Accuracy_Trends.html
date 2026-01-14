@@ -1,0 +1,565 @@
+<!--
+  +-----------------------------------------------------------------------------------+
+  |  UI_Accuracy_Trends.html - Accuracy Validation & Trend Sparkline Module           |
+  |  Extracted from UI_Scripts_App.html for modular architecture                       |
+  |                                                                                    |
+  |  EXPORTS:                                                                          |
+  |    - window.generateSparklineSVG(values, options) - SVG sparkline generator        |
+  |    - window.renderTrendSparkline(trendData) - Complete trend sparkline with tooltip|
+  |    - window.fetchHistoricalTrend(userId, domain, days) - Fetch historical data     |
+  |    - window.validateTrafficAccuracy(eliteTraffic, apiData, processedMetrics)       |
+  |    - window.renderAccuracyBadge(validation, size) - Accuracy confidence badge      |
+  |    - window.showAccuracyModal(domain, encodedValidation) - Accuracy detail modal   |
+  |    - window.renderClickableValue(value, type, isWinner, detailData)                |
+  |    - window.openMetricDetail(encodedData) - Open metric detail modal               |
+  |                                                                                    |
+  |  DEPENDENCIES:                                                                     |
+  |    - UI_Modal_System.html (showMetricDetailModal)                                  |
+  |    - UI_Table_Helpers.html (renderFieldValue)                                      |
+  +-----------------------------------------------------------------------------------+
+-->
+<script>
+  // @ts-nocheck
+
+  /**
+   * ---------------------------------------------------------------------------
+   * CLICKABLE METRIC VALUES - Enable drill-down on table cells
+   * ---------------------------------------------------------------------------
+   */
+
+  /**
+   * Make a metric value clickable with detail view
+   * @param {*} value - The value to display
+   * @param {string} type - Value type (score, number, text, etc.)
+   * @param {boolean} isWinner - Whether this is the best value
+   * @param {Object} detailData - {key, label, competitors} for modal
+   */
+  window.renderClickableValue = function renderClickableValue(value, type, isWinner, detailData) {
+    const baseHtml = typeof window.renderFieldValue === 'function' 
+      ? window.renderFieldValue(value, type, isWinner)
+      : `<span>${value}</span>`;
+    if (!detailData) return baseHtml;
+    
+    const dataAttr = encodeURIComponent(JSON.stringify(detailData));
+    return `<span class="clickable-metric" onclick='window.openMetricDetail("${dataAttr}")' title="Click for details">${baseHtml}</span>`;
+  };
+
+  window.openMetricDetail = function openMetricDetail(encodedData) {
+    try {
+      const data = JSON.parse(decodeURIComponent(encodedData));
+      if (typeof window.showMetricDetailModal === 'function') {
+        window.showMetricDetailModal(data.key, data.label, data.competitors || []);
+      } else {
+        console.warn('showMetricDetailModal not available');
+      }
+    } catch(e) {
+      console.error('Failed to parse metric detail data:', e);
+    }
+  };
+
+  /**
+   * ---------------------------------------------------------------------------
+   * SPARKLINE SVG GENERATION ENGINE
+   * ---------------------------------------------------------------------------
+   */
+
+  /**
+   * Generate a mini sparkline SVG for trend visualization
+   * @param {Array<number>} values - Array of numeric values
+   * @param {Object} options - Configuration options
+   * @returns {string} - SVG markup
+   */
+  window.generateSparklineSVG = function generateSparklineSVG(values, options = {}) {
+    const {
+      width = 80,
+      height = 24,
+      strokeWidth = 1.5,
+      showDots = false,
+      showArea = true
+    } = options;
+    
+    if (!values || values.length < 2) {
+      return `<svg width="${width}" height="${height}"><text x="5" y="16" font-size="10" fill="#9ca3af">No data</text></svg>`;
+    }
+    
+    // Normalize values
+    const numValues = values.map(v => parseFloat(v) || 0);
+    const min = Math.min(...numValues);
+    const max = Math.max(...numValues);
+    const range = max - min || 1;
+    
+    // Calculate trend color
+    const firstVal = numValues[0];
+    const lastVal = numValues[numValues.length - 1];
+    const changePercent = firstVal > 0 ? ((lastVal - firstVal) / firstVal) * 100 : 0;
+    
+    let strokeColor = '#3b82f6'; // Blue for stable
+    let fillColor = 'rgba(59, 130, 246, 0.1)';
+    if (changePercent > 5) {
+      strokeColor = '#10b981'; // Green for growth
+      fillColor = 'rgba(16, 185, 129, 0.1)';
+    } else if (changePercent < -5) {
+      strokeColor = '#ef4444'; // Red for decline
+      fillColor = 'rgba(239, 68, 68, 0.1)';
+    }
+    
+    // Build points array
+    const points = [];
+    const step = width / (numValues.length - 1);
+    const padding = 2;
+    
+    numValues.forEach((value, i) => {
+      const x = Math.round(i * step * 100) / 100;
+      const y = Math.round((height - padding) - ((value - min) / range * (height - padding * 2)) * 100) / 100;
+      points.push(`${x},${y}`);
+    });
+    
+    const polylinePoints = points.join(' ');
+    
+    // Area fill path (closed polygon)
+    const areaPath = showArea 
+      ? `<polygon points="0,${height} ${polylinePoints} ${width},${height}" fill="${fillColor}"/>`
+      : '';
+    
+    // Endpoint dot
+    const lastX = width;
+    const lastY = (height - padding) - ((lastVal - min) / range * (height - padding * 2));
+    const dotHtml = showDots 
+      ? `<circle cx="${lastX}" cy="${lastY}" r="2.5" fill="${strokeColor}"/>`
+      : '';
+    
+    return `
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow: visible;">
+        ${areaPath}
+        <polyline points="${polylinePoints}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"/>
+        ${dotHtml}
+      </svg>
+    `;
+  };
+
+  /**
+   * Render complete trend sparkline with indicator
+   * @param {Object} trendData - Trend data from CompetitorHistoryHandler
+   * @returns {string} - HTML with sparkline, change indicator, and tooltip
+   */
+  window.renderTrendSparkline = function renderTrendSparkline(trendData) {
+    if (!trendData || !trendData.hasTrend) {
+      return `
+        <div class="sparkline-container" style="display: flex; align-items: center; gap: 6px; opacity: 0.5;">
+          <svg width="60" height="20"><text x="5" y="14" font-size="9" fill="#9ca3af">No history</text></svg>
+        </div>
+      `;
+    }
+    
+    const sparklineValues = trendData.sparkline?.traffic || [];
+    const trend = trendData.trend || {};
+    const changePercent = trend.changePercent || 0;
+    const trendIcon = changePercent > 5 ? '📈' : changePercent < -5 ? '📉' : '➡️';
+    const trendColor = changePercent > 5 ? '#10b981' : changePercent < -5 ? '#ef4444' : '#3b82f6';
+    
+    const sparklineSVG = window.generateSparklineSVG(sparklineValues, { 
+      width: 60, 
+      height: 20,
+      showDots: true
+    });
+    
+    return `
+      <div class="sparkline-container" style="display: flex; align-items: center; gap: 6px;" 
+           title="${trend.label || ''}: ${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%">
+        ${sparklineSVG}
+        <span style="font-size: 11px; color: ${trendColor}; font-weight: 600;">
+          ${trendIcon} ${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%
+        </span>
+      </div>
+    `;
+  };
+
+  /**
+   * Fetch historical trend data for a competitor
+   * @param {number} userId - User ID
+   * @param {string} domain - Competitor domain
+   * @param {number} days - Days of history (30, 60, 90)
+   * @returns {Promise<Object>} - Trend data
+   */
+  window.fetchHistoricalTrend = async function fetchHistoricalTrend(userId, domain, days = 30) {
+    try {
+      // Call gateway for historical data
+      const result = await new Promise((resolve) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler((e) => resolve({ success: false, error: e.message }))
+          .callGatewayFromClient({
+            action: 'comp:get_trend',
+            userId: userId,
+            domain: domain,
+            days: days
+          });
+      });
+      
+      if (result && result.success) {
+        return result;
+      }
+      
+      return { success: false, hasTrend: false };
+    } catch (e) {
+      console.error('fetchHistoricalTrend error:', e);
+      return { success: false, hasTrend: false, error: e.message };
+    }
+  };
+
+  /**
+   * ---------------------------------------------------------------------------
+   * ACCURACY VALIDATION ENGINE - Data Confidence Scoring
+   * ---------------------------------------------------------------------------
+   */
+
+  /**
+   * Validate traffic calculation accuracy
+   * Compares calculated traffic vs API estimates to determine confidence
+   * @param {Object} eliteTraffic - Calculated elite traffic metrics
+   * @param {Object} apiData - Raw API data (Serper, PageSpeed, etc.)
+   * @param {Object} processedMetrics - Backend processed metrics
+   * @returns {Object} - Accuracy validation result
+   */
+  window.validateTrafficAccuracy = function validateTrafficAccuracy(eliteTraffic, apiData, processedMetrics) {
+    const validation = {
+      overallScore: 0,
+      confidence: 'low',
+      confidenceColor: '#ef4444',
+      confidenceIcon: '⚠️',
+      breakdown: {
+        dataCompleteness: 0,
+        sourceAgreement: 0,
+        methodologyQuality: 0,
+        historicalConsistency: 0
+      },
+      variance: {
+        calculated: eliteTraffic?.organicTraffic || 0,
+        estimated: processedMetrics?.estimatedTraffic || 0,
+        difference: 0,
+        differencePercent: 0
+      },
+      dataSources: [],
+      issues: [],
+      recommendations: []
+    };
+    
+    // ═══════════════════════════════════════════════════════════════
+    // IMPROVED ACCURACY SCORING (2026)
+    // Rebalanced weights to give higher scores when data is available
+    // ═══════════════════════════════════════════════════════════════
+    
+    // 1. DATA COMPLETENESS (30 points) - Increased from 25
+    let completenessScore = 0;
+    const sources = [];
+    
+    // Check Serper data (10 points)
+    if (apiData?.serper?.organic?.length > 0) {
+      completenessScore += 10;
+      sources.push({ name: 'Serper SERP', status: 'available', icon: '✅' });
+    } else {
+      sources.push({ name: 'Serper SERP', status: 'missing', icon: '❌' });
+      validation.issues.push('Missing SERP data - traffic may be underestimated');
+    }
+    
+    // Check PageSpeed data (6 points)
+    if (apiData?.pageSpeed?.scores?.performance > 0) {
+      completenessScore += 6;
+      sources.push({ name: 'PageSpeed API', status: 'available', icon: '✅' });
+    } else {
+      sources.push({ name: 'PageSpeed API', status: 'estimated', icon: '🟡' });
+    }
+    
+    // Check OpenPageRank data (8 points)
+    if (apiData?.openPageRank?.page_rank_decimal > 0) {
+      completenessScore += 8;
+      sources.push({ name: 'OpenPageRank', status: 'available', icon: '✅' });
+    } else {
+      sources.push({ name: 'OpenPageRank', status: 'missing', icon: '⚪' });
+    }
+    
+    // Check for Gemini estimate (6 points) - NEW
+    if (processedMetrics?.authorityScore > 0 || processedMetrics?.estimatedTraffic > 0) {
+      completenessScore += 6;
+      sources.push({ name: 'Gemini Analysis', status: 'available', icon: '✅' });
+    } else {
+      sources.push({ name: 'Gemini Analysis', status: 'missing', icon: '⚪' });
+    }
+    
+    validation.breakdown.dataCompleteness = Math.min(30, completenessScore);
+    validation.dataSources = sources;
+    
+    // 2. SOURCE AGREEMENT (25 points)
+    let agreementScore = 0;
+    const calculatedTraffic = eliteTraffic?.organicTraffic || 0;
+    const estimatedTraffic = processedMetrics?.estimatedTraffic || 0;
+    
+    if (calculatedTraffic > 0 && estimatedTraffic > 0) {
+      const variance = Math.abs(calculatedTraffic - estimatedTraffic);
+      const variancePercent = (variance / Math.max(calculatedTraffic, estimatedTraffic)) * 100;
+      
+      validation.variance.difference = calculatedTraffic - estimatedTraffic;
+      validation.variance.differencePercent = Math.round(variancePercent);
+      
+      // More generous agreement scoring
+      if (variancePercent < 30) {
+        agreementScore = 25; // Excellent agreement
+      } else if (variancePercent < 50) {
+        agreementScore = 20;
+      } else if (variancePercent < 75) {
+        agreementScore = 15;
+      } else if (variancePercent < 100) {
+        agreementScore = 10;
+      } else {
+        agreementScore = 5;
+        validation.issues.push('High variance between calculated and estimated traffic');
+      }
+    } else if (calculatedTraffic > 0 || estimatedTraffic > 0) {
+      agreementScore = 12; // At least one source available
+    }
+    
+    validation.breakdown.sourceAgreement = agreementScore;
+    
+    // 3. METHODOLOGY QUALITY (25 points)
+    let methodScore = 10; // Base score for using CTR curves
+    
+    // Add points for additional data
+    if (apiData?.serper?.organic?.length >= 5) methodScore += 5;
+    if (eliteTraffic?.serpPosition > 0 && eliteTraffic?.serpPosition <= 10) methodScore += 5;
+    if (processedMetrics?.pageRank > 0) methodScore += 5;
+    
+    validation.breakdown.methodologyQuality = Math.min(25, methodScore);
+    
+    // 4. HISTORICAL CONSISTENCY (20 points)
+    // Would need historical data to calculate properly
+    // For now, give base score if we have any data
+    let historyScore = 0;
+    if (calculatedTraffic > 0) historyScore = 15;
+    if (processedMetrics?.historicalData) historyScore = 20;
+    
+    validation.breakdown.historicalConsistency = historyScore;
+    
+    // Calculate overall score
+    validation.overallScore = 
+      validation.breakdown.dataCompleteness +
+      validation.breakdown.sourceAgreement +
+      validation.breakdown.methodologyQuality +
+      validation.breakdown.historicalConsistency;
+    
+    // Determine confidence level
+    if (validation.overallScore >= 80) {
+      validation.confidence = 'high';
+      validation.confidenceColor = '#10b981';
+      validation.confidenceIcon = '✅';
+    } else if (validation.overallScore >= 60) {
+      validation.confidence = 'medium-high';
+      validation.confidenceColor = '#22c55e';
+      validation.confidenceIcon = '✓';
+    } else if (validation.overallScore >= 40) {
+      validation.confidence = 'medium';
+      validation.confidenceColor = '#f59e0b';
+      validation.confidenceIcon = '⚡';
+    } else if (validation.overallScore >= 20) {
+      validation.confidence = 'low-medium';
+      validation.confidenceColor = '#f97316';
+      validation.confidenceIcon = '⚠️';
+    } else {
+      validation.confidence = 'low';
+      validation.confidenceColor = '#ef4444';
+      validation.confidenceIcon = '❌';
+    }
+    
+    // Add recommendations
+    if (!apiData?.serper?.organic?.length) {
+      validation.recommendations.push('Enable Serper API for accurate SERP data');
+    }
+    if (!apiData?.openPageRank?.page_rank_decimal) {
+      validation.recommendations.push('Add OpenPageRank for authority signals');
+    }
+    if (validation.variance.differencePercent > 50) {
+      validation.recommendations.push('Review traffic calculation methodology');
+    }
+    
+    return validation;
+  };
+
+  /**
+   * Render accuracy badge with confidence indicator
+   * @param {Object} validation - Validation result from validateTrafficAccuracy
+   * @param {string} size - Badge size ('small', 'medium', 'large')
+   * @returns {string} - HTML badge
+   */
+  window.renderAccuracyBadge = function renderAccuracyBadge(validation, size = 'small') {
+    const sizes = {
+      small: { padding: '2px 6px', fontSize: '9px' },
+      medium: { padding: '4px 10px', fontSize: '11px' },
+      large: { padding: '6px 14px', fontSize: '13px' }
+    };
+    
+    const s = sizes[size] || sizes.small;
+    const score = validation?.overallScore || 0;
+    const confidence = validation?.confidence || 'low';
+    const color = validation?.confidenceColor || '#ef4444';
+    const icon = validation?.confidenceIcon || '⚠️';
+    
+    return `
+      <span class="accuracy-badge" 
+            style="display: inline-flex; align-items: center; gap: 4px; padding: ${s.padding}; 
+                   background: ${color}15; color: ${color}; border-radius: 6px; 
+                   font-size: ${s.fontSize}; font-weight: 600; cursor: pointer;"
+            title="Data Accuracy: ${score}% (${confidence.toUpperCase()})">
+        ${icon} ${score}%
+      </span>
+    `;
+  };
+
+  /**
+   * Show detailed accuracy modal
+   * @param {string} domain - Competitor domain
+   * @param {Object} encodedValidation - Validation result (encoded or object)
+   */
+  window.showAccuracyModal = function showAccuracyModal(domain, encodedValidation) {
+    try {
+      const validation = typeof encodedValidation === 'string' 
+        ? JSON.parse(decodeURIComponent(encodedValidation))
+        : encodedValidation;
+      
+      // Data sources HTML
+      let sourcesHtml = '';
+      (validation.dataSources || []).forEach(source => {
+        sourcesHtml += `
+          <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+            <span style="font-size: 16px;">${source.icon}</span>
+            <span style="flex: 1; font-size: 13px;">${source.name}</span>
+            <span style="font-size: 11px; color: ${source.status === 'available' ? '#10b981' : '#9ca3af'};">
+              ${source.status === 'available' ? 'Connected' : 'Not Available'}
+            </span>
+          </div>
+        `;
+      });
+      
+      // Breakdown bars HTML
+      const breakdownItems = [
+        { label: 'Data Completeness', value: validation.breakdown?.dataCompleteness || 0, max: 30 },
+        { label: 'Source Agreement', value: validation.breakdown?.sourceAgreement || 0, max: 25 },
+        { label: 'Methodology Quality', value: validation.breakdown?.methodologyQuality || 0, max: 25 },
+        { label: 'Historical Consistency', value: validation.breakdown?.historicalConsistency || 0, max: 20 }
+      ];
+      
+      let breakdownHtml = '';
+      breakdownItems.forEach(item => {
+        const percent = Math.round((item.value / item.max) * 100);
+        const barColor = percent >= 80 ? '#10b981' : percent >= 50 ? '#f59e0b' : '#ef4444';
+        breakdownHtml += `
+          <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-size: 12px; color: #374151;">${item.label}</span>
+              <span style="font-size: 12px; font-weight: 600; color: ${barColor};">${item.value}/${item.max}</span>
+            </div>
+            <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+              <div style="width: ${percent}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
+            </div>
+          </div>
+        `;
+      });
+      
+      // Issues HTML
+      let issuesHtml = '';
+      if (validation.issues?.length > 0) {
+        validation.issues.forEach(issue => {
+          issuesHtml += `<li style="color: #ef4444; font-size: 12px; margin-bottom: 4px;">${issue}</li>`;
+        });
+      } else {
+        issuesHtml = '<li style="color: #10b981; font-size: 12px;">No issues detected</li>';
+      }
+      
+      // Recommendations HTML
+      let recsHtml = '';
+      (validation.recommendations || []).forEach(rec => {
+        recsHtml += `<li style="color: #3b82f6; font-size: 12px; margin-bottom: 4px;">${rec}</li>`;
+      });
+      if (!recsHtml) {
+        recsHtml = '<li style="color: #10b981; font-size: 12px;">Data quality is good</li>';
+      }
+      
+      const modalHtml = `
+        <div id="accuracy-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+          <div style="background: white; border-radius: 16px; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+            <div style="padding: 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h2 style="margin: 0 0 4px; font-size: 20px; font-weight: 700;">🎯 Data Accuracy: ${domain}</h2>
+                <p style="margin: 0; color: #6b7280; font-size: 13px;">Confidence score and data quality breakdown</p>
+              </div>
+              <button onclick="document.getElementById('accuracy-modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280;">×</button>
+            </div>
+            
+            <!-- Overall Score -->
+            <div style="padding: 24px; text-align: center; background: ${validation.confidenceColor}10; border-bottom: 1px solid #e5e7eb;">
+              <div style="font-size: 64px; font-weight: 800; color: ${validation.confidenceColor};">
+                ${validation.overallScore || 0}%
+              </div>
+              <div style="font-size: 18px; font-weight: 600; color: ${validation.confidenceColor}; text-transform: uppercase;">
+                ${validation.confidenceIcon} ${(validation.confidence || 'low').replace('-', ' ')} Confidence
+              </div>
+            </div>
+            
+            <!-- Variance Analysis -->
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #374151;">📊 Traffic Variance</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div style="padding: 12px; background: #f9fafb; border-radius: 8px;">
+                  <div style="font-size: 11px; color: #6b7280;">Calculated (CTR Model)</div>
+                  <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">${(validation.variance?.calculated || 0).toLocaleString()}</div>
+                </div>
+                <div style="padding: 12px; background: #f9fafb; border-radius: 8px;">
+                  <div style="font-size: 11px; color: #6b7280;">Estimated (PageRank)</div>
+                  <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${(validation.variance?.estimated || 0).toLocaleString()}</div>
+                </div>
+              </div>
+              <div style="text-align: center; margin-top: 12px; font-size: 12px; color: #6b7280;">
+                Variance: ${validation.variance?.differencePercent || 0}% (${(validation.variance?.difference || 0) >= 0 ? '+' : ''}${(validation.variance?.difference || 0).toLocaleString()})
+              </div>
+            </div>
+            
+            <!-- Score Breakdown -->
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb;">
+              <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #374151;">📈 Score Breakdown</h3>
+              ${breakdownHtml}
+            </div>
+            
+            <!-- Data Sources -->
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #374151;">🔌 Data Sources</h3>
+              ${sourcesHtml}
+            </div>
+            
+            <!-- Issues & Recommendations -->
+            <div style="padding: 20px 24px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                  <h4 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #ef4444;">⚠️ Issues</h4>
+                  <ul style="margin: 0; padding-left: 16px;">${issuesHtml}</ul>
+                </div>
+                <div>
+                  <h4 style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #3b82f6;">💡 Recommendations</h4>
+                  <ul style="margin: 0; padding-left: 16px;">${recsHtml}</ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch (e) {
+      console.error('Error showing accuracy modal:', e);
+    }
+  };
+
+
+  console.log('✅ UI_Accuracy_Trends.html loaded');
+  console.log('   Exports: generateSparklineSVG, renderTrendSparkline, fetchHistoricalTrend');
+  console.log('   Exports: validateTrafficAccuracy, renderAccuracyBadge, showAccuracyModal');
+  console.log('   Exports: renderClickableValue, openMetricDetail');
+
+</script>

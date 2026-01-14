@@ -1,0 +1,3416 @@
+<script>
+/**
+ * 📊 ELITE COMPETITOR INTELLIGENCE RENDERER
+ * Board-Ready Design for $100M+ SaaS Organizations
+ * 0.1% Elite UI/UX with Theme-Conscious Design
+ * Compatible with Chart.js 4.4.1
+ */
+
+// Store chart instances globally
+window.eliteChartInstances = window.eliteChartInstances || {};
+
+// Elite Design System - Theme Conscious
+const ELITE_DESIGN = {
+  colors: {
+    // Primary gradient - deep navy to royal blue
+    primary: ['#0f172a', '#1e3a5f', '#1e40af', '#3b82f6'],
+    // Success - emerald spectrum
+    success: ['#064e3b', '#047857', '#10b981', '#34d399'],
+    // Warning - amber spectrum  
+    warning: ['#78350f', '#b45309', '#f59e0b', '#fbbf24'],
+    // Danger - rose spectrum
+    danger: ['#881337', '#be123c', '#f43f5e', '#fb7185'],
+    // Neutral - slate spectrum
+    neutral: ['#0f172a', '#334155', '#64748b', '#94a3b8', '#cbd5e1', '#f1f5f9'],
+    // Accent - violet for highlights
+    accent: ['#4c1d95', '#6d28d9', '#8b5cf6', '#a78bfa']
+  },
+  shadows: {
+    sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+    md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+    lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+    xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+    glow: '0 0 40px rgba(59, 130, 246, 0.15)'
+  },
+  gradients: {
+    executive: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%)',
+    success: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)',
+    insight: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
+    card: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+    threat: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+    opportunity: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+  }
+};
+
+/**
+ * Main entry point: Render complete competitor intelligence dashboard
+ * @param {Object} result - Response from COMP_orchestrateAnalysis()
+ */
+function renderEliteCompetitorDashboard(result) {
+  console.log('🚀 Rendering ELITE Board-Ready Dashboard...');
+  console.log('📦 Received data structure:', result);
+  
+  if (!result || !result.success) {
+    showError(result ? result.error : 'No data received');
+    return;
+  }
+  
+  // Hide loading, show results
+  hideElement('comp-loading-state');
+  hideElement('comp-empty-state');
+  showElement('comp-results');
+  
+  try {
+    // Transform data if needed
+    const transformedData = {
+      competitors: result.competitors || {},
+      intelligence: result.intelligence || result.categories || {},
+      overview: result.overview || result.aggregatedInsights || {},
+      dashboardCharts: result.dashboardCharts || {},
+      analysis: result.analysis || {},
+      metadata: result.metadata || {}
+    };
+    
+    console.log('📊 Transformed data:', {
+      competitorCount: Object.keys(transformedData.competitors).length,
+      intelligenceCategories: Object.keys(transformedData.intelligence).length,
+      hasOverview: !!transformedData.overview,
+      hasAnalysis: !!transformedData.analysis,
+      metadata: transformedData.metadata
+    });
+    
+    // Inject Elite Styles
+    injectEliteStyles();
+    
+    // Render Executive Summary FIRST (3-sentence summary at top)
+    renderExecutiveSummaryBanner(transformedData.analysis);
+    
+    // Render overview dashboard with elite design
+    renderOverviewDashboard(transformedData.overview, transformedData.intelligence, transformedData.competitors);
+    
+    // Render Elite Gemini Insights with board-ready design
+    if (transformedData.analysis) {
+      renderEliteGeminiInsights(transformedData.analysis);
+    }
+    
+    // Render all category tabs with real data
+    renderAllCategoryTabs(transformedData.competitors, transformedData.intelligence);
+    
+    // Render all category charts
+    if (transformedData.dashboardCharts && Object.keys(transformedData.dashboardCharts).length > 0) {
+      renderAllCategoryCharts(transformedData.dashboardCharts, transformedData.intelligence);
+    }
+    
+    // Render overview radar chart (Category Performance)
+    if (transformedData.overview && transformedData.overview.categoryScores) {
+      console.log('📊 Rendering overview radar chart...');
+      renderOverviewRadarChart(transformedData.overview, transformedData.intelligence);
+    } else {
+      console.warn('⚠️ No overview.categoryScores for radar chart');
+    }
+    
+    // Render metrics grids with data quality badges
+    renderAllMetricsGrids(transformedData.intelligence, transformedData.competitors);
+    
+    // Render insights for each category
+    renderAllInsights(transformedData.intelligence, transformedData.competitors);
+    
+    // Adapt and render charts
+    console.log('🔄 Adapting data for chart compatibility...');
+    const adaptedForCharts = adaptCompetitorDataForOldCharts(transformedData.competitors);
+    console.log('✅ Data adapted for charts:', adaptedForCharts.length, 'competitors');
+    
+    if (typeof renderAllCompetitorCharts === 'function') {
+      try {
+        renderAllCompetitorCharts({ competitors: adaptedForCharts });
+        console.log('✅ Charts rendered successfully');
+      } catch (chartError) {
+        console.error('❌ Chart rendering failed:', chartError);
+      }
+    }
+    
+    console.log('✅ ELITE Board-Ready Dashboard rendered successfully');
+    
+  } catch (error) {
+    console.error('❌ Error rendering dashboard:', error);
+    console.error('Stack:', error.stack);
+    showError(error.toString());
+  }
+}
+
+/**
+ * Inject Elite CSS Styles for Board-Ready Design
+ */
+function injectEliteStyles() {
+  if (document.getElementById('elite-board-styles')) return;
+  
+  const styles = document.createElement('style');
+  styles.id = 'elite-board-styles';
+  styles.textContent = `
+    /* ═══════════════════════════════════════════════════════════════════
+       ELITE BOARD-READY DESIGN SYSTEM - 0.1% UI/UX
+       ═══════════════════════════════════════════════════════════════════ */
+    
+    /* Executive Summary Banner */
+    .executive-summary-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
+      color: white;
+      padding: 32px 40px;
+      border-radius: 16px;
+      margin-bottom: 32px;
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.15), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .executive-summary-banner::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    
+    .executive-summary-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .executive-summary-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 16px;
+      background: #3b82f6;
+      border-radius: 2px;
+    }
+    
+    .executive-summary-content {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .executive-summary-line {
+      font-size: 18px;
+      line-height: 1.7;
+      margin-bottom: 12px;
+      padding-left: 20px;
+      border-left: 3px solid rgba(255,255,255,0.3);
+    }
+    
+    .executive-summary-line:first-child {
+      border-left-color: #3b82f6;
+      font-weight: 600;
+    }
+    
+    .executive-summary-line:nth-child(2) {
+      border-left-color: #10b981;
+    }
+    
+    .executive-summary-line:last-child {
+      border-left-color: #f59e0b;
+      margin-bottom: 0;
+    }
+    
+    .executive-summary-line strong {
+      color: #60a5fa;
+    }
+    
+    /* Elite Insight Cards */
+    .elite-insight-container {
+      display: grid;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+    
+    .elite-insight-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border-radius: 16px;
+      padding: 0;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .elite-insight-card:hover {
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .elite-insight-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .elite-insight-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .elite-insight-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    
+    .elite-insight-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+    }
+    
+    .elite-insight-subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      margin: 0;
+    }
+    
+    .elite-insight-badge {
+      background: rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .elite-insight-body {
+      padding: 24px;
+    }
+    
+    /* Kill Move Cards - Special Threat Styling */
+    .kill-move-card {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border: 1px solid #fecaca;
+    }
+    
+    .kill-move-card .elite-insight-header {
+      background: linear-gradient(135deg, #881337 0%, #be123c 100%);
+    }
+    
+    /* Opportunity Cards - Success Styling */
+    .opportunity-card {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1px solid #bbf7d0;
+    }
+    
+    .opportunity-card .elite-insight-header {
+      background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
+    }
+    
+    /* Efficiency Ratio Visual */
+    .efficiency-ratio-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+    
+    .efficiency-ratio-value {
+      font-size: 32px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    
+    .efficiency-ratio-label {
+      font-size: 13px;
+      color: #64748b;
+    }
+    
+    .efficiency-ratio-bar {
+      flex: 1;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .efficiency-ratio-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    
+    .efficiency-high { background: linear-gradient(90deg, #10b981 0%, #34d399 100%); }
+    .efficiency-medium { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%); }
+    .efficiency-low { background: linear-gradient(90deg, #f43f5e 0%, #fb7185 100%); }
+    
+    /* Programmatic Moat Section */
+    .programmatic-moat-card {
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      border: 2px solid #c4b5fd;
+      position: relative;
+    }
+    
+    .programmatic-moat-card::before {
+      content: '🏰';
+      position: absolute;
+      top: -15px;
+      right: 20px;
+      font-size: 32px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+    
+    .programmatic-moat-card .elite-insight-header {
+      background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%);
+    }
+    
+    /* Roadmap Timeline */
+    .roadmap-timeline {
+      position: relative;
+      padding-left: 40px;
+    }
+    
+    .roadmap-timeline::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, #3b82f6 0%, #10b981 50%, #f59e0b 100%);
+    }
+    
+    .roadmap-phase {
+      position: relative;
+      margin-bottom: 32px;
+      padding: 20px 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .roadmap-phase::before {
+      content: '';
+      position: absolute;
+      left: -33px;
+      top: 24px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border: 4px solid #3b82f6;
+      border-radius: 50%;
+    }
+    
+    .roadmap-phase:nth-child(2)::before { border-color: #10b981; }
+    .roadmap-phase:nth-child(3)::before { border-color: #f59e0b; }
+    
+    .roadmap-phase-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+    }
+    
+    .roadmap-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .roadmap-list li {
+      padding: 8px 0 8px 24px;
+      position: relative;
+      color: #475569;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    .roadmap-list li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: #3b82f6;
+      font-weight: bold;
+    }
+    
+    /* Competitor Comparison Table */
+    .competitor-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+    
+    .competitor-table th {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      color: white;
+      padding: 16px 20px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .competitor-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 14px;
+      color: #334155;
+    }
+    
+    .competitor-table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .competitor-table tr:hover td {
+      background: #f8fafc;
+    }
+    
+    /* Threat Level Badges */
+    .threat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    
+    .threat-critical { background: #fef2f2; color: #be123c; }
+    .threat-high { background: #fff7ed; color: #c2410c; }
+    .threat-medium { background: #fefce8; color: #a16207; }
+    .threat-low { background: #f0fdf4; color: #15803d; }
+    
+    /* Data Quality Badges - Refined */
+    .data-quality-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    .dq-verified { background: #dcfce7; color: #166534; }
+    .dq-estimated { background: #fef3c7; color: #92400e; }
+    .dq-calculated { background: #e0e7ff; color: #3730a3; }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       EFFICIENCY ANALYSIS STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .elite-gemini-insights-section {
+      margin: 32px 0;
+      position: relative;
+      z-index: 1;
+      clear: both;
+      overflow: visible;
+    }
+    
+    /* Ensure section doesn't overlap other elements */
+    .elite-gemini-insights-section::after {
+      content: '';
+      display: table;
+      clear: both;
+    }
+    
+    .efficiency-analysis-card {
+      background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+      border: 1px solid #7dd3fc;
+    }
+    
+    .market-insight-callout {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    
+    .market-insight-callout .callout-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    
+    .market-insight-callout p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    
+    .efficiency-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    
+    .efficiency-ratio-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .efficiency-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .efficiency-domain {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 14px;
+    }
+    
+    .efficiency-grade {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    
+    .grade-excellent { background: #dcfce7; color: #166534; }
+    .grade-good { background: #dbeafe; color: #1e40af; }
+    .grade-average { background: #fef3c7; color: #92400e; }
+    .grade-poor { background: #fee2e2; color: #b91c1c; }
+    
+    .efficiency-ratio-details {
+      flex: 1;
+      margin-left: 16px;
+    }
+    
+    .efficiency-interpretation {
+      font-size: 13px;
+      color: #475569;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .efficiency-implication {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: #64748b;
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       KILL MOVES & ENTITY-BASED SEO STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .kill-move-item {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      border-left: 4px solid #be123c;
+    }
+    
+    .kill-move-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .kill-move-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .kill-move-priority {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    
+    .priority-critical { background: #fef2f2; color: #be123c; border: 1px solid #fecaca; }
+    .priority-high { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .priority-medium { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
+    
+    .kill-move-target {
+      font-size: 13px;
+      color: #64748b;
+    }
+    
+    .kill-move-description h4 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+    }
+    
+    .kill-move-description p {
+      font-size: 14px;
+      color: #475569;
+      margin: 0;
+      line-height: 1.6;
+    }
+    
+    /* Entity-Based SEO Strategy Display */
+    .entity-seo-strategy {
+      background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+      border: 1px solid #e879f9;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    
+    .entity-seo-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #7e22ce;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .entity-comparison {
+      display: flex;
+      align-items: stretch;
+      gap: 20px;
+    }
+    
+    .entity-theirs, .entity-ours {
+      flex: 1;
+      padding: 16px;
+      border-radius: 10px;
+    }
+    
+    .entity-theirs {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+    }
+    
+    .entity-ours {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+    
+    .entity-arrow {
+      display: flex;
+      align-items: center;
+      font-size: 24px;
+      color: #7e22ce;
+      font-weight: bold;
+    }
+    
+    .entity-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    
+    .entity-keywords {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    
+    .entity-keywords-ours {
+      color: #166534;
+    }
+    
+    .entity-intent {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    
+    .intent-low { background: #fee2e2; color: #be123c; }
+    .intent-mid { background: #fef3c7; color: #a16207; }
+    .intent-high { background: #dcfce7; color: #166534; }
+    
+    .battle-shift {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed #d8b4fe;
+    }
+    
+    .shift-icon { font-size: 18px; }
+    
+    .shift-text {
+      font-size: 14px;
+      font-weight: 700;
+      color: #7e22ce;
+    }
+    
+    .kill-move-impact {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-radius: 10px;
+      border: 1px solid #bbf7d0;
+    }
+    
+    .kill-move-impact .impact-icon { font-size: 20px; }
+    
+    .kill-move-impact .impact-text {
+      font-size: 14px;
+      color: #166534;
+    }
+    
+    .kill-move-implementation {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .impl-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+    
+    .impl-steps {
+      margin: 0;
+      padding-left: 20px;
+    }
+    
+    .impl-steps li {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       OPPORTUNITIES STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .threats-section, .opportunities-section {
+      margin-bottom: 24px;
+    }
+    
+    .section-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 16px 0;
+    }
+    
+    .threat-item {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .threat-item p {
+      margin: 8px 0 0 0;
+      font-size: 14px;
+      color: #991b1b;
+    }
+    
+    .opportunities-grid {
+      display: grid;
+      gap: 16px;
+    }
+    
+    .opportunity-item {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.05);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .opp-number {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    
+    .opp-content h5 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+    }
+    
+    .opp-content p {
+      font-size: 13px;
+      color: #64748b;
+      margin: 0;
+      line-height: 1.5;
+    }
+    
+    .opp-potential {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 10px;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       PROGRAMMATIC MOAT STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .moat-section {
+      margin-bottom: 24px;
+    }
+    
+    .section-description {
+      font-size: 13px;
+      color: #64748b;
+      margin: 0 0 16px 0;
+    }
+    
+    .tvi-section {
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      border-radius: 12px;
+      padding: 24px;
+      border: 1px solid #c4b5fd;
+    }
+    
+    .tvi-display {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    
+    .tvi-score {
+      font-size: 48px;
+      font-weight: 800;
+      color: #6d28d9;
+      line-height: 1;
+    }
+    
+    .tvi-breakdown {
+      flex: 1;
+    }
+    
+    .tvi-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(109, 40, 217, 0.1);
+      font-size: 13px;
+    }
+    
+    .tvi-item span:first-child {
+      color: #64748b;
+    }
+    
+    .tvi-item span:last-child {
+      font-weight: 600;
+      color: #6d28d9;
+    }
+    
+    .moat-recommendations {
+      display: grid;
+      gap: 16px;
+    }
+    
+    .moat-rec-item {
+      display: flex;
+      gap: 16px;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.05);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .moat-rec-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    
+    .moat-rec-content h5 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+    }
+    
+    .moat-rec-content p {
+      font-size: 13px;
+      color: #64748b;
+      margin: 0;
+      line-height: 1.5;
+    }
+    
+    .moat-timeframe {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #6d28d9;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       ROADMAP STYLES (ENHANCED)
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .roadmap-card {
+      background: linear-gradient(180deg, #fafafa 0%, #f1f5f9 100%);
+    }
+    
+    .roadmap-phase-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .phase-icon { font-size: 20px; }
+    
+    .phase-timeline {
+      margin-left: auto;
+      font-size: 12px;
+      color: #64748b;
+      background: #e2e8f0;
+      padding: 4px 12px;
+      border-radius: 12px;
+    }
+    
+    .phase-goal {
+      font-size: 14px;
+      color: #475569;
+      margin: 0 0 16px 0;
+      padding-left: 32px;
+    }
+    
+    .phase-outcome {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    
+    .outcome-label {
+      font-weight: 600;
+      color: #166534;
+    }
+    
+    .outcome-text {
+      color: #064e3b;
+    }
+    
+    .outcome-list {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+    }
+    
+    .outcome-list li {
+      color: #064e3b;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    
+    .phase-objectives {
+      margin-bottom: 16px;
+    }
+    
+    .objectives-label {
+      font-weight: 600;
+      color: #0f172a;
+      font-size: 13px;
+    }
+    
+    .objectives-list {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+    }
+    
+    .objectives-list li {
+      color: #475569;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       KILL MOVES ADDITIONAL STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .strength-vs-vulnerability {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    
+    .svv-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    
+    .svv-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .svv-label {
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    
+    .apparent-strength .svv-label {
+      color: #0369a1;
+    }
+    
+    .hidden-vulnerability .svv-label {
+      color: #b91c1c;
+    }
+    
+    .svv-value {
+      font-size: 13px;
+      color: #475569;
+    }
+    
+    .entity-attack-description {
+      font-size: 14px;
+      color: #7e22ce;
+      padding: 12px 16px;
+      background: white;
+      border-radius: 8px;
+      margin-top: 12px;
+      border-left: 3px solid #a78bfa;
+    }
+    
+    .preemptive-frame {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 1px solid #f59e0b;
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    
+    .frame-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 8px;
+    }
+    
+    .frame-content {
+      font-size: 14px;
+      color: #78350f;
+      font-style: italic;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       PROGRAMMATIC MOAT ADDITIONAL STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .proposed-tool-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      border: 2px solid #c4b5fd;
+    }
+    
+    .tool-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: #6d28d9;
+      margin: 0 0 20px 0;
+    }
+    
+    .tool-value, .tool-leads, .tool-advantage {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .tool-advantage {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    
+    .value-label, .leads-label, .advantage-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    .tool-value p, .tool-leads p, .tool-advantage p {
+      margin: 0;
+      font-size: 14px;
+      color: #334155;
+      line-height: 1.6;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       THREATS ADDITIONAL STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .threat-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    
+    .threat-source {
+      font-size: 12px;
+      color: #64748b;
+    }
+    
+    .threat-description {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      color: #991b1b;
+    }
+    
+    .threat-mitigation {
+      background: #fef3c7;
+      padding: 12px 16px;
+      border-radius: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    
+    .mitigation-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #92400e;
+      white-space: nowrap;
+    }
+    
+    .mitigation-text {
+      font-size: 13px;
+      color: #78350f;
+    }
+    
+    .threat-high { background: #fff7ed; color: #c2410c; }
+    .threat-medium { background: #fefce8; color: #a16207; }
+    
+    /* ═══════════════════════════════════════════════════════════════
+       OPPORTUNITIES ADDITIONAL STYLES
+       ═══════════════════════════════════════════════════════════════ */
+    
+    .opp-topical {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #fdf4ff;
+      border-radius: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .topical-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #7e22ce;
+    }
+    
+    .topical-value {
+      font-size: 13px;
+      color: #6d28d9;
+      font-weight: 600;
+    }
+
+    /* Animations */
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .animate-slide-up {
+      animation: slideInUp 0.5s ease forwards;
+    }
+    
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+    
+    /* Stagger animation delays */
+    .stagger-1 { animation-delay: 0.1s; }
+    .stagger-2 { animation-delay: 0.2s; }
+    .stagger-3 { animation-delay: 0.3s; }
+    .stagger-4 { animation-delay: 0.4s; }
+    .stagger-5 { animation-delay: 0.5s; }
+  `;
+  
+  document.head.appendChild(styles);
+}
+
+/**
+ * Render 3-Sentence Executive Summary Banner at the TOP
+ */
+function renderExecutiveSummaryBanner(analysis) {
+  const container = document.getElementById('comp-overview-metrics');
+  if (!container) return;
+  
+  // Extract 3-sentence summary from analysis
+  let summaryLines = [];
+  
+  if (analysis?.executiveBrief?.threeLineSummary) {
+    summaryLines = analysis.executiveBrief.threeLineSummary;
+  } else if (analysis?.executiveBrief?.landscapeOverview) {
+    // Fallback: split landscape overview into sentences
+    const overview = analysis.executiveBrief.landscapeOverview;
+    summaryLines = overview.split(/[.!?]+/).filter(s => s.trim()).slice(0, 3).map(s => s.trim() + '.');
+  } else {
+    // Generate from available data
+    summaryLines = [
+      'Comprehensive competitive analysis complete with actionable strategic insights.',
+      'Key opportunities identified across technical SEO, content authority, and market positioning.',
+      'Prioritized roadmap ready for immediate implementation.'
+    ];
+  }
+  
+  // Create banner HTML
+  const bannerHtml = `
+    <div class="executive-summary-banner animate-slide-up">
+      <div class="executive-summary-title">
+        3-Sentence Executive Summary
+      </div>
+      <div class="executive-summary-content">
+        ${summaryLines.map((line, i) => `
+          <div class="executive-summary-line">${translateToPlainEnglish(line)}</div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  // Prepend to container
+  container.insertAdjacentHTML('afterbegin', bannerHtml);
+}
+
+/**
+ * Translate technical jargon to plain English
+ */
+function translateToPlainEnglish(text) {
+  if (!text) return '';
+  
+  const translations = {
+    // Technical SEO terms
+    'PageRank': 'website authority score',
+    'SERP': 'search results',
+    'SERPs': 'search results',
+    'SEO': 'search visibility',
+    'CTA': 'call-to-action',
+    'CTR': 'click rate',
+    'backlinks': 'links from other websites',
+    'backlink profile': 'network of sites linking to them',
+    'referring domains': 'websites linking to them',
+    'organic traffic': 'visitors from search engines',
+    'domain authority': 'website credibility score',
+    'Core Web Vitals': 'website speed and user experience',
+    'CWV': 'website speed metrics',
+    'LCP': 'page load speed',
+    'FID': 'page responsiveness',
+    'CLS': 'visual stability',
+    'schema markup': 'structured data for search engines',
+    'canonical': 'primary page version',
+    'indexability': 'ability to appear in search',
+    
+    // Content & Strategy terms
+    'conversion surface': 'pages that turn visitors into customers',
+    'topical dominance': 'owning the conversation on a topic',
+    'topical authority': 'being the go-to source on a topic',
+    'semantic cluster': 'group of related topics',
+    'content gap': 'topics competitors cover that you don\'t',
+    'content velocity': 'speed of publishing new content',
+    'Entity-Based SEO': 'becoming the recognized authority',
+    'entity SEO': 'building topical authority',
+    'EEAT': 'expertise, experience, authority, and trust signals',
+    'E-E-A-T': 'expertise, experience, authority, and trust signals',
+    'thought leadership': 'industry expert positioning',
+    
+    // Business & Market terms
+    'market positioning': 'how you compare to competitors',
+    'competitive moat': 'defensible business advantage',
+    'programmatic moat': 'automated defensible advantage',
+    'TAM': 'total market opportunity',
+    'ARR': 'annual recurring revenue',
+    'MRR': 'monthly recurring revenue',
+    'CAC': 'cost to acquire a customer',
+    'LTV': 'lifetime customer value',
+    'churn': 'customer loss rate',
+    'ICP': 'ideal customer profile',
+    
+    // Technical terms for non-technical readers
+    'API': 'software connection',
+    'ML': 'machine learning',
+    'AI-powered': 'intelligent automation',
+    'infrastructure': 'technical foundation',
+    'scalability': 'ability to grow',
+    'latency': 'response speed',
+    'uptime': 'availability',
+    'ROI': 'return on investment'
+  };
+  
+  let result = text;
+  Object.entries(translations).forEach(([tech, plain]) => {
+    const regex = new RegExp(`\\b${tech}\\b`, 'gi');
+    result = result.replace(regex, plain);
+  });
+  
+  return result;
+}
+
+/**
+ * Adapt NEW system data structure for OLD chart functions
+ * Converts: { "url": { categories: {...} } } 
+ * To: [ { domain, processedMetrics: {...} } ]
+ */
+function adaptCompetitorDataForOldCharts(competitors) {
+  console.log('🔄 adaptCompetitorDataForOldCharts called');
+  console.log('   Input type:', typeof competitors);
+  console.log('   Input keys:', Object.keys(competitors || {}).length);
+  
+  if (!competitors || typeof competitors !== 'object') {
+    console.warn('⚠️ Invalid competitors data for adaptation');
+    return [];
+  }
+  
+  const adapted = [];
+  
+  Object.keys(competitors).forEach(url => {
+    const comp = competitors[url];
+    
+    // Extract metrics from categories structure
+    const processedMetrics = {
+      // Authority metrics
+      authorityMomentum: extractCategoryMetric(comp, 'authority', 'domainAuthority', 50),
+      backlinks: extractCategoryMetric(comp, 'authority', 'totalBacklinks', 1000),
+      referringDomains: extractCategoryMetric(comp, 'authority', 'referringDomains', 100),
+      
+      // Technical SEO metrics  
+      technicalScore: extractCategoryMetric(comp, 'technicalSEO', 'technicalScore', 75),
+      pageSpeed: extractCategoryMetric(comp, 'technicalSEO', 'pageSpeed', 80),
+      mobileScore: extractCategoryMetric(comp, 'technicalSEO', 'mobileScore', 85),
+      
+      // Content metrics
+      contentQuality: extractCategoryMetric(comp, 'contentIntelligence', 'contentQuality', 70),
+      contentDepth: extractCategoryMetric(comp, 'contentIntelligence', 'avgWordCount', 1500),
+      
+      // Market metrics
+      marketShare: extractCategoryMetric(comp, 'marketPositioning', 'estimatedTraffic', 50000),
+      searchVisibility: extractCategoryMetric(comp, 'marketPositioning', 'searchVisibility', 60),
+      
+      // Brand metrics
+      brandStrength: extractCategoryMetric(comp, 'brandMessaging', 'brandStrength', 65),
+      
+      // Keyword metrics
+      keywordCount: extractCategoryMetric(comp, 'keywordStrategy', 'totalKeywords', 500),
+      
+      // Performance metrics
+      coreCWV: extractCategoryMetric(comp, 'performance', 'coreWebVitals', 80)
+    };
+    
+    adapted.push({
+      domain: comp.domain || extractDomain(url),
+      url: url,
+      processedMetrics: processedMetrics,
+      categories: comp.categories || {},
+      rawData: comp
+    });
+  });
+  
+  console.log('✅ Adapted ' + adapted.length + ' competitors for charts');
+  if (adapted.length > 0) {
+    console.log('   Sample processedMetrics:', adapted[0].processedMetrics);
+  }
+  
+  return adapted;
+}
+
+/**
+ * Extract metric from category structure with fallback
+ */
+function extractCategoryMetric(competitor, categoryKey, metricKey, defaultValue) {
+  try {
+    if (!competitor || !competitor.categories) return defaultValue;
+    const category = competitor.categories[categoryKey];
+    if (!category || !category.metrics) return defaultValue;
+    
+    const value = category.metrics[metricKey];
+    return (value !== undefined && value !== null) ? value : defaultValue;
+  } catch (error) {
+    return defaultValue;
+  }
+}
+
+/**
+ * Extract domain from URL
+ */
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace('www.', '');
+  } catch (error) {
+    return url.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0];
+  }
+}
+
+
+/**
+ * ==================================================================
+ * OVERVIEW DASHBOARD RENDERING
+ * ==================================================================
+ */
+
+function renderOverviewDashboard(overview, intelligence, competitors) {
+  console.log('📊 Rendering overview dashboard...');
+  console.log('Overview data:', overview);
+  console.log('Competitors:', Object.keys(competitors || {}).length);
+  
+  const container = document.getElementById('comp-overview-metrics');
+  if (!container) {
+    console.warn('⚠️ comp-overview-metrics container not found');
+    return;
+  }
+  
+  let html = '<div class="metrics-grid-container">';
+  
+  // Display competitor count
+  const competitorCount = Object.keys(competitors || {}).length;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">🎯</div>
+      <div class="metric-content">
+        <div class="metric-value">${competitorCount}</div>
+        <div class="metric-label">Competitors Analyzed</div>
+        <div class="metric-badge data-badge-real">✅ real</div>
+      </div>
+    </div>
+  `;
+  
+  // Display total metrics collected
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">📊</div>
+      <div class="metric-content">
+        <div class="metric-value">${overview.totalMetrics || 'N/A'}</div>
+        <div class="metric-label">Total Data Points</div>
+        <div class="metric-badge data-badge-calculated">📊 calculated</div>
+      </div>
+    </div>
+  `;
+  
+  // Display data completeness
+  const completeness = overview.dataCompleteness || overview.dataCompl || 0;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">📈</div>
+      <div class="metric-content">
+        <div class="metric-value">${completeness}%</div>
+        <div class="metric-label">Data Completeness</div>
+        <div class="metric-badge ${completeness >= 80 ? 'data-badge-real' : 'data-badge-calculated'}">
+          ${completeness >= 80 ? '✅ excellent' : '📊 good'}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Display categories analyzed
+  const categoriesCount = Object.keys(intelligence || {}).length;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">🏆</div>
+      <div class="metric-content">
+        <div class="metric-value">${categoriesCount}</div>
+        <div class="metric-label">Categories Analyzed</div>
+        <div class="metric-badge data-badge-real">✅ complete</div>
+      </div>
+    </div>
+  `;
+  
+  html += '</div>';
+  
+  // Add competitor comparison cards
+  html += '<div class="competitor-comparison-section">';
+  html += '<h3 class="section-title">📊 Competitor Comparison</h3>';
+  html += '<div class="competitor-cards-grid">';
+  
+  Object.keys(competitors || {}).forEach((url, index) => {
+    const comp = competitors[url];
+    const domain = comp.domain || url;
+    
+    // Calculate summary scores from categories
+    let avgScore = 0;
+    let scoreCount = 0;
+    
+    Object.keys(comp.categories || {}).forEach(catKey => {
+      const cat = comp.categories[catKey];
+      Object.values(cat.metrics || {}).forEach(val => {
+        if (typeof val === 'number' && val >= 0 && val <= 100) {
+          avgScore += val;
+          scoreCount++;
+        }
+      });
+    });
+    
+    avgScore = scoreCount > 0 ? Math.round(avgScore / scoreCount) : 0;
+    
+    html += `
+      <div class="competitor-summary-card elite-card">
+        <div class="competitor-header">
+          <div class="competitor-rank">#${index + 1}</div>
+          <div class="competitor-info">
+            <div class="competitor-domain-title">${domain}</div>
+            <div class="competitor-url-subtitle">${url}</div>
+          </div>
+        </div>
+        <div class="competitor-score-section">
+          <div class="score-circle score-${getScoreClass(avgScore)}">
+            <span class="score-value">${avgScore}</span>
+            <span class="score-label">/100</span>
+          </div>
+          <div class="score-details">
+            <div class="score-detail">
+              <span class="detail-icon">📊</span>
+              <span class="detail-text">${Object.keys(comp.categories || {}).length} categories</span>
+            </div>
+            <div class="score-detail">
+              <span class="detail-icon">✅</span>
+              <span class="detail-text">${scoreCount} data points</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div></div>';
+  container.innerHTML = html;
+  
+  console.log('✅ Overview dashboard rendered');
+}
+
+
+/**
+ * ==================================================================
+ * ELITE GEMINI INSIGHTS - BOARD-READY STRATEGIC DISPLAY
+ * ==================================================================
+ */
+
+function renderEliteGeminiInsights(analysis) {
+  console.log('🎯 Rendering Elite Gemini Insights...');
+  console.log('📊 Analysis data type:', typeof analysis);
+  console.log('📊 Analysis keys:', analysis ? Object.keys(analysis) : 'null');
+  console.log('📊 Has executiveBrief:', !!analysis?.executiveBrief);
+  console.log('📊 Has killMoves:', !!analysis?.killMoves, 'count:', analysis?.killMoves?.length || 0);
+  console.log('📊 Has competitorRankings:', !!analysis?.competitorRankings, 'count:', analysis?.competitorRankings?.length || 0);
+  console.log('📊 Has categories:', !!analysis?.categories, 'count:', analysis?.categories?.length || 0);
+  
+  if (!analysis) {
+    console.warn('⚠️ No analysis data for Gemini insights');
+    return;
+  }
+  
+  // Find the best container for Gemini insights
+  // Priority: 1. comp-overview-insights (dedicated), 2. comp-gemini-insights (custom), 3. create new
+  let container = document.getElementById('comp-overview-insights');
+  if (container) {
+    console.log('✅ Using dedicated comp-overview-insights container');
+  } else {
+    container = document.getElementById('comp-gemini-insights');
+    if (!container) {
+      // Create container after overview metrics, before charts row
+      const overviewContainer = document.getElementById('comp-overview-metrics');
+      if (overviewContainer) {
+        container = document.createElement('div');
+        container.id = 'comp-gemini-insights';
+        container.className = 'elite-gemini-insights-section';
+        overviewContainer.parentNode.insertBefore(container, overviewContainer.nextSibling);
+        console.log('✅ Created comp-gemini-insights container');
+      } else {
+        console.warn('⚠️ Cannot find container for Gemini insights');
+        return;
+      }
+    }
+  }
+  
+  let html = '';
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 1. EFFICIENCY ANALYSIS SECTION - Extract from competitorRankings
+  // ═══════════════════════════════════════════════════════════════
+  const efficiencyData = extractEfficiencyData(analysis);
+  if (efficiencyData && efficiencyData.efficiencyRatios.length > 0) {
+    html += renderEfficiencyAnalysis(efficiencyData);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 2. KILL MOVES - ENTITY-BASED SEO STRATEGY
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.killMoves && analysis.killMoves.length > 0) {
+    html += renderEliteKillMoves(analysis.killMoves);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 3. STRATEGIC OPPORTUNITIES
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.executiveBrief) {
+    html += renderEliteOpportunities(analysis.executiveBrief);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 3a. JOBS-TO-BE-DONE (JTBD) OVERLAY - NEW ELITE 0.1%
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.executiveBrief?.jobsToBeDone) {
+    html += renderJobsToBeDone(analysis.executiveBrief.jobsToBeDone);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 3b. LOSS LEADER ANALYSIS - NEW ELITE 0.1%
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.executiveBrief?.lossLeaderAnalysis) {
+    html += renderLossLeaderAnalysis(analysis.executiveBrief.lossLeaderAnalysis);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 3c. EMOTIONAL DEBT AUDIT - NEW ELITE 0.1%
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.executiveBrief?.emotionalDebtAudit) {
+    html += renderEmotionalDebtAudit(analysis.executiveBrief.emotionalDebtAudit);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 3d. TIME-TO-VALUE COMPARISON - NEW ELITE 0.1%
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.executiveBrief?.timeToValueComparison) {
+    html += renderTimeToValue(analysis.executiveBrief.timeToValueComparison);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 4. PROGRAMMATIC MOAT RECOMMENDATIONS (from executiveBrief)
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.executiveBrief?.programmaticMoat) {
+    html += renderProgrammaticMoat(analysis.executiveBrief.programmaticMoat);
+  }
+  
+  // 4a. PROGRAMMATIC SEO MOAT (NEW STRUCTURE)
+  if (analysis.executiveBrief?.programmaticSEOMoat) {
+    html += renderProgrammaticSEOMoat(analysis.executiveBrief.programmaticSEOMoat);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 5. COMPETITIVE ROADMAP (from executiveBrief.prioritizedRoadmap)
+  // ═══════════════════════════════════════════════════════════════
+  if (analysis.executiveBrief?.prioritizedRoadmap) {
+    html += renderCompetitiveRoadmap({ phases: analysis.executiveBrief.prioritizedRoadmap });
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 6. FALLBACK: Use categories if no executive data available
+  // ═══════════════════════════════════════════════════════════════
+  if (!html && analysis.categories && Array.isArray(analysis.categories)) {
+    console.log('📊 Using categories fallback for insights:', analysis.categories.length);
+    html += renderCategoriesFallback(analysis.categories);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 7. FINAL FALLBACK: Show "Analysis in progress" message
+  // ═══════════════════════════════════════════════════════════════
+  if (!html) {
+    console.warn('⚠️ No Gemini insights data available - showing placeholder');
+    html = `
+      <div class="elite-gemini-section" style="padding: 24px; background: var(--bg-card, #fff); border-radius: 12px; border: 1px solid var(--border-light, #e0e0e0); margin: 16px 0;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #4285f4, #34a853); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 20px;">🤖</span>
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary, #202124);">AI Strategic Analysis</h3>
+            <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary, #5f6368);">Gemini-powered competitive intelligence</p>
+          </div>
+        </div>
+        <div style="background: var(--bg-secondary, #f8f9fa); border-radius: 8px; padding: 16px; text-align: center;">
+          <p style="margin: 0; color: var(--text-secondary, #5f6368); font-size: 14px;">
+            <strong>Analysis data received but in unexpected format.</strong><br>
+            <span style="font-size: 12px; opacity: 0.8;">Check console for data structure details.</span>
+          </p>
+        </div>
+      </div>
+    `;
+    // Log what we DID receive for debugging
+    console.log('📊 Analysis object keys:', Object.keys(analysis));
+    console.log('📊 Has categories:', !!analysis.categories);
+    console.log('📊 Has killMoves:', !!analysis.killMoves);
+    console.log('📊 Has executiveBrief:', !!analysis.executiveBrief);
+    console.log('📊 Has competitorRankings:', !!analysis.competitorRankings);
+  }
+  
+  container.innerHTML = html;
+  console.log('✅ Elite Gemini Insights rendered, HTML length:', html.length);
+}
+
+/**
+ * Render categories fallback when executive data is missing
+ */
+function renderCategoriesFallback(categories) {
+  let html = `
+    <div class="elite-categories-fallback" style="padding: 20px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #4285f4, #34a853); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+          <span style="font-size: 20px;">📊</span>
+        </div>
+        <div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary, #202124);">Intelligence Categories Analysis</h3>
+          <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary, #5f6368);">${categories.length} categories analyzed</p>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+  `;
+  
+  categories.slice(0, 6).forEach((cat, idx) => {
+    const categoryName = cat.name || cat.category || `Category ${idx + 1}`;
+    const score = cat.score || cat.avgScore || 0;
+    const insights = cat.insights || cat.keyFindings || [];
+    const topInsight = Array.isArray(insights) && insights.length > 0 ? insights[0] : (typeof insights === 'string' ? insights : 'Analysis available');
+    
+    html += `
+      <div style="background: var(--bg-card, #fff); border-radius: 10px; padding: 16px; border: 1px solid var(--border-light, #e0e0e0);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary, #202124);">${categoryName}</h4>
+          <span style="background: ${score >= 70 ? '#34a853' : score >= 50 ? '#fbbc04' : '#ea4335'}; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">${score}/100</span>
+        </div>
+        <p style="margin: 0; font-size: 13px; color: var(--text-secondary, #5f6368); line-height: 1.5;">
+          ${typeof topInsight === 'string' ? topInsight.substring(0, 150) + (topInsight.length > 150 ? '...' : '') : 'See detailed analysis'}
+        </p>
+      </div>
+    `;
+  });
+  
+  html += `
+      </div>
+    </div>
+  `;
+  
+  return html;
+}
+
+
+/**
+ * Extract Efficiency Data from competitorRankings
+ */
+function extractEfficiencyData(analysis) {
+  if (!analysis.competitorRankings || !Array.isArray(analysis.competitorRankings)) {
+    return null;
+  }
+  
+  const efficiencyRatios = analysis.competitorRankings.map(comp => {
+    const ratio = comp.efficiencyRatio || 0;
+    let grade = 'C';
+    let interpretation = 'Average efficiency';
+    
+    if (ratio >= 10) {
+      grade = 'A';
+      interpretation = 'Highly efficient - grows with minimal link building investment';
+    } else if (ratio >= 5) {
+      grade = 'B';
+      interpretation = 'Good efficiency - reasonable returns on authority building';
+    } else if (ratio >= 2) {
+      grade = 'C';
+      interpretation = 'Average efficiency - typical for competitive markets';
+    } else {
+      grade = 'D';
+      interpretation = 'Bloated profile - high links, low traffic. Opportunity to outmaneuver.';
+    }
+    
+    return {
+      competitor: comp.domain,
+      trafficPerRefDomain: ratio,
+      efficiencyGrade: grade,
+      interpretation: interpretation,
+      competitiveImplication: comp.efficiencyAnalysis || 
+        (grade === 'D' ? 'Can be outmaneuvered with less capital investment' : 
+         grade === 'A' ? 'Strong competitor - needs strategic differentiation' : 
+         'Monitor and target weak points')
+    };
+  });
+  
+  // Calculate market insight
+  const avgRatio = efficiencyRatios.reduce((sum, r) => sum + r.trafficPerRefDomain, 0) / efficiencyRatios.length;
+  const marketInsight = avgRatio >= 7 
+    ? 'Market shows high efficiency overall - focus on content quality over link building'
+    : avgRatio >= 4 
+      ? 'Market has moderate efficiency - balanced strategy recommended'
+      : 'Market appears saturated with low-efficiency players - opportunity for lean, targeted approach';
+  
+  return {
+    efficiencyRatios,
+    marketInsight
+  };
+}
+
+
+/**
+ * Render Efficiency Analysis Cards
+ */
+function renderEfficiencyAnalysis(efficiencyData) {
+  if (!efficiencyData || !efficiencyData.efficiencyRatios) return '';
+  
+  const ratios = efficiencyData.efficiencyRatios || [];
+  
+  let html = `
+    <div class="elite-insight-card efficiency-analysis-card animate-slide-up stagger-1">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">⚡</div>
+          <div>
+            <h3 class="elite-insight-title">Efficiency Analysis</h3>
+            <p class="elite-insight-subtitle">Traffic per Referring Domain — Identifies "Bloated" vs Lean Competitors</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">BOARD INSIGHT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  // Market Insight callout
+  if (efficiencyData.marketInsight) {
+    html += `
+      <div class="market-insight-callout">
+        <span class="callout-icon">💡</span>
+        <p>${translateToPlainEnglish(efficiencyData.marketInsight)}</p>
+      </div>
+    `;
+  }
+  
+  // Efficiency ratio cards grid
+  html += '<div class="efficiency-grid">';
+  
+  ratios.forEach((ratio, index) => {
+    const grade = ratio.efficiencyGrade || 'C';
+    const gradeClass = grade === 'A' ? 'grade-excellent' : grade === 'B' ? 'grade-good' : grade === 'C' ? 'grade-average' : 'grade-poor';
+    const efficiencyClass = ratio.trafficPerRefDomain >= 10 ? 'efficiency-high' : ratio.trafficPerRefDomain >= 5 ? 'efficiency-medium' : 'efficiency-low';
+    const barWidth = Math.min(100, (ratio.trafficPerRefDomain / 15) * 100);
+    
+    html += `
+      <div class="efficiency-ratio-card animate-fade-in stagger-${index + 1}">
+        <div class="efficiency-card-header">
+          <span class="efficiency-domain">${ratio.competitor}</span>
+          <span class="efficiency-grade ${gradeClass}">${grade}</span>
+        </div>
+        <div class="efficiency-ratio-container">
+          <div class="efficiency-ratio-value">${ratio.trafficPerRefDomain?.toFixed(1) || '0.0'}</div>
+          <div class="efficiency-ratio-details">
+            <span class="efficiency-ratio-label">Traffic per Referring Domain</span>
+            <div class="efficiency-ratio-bar">
+              <div class="efficiency-ratio-fill ${efficiencyClass}" style="width: ${barWidth}%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="efficiency-interpretation">
+          <strong>What it means:</strong> ${translateToPlainEnglish(ratio.interpretation || 'Data not available')}
+        </div>
+        <div class="efficiency-implication">
+          <span class="implication-icon">🎯</span>
+          ${translateToPlainEnglish(ratio.competitiveImplication || '')}
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div></div></div>';
+  
+  return html;
+}
+
+
+/**
+ * Render Kill Moves with Entity-Based SEO Strategy
+ */
+function renderEliteKillMoves(killMoves) {
+  let html = `
+    <div class="elite-insight-card kill-move-card animate-slide-up stagger-2">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">⚔️</div>
+          <div>
+            <h3 class="elite-insight-title">Strategic Kill Moves</h3>
+            <p class="elite-insight-subtitle">Entity-Based SEO — Own High-Intent Topics, Not Just Keywords</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">HIGH IMPACT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  killMoves.forEach((move, index) => {
+    // Determine priority from urgency or default
+    const priority = move.urgency || move.priority || 'High';
+    const priorityClass = priority === 'Critical' ? 'priority-critical' : priority === 'High' ? 'priority-high' : 'priority-medium';
+    
+    html += `
+      <div class="kill-move-item animate-fade-in stagger-${index + 1}">
+        <div class="kill-move-header">
+          <span class="kill-move-priority ${priorityClass}">${priority}</span>
+          <span class="kill-move-target">vs ${move.targetCompetitor || 'Market'}</span>
+        </div>
+        <div class="kill-move-description">
+          <h4>${translateToPlainEnglish(move.killMove || move.move || move.action || 'Strategic Move')}</h4>
+          <p>${translateToPlainEnglish(move.hiddenVulnerability || move.rationale || move.plainEnglish || '')}</p>
+        </div>
+    `;
+    
+    // Their Apparent Strength vs Hidden Vulnerability
+    if (move.theirApparentStrength) {
+      html += `
+        <div class="strength-vs-vulnerability">
+          <div class="svv-item apparent-strength">
+            <span class="svv-label">🛡️ Their Claimed Strength:</span>
+            <span class="svv-value">${translateToPlainEnglish(move.theirApparentStrength)}</span>
+          </div>
+          <div class="svv-item hidden-vulnerability">
+            <span class="svv-label">🎯 Hidden Vulnerability:</span>
+            <span class="svv-value">${translateToPlainEnglish(move.hiddenVulnerability || 'Not identified')}</span>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Entity-Based Attack Strategy (from Gemini output)
+    if (move.entityBasedAttack) {
+      html += `
+        <div class="entity-seo-strategy">
+          <div class="entity-seo-title">🎯 Entity-Based SEO Battle Plan</div>
+          <div class="entity-attack-description">
+            ${translateToPlainEnglish(move.entityBasedAttack)}
+          </div>
+        </div>
+      `;
+    }
+    
+    // Pre-emptive Framing (how to turn their strength into weakness)
+    if (move.preEmptiveFrame) {
+      html += `
+        <div class="preemptive-frame">
+          <div class="frame-label">🔄 Pre-emptive Framing Strategy:</div>
+          <div class="frame-content">${translateToPlainEnglish(move.preEmptiveFrame)}</div>
+        </div>
+      `;
+    }
+    
+    // Expected Impact
+    if (move.expectedImpact || move.impact) {
+      html += `
+        <div class="kill-move-impact">
+          <span class="impact-icon">📈</span>
+          <span class="impact-text"><strong>Expected Impact:</strong> ${translateToPlainEnglish(move.expectedImpact || move.impact)}</span>
+        </div>
+      `;
+    }
+    
+    // Implementation
+    if (move.implementation) {
+      const impl = Array.isArray(move.implementation) ? move.implementation : [move.implementation];
+      html += `
+        <div class="kill-move-implementation">
+          <div class="impl-title">📋 How to Execute:</div>
+          <ol class="impl-steps">
+            ${impl.map(step => `<li>${translateToPlainEnglish(step)}</li>`).join('')}
+          </ol>
+        </div>
+      `;
+    }
+    
+    html += '</div>';
+  });
+  
+  html += '</div></div>';
+  
+  return html;
+}
+
+
+/**
+ * Render Strategic Opportunities from Executive Brief
+ */
+function renderEliteOpportunities(executiveBrief) {
+  if (!executiveBrief.opportunities && !executiveBrief.criticalThreats) return '';
+  
+  let html = `
+    <div class="elite-insight-card opportunity-card animate-slide-up stagger-3">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">💎</div>
+          <div>
+            <h3 class="elite-insight-title">Strategic Opportunities</h3>
+            <p class="elite-insight-subtitle">Convert Competitor Weaknesses into Your Advantages</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">GROWTH</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  // Critical Threats (if any) - handle both object and string formats
+  const threats = executiveBrief.criticalThreats || [];
+  if (threats.length > 0) {
+    html += `
+      <div class="threats-section">
+        <h4 class="section-label">⚠️ Critical Threats to Address</h4>
+        <div class="threats-list">
+          ${threats.map(threat => {
+            const threatText = typeof threat === 'string' ? threat : threat.threat || threat.description;
+            const urgency = typeof threat === 'object' ? threat.urgency : 'Critical';
+            const mitigation = typeof threat === 'object' ? threat.mitigation : null;
+            const fromCompetitor = typeof threat === 'object' ? threat.fromCompetitor : null;
+            
+            return `
+              <div class="threat-item">
+                <div class="threat-header">
+                  <span class="threat-badge threat-${urgency?.toLowerCase() || 'critical'}">${urgency || 'CRITICAL'}</span>
+                  ${fromCompetitor ? `<span class="threat-source">from ${fromCompetitor}</span>` : ''}
+                </div>
+                <p class="threat-description">${translateToPlainEnglish(threatText)}</p>
+                ${mitigation ? `
+                  <div class="threat-mitigation">
+                    <span class="mitigation-label">🛡️ Mitigation:</span>
+                    <span class="mitigation-text">${translateToPlainEnglish(mitigation)}</span>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Strategic Opportunities (handle both formats)
+  const opportunities = executiveBrief.strategicOpportunities || executiveBrief.opportunities || [];
+  if (opportunities.length > 0) {
+    html += `
+      <div class="opportunities-section">
+        <h4 class="section-label">🚀 Growth Opportunities</h4>
+        <div class="opportunities-grid">
+          ${opportunities.map((opp, i) => {
+            const oppTitle = typeof opp === 'string' ? opp : opp.opportunity || opp.title;
+            const oppDesc = typeof opp === 'object' ? (opp.conversionSurface || opp.description) : null;
+            const topicalDominance = typeof opp === 'object' ? opp.topicalDominance : null;
+            const potentialImpact = typeof opp === 'object' ? opp.potentialImpact : null;
+            
+            return `
+              <div class="opportunity-item animate-fade-in stagger-${i + 1}">
+                <div class="opp-number">${i + 1}</div>
+                <div class="opp-content">
+                  <h5>${translateToPlainEnglish(oppTitle)}</h5>
+                  ${oppDesc ? `<p>${translateToPlainEnglish(oppDesc)}</p>` : ''}
+                  ${topicalDominance ? `
+                    <div class="opp-topical">
+                      <span class="topical-label">🎯 Topical Dominance Target:</span>
+                      <span class="topical-value">${topicalDominance}</span>
+                    </div>
+                  ` : ''}
+                  ${potentialImpact ? `<span class="opp-potential">${translateToPlainEnglish(potentialImpact)}</span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  html += '</div></div>';
+  
+  return html;
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE 0.1% STRATEGIC ANALYSIS RENDERERS
+ * Jobs-to-be-Done, Loss Leader, Emotional Debt, Time-to-Value, Programmatic SEO
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Render Jobs-to-be-Done (JTBD) Overlay
+ */
+function renderJobsToBeDone(jtbdData) {
+  if (!jtbdData || !jtbdData.unmetJobs) return '';
+  
+  let html = `
+    <div class="elite-insight-card jtbd-card animate-slide-up stagger-3" style="background: linear-gradient(135deg, #fef3c7 0%, #fff 100%); border-left: 4px solid #f59e0b;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎯</div>
+          <div>
+            <h3 class="elite-insight-title">Jobs-to-be-Done (JTBD) Overlay</h3>
+            <p class="elite-insight-subtitle">Unmet Struggles Your Competitors Fail to Solve</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #f59e0b;">JTBD</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  // Unmet Jobs List
+  if (jtbdData.unmetJobs && jtbdData.unmetJobs.length > 0) {
+    html += `
+      <div class="jtbd-jobs-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+        ${jtbdData.unmetJobs.map(job => `
+          <div class="jtbd-job-card" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <span style="font-size: 12px; font-weight: 600; color: #666;">🏢 ${job.competitor}</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <span style="font-size: 11px; color: #999; text-transform: uppercase;">Unmet Job</span>
+              <p style="margin: 4px 0; font-size: 14px; font-weight: 600; color: #202124;">"${job.unmetJob}"</p>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <span style="font-size: 11px; color: #999; text-transform: uppercase;">Frustration</span>
+              <p style="margin: 4px 0; font-size: 13px; color: #ea4335;">${job.frustration}</p>
+            </div>
+            ${job.ourSolution ? `
+              <div style="background: #e8f5e9; padding: 10px; border-radius: 8px; margin-top: 8px;">
+                <span style="font-size: 11px; color: #34a853; font-weight: 600;">✅ OUR SOLUTION</span>
+                <p style="margin: 4px 0 0; font-size: 13px; color: #1e7e34;">${job.ourSolution}</p>
+              </div>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  // Main JTBD Opportunity
+  if (jtbdData.jtbdOpportunity) {
+    html += `
+      <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 20px; border-radius: 12px;">
+        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">🏆 BIGGEST JTBD OPPORTUNITY</div>
+        <p style="margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5;">"${jtbdData.jtbdOpportunity}"</p>
+      </div>
+    `;
+  }
+  
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Loss Leader & Profit Center Analysis
+ */
+function renderLossLeaderAnalysis(lossLeaderData) {
+  if (!lossLeaderData) return '';
+  
+  let html = `
+    <div class="elite-insight-card loss-leader-card animate-slide-up stagger-4" style="background: linear-gradient(135deg, #dbeafe 0%, #fff 100%); border-left: 4px solid #3b82f6;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">💰</div>
+          <div>
+            <h3 class="elite-insight-title">Loss Leader & Profit Center Analysis</h3>
+            <p class="elite-insight-subtitle">Monetization Strategies & CAC Disruption Opportunities</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #3b82f6;">MONETIZATION</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  // Competitor Strategies Table
+  if (lossLeaderData.competitorStrategies && lossLeaderData.competitorStrategies.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <h4 style="font-size: 14px; color: #3b82f6; margin: 0 0 12px; font-weight: 600;">📊 Competitor CAC Strategies</h4>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Competitor</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Loss Leader</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Profit Center</th>
+                <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">CAC Impact</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lossLeaderData.competitorStrategies.map(strat => `
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px; font-weight: 500;">${strat.competitor}</td>
+                  <td style="padding: 10px; color: #6b7280;">${strat.lossLeader}</td>
+                  <td style="padding: 10px; color: #059669; font-weight: 500;">${strat.profitCenter}</td>
+                  <td style="padding: 10px; font-size: 12px; color: #666;">${strat.cacImpact}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Suggested Loss Leader Tool
+  if (lossLeaderData.suggestedLossLeader) {
+    const tool = lossLeaderData.suggestedLossLeader;
+    html += `
+      <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 20px; border-radius: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+          <span style="font-size: 20px;">🚀</span>
+          <span style="font-size: 14px; font-weight: 600; text-transform: uppercase; opacity: 0.9;">RECOMMENDED LOSS LEADER TOOL</span>
+        </div>
+        <h4 style="margin: 0 0 8px; font-size: 18px; font-weight: 700;">${tool.tool}</h4>
+        <p style="margin: 0 0 12px; opacity: 0.9; font-size: 14px; line-height: 1.5;">${tool.description}</p>
+        ${tool.targetKeywords && tool.targetKeywords.length > 0 ? `
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+            ${tool.targetKeywords.map(kw => `<span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 12px;">${kw}</span>`).join('')}
+          </div>
+        ` : ''}
+        ${tool.competitorDisruption ? `
+          <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px; margin-top: 8px;">
+            <span style="font-size: 11px; opacity: 0.8;">🎯 DISRUPTION TARGET</span>
+            <p style="margin: 4px 0 0; font-size: 13px;">${tool.competitorDisruption}</p>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Emotional Debt Audit
+ */
+function renderEmotionalDebtAudit(emotionalData) {
+  if (!emotionalData) return '';
+  
+  let html = `
+    <div class="elite-insight-card emotional-debt-card animate-slide-up stagger-5" style="background: linear-gradient(135deg, #fce7f3 0%, #fff 100%); border-left: 4px solid #ec4899;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #ec4899, #be185d);">💔</div>
+          <div>
+            <h3 class="elite-insight-title">Emotional Debt Audit</h3>
+            <p class="elite-insight-subtitle">Turn Competitor Frustrations into Your Brand Promises</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #ec4899;">SENTIMENT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  // Competitor Emotional Debts
+  if (emotionalData.competitorDebts && emotionalData.competitorDebts.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <h4 style="font-size: 14px; color: #ec4899; margin: 0 0 12px; font-weight: 600;">😤 Competitor Pain Points (G2/Reddit Patterns)</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px;">
+          ${emotionalData.competitorDebts.map(debt => `
+            <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+              <div style="font-weight: 600; color: #202124; margin-bottom: 8px;">${debt.competitor}</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;">
+                ${(debt.negativePatterns || []).map(pattern => `
+                  <span style="background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 4px; font-size: 11px;">❌ ${pattern}</span>
+                `).join('')}
+              </div>
+              <div style="background: #fef2f2; padding: 8px; border-radius: 6px;">
+                <span style="font-size: 11px; color: #b91c1c; font-weight: 600;">EMOTIONAL DEBT:</span>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #7f1d1d;">"${debt.emotionalDebt}"</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Brand Promises (Our Counter-Positioning)
+  if (emotionalData.brandPromises && emotionalData.brandPromises.length > 0) {
+    html += `
+      <div>
+        <h4 style="font-size: 14px; color: #059669; margin: 0 0 12px; font-weight: 600;">✨ Your Counter-Positioning Brand Promises</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+          ${emotionalData.brandPromises.map(promise => `
+            <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 16px; border-radius: 12px; border: 1px solid #a7f3d0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <span style="font-size: 12px; color: #666;">vs. ${promise.againstCompetitor}</span>
+                <span style="font-size: 16px;">→</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                  <span style="font-size: 10px; color: #b91c1c; text-transform: uppercase;">Their Weakness</span>
+                  <p style="margin: 4px 0; font-size: 13px; color: #dc2626; font-weight: 500;">"${promise.theirWeakness}"</p>
+                </div>
+                <div>
+                  <span style="font-size: 10px; color: #059669; text-transform: uppercase;">Your Promise</span>
+                  <p style="margin: 4px 0; font-size: 13px; color: #047857; font-weight: 600;">"${promise.ourPromise}"</p>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Time-to-Value Comparison
+ */
+function renderTimeToValue(ttvData) {
+  if (!ttvData) return '';
+  
+  let html = `
+    <div class="elite-insight-card ttv-card animate-slide-up stagger-6" style="background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%); border-left: 4px solid #22c55e;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">⚡</div>
+          <div>
+            <h3 class="elite-insight-title">Time-to-Value Comparison</h3>
+            <p class="elite-insight-subtitle">Onboarding Speed & First "Aha Moment" Analysis</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #22c55e;">10X FASTER</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  // Competitor Time-to-Value Table
+  if (ttvData.competitors && ttvData.competitors.length > 0) {
+    html += `
+      <div style="margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="background: #f8fafc;">
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Competitor</th>
+              <th style="padding: 10px; text-align: center; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Speed</th>
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Key Friction</th>
+              <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Time to Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ttvData.competitors.map(comp => {
+              const speedColor = comp.onboardingSpeed === 'Fast' ? '#22c55e' : comp.onboardingSpeed === 'Slow' ? '#ef4444' : '#f59e0b';
+              const speedIcon = comp.onboardingSpeed === 'Fast' ? '🚀' : comp.onboardingSpeed === 'Slow' ? '🐢' : '🚶';
+              return `
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                  <td style="padding: 10px; font-weight: 500;">${comp.competitor}</td>
+                  <td style="padding: 10px; text-align: center;">
+                    <span style="background: ${speedColor}20; color: ${speedColor}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${speedIcon} ${comp.onboardingSpeed}</span>
+                  </td>
+                  <td style="padding: 10px; color: #6b7280; font-size: 12px;">${comp.friction}</td>
+                  <td style="padding: 10px; font-weight: 500; color: #374151;">${comp.timeToValue}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+  
+  // Our Advantage & Aha Optimization
+  html += `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      ${ttvData.ourAdvantage ? `
+        <div style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 20px; border-radius: 12px;">
+          <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">⚡ OUR 10X ADVANTAGE</div>
+          <p style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5;">${ttvData.ourAdvantage}</p>
+        </div>
+      ` : ''}
+      ${ttvData.ahaOptimization ? `
+        <div style="background: white; border: 2px solid #22c55e; padding: 20px; border-radius: 12px;">
+          <div style="font-size: 12px; color: #22c55e; margin-bottom: 8px; font-weight: 600;">💡 "AHA MOMENT" OPTIMIZATION</div>
+          <p style="margin: 0; font-size: 14px; color: #202124; line-height: 1.5;">${ttvData.ahaOptimization}</p>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render Programmatic SEO Moat (New Elite Structure)
+ */
+function renderProgrammaticSEOMoat(moatData) {
+  if (!moatData || !moatData.opportunity) return '';
+  
+  const opp = moatData.opportunity;
+  
+  let html = `
+    <div class="elite-insight-card programmatic-seo-card animate-slide-up stagger-7" style="background: linear-gradient(135deg, #ede9fe 0%, #fff 100%); border-left: 4px solid #8b5cf6;">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">🏰</div>
+          <div>
+            <h3 class="elite-insight-title">Programmatic SEO Moat</h3>
+            <p class="elite-insight-subtitle">Build 1,000+ Pages Without Writing Them Manually</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge" style="background: #8b5cf6;">SCALABLE</span>
+      </div>
+      <div class="elite-insight-body">
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+            <div>
+              <span style="font-size: 11px; color: #8b5cf6; text-transform: uppercase; font-weight: 600;">PAGE ARCHITECTURE</span>
+              <h4 style="margin: 8px 0; font-size: 18px; font-weight: 700; color: #202124;">"${opp.pageArchitecture}"</h4>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                ${(opp.variables || []).map(v => `
+                  <span style="background: #8b5cf620; color: #8b5cf6; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">[${v}]</span>
+                `).join('')}
+              </div>
+            </div>
+            <div style="text-align: center; border-left: 1px solid #e5e7eb; padding-left: 20px;">
+              <div style="font-size: 36px; font-weight: 700; color: #8b5cf6;">${opp.estimatedPages || '500'}+</div>
+              <div style="font-size: 12px; color: #666;">Automated Pages</div>
+              ${opp.expectedTrafficLift ? `
+                <div style="margin-top: 12px; background: #ecfdf5; padding: 8px; border-radius: 6px;">
+                  <span style="font-size: 11px; color: #059669;">📈 ${opp.expectedTrafficLift}</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+          ${opp.targetKeywordGap ? `
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+              <span style="font-size: 11px; color: #666;">🎯 TARGET KEYWORD GAP:</span>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #374151;">${opp.targetKeywordGap}</p>
+            </div>
+          ` : ''}
+        </div>
+        ${moatData.competitorVulnerability ? `
+          <div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 16px; border-radius: 12px;">
+            <span style="font-size: 11px; opacity: 0.9;">🛡️ WHY COMPETITORS CAN'T REPLICATE</span>
+            <p style="margin: 8px 0 0; font-size: 14px; line-height: 1.5;">${moatData.competitorVulnerability}</p>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  
+  return html;
+}
+
+
+/**
+ * Render Programmatic Moat Recommendations
+ */
+function renderProgrammaticMoat(moatData) {
+  let html = `
+    <div class="elite-insight-card programmatic-moat-card animate-slide-up stagger-4">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">🏰</div>
+          <div>
+            <h3 class="elite-insight-title">Programmatic Moat Strategy</h3>
+            <p class="elite-insight-subtitle">Build Defensible Advantages That Compound Over Time</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">STRATEGIC MOAT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+  
+  // Proposed Tool / Talent Velocity Index
+  if (moatData.proposedTool) {
+    html += `
+      <div class="moat-section proposed-tool-section">
+        <h4 class="section-label">🛠️ Proposed Proprietary Tool</h4>
+        <div class="proposed-tool-card">
+          <h5 class="tool-name">${moatData.proposedTool}</h5>
+          ${moatData.valueProposition ? `
+            <div class="tool-value">
+              <span class="value-label">💡 Value to Prospects:</span>
+              <p>${translateToPlainEnglish(moatData.valueProposition)}</p>
+            </div>
+          ` : ''}
+          ${moatData.leadCapture ? `
+            <div class="tool-leads">
+              <span class="leads-label">📥 Lead Generation:</span>
+              <p>${translateToPlainEnglish(moatData.leadCapture)}</p>
+            </div>
+          ` : ''}
+          ${moatData.competitiveAdvantage ? `
+            <div class="tool-advantage">
+              <span class="advantage-label">🛡️ Competitive Advantage:</span>
+              <p>${translateToPlainEnglish(moatData.competitiveAdvantage)}</p>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Talent Velocity Index (if available)
+  if (moatData.talentVelocityIndex) {
+    const tvi = moatData.talentVelocityIndex;
+    html += `
+      <div class="moat-section tvi-section">
+        <h4 class="section-label">📊 Talent Velocity Index™</h4>
+        <p class="section-description">Proprietary metric measuring how fast a company can convert talent investment into product velocity</p>
+        <div class="tvi-display">
+          <div class="tvi-score">${tvi.score || 'N/A'}</div>
+          <div class="tvi-breakdown">
+            <div class="tvi-item"><span>Engineering Velocity:</span> ${tvi.engineeringVelocity || 'N/A'}</div>
+            <div class="tvi-item"><span>Talent Acquisition Rate:</span> ${tvi.talentAcquisitionRate || 'N/A'}</div>
+            <div class="tvi-item"><span>Product Iteration Speed:</span> ${tvi.productIterationSpeed || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Moat Recommendations (fallback for other structures)
+  if (moatData.recommendations && moatData.recommendations.length > 0) {
+    html += `
+      <div class="moat-section recommendations-section">
+        <h4 class="section-label">🛡️ Moat Building Strategies</h4>
+        <div class="moat-recommendations">
+          ${moatData.recommendations.map((rec, i) => `
+            <div class="moat-rec-item">
+              <div class="moat-rec-icon">${i + 1}</div>
+              <div class="moat-rec-content">
+                <h5>${rec.strategy || rec}</h5>
+                ${rec.description ? `<p>${translateToPlainEnglish(rec.description)}</p>` : ''}
+                ${rec.timeframe ? `<span class="moat-timeframe">⏱️ ${rec.timeframe}</span>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  html += '</div></div>';
+  
+  return html;
+}
+
+
+/**
+ * Render Competitive Roadmap Timeline
+ */
+function renderCompetitiveRoadmap(roadmap) {
+  if (!roadmap || !roadmap.phases) return '';
+  
+  let html = `
+    <div class="elite-insight-card roadmap-card animate-slide-up stagger-5">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">🗺️</div>
+          <div>
+            <h3 class="elite-insight-title">Competitive Domination Roadmap</h3>
+            <p class="elite-insight-subtitle">Phased Strategy for Market Leadership</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">ROADMAP</span>
+      </div>
+      <div class="elite-insight-body">
+        <div class="roadmap-timeline">
+  `;
+  
+  const phases = roadmap.phases || [];
+  
+  phases.forEach((phase, index) => {
+    const phaseIcon = index === 0 ? '🚀' : index === 1 ? '📈' : '👑';
+    // Handle both 'phase' property and 'title' property
+    const phaseTitle = phase.phase || phase.title || `Phase ${index + 1}`;
+    // Handle 'keyActions' vs 'actions'
+    const actions = phase.keyActions || phase.actions || [];
+    // Handle 'expectedOutcomes' array vs 'expectedOutcome' string
+    const outcomes = phase.expectedOutcomes || (phase.expectedOutcome ? [phase.expectedOutcome] : []);
+    
+    html += `
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-header">
+          <span class="phase-icon">${phaseIcon}</span>
+          <h4 class="roadmap-phase-title">${phaseTitle}</h4>
+          ${phase.timeline ? `<span class="phase-timeline">${phase.timeline}</span>` : ''}
+        </div>
+        ${phase.objectives && phase.objectives.length > 0 ? `
+          <div class="phase-objectives">
+            <span class="objectives-label">🎯 Objectives:</span>
+            <ul class="objectives-list">
+              ${phase.objectives.map(obj => `<li>${translateToPlainEnglish(obj)}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+        ${phase.goal ? `<p class="phase-goal">${translateToPlainEnglish(phase.goal)}</p>` : ''}
+        ${actions.length > 0 ? `
+          <ul class="roadmap-list">
+            ${actions.map(action => `<li>${translateToPlainEnglish(action)}</li>`).join('')}
+          </ul>
+        ` : ''}
+        ${outcomes.length > 0 ? `
+          <div class="phase-outcome">
+            <span class="outcome-label">📈 Expected Outcomes:</span>
+            <ul class="outcome-list">
+              ${outcomes.map(outcome => `<li>${translateToPlainEnglish(outcome)}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  });
+  
+  html += '</div></div></div>';
+  
+  return html;
+}
+
+
+/**
+ * Render all category tabs with real competitor data
+ */
+function renderAllCategoryTabs(competitors, intelligence) {
+  console.log('📊 Rendering all category tabs...');
+  console.log('Categories available:', Object.keys(intelligence || {}).join(', '));
+  
+  // Map OLD system category keys to UI containers
+  const categoryMapping = {
+    'technicalSEO': { containerId: 'comp-technical-metrics', title: 'Technical SEO' },
+    'contentIntelligence': { containerId: 'comp-content-metrics', title: 'Content Intelligence' },
+    'authority': { containerId: 'comp-authority-metrics', title: 'Authority & Backlinks' },
+    'performance': { containerId: 'comp-performance-metrics', title: 'Performance & UX' },
+    'marketPositioning': { containerId: 'comp-market-metrics', title: 'Market Intelligence' },
+    'brandMessaging': { containerId: 'comp-brand-metrics', title: 'Brand Position' },
+    'keywordStrategy': { containerId: 'comp-keywords-metrics', title: 'Keyword Strategy' },
+    'contentSystems': { containerId: 'comp-systems-metrics', title: 'Content Systems' },
+    'conversion': { containerId: 'comp-conversion-metrics', title: 'Conversion' },
+    'distribution': { containerId: 'comp-distribution-metrics', title: 'Distribution' },
+    'audienceIntelligence': { containerId: 'comp-audience-metrics', title: 'Audience Intelligence' },
+    'geoAeo': { containerId: 'comp-geo-metrics', title: 'GEO + AEO' }
+  };
+  
+  // Render each competitor's data for each category
+  Object.keys(competitors || {}).forEach(url => {
+    const comp = competitors[url];
+    
+    Object.keys(comp.categories || {}).forEach(categoryKey => {
+      const categoryData = comp.categories[categoryKey];
+      const mapping = categoryMapping[categoryKey];
+      
+      if (!mapping) {
+        console.warn(`⚠️ No mapping for category: ${categoryKey}`);
+        return;
+      }
+      
+      const container = document.getElementById(mapping.containerId);
+      if (!container) {
+        console.warn(`⚠️ Container not found: ${mapping.containerId}`);
+        return;
+      }
+      
+      // Render this competitor's data for this category
+      renderCategoryMetrics(container, comp.domain || url, categoryData, mapping.title);
+    });
+  });
+  
+  console.log('✅ All category tabs rendered');
+}
+
+
+/**
+ * Render metrics for a single competitor in a category
+ */
+function renderCategoryMetrics(container, domain, categoryData, categoryTitle) {
+  // Create or append to competitor section
+  let html = container.innerHTML || '';
+  
+  html += `
+    <div class="competitor-category-section elite-section">
+      <div class="section-header">
+        <h3 class="competitor-domain-header">${domain}</h3>
+        <div class="category-title-badge">${categoryTitle}</div>
+      </div>
+      <div class="metrics-row elite-metrics">
+  `;
+  
+  // Render each metric
+  Object.keys(categoryData.metrics || {}).forEach(metricKey => {
+    const metricValue = categoryData.metrics[metricKey];
+    const dataQuality = getDataQualityForMetric(categoryData.dataQuality, metricKey);
+    
+    // Skip arrays and complex objects for now
+    if (Array.isArray(metricValue) || (typeof metricValue === 'object' && metricValue !== null)) {
+      return;
+    }
+    
+    html += `
+      <div class="metric-card elite-metric-card">
+        <div class="metric-label-text">${formatMetricLabel(metricKey)}</div>
+        <div class="metric-value-display ${getMetricValueClass(metricValue)}">
+          ${formatMetricValue(metricValue)}
+        </div>
+        ${renderDataQualityBadge(dataQuality)}
+      </div>
+    `;
+  });
+  
+  html += `
+      </div>
+    </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
+
+/**
+ * Render overview radar chart showing category breakdown
+ */
+function renderOverviewRadarChart(overview, intelligence) {
+  const canvasId = 'chart-comp-overview-radar';
+  destroyChart(canvasId);
+  
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Extract category labels and average scores
+  const labels = [];
+  const data = [];
+  
+  Object.keys(overview.categoryScores || {}).forEach(categoryKey => {
+    const category = overview.categoryScores[categoryKey];
+    if (category.average !== undefined) {
+      labels.push(category.displayName.substring(0, 20)); // Truncate long names
+      data.push(category.average);
+    }
+  });
+  
+  // Generate strategic insight for category performance
+  const sortedCategories = Object.entries(overview.categoryScores || {})
+    .filter(([k, v]) => v.average !== undefined)
+    .sort((a, b) => b[1].average - a[1].average);
+  
+  let insight = '';
+  if (sortedCategories.length > 0) {
+    const strongest = sortedCategories[0];
+    const weakest = sortedCategories[sortedCategories.length - 1];
+    const avgScore = overview.averageScore || Math.round(data.reduce((a,b) => a+b, 0) / data.length);
+    insight = `<strong>${strongest[1].displayName}</strong> is the strongest category (${strongest[1].average}%), while <strong>${weakest[1].displayName}</strong> presents the biggest opportunity gap (${weakest[1].average}%). Market average: ${avgScore}%. Prioritize improving weak categories for competitive advantage.`;
+  } else {
+    insight = 'Insufficient data to analyze category performance.';
+  }
+  
+  window.eliteChartInstances[canvasId] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Category Averages',
+        data: data,
+        borderColor: '#1a73e8',
+        backgroundColor: 'rgba(26, 115, 232, 0.2)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 25 }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        title: { 
+          display: true, 
+          text: '📊 Category Performance Overview',
+          font: { size: 14, weight: 'bold' }
+        }
+      }
+    }
+  });
+  
+  // Add insight below chart
+  insertCategoryChartInsight(canvasId, insight);
+}
+
+/**
+ * Insert strategic insight below a category chart
+ */
+function insertCategoryChartInsight(chartId, insight) {
+  const canvas = document.getElementById(chartId);
+  if (!canvas) return;
+  
+  // Find or create insight container
+  const chartContainer = canvas.parentElement;
+  let insightBox = chartContainer.querySelector('.category-chart-insight');
+  
+  if (!insightBox) {
+    insightBox = document.createElement('div');
+    insightBox.className = 'category-chart-insight';
+    insightBox.style.cssText = 'margin-top: 12px; padding: 12px 16px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #0369a1; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.6;';
+    chartContainer.appendChild(insightBox);
+  }
+  
+  insightBox.innerHTML = `
+    <div style="font-size: 11px; font-weight: 600; color: #0369a1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">💡 Strategic Insight</div>
+    <p style="margin: 0; color: #334155;">${insight}</p>
+  `;
+}
+
+
+/**
+ * Render overview bar chart showing top performers
+ */
+function renderOverviewBarChart(overview) {
+  const canvasId = 'chart-comp-overview-bar';
+  destroyChart(canvasId);
+  
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Extract top performers
+  const labels = [];
+  const data = [];
+  const colors = [];
+  
+  Object.keys(overview.topPerformers || {}).forEach((categoryKey, index) => {
+    const performer = overview.topPerformers[categoryKey];
+    const category = overview.categoryScores[categoryKey];
+    
+    labels.push(`${performer.domain} - ${category.displayName.substring(0, 15)}`);
+    data.push(performer.score);
+    colors.push(getColorByIndex(index));
+  });
+  
+  // Generate strategic insight for top performers
+  const topPerformersList = Object.entries(overview.topPerformers || {}).slice(0, 3);
+  const topDomains = topPerformersList.map(([cat, p]) => `<strong>${p.domain}</strong> (${overview.categoryScores[cat]?.displayName}: ${p.score}%)`).join(', ');
+  const insight = topPerformersList.length > 0 
+    ? `Top performers by category: ${topDomains}. Focus on categories where competitors score highest - these represent proven success patterns.`
+    : 'Insufficient data to identify top performers.';
+  
+  window.eliteChartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Score',
+        data: data,
+        backgroundColor: colors,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        legend: { display: false },
+        title: { 
+          display: true, 
+          text: '🏆 Top Performers by Category',
+          font: { size: 14, weight: 'bold' }
+        }
+      }
+    }
+  });
+  
+  // Add insight below chart
+  insertCategoryChartInsight(canvasId, insight);
+}
+
+
+/**
+ * ==================================================================
+ * CATEGORY CHARTS RENDERING
+ * ==================================================================
+ */
+
+function renderAllCategoryCharts(dashboardCharts, intelligence) {
+  console.log('📈 Rendering category charts...');
+  
+  // Map category keys to canvas IDs
+  const categoryChartMap = {
+    'technicalSEO': ['chart-comp-technical-health', 'chart-comp-page-speed'],
+    'contentIntelligence': ['chart-comp-content-authority', 'chart-comp-traffic-mix'],
+    'authority': ['chart-comp-backlinks'],
+    'performance': ['chart-comp-performance'],
+    'marketPositioning': ['chart-comp-market-share', 'chart-comp-market-trends'],
+    'brandMessaging': ['chart-comp-brand-archetype', 'chart-comp-eeat'],
+    'keywordStrategy': ['chart-comp-keyword-gap', 'chart-comp-intent-funnel'],
+    'contentSystems': ['chart-comp-systems-workflow', 'chart-comp-automation'],
+    'conversion': ['chart-comp-funnel', 'chart-comp-monetization'],
+    'distribution': ['chart-comp-distribution'],
+    'audienceIntelligence': ['chart-comp-personas', 'chart-comp-sentiment'],
+    'geoAeo': ['chart-comp-ai-citations']
+  };
+  
+  // Render charts for each category
+  Object.keys(dashboardCharts || {}).forEach(categoryKey => {
+    const chartDataArray = dashboardCharts[categoryKey];
+    const canvasIds = categoryChartMap[categoryKey];
+    
+    if (!canvasIds || !chartDataArray) return;
+    
+    // Render charts for this category
+    chartDataArray.forEach((chartData, index) => {
+      if (index < canvasIds.length) {
+        renderCategoryChart(canvasIds[index], chartData, categoryKey);
+      }
+    });
+  });
+}
+
+
+/**
+ * Render a single category chart
+ */
+function renderCategoryChart(canvasId, chartData, categoryKey) {
+  destroyChart(canvasId);
+  
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Determine chart type and render
+  const chartType = chartData.chartType || 'bar';
+  const chartConfig = chartData.config || {};
+  
+  // Build Chart.js configuration
+  const config = {
+    type: chartType,
+    data: {
+      labels: chartData.labels || [chartData.label || 'Value'],
+      datasets: [{
+        label: chartData.label || 'Score',
+        data: chartData.data || [],
+        backgroundColor: chartConfig.backgroundColor || getChartColors(chartData.data.length),
+        borderColor: chartConfig.borderColor || '#1a73e8',
+        borderWidth: chartConfig.borderWidth || 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: getChartScales(chartType),
+      plugins: {
+        legend: { display: chartType === 'doughnut' || chartType === 'pie' },
+        title: { 
+          display: true, 
+          text: chartData.label || 'Chart',
+          font: { size: 12, weight: 'bold' }
+        }
+      }
+    }
+  };
+  
+  window.eliteChartInstances[canvasId] = new Chart(ctx, config);
+}
+
+
+/**
+ * ==================================================================
+ * METRICS GRID RENDERING WITH DATA QUALITY BADGES
+ * ==================================================================
+ */
+
+function renderAllMetricsGrids(intelligence, competitors) {
+  console.log('📊 Rendering metrics grids with OLD system structure...');
+  
+  // This is now handled by renderAllCategoryTabs()
+  // Keep this function for backward compatibility
+  renderAllCategoryTabs(competitors, intelligence);
+}
+
+
+/**
+ * Render metrics grid for a category with data quality badges
+ */
+function renderMetricsGrid(containerId, categoryData) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  let html = '<div class="metrics-grid-container">';
+  
+  // Iterate through competitors
+  (categoryData.competitors || []).forEach(comp => {
+    // Add competitor header
+    html += `<div class="competitor-section">`;
+    html += `<h3 class="competitor-domain">${comp.domain}</h3>`;
+    html += `<div class="metrics-row">`;
+    
+    // Add each metric
+    Object.keys(comp.metrics || {}).forEach(metricKey => {
+      const metricValue = comp.metrics[metricKey];
+      const dataQuality = getDataQualityForMetric(comp.dataQuality, metricKey);
+      
+      html += `
+        <div class="metric-card">
+          <div class="metric-label">${formatMetricLabel(metricKey)}</div>
+          <div class="metric-value">${formatMetricValue(metricValue)}</div>
+          ${renderDataQualityBadge(dataQuality)}
+        </div>
+      `;
+    });
+    
+    html += `</div></div>`;
+  });
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+
+/**
+ * Render data quality badge with proper icon and styling
+ */
+function renderDataQualityBadge(dataQuality) {
+  if (!dataQuality) return '';
+  
+  const qualityStr = String(dataQuality);
+  
+  if (qualityStr.includes('✅') || qualityStr.includes('real')) {
+    return `<div class="metric-badge data-badge-real">✅ real</div>`;
+  } else if (qualityStr.includes('🤖') || qualityStr.includes('predicted')) {
+    // Extract confidence percentage if present
+    const confidenceMatch = qualityStr.match(/(\d+)%/);
+    const confidence = confidenceMatch ? confidenceMatch[1] + '%' : '';
+    return `<div class="metric-badge data-badge-predicted">🤖 predicted ${confidence}</div>`;
+  } else if (qualityStr.includes('📊') || qualityStr.includes('calculated')) {
+    return `<div class="metric-badge data-badge-calculated">📊 calculated</div>`;
+  } else if (qualityStr.includes('⚠️') || qualityStr.includes('unavailable')) {
+    return `<div class="metric-badge data-badge-unavailable">⚠️ unavailable</div>`;
+  }
+  
+  return `<div class="metric-badge">${dataQuality}</div>`;
+}
+
+
+/**
+ * ==================================================================
+ * INSIGHTS RENDERING - UPDATED FOR OLD SYSTEM
+ * ==================================================================
+ */
+
+function renderAllInsights(intelligence, competitors) {
+  console.log('💡 Rendering insights with OLD system structure...');
+  
+  // Map category keys to insights container IDs
+  const categoryInsightsMap = {
+    'technicalSEO': 'comp-technical-insights',
+    'contentIntelligence': 'comp-content-insights',
+    'authority': 'comp-authority-insights',
+    'marketPositioning': 'comp-market-insights',
+    'brandMessaging': 'comp-brand-insights',
+    'keywordStrategy': 'comp-keywords-insights',
+    'contentSystems': 'comp-systems-insights',
+    'conversion': 'comp-conversion-insights',
+    'distribution': 'comp-distribution-insights',
+    'audienceIntelligence': 'comp-audience-insights',
+    'geoAeo': 'comp-geo-insights',
+    'overview': 'comp-overview-insights'
+  };
+  
+  Object.keys(intelligence || {}).forEach(categoryKey => {
+    const categoryData = intelligence[categoryKey];
+    const containerId = categoryInsightsMap[categoryKey];
+    
+    if (!containerId || !categoryData) return;
+    
+    renderInsights(containerId, categoryData, competitors);
+  });
+  
+  console.log('✅ All insights rendered');
+}
+
+
+/**
+ * Render insights for a category - UPDATED FOR OLD SYSTEM
+ */
+function renderInsights(containerId, categoryData, competitors) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  let html = '<div class="insights-container elite-insights-section">';
+  
+  // Extract insights from Gemini analysis or category data
+  const insights = categoryData.geminiInsights || categoryData.insights || [];
+  
+  if (insights.length === 0) {
+    html += '<div class="no-insights-message">🤖 No AI insights available for this category yet.</div>';
+  } else {
+    insights.forEach((insight, index) => {
+      html += `
+        <div class="insight-card elite-insight-card">
+          <div class="insight-icon">💡</div>
+          <div class="insight-content">
+            <div class="insight-text">${insight.text || insight}</div>
+            ${insight.confidence ? `<div class="insight-confidence">Confidence: ${insight.confidence}%</div>` : ''}
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  // Also show competitor-specific insights if available
+  if (competitors) {
+    Object.keys(competitors).forEach(url => {
+      const comp = competitors[url];
+      const compCategoryData = comp.categories && comp.categories[categoryData.categoryKey];
+      
+      if (compCategoryData && compCategoryData.insights) {
+        html += `
+          <div class="competitor-insights-section">
+            <h4 class="competitor-insights-title">� ${comp.domain || url}</h4>
+            <div class="competitor-insights-list">
+              ${(compCategoryData.insights || []).map(insight => `
+                <div class="insight-item">
+                  <span class="insight-bullet">•</span>
+                  <span class="insight-text">${insight}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+    });
+  }
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+
+/**
+ * ==================================================================
+ * HELPER FUNCTIONS
+ * ==================================================================
+ */
+
+function destroyChart(canvasId) {
+  if (window.eliteChartInstances[canvasId]) {
+    window.eliteChartInstances[canvasId].destroy();
+    delete window.eliteChartInstances[canvasId];
+  }
+}
+
+function showElement(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'block';
+}
+
+function hideElement(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+function showError(message) {
+  console.error('❌ Error:', message);
+  const container = document.getElementById('comp-results');
+  if (container) {
+    container.innerHTML = `
+      <div class="error-state">
+        <div class="error-icon">❌</div>
+        <h3>Analysis Failed</h3>
+        <p>${message}</p>
+        <button onclick="location.reload()" class="retry-btn">Retry</button>
+      </div>
+    `;
+    container.style.display = 'block';
+  }
+}
+
+function getDataQualityForMetric(dataQuality, metricKey) {
+  if (!dataQuality) return '✅ real';
+  
+  // Check if there's a specific quality for this metric
+  if (dataQuality[metricKey]) {
+    return dataQuality[metricKey];
+  }
+  
+  // Otherwise return generic quality
+  return Object.values(dataQuality)[0] || '✅ real';
+}
+
+function formatMetricLabel(metricKey) {
+  // Convert camelCase to Title Case
+  return metricKey
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+}
+
+function formatMetricValue(value) {
+  if (typeof value === 'number') {
+    return value % 1 === 0 ? value : value.toFixed(2);
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function getMetricValueClass(value) {
+  if (typeof value === 'number') {
+    if (value >= 80) return 'metric-excellent';
+    if (value >= 60) return 'metric-good';
+    if (value >= 40) return 'metric-average';
+    return 'metric-poor';
+  }
+  return 'metric-neutral';
+}
+
+function getScoreClass(score) {
+  if (score >= 80) return 'excellent';
+  if (score >= 60) return 'good';
+  if (score >= 40) return 'average';
+  return 'needs-work';
+}
+
+function getDataQualityForMetric(dataQuality, metricKey) {
+  if (!dataQuality || !dataQuality.fieldQuality) return 'mockup';
+  
+  const quality = dataQuality.fieldQuality[metricKey];
+  if (quality === 'real') return 'real';
+  if (quality === 'calculated') return 'calculated';
+  if (quality === 'inferred') return 'inferred';
+  return 'mockup';
+}
+
+function renderDataQualityBadge(quality) {
+  const badges = {
+    'real': '<div class="metric-badge data-badge-real">✅ real</div>',
+    'calculated': '<div class="metric-badge data-badge-calculated">📊 calculated</div>',
+    'inferred': '<div class="metric-badge data-badge-inferred">🤔 inferred</div>',
+    'mockup': '<div class="metric-badge data-badge-mockup">🎨 mockup</div>'
+  };
+  return badges[quality] || badges['mockup'];
+}
+
+function getColorByIndex(index) {
+  const colors = [
+    '#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa',
+    '#00acc1', '#ff6f00', '#c2185b', '#7cb342', '#5e35b1'
+  ];
+  return colors[index % colors.length];
+}
+
+function getChartColors(count) {
+  const colors = [
+    '#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa',
+    '#00acc1', '#ff6f00', '#c2185b', '#7cb342', '#5e35b1'
+  ];
+  return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
+}
+
+function getChartScales(chartType) {
+  if (chartType === 'radar') {
+    return {
+      r: {
+        beginAtZero: true,
+        max: 100
+      }
+    };
+  } else if (chartType === 'doughnut' || chartType === 'pie') {
+    return {};
+  } else {
+    return {
+      y: { beginAtZero: true, max: 100 },
+      x: { beginAtZero: true }
+    };
+  }
+}
+
+console.log('✅ ELITE Competitor Renderer loaded');
+</script>

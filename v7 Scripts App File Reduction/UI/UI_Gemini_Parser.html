@@ -1,0 +1,304 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Gemini_Parser.html - Gemini Analysis Parser & Insights Display Builder      -->
+<!-- Parses Gemini markdown/JSON into structured insights and builds visual display  -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Parse Gemini Analysis Text (Markdown) into structured insights
+   * Extracts: Executive Summary, Key Findings, Recommendations
+   * @param {string} analysisText - Full Gemini markdown report
+   * @returns {object} - Parsed insights {executiveSummary, keyFindings, recommendations}
+   */
+  function parseGeminiAnalysis(analysisText) {
+    console.log('🧠 Parsing Gemini AI analysis markdown...');
+
+    const insights = {
+      executiveSummary: '',
+      keyFindings: [],
+      recommendations: []
+    };
+
+    if (!analysisText || typeof analysisText !== 'string') {
+      console.warn('⚠️ No analysis text to parse');
+      return insights;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // DETECT JSON RESPONSE - Skip markdown parsing for JSON
+    // ═══════════════════════════════════════════════════════════════════
+    const trimmedText = analysisText.trim();
+    if (trimmedText.startsWith('{') || trimmedText.startsWith('```json')) {
+      console.log('   📊 Detected JSON response, extracting from structure...');
+
+      try {
+        let jsonStr = trimmedText;
+        const jsonMatch = trimmedText.match(/```json\s*\n?([\s\S]*?)\n?```/) ||
+          trimmedText.match(/```\s*\n?([\s\S]*?)\n?```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1];
+        }
+
+        const parsed = JSON.parse(jsonStr);
+
+        // Extract executive summary from executiveBrief
+        if (parsed.executiveBrief) {
+          if (parsed.executiveBrief.threeLineSummary) {
+            insights.executiveSummary = parsed.executiveBrief.threeLineSummary.join(' ');
+          } else if (parsed.executiveBrief.landscapeOverview) {
+            insights.executiveSummary = parsed.executiveBrief.landscapeOverview;
+          }
+        }
+
+        // Extract key findings from categories
+        if (parsed.categories && Array.isArray(parsed.categories)) {
+          parsed.categories.slice(0, 5).forEach(cat => {
+            if (cat.strategicSummary) {
+              insights.keyFindings.push(cat.strategicSummary);
+            } else if (cat.keyFindings && cat.keyFindings[0]) {
+              insights.keyFindings.push(cat.keyFindings[0]);
+            }
+          });
+        }
+
+        // Extract recommendations from killMoves or strategicOpportunities
+        if (parsed.killMoves && Array.isArray(parsed.killMoves)) {
+          parsed.killMoves.slice(0, 3).forEach(km => {
+            insights.recommendations.push(km.killMove || km.action || JSON.stringify(km).substring(0, 100));
+          });
+        }
+
+        // Fallback summary from first category if no executiveBrief
+        if (!insights.executiveSummary && parsed.categories && parsed.categories[0]) {
+          insights.executiveSummary = parsed.categories[0].strategicSummary ||
+            'Strategic analysis complete. Review categories for detailed insights.';
+        }
+
+        console.log('   ✅ Extracted from JSON:', {
+          hasSummary: !!insights.executiveSummary,
+          findingsCount: insights.keyFindings.length,
+          recsCount: insights.recommendations.length
+        });
+
+        return insights;
+      } catch (e) {
+        console.warn('   ⚠️ JSON parse failed, falling back to markdown parsing:', e.message);
+      }
+    }
+
+    // Split into sections by markdown headers
+    const sections = analysisText.split(/\n(?=#{1,3}\s)/);
+
+    sections.forEach(section => {
+      const lines = section.split('\n').filter(line => line.trim());
+      if (lines.length === 0) return;
+
+      const heading = lines[0].toLowerCase();
+
+      // EXECUTIVE SUMMARY
+      if (heading.includes('executive') || heading.includes('summary') || heading.includes('overview')) {
+        const content = lines.slice(1).join(' ').trim();
+        const sentences = content.match(/[^.!?]+[.!?]+/g) || [];
+        insights.executiveSummary = sentences.slice(0, 3).join(' ').trim();
+      }
+
+      // KEY FINDINGS
+      else if (heading.includes('finding') || heading.includes('insight') || heading.includes('key point') ||
+        heading.includes('market position') || heading.includes('competitive') ||
+        heading.includes('strengths') || heading.includes('weaknesses')) {
+        lines.slice(1).forEach(line => {
+          line = line.trim();
+          if (/^[-*•]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+            const finding = line.replace(/^[-*•]\s+/, '').replace(/^\d+\.\s+/, '').trim();
+            if (finding.length > 20 && insights.keyFindings.length < 5) {
+              insights.keyFindings.push(finding);
+            }
+          } else if (line.includes('**') && line.length > 30 && line.length < 200) {
+            const finding = line.replace(/\*\*/g, '').trim();
+            if (insights.keyFindings.length < 5) {
+              insights.keyFindings.push(finding);
+            }
+          }
+        });
+      }
+
+      // RECOMMENDATIONS
+      else if (heading.includes('recommend') || heading.includes('action') || heading.includes('opportunit') ||
+        heading.includes('strateg') || heading.includes('next step') || heading.includes('how to')) {
+        lines.slice(1).forEach(line => {
+          line = line.trim();
+          if (/^[-*•]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+            const rec = line.replace(/^[-*•]\s+/, '').replace(/^\d+\.\s+/, '').trim();
+            if (rec.length > 20 && insights.recommendations.length < 5) {
+              insights.recommendations.push(rec);
+            }
+          }
+        });
+      }
+    });
+
+    // Fallback for executive summary
+    if (!insights.executiveSummary) {
+      const firstContent = analysisText.substring(0, 500).trim();
+      if (!firstContent.startsWith('{') && !firstContent.startsWith('[') && !firstContent.startsWith('```')) {
+        const sentences = firstContent.match(/[^.!?]+[.!?]+/g) || [];
+        if (sentences.length > 0) {
+          insights.executiveSummary = sentences.slice(0, 2).join(' ').trim();
+        }
+      } else {
+        insights.executiveSummary = 'Strategic competitive analysis complete. Review the detailed category insights below for actionable recommendations.';
+      }
+    }
+
+    // Fallback for key findings
+    if (insights.keyFindings.length === 0) {
+      const categoryPattern = /CATEGORY \d+:([^\n]+)/gi;
+      const matches = [...analysisText.matchAll(categoryPattern)];
+      matches.slice(0, 5).forEach(match => {
+        insights.keyFindings.push(match[1].trim());
+      });
+    }
+
+    console.log('📊 PARSING RESULTS:', {
+      executiveSummary: insights.executiveSummary ? 'Found' : 'Missing',
+      keyFindings: insights.keyFindings.length,
+      recommendations: insights.recommendations.length
+    });
+
+    return insights;
+  }
+
+  /**
+   * Build Elite Visual Insights with Comparative Analysis
+   * Transforms parsed Gemini insights into premium visual design
+   */
+  function buildEliteInsightsDisplay(parsedInsights, competitors) {
+    let html = '';
+
+    // 1. COMPETITIVE LEADERBOARD - Top 3 with medals
+    html += `
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(102,126,234,0.3);">
+            <h3 style="margin: 0 0 24px; font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 32px;">🏆</span>
+              Competitive Leaderboard
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        `;
+
+    const sorted = [...competitors].sort((a, b) => {
+      const getAuthority = (c) => {
+        if (c.processedMetrics?.authorityScore) return c.processedMetrics.authorityScore;
+        if (c.categories?.authority?.metrics?.domainRank) return c.categories.authority.metrics.domainRank;
+        return 45;
+      };
+      return getAuthority(b) - getAuthority(a);
+    });
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const formatNum = window.formatNumber || ((n) => n.toLocaleString());
+
+    sorted.slice(0, 3).forEach((comp, idx) => {
+      const domain = comp.domain || comp.url || 'Unknown';
+      const authority = comp.processedMetrics?.authorityScore ||
+        comp.categories?.authority?.metrics?.domainRank || 45;
+      const traffic = formatNum(comp.processedMetrics?.organicTraffic ||
+        comp.categories?.marketPositioning?.metrics?.estimatedTraffic || 0);
+
+      html += `
+            <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+              <div style="font-size: 36px; margin-bottom: 8px;">${medals[idx]}</div>
+              <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${domain}</div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                <span>Authority:</span>
+                <span style="font-weight: 700;">${Math.round(authority)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 4px;">
+                <span>Traffic:</span>
+                <span style="font-weight: 700;">${traffic}</span>
+              </div>
+            </div>
+          `;
+    });
+
+    html += `</div></div>`;
+
+    // 2. EXECUTIVE SUMMARY
+    if (parsedInsights.executiveSummary) {
+      html += `
+            <div style="background: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-left: 4px solid #667eea;">
+              <h4 style="margin: 0 0 16px; font-size: 20px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">🎯</span>
+                Executive Summary
+              </h4>
+              <div style="font-size: 15px; line-height: 1.8; color: #374151;">${parsedInsights.executiveSummary}</div>
+            </div>
+          `;
+    }
+
+    // 3. KEY FINDINGS with Priority Badges
+    if (parsedInsights.keyFindings && parsedInsights.keyFindings.length > 0) {
+      html += `
+            <div style="background: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">💡</span>
+                Key Competitive Intelligence
+              </h4>
+              <div style="display: grid; gap: 16px;">
+          `;
+
+      const priorities = ['🔴 Critical', '🟡 High', '🟢 Medium'];
+      const colors = ['#ef4444', '#f59e0b', '#10b981'];
+
+      parsedInsights.keyFindings.forEach((finding, idx) => {
+        const priority = priorities[idx % 3];
+        const color = colors[idx % 3];
+
+        html += `
+              <div style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); padding: 20px; border-radius: 12px; border-left: 4px solid ${color};">
+                <div style="display: flex; align-items: start; gap: 12px;">
+                  <span style="font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 12px; background: white; color: #374151; white-space: nowrap;">${priority}</span>
+                  <div style="flex: 1; font-size: 15px; line-height: 1.6; color: #374151;">${finding}</div>
+                </div>
+              </div>
+            `;
+      });
+
+      html += `</div></div>`;
+    }
+
+    // 4. STRATEGIC RECOMMENDATIONS with Action Cards
+    if (parsedInsights.recommendations && parsedInsights.recommendations.length > 0) {
+      html += `
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(240,147,251,0.3);">
+              <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">✅</span>
+                Strategic Action Plan
+              </h4>
+              <div style="display: grid; gap: 16px;">
+          `;
+
+      parsedInsights.recommendations.forEach((rec, idx) => {
+        html += `
+              <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+                <div style="display: flex; align-items: start; gap: 16px;">
+                  <div style="font-size: 24px; font-weight: 700; background: rgba(255,255,255,0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${idx + 1}</div>
+                  <div style="flex: 1; font-size: 15px; line-height: 1.7;">${rec}</div>
+                </div>
+              </div>
+            `;
+      });
+
+      html += `</div></div>`;
+    }
+
+    return html;
+  }
+
+  // Export functions globally
+  window.parseGeminiAnalysis = parseGeminiAnalysis;
+  window.buildEliteInsightsDisplay = buildEliteInsightsDisplay;
+
+})();
+</script>

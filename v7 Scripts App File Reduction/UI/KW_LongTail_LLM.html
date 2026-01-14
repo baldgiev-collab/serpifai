@@ -1,0 +1,330 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     KW_LongTail_LLM.html - Long-Tail Velocity & LLM Citation Gap Generators
+     Contains: generateLongTailVelocityKWs, generateLLMCitationGapKWs
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /**
+   * MODULE 3: LONG-TAIL VELOCITY - 30 High-Conversion Terms (KD < 30)
+   * UI Category: "🚀 Long-Tail Velocity"
+   * Target: Low-KD conversion terms with fast ranking potential
+   * Focus: Specific use cases, niche segments, comparison queries
+   */
+  function generateLongTailVelocityKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    const keywords = [];
+    const TARGET_COUNT = 30;
+    const kwIntel = gemini.keywordIntelligence || {};
+    const domain = comp.domain || '';
+    const cleanDomain = domain.replace(/^www\./, '');
+    const moat = analyzeCompetitorMoat(comp, gemini);
+
+    const organizedData = window._organizedData || window._eliteTabIntelligence?.organizedData || [];
+    const organizedComp = organizedData.find?.(o => 
+      (o.domain || '').replace(/^www\./, '') === cleanDomain || o.domain === domain
+    );
+    const organizedRawData = organizedComp?.tabData?.keywordStrategy?.rawData || {};
+    const kwRawData = window._kwStrategyRawData || {};
+    
+    const kwProfile = comp.keywordProfile || {};
+    const kwProfilePAA = (kwProfile.peopleAlsoAsk || []).map(q => typeof q === 'string' ? { question: q } : q);
+    const kwProfileRelated = (kwProfile.relatedSearches || []).map(q => typeof q === 'string' ? { query: q } : q);
+    
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    let paaQuestions = organizedRawData.paaQuestions || keywordSignals.peopleAlsoAsk || comp.stages?.serper?.data?.peopleAlsoAsk || kwProfilePAA || [];
+    let relatedSearches = organizedRawData.keywords || organizedRawData.relatedSearches || keywordSignals.relatedSearches || comp.stages?.serper?.data?.relatedSearches || kwProfileRelated || [];
+    
+    if (paaQuestions.length === 0 && kwRawData.allPAA?.length > 0) paaQuestions = kwRawData.allPAA;
+    if (relatedSearches.length === 0 && kwRawData.allRelated?.length > 0) relatedSearches = kwRawData.allRelated;
+    
+    const oracleData = comp.stages?.oracleFetcher?.data || comp.synthesized?.website || {};
+    const oracleH3 = oracleData.h3 || comp.synthesized?.website?.h3 || [];
+    const oracleH4 = oracleData.h4 || comp.synthesized?.website?.h4 || [];
+
+    console.log(`   🚀 LongTail for ${domain}: PAA=${paaQuestions.length}, Related=${relatedSearches.length}`);
+
+    const calculateClashScore = () => 4; // Static base value
+    const calculateAIOScore = () => 6; // Static base value
+
+    paaQuestions.forEach(paa => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const question = (typeof paa === 'string' ? paa : paa.question || paa.title || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(question) && question.length > 15) {
+        globalKeywordSet.add(question);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: question, intent: 'Informational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'tail', clash: clashScore, aio_risk: aioRisk,
+          x: 28 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: 'Content', source: 'serper_paa', competitor: domain,
+          tip: generateTip(question, clashScore, aioRisk, 'Content', 'Answer with FAQ schema + comprehensive guide')
+        });
+      }
+    });
+
+    relatedSearches.forEach(rs => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const query = (typeof rs === 'string' ? rs : rs.query || rs).toLowerCase().trim();
+      const wordCount = query.split(/\s+/).length;
+      if (!globalKeywordSet.has(query) && wordCount >= 4) {
+        globalKeywordSet.add(query);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: query, intent: 'Informational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'tail', clash: clashScore, aio_risk: aioRisk,
+          x: 32 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: 'Content', source: 'serper_related', competitor: domain,
+          tip: generateTip(query, clashScore, aioRisk, 'Content', 'First-mover content advantage')
+        });
+      }
+    });
+
+    const longTailKWs = kwIntel.longTailKeywords?.topKeywords || kwIntel.informationalKeywords?.topKeywords || [];
+    longTailKWs.slice(0, 8).forEach(kw => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (kw.keyword || kw).toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 5) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText, intent: 'Informational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'tail', clash: clashScore, aio_risk: aioRisk,
+          x: 30 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: 'Content', source: 'gemini', competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, 'Content', 'First-mover content advantage')
+        });
+      }
+    });
+
+    [...oracleH3, ...oracleH4].forEach(heading => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (typeof heading === 'string' ? heading : heading.text || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.split(' ').length >= 3 && kwText.length > 10 && kwText.length < 100) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText, intent: 'Informational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'tail', clash: clashScore, aio_risk: aioRisk,
+          x: 30 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: 'Content', source: 'oracle_headings', competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, 'Content', 'First-mover content advantage')
+        });
+      }
+    });
+
+    if (keywords.length < TARGET_COUNT) {
+      const domainName = cleanDomain.split('.')[0];
+      const competitorTemplates = [
+        `how to use ${domainName} for beginners`, `${domainName} tutorial step by step`,
+        `${domainName} tips and tricks 2025`, `best ${domainName} features for small business`,
+        `${domainName} workflow automation guide`, `getting started with ${domainName} quickly`,
+        `${domainName} use cases for marketing`, `${domainName} best practices for teams`,
+        `${domainName} complete setup guide`, `${domainName} advanced techniques`
+      ];
+      
+      competitorTemplates.forEach(kwText => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const normalized = kwText.toLowerCase().trim();
+        if (!globalKeywordSet.has(normalized) && normalized.length > 5) {
+          globalKeywordSet.add(normalized);
+          const clashScore = calculateClashScore();
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: normalized, intent: 'Informational', difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'tail', clash: clashScore, aio_risk: aioRisk,
+            x: 26 + (compIndex * 5), y: 5, mass: 10, // Static base values
+            moat_type: 'Content', source: 'competitor_variant', competitor: domain,
+            tip: generateTip(normalized, clashScore, aioRisk, 'Content', 'Competitor-specific long-tail opportunity')
+          });
+        }
+      });
+      
+      templates.forEach(template => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const kwText = template.replace('{niche}', niche).toLowerCase().trim();
+        if (!globalKeywordSet.has(kwText) && kwText.length > 5) {
+          globalKeywordSet.add(kwText);
+          const clashScore = calculateClashScore();
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: kwText, intent: 'Informational', difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'tail', clash: clashScore, aio_risk: aioRisk,
+            x: 25 + (compIndex * 6), y: 5, mass: 10, // Static base values
+            moat_type: 'Content', source: 'template', competitor: domain,
+            tip: generateTip(kwText, clashScore, aioRisk, 'Content', 'Rapid content deployment')
+          });
+        }
+      });
+    }
+    console.log(`   ✅ LongTail ${domain}: Generated ${keywords.length} keywords`);
+    return keywords;
+  }
+  window.generateLongTailVelocityKWs = generateLongTailVelocityKWs;
+
+  /**
+   * MODULE 4: LLM CITATION GAPS - 15 AI-Agent Sourcing Terms (RAG-Ready)
+   * UI Category: "🤖 LLM Citation Gaps"
+   * Target: Terms where we can become THE primary source for AI
+   */
+  function generateLLMCitationGapKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    const keywords = [];
+    const TARGET_COUNT = 15;
+    const kwIntel = gemini.keywordIntelligence || {};
+    const domain = comp.domain || '';
+    const cleanDomain = domain.replace(/^www\./, '');
+    const moat = analyzeCompetitorMoat(comp, gemini);
+
+    const organizedData = window._organizedData || window._eliteTabIntelligence?.organizedData || [];
+    const organizedComp = organizedData.find?.(o => (o.domain || '').replace(/^www\./, '') === cleanDomain || o.domain === domain);
+    const organizedRawData = organizedComp?.tabData?.keywordStrategy?.rawData || {};
+    const kwRawData = window._kwStrategyRawData || {};
+    
+    const kwProfile = comp.keywordProfile || {};
+    const kwProfilePAA = (kwProfile.peopleAlsoAsk || []).map(q => typeof q === 'string' ? { question: q } : q);
+    const kwProfileRelated = (kwProfile.relatedSearches || []).map(q => typeof q === 'string' ? { query: q } : q);
+    
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    let relatedSearches = organizedRawData.keywords || organizedRawData.relatedSearches || keywordSignals.relatedSearches || comp.stages?.serper?.data?.relatedSearches || kwProfileRelated || [];
+    let paaQuestions = organizedRawData.paaQuestions || keywordSignals.peopleAlsoAsk || comp.stages?.serper?.data?.peopleAlsoAsk || kwProfilePAA || [];
+    
+    if (paaQuestions.length === 0 && kwRawData.allPAA?.length > 0) paaQuestions = kwRawData.allPAA;
+    if (relatedSearches.length === 0 && kwRawData.allRelated?.length > 0) relatedSearches = kwRawData.allRelated;
+    
+    const oracleData = comp.stages?.oracleFetcher?.data || comp.synthesized?.website || {};
+    const oracleH2 = oracleData.h2 || comp.synthesized?.website?.h2 || [];
+
+    console.log(`   🤖 LLM Citation for ${domain}: PAA=${paaQuestions.length}, Related=${relatedSearches.length}`);
+
+    const calculateAIOScore = () => 9; // Static base value (high for LLM citation)
+    const calculateClashScore = () => 6; // Static base value
+
+    paaQuestions.forEach(paa => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const question = (typeof paa === 'string' ? paa : paa.question || paa.title || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(question) && question.length > 10 && /what|define|meaning|explanation|overview/i.test(question)) {
+        globalKeywordSet.add(question);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: question, intent: 'Navigational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'llm', clash: clashScore, aio_risk: aioRisk,
+          x: 52 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: moat.type, source: 'serper_paa', competitor: domain,
+          tip: generateTip(question, clashScore, aioRisk, moat.type, 'Become definitional authority for LLMs')
+        });
+      }
+    });
+
+    relatedSearches.forEach(rs => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const query = (typeof rs === 'string' ? rs : rs.query || rs).toLowerCase().trim();
+      if (!globalKeywordSet.has(query) && query.length > 5) {
+        globalKeywordSet.add(query);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: query, intent: 'Navigational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'llm', clash: clashScore, aio_risk: aioRisk,
+          x: 55 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: moat.type, source: 'serper_related', competitor: domain,
+          tip: generateTip(query, clashScore, aioRisk, moat.type, 'Become AI-cited authority')
+        });
+      }
+    });
+
+    const geoKWs = kwIntel.semanticKeywords?.topKeywords || kwIntel.entityKeywords?.topKeywords || [];
+    geoKWs.slice(0, 5).forEach(kw => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (kw.keyword || kw).toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 3) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText, intent: 'Navigational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'llm', clash: clashScore, aio_risk: aioRisk,
+          x: 55 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: moat.type, source: 'gemini', competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, moat.type, 'Become AI-cited authority')
+        });
+      }
+    });
+
+    oracleH2.forEach(h2 => {
+      if (keywords.length >= TARGET_COUNT) return;
+      const kwText = (typeof h2 === 'string' ? h2 : h2.text || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 5 && kwText.length < 80) {
+        globalKeywordSet.add(kwText);
+        const clashScore = calculateClashScore();
+        const aioRisk = calculateAIOScore();
+        keywords.push({
+          keyword: kwText, intent: 'Informational', difficulty: 0, // Real difficulty requires API data
+          volume: 0, // Real volume requires API data
+          ui_cat: 'llm', clash: clashScore, aio_risk: aioRisk,
+          x: 55 + (compIndex * 5), y: 5, mass: 10, // Static base values
+          moat_type: moat.type, source: 'oracle_h2', competitor: domain,
+          tip: generateTip(kwText, clashScore, aioRisk, moat.type, 'Become AI-cited authority')
+        });
+      }
+    });
+
+    if (keywords.length < TARGET_COUNT) {
+      const domainName = cleanDomain.split('.')[0];
+      const competitorTemplates = [
+        `what is ${domainName}`, `${domainName} definition`, `${domainName} meaning explained`,
+        `how ${domainName} works`, `${domainName} overview guide`, `${domainName} explained simply`,
+        `${domainName} key concepts`, `understanding ${domainName} basics`
+      ];
+      
+      competitorTemplates.forEach(kwText => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const normalized = kwText.toLowerCase().trim();
+        if (!globalKeywordSet.has(normalized) && normalized.length > 3) {
+          globalKeywordSet.add(normalized);
+          const clashScore = calculateClashScore();
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: normalized, intent: 'Navigational', difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'llm', clash: clashScore, aio_risk: aioRisk,
+            x: 48 + (compIndex * 5), y: 5, mass: 10, // Static base values
+            moat_type: moat.type, source: 'competitor_variant', competitor: domain,
+            tip: generateTip(normalized, clashScore, aioRisk, moat.type, 'Competitor-specific LLM citation opportunity')
+          });
+        }
+      });
+      
+      templates.forEach(template => {
+        if (keywords.length >= TARGET_COUNT) return;
+        const kwText = template.replace('{niche}', niche).toLowerCase().trim();
+        if (!globalKeywordSet.has(kwText) && kwText.length > 3) {
+          globalKeywordSet.add(kwText);
+          const clashScore = calculateClashScore();
+          const aioRisk = calculateAIOScore();
+          keywords.push({
+            keyword: kwText, intent: 'Navigational', difficulty: 0, // Real difficulty requires API data
+            volume: 0, // Real volume requires API data
+            ui_cat: 'llm', clash: clashScore, aio_risk: aioRisk,
+            x: 50 + (compIndex * 6), y: 5, mass: 10, // Static base values
+            moat_type: moat.type, source: 'template', competitor: domain,
+            tip: generateTip(kwText, clashScore, aioRisk, moat.type, 'RAG-ready structured content')
+          });
+        }
+      });
+    }
+    console.log(`   ✅ LLM Citation ${domain}: Generated ${keywords.length} keywords`);
+    return keywords;
+  }
+  window.generateLLMCitationGapKWs = generateLLMCitationGapKWs;
+</script>

@@ -1,0 +1,257 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Strategy_AIO.html - AIO Survival Engine                                      -->
+<!-- Part of 1% Strategy Engine - Phase 3: AI Overviews Defense System              -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * PHASE 3: AIO SURVIVAL ENGINE
+   * Identifies AI-vulnerable keywords and recommends interactive tool defenses
+   */
+  function analyzeAIOSurvival(keywords, competitorData) {
+    if (!keywords || keywords.length === 0) {
+      return { atRisk: [], safe: [], recommendations: [], html: '' };
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SAFE KEYWORD TEXT EXTRACTION HELPER
+    // Handles: PAA (question), Related (query), SERP (keyword/text), strings
+    // ═══════════════════════════════════════════════════════════════════════════
+    const getKwText = (kw) => {
+      if (typeof kw === 'string') return kw;
+      if (!kw) return 'unknown keyword';
+      return kw.keyword || kw.text || kw.query || kw.question || kw.title || String(kw);
+    };
+    
+    // Score each keyword for AI theft risk (0-100)
+    const scored = keywords.map(kw => {
+      const keyword = getKwText(kw);
+      const kwLower = keyword.toLowerCase();
+      
+      let riskScore = 50; // Base risk
+      let riskFactors = [];
+      let defenseRecommendations = [];
+      
+      // Increase risk for simple definition/fact keywords
+      if (kwLower.includes('what is') || kwLower.includes('what are')) {
+        riskScore += 20;
+        riskFactors.push('Definition query - easily answered by AI');
+      }
+      if (kwLower.includes('how to') && !kwLower.includes('calculator') && !kwLower.includes('tool')) {
+        riskScore += 15;
+        riskFactors.push('How-to query without tool component');
+      }
+      if (kwLower.includes('meaning') || kwLower.includes('definition')) {
+        riskScore += 25;
+        riskFactors.push('Pure definition - AI will provide directly');
+      }
+      if (kwLower.includes('list of') || kwLower.includes('types of')) {
+        riskScore += 10;
+        riskFactors.push('List query - AI can enumerate');
+      }
+      if (kwLower.includes('example') || kwLower.includes('examples')) {
+        riskScore += 12;
+        riskFactors.push('Example query - AI can generate');
+      }
+      
+      // Decrease risk for interactive/calculation needs
+      if (kwLower.includes('calculator') || kwLower.includes('calculate')) {
+        riskScore -= 30;
+        riskFactors.push('Calculator intent - AI struggles with accuracy');
+        defenseRecommendations.push({ type: 'calculator', name: `${keyword} Calculator`, priority: 'high' });
+      }
+      if (kwLower.includes('tool') || kwLower.includes('generator')) {
+        riskScore -= 25;
+        riskFactors.push('Tool intent - requires interaction');
+        defenseRecommendations.push({ type: 'tool', name: `${keyword} Generator`, priority: 'high' });
+      }
+      if (kwLower.includes('compare') || kwLower.includes('vs')) {
+        riskScore -= 15;
+        riskFactors.push('Comparison - can build interactive comparator');
+        defenseRecommendations.push({ type: 'comparator', name: `${keyword} Comparison Tool`, priority: 'medium' });
+      }
+      if (kwLower.includes('estimate') || kwLower.includes('cost') || kwLower.includes('price')) {
+        riskScore -= 20;
+        riskFactors.push('Estimation query - calculator opportunity');
+        defenseRecommendations.push({ type: 'calculator', name: `${keyword} Estimator`, priority: 'high' });
+      }
+      if (kwLower.includes('quiz') || kwLower.includes('test') || kwLower.includes('check')) {
+        riskScore -= 25;
+        riskFactors.push('Assessment query - interactive opportunity');
+        defenseRecommendations.push({ type: 'quiz', name: `${keyword} Assessment`, priority: 'high' });
+      }
+      if (kwLower.includes('template') || kwLower.includes('download')) {
+        riskScore -= 20;
+        riskFactors.push('Download intent - lead capture opportunity');
+        defenseRecommendations.push({ type: 'download', name: `${keyword} Template`, priority: 'high' });
+      }
+      
+      // Generate defense recommendations for high-risk keywords
+      if (riskScore > 60 && defenseRecommendations.length === 0) {
+        // Suggest tools based on keyword type
+        if (kwLower.includes('best') || kwLower.includes('top')) {
+          defenseRecommendations.push({ type: 'comparator', name: `Interactive ${keyword} Finder`, priority: 'high' });
+        } else {
+          defenseRecommendations.push({ type: 'calculator', name: `${keyword} Calculator`, priority: 'medium' });
+          defenseRecommendations.push({ type: 'quiz', name: `${keyword} Assessment Tool`, priority: 'medium' });
+        }
+      }
+      
+      riskScore = Math.max(0, Math.min(100, riskScore)); // Clamp to 0-100
+      
+      return {
+        keyword: keyword,
+        volume: kw.volume || kw.searchVolume || 0,
+        riskScore: riskScore,
+        riskLevel: riskScore >= 70 ? 'critical' : riskScore >= 50 ? 'high' : riskScore >= 30 ? 'medium' : 'low',
+        riskFactors: riskFactors,
+        defenseRecommendations: defenseRecommendations,
+        aiCanAnswer: riskScore > 50,
+        interactiveDefense: defenseRecommendations.length > 0
+      };
+    });
+    
+    // Sort by risk score (highest first)
+    scored.sort((a, b) => b.riskScore - a.riskScore);
+    
+    const atRisk = scored.filter(k => k.riskScore >= 50);
+    const safe = scored.filter(k => k.riskScore < 50);
+    const criticalCount = scored.filter(k => k.riskScore >= 70).length;
+    const avgRisk = scored.reduce((sum, k) => sum + k.riskScore, 0) / scored.length;
+    
+    // Generate prioritized tool recommendations
+    const toolRecommendations = [];
+    scored.forEach(kw => {
+      kw.defenseRecommendations.forEach(rec => {
+        if (!toolRecommendations.find(t => t.name === rec.name)) {
+          toolRecommendations.push({
+            ...rec,
+            targetKeyword: kw.keyword,
+            volume: kw.volume,
+            riskScore: kw.riskScore
+          });
+        }
+      });
+    });
+    toolRecommendations.sort((a, b) => (b.riskScore * (b.volume || 1)) - (a.riskScore * (a.volume || 1)));
+    
+    return {
+      keywords: scored,
+      atRisk: atRisk,
+      safe: safe,
+      criticalCount: criticalCount,
+      avgRisk: Math.round(avgRisk),
+      atRiskPercentage: Math.round((atRisk.length / scored.length) * 100),
+      toolRecommendations: toolRecommendations.slice(0, 10),
+      html: renderAIOSurvivalCard(scored, atRisk, toolRecommendations.slice(0, 10), avgRisk)
+    };
+  }
+  
+  /**
+   * Render AIO Survival Dashboard Card
+   */
+  function renderAIOSurvivalCard(allKeywords, atRisk, toolRecs, avgRisk) {
+    const criticalCount = allKeywords.filter(k => k.riskScore >= 70).length;
+    const atRiskPercent = Math.round((atRisk.length / allKeywords.length) * 100);
+    
+    const escapeHtmlLocal = (str) => {
+      if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
+      return String(str || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+    
+    return `
+      <div style="background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%); border-radius: 16px; padding: 24px; margin: 20px 0; box-shadow: 0 10px 40px -10px rgba(185,28,28,0.4);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 28px;">🛡️</span>
+            <div>
+              <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: white;">AIO Survival Strategy</h3>
+              <p style="margin: 4px 0 0; font-size: 12px; color: #fca5a5;">${atRiskPercent}% of Keywords Vulnerable to AI Theft</p>
+            </div>
+          </div>
+          <div style="background: ${avgRisk >= 60 ? '#dc2626' : avgRisk >= 40 ? '#f59e0b' : '#10b981'}; padding: 12px 20px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 28px; font-weight: 800; color: white;">${Math.round(avgRisk)}</div>
+            <div style="font-size: 10px; color: rgba(255,255,255,0.8);">Avg Risk Score</div>
+          </div>
+        </div>
+        
+        <!-- Key Insight -->
+        <div style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+          <p style="color: #fecaca; font-size: 13px; line-height: 1.6; margin: 0;">
+            <strong style="color: #fbbf24;">AI can TELL users what a wager is—but it can't accurately CALCULATE complex, variable-heavy results.</strong> Your survival strategy: Convert informational keywords into interactive tool experiences. Users come for the calculator, stay for the content, and convert because they trust your expertise.
+          </p>
+        </div>
+        
+        <!-- Risk Distribution -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+          <div style="background: rgba(220,38,38,0.3); border: 2px solid #dc2626; padding: 12px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 800; color: #fca5a5;">${criticalCount}</div>
+            <div style="font-size: 10px; color: #fecaca;">Critical (70+)</div>
+          </div>
+          <div style="background: rgba(249,115,22,0.2); border: 2px solid #f97316; padding: 12px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 800; color: #fdba74;">${allKeywords.filter(k => k.riskScore >= 50 && k.riskScore < 70).length}</div>
+            <div style="font-size: 10px; color: #fed7aa;">High (50-69)</div>
+          </div>
+          <div style="background: rgba(251,191,36,0.2); border: 2px solid #fbbf24; padding: 12px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 800; color: #fde68a;">${allKeywords.filter(k => k.riskScore >= 30 && k.riskScore < 50).length}</div>
+            <div style="font-size: 10px; color: #fef3c7;">Medium (30-49)</div>
+          </div>
+          <div style="background: rgba(16,185,129,0.2); border: 2px solid #10b981; padding: 12px; border-radius: 10px; text-align: center;">
+            <div style="font-size: 24px; font-weight: 800; color: #6ee7b7;">${allKeywords.filter(k => k.riskScore < 30).length}</div>
+            <div style="font-size: 10px; color: #a7f3d0;">Low (0-29)</div>
+          </div>
+        </div>
+        
+        <!-- Critical Keywords -->
+        ${atRisk.length > 0 ? `
+          <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 600; color: #fca5a5; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>⚠️</span> Highest Risk Keywords (Need Interactive Defense)
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+              ${atRisk.slice(0, 10).map(kw => `
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.08); border-radius: 8px; border-left: 3px solid ${kw.riskScore >= 70 ? '#dc2626' : '#f97316'};">
+                  <div style="background: ${kw.riskScore >= 70 ? '#dc2626' : '#f97316'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; min-width: 32px; text-align: center;">${kw.riskScore}</div>
+                  <div style="flex: 1;">
+                    <div style="color: white; font-size: 12px; font-weight: 500;">${escapeHtmlLocal(kw.keyword)}</div>
+                    <div style="color: #fca5a5; font-size: 10px; margin-top: 2px;">${kw.riskFactors.slice(0, 2).join(' • ')}</div>
+                  </div>
+                  ${kw.volume ? `<span style="color: #9ca3af; font-size: 10px;">${kw.volume.toLocaleString()} vol</span>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Tool Recommendations -->
+        ${toolRecs.length > 0 ? `
+          <div style="background: linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(6,182,212,0.2) 100%); border-radius: 10px; padding: 16px; border: 2px solid #10b981;">
+            <div style="font-size: 12px; font-weight: 600; color: #6ee7b7; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+              <span>🛠️</span> Recommended Interactive Tools (Build These)
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+              ${toolRecs.slice(0, 6).map((tool, idx) => `
+                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 20px;">${tool.type === 'calculator' ? '🧮' : tool.type === 'quiz' ? '📝' : tool.type === 'comparator' ? '⚖️' : tool.type === 'download' ? '📥' : '🔧'}</span>
+                  <div style="flex: 1;">
+                    <div style="color: white; font-size: 11px; font-weight: 600;">${escapeHtmlLocal(tool.name)}</div>
+                    <div style="color: #a7f3d0; font-size: 10px;">Protects: ${escapeHtmlLocal(tool.targetKeyword.substring(0, 25))}${tool.targetKeyword.length > 25 ? '...' : ''}</div>
+                  </div>
+                  <span style="background: ${tool.priority === 'high' ? '#dc2626' : '#f59e0b'}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">${tool.priority.toUpperCase()}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  // Export functions globally
+  window.analyzeAIOSurvival = analyzeAIOSurvival;
+  window.renderAIOSurvivalCard = renderAIOSurvivalCard;
+
+})();
+</script>

@@ -1,0 +1,235 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Forensic_Render.html - Deep Dive Forensic Analysis Renderer                 -->
+<!-- Renders granular data proof and technical validation extraction                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Render Forensic Deep Dive section with granular data proof
+   * @param {Object} analysis - Analysis data with forensic details
+   * @returns {string} - HTML string for forensic section
+   */
+  function renderDeepDiveForensics(analysis) {
+    if (!analysis) return '';
+    let html = `
+          <div class="elite-forensic-container" style="margin-top: 32px; padding: 24px; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+               <div style="width: 40px; height: 40px; background: #f3f4f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🔬</div>
+               <div>
+                 <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: #111827;">Forensic Deep Dive</h2>
+                 <p style="margin: 0; font-size: 13px; color: #6b7280;">Granular data proof and technical validation extraction</p>
+               </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 40px;">
+        `;
+
+    // 1. DISTRIBUTION & VISIBILITY (Backlinks Proof)
+    if (analysis.distributionVisibility?.referralEfficiency) {
+      html += renderForensicSection(
+        'Distribution & Visibility',
+        'Proof of Authority: Backlinks & Referrals',
+        analysis.distributionVisibility.referralEfficiency,
+        [
+          { key: 'domain', label: 'Competitor' },
+          { key: 'ratio', label: 'Efficiency Ratio', format: 'number' },
+          { key: 'topBacklinks', label: 'Top Backlinks Proof (Top 30)', type: 'list-proof-detailed' },
+          { key: 'geminiInsight', label: 'Strategic Insight', type: 'insight' }
+        ]
+      );
+    }
+
+    // 2. KEYWORD INTELLIGENCE (Categorized Keywords)
+    if (analysis.keywordsDetailed || analysis.organizedData) {
+      const keywordStrategy = analysis.organizedData?.map(d => ({
+        domain: d.domain,
+        detailedKeywords: d.tabData?.keywordStrategy?.detailedKeywords || {}
+      })) || [];
+
+      if (keywordStrategy.length > 0 && keywordStrategy.some(ks => Object.keys(ks.detailedKeywords).length > 0)) {
+        html += `
+    <div class="forensic-section" style="margin-bottom: 32px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div>
+          <h4 style="margin: 0; color: #4b5563; font-size: 16px;">Keyword Strategy Deep Dive</h4>
+          <p style="margin: 4px 0 0 0; color: #9ca3af; font-size: 13px;">Targeting Primary, Semantic, Long-tail, and PAA Queries</p>
+        </div>
+        <div style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Categorized Analysis</div>
+      </div>
+      
+      <div class="forensic-table-container" style="overflow-x: auto; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        <table style="width: 100%; border-collapse: collapse; min-width: 800px;">
+          <thead>
+            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+              <th style="padding: 16px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 15%;">DOMAIN</th>
+              <th style="padding: 16px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 25%;">PRIMARY KWS</th>
+              <th style="padding: 16px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 35%;">SEMANTIC & LONG-TAIL</th>
+              <th style="padding: 16px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; width: 25%;">PAA QUESTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${keywordStrategy.map(comp => {
+        const kws = comp.detailedKeywords;
+        const primary = (kws.primary || []).slice(0, 3).map(k => `<div style="margin-bottom: 4px;"><span style="color:#2563eb; font-weight:600;">#${k.rank}</span> ${k.term}</div>`).join('') || '<span style="color:#9ca3af;">No data</span>';
+
+        const semantic = (kws.semantic || []).slice(0, 3).map(k => k.term);
+        const longTail = (kws.longTail || []).slice(0, 3).map(k => k.term);
+        const combinedSemantic = [...new Set([...semantic, ...longTail])].slice(0, 5)
+          .map(t => `<span style="display:inline-block; background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:4px; font-size:11px; margin:2px;">${t}</span>`)
+          .join('') || '<span style="color:#9ca3af;">No data</span>';
+
+        const questions = (kws.questions || []).slice(0, 3)
+          .map(q => `<div style="font-size:11px; color:#64748b; margin-bottom:4px; line-height:1.3;">• ${q.term}</div>`)
+          .join('') || '<span style="color:#9ca3af;">No data</span>';
+
+        return `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                  <td style="padding: 16px; vertical-align: top; font-weight: 600; color: #1e293b; font-size: 13px;">${comp.domain}</td>
+                  <td style="padding: 16px; vertical-align: top; font-size: 12px; color: #334155;">${primary}</td>
+                  <td style="padding: 16px; vertical-align: top;">${combinedSemantic}</td>
+                  <td style="padding: 16px; vertical-align: top; font-size: 12px;">${questions}</td>
+                </tr>
+              `;
+      }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+      }
+    }
+
+    // 3. ON-PAGE SEO AUDIT (Headings & Meta)
+    if (analysis.contentStrategy?.topicalCoverageScore) {
+      html += renderForensicSection(
+        'Content Strategy & On-Page SEO',
+        'Headings Structure, Meta Descriptions, and Ranking Proof',
+        analysis.contentStrategy.topicalCoverageScore,
+        [
+          { key: 'domain', label: 'Competitor' },
+          { key: 'coveragePercent', label: 'Coverage', format: 'percent' },
+          { key: 'h1', label: 'H1 Tag', type: 'text-check' },
+          { key: 'topHeadings', label: 'Headings Structure (H2-H6)', type: 'list-proof-text' },
+          { key: 'topRankings', label: 'SERP Rankings', type: 'rankings' },
+          { key: 'geminiInsight', label: 'Strategic Insight', type: 'insight' }
+        ]
+      );
+    }
+
+    // 4. CONTENT OPERATIONS (Internal Links Proof)
+    if (analysis.contentOperations?.semanticClusterMapping) {
+      html += renderForensicSection(
+        'Content Operations',
+        'Proof of Architecture: Internal Linking',
+        analysis.contentOperations.semanticClusterMapping,
+        [
+          { key: 'domain', label: 'Competitor' },
+          { key: 'internalLinkDensity', label: 'Density' },
+          { key: 'architecture', label: 'Structure' },
+          { key: 'topInternalLinks', label: 'Internal Links Proof', type: 'list-proof-links' }
+        ]
+      );
+    }
+
+    // 5. AUDIENCE INTELLIGENCE (Gemini Insight)
+    if (analysis.audienceIntelligence?.jtbdAnalysis?.competitorJTBDMatch) {
+      html += renderForensicSection(
+        'Audience Intelligence',
+        'Psychographic Profiling & JTBD',
+        analysis.audienceIntelligence.jtbdAnalysis.competitorJTBDMatch,
+        [
+          { key: 'domain', label: 'Competitor' },
+          { key: 'jtbdMatchScore', label: 'JTBD Match', format: 'score' },
+          { key: 'struggleOrigin', label: 'Struggle Origin' },
+          { key: 'geminiInsight', label: 'Strategic Insight', type: 'insight' }
+        ]
+      );
+    }
+
+    // 6. CONVERSION MONETIZATION (Gemini Insight)
+    if (analysis.conversionMonetization?.funnelArchitecture) {
+      html += renderForensicSection(
+        'Conversion & Monetization',
+        'Funnel Forensics & Friction Analysis',
+        analysis.conversionMonetization.funnelArchitecture,
+        [
+          { key: 'domain', label: 'Competitor' },
+          { key: 'timeToConversion.assessment', label: 'Friction Level', path: 'timeToConversion.assessment' },
+          { key: 'userIntentPath.interpretation', label: 'Funnel Clarity', path: 'userIntentPath.interpretation' },
+          { key: 'geminiInsight', label: 'Strategic Insight', type: 'insight' }
+        ]
+      );
+    }
+
+    // 7. GEO & AEO OPTIMIZATION (REAL DATA)
+    if (analysis.geoAeo?.visibilityMetrics) {
+      html += renderForensicSection(
+        'GEO & AEO Optimization',
+        'Generative Engine & Answer Engine Evidence',
+        analysis.geoAeo.visibilityMetrics,
+        [
+          { key: 'domain', label: 'Competitor' },
+          { key: 'readinessScore', label: 'AI Readiness', format: 'score' },
+          { key: 'aeoScore', label: 'AEO Visibility', format: 'score' },
+          { key: 'geoAeoProof.signals', label: 'Signals', path: 'geoAeoProof.signals', type: 'list-tags' },
+          { key: 'geoAeoProof.topQuestions', label: 'KG Questions', path: 'geoAeoProof.topQuestions', type: 'list-simple' }
+        ]
+      );
+
+      // 7.1. Schema Depth & RAG Readiness
+      if (analysis.geoAeo.schemaDepth) {
+        html += renderForensicSection(
+          'AI Architecture & Schema Depth',
+          'RAG Extraction Readiness & Structured Data Coverage',
+          analysis.geoAeo.schemaDepth,
+          [
+            { key: 'domain', label: 'Competitor' },
+            { key: 'ragExtractionReadiness', label: 'RAG Ready', format: 'score' },
+            { key: 'detectedSchemas', label: 'Schemas Detected', type: 'list-tags' },
+            { key: 'missingCriticalSchema', label: 'Optimization Gaps', type: 'list-tags' }
+          ]
+        );
+      }
+
+      // 7.2. Strategic AI Disruption
+      if (analysis.geoAeo.geoInsights) {
+        html += renderForensicSection(
+          'Strategic AI Disruption',
+          'Citation Hijacking & Knowledge Graph Dominance',
+          analysis.geoAeo.geoInsights,
+          [
+            { key: 'headline', label: 'AI Assessment' },
+            { key: 'insight', label: 'Tactical Analysis' },
+            { key: 'killMove', label: 'Kill Move', type: 'highlight' }
+          ]
+        );
+      }
+    }
+
+    html += `
+            </div>
+          </div>
+        `;
+
+    return html;
+  }
+
+  /**
+   * Helper function to get nested values from objects
+   * @param {Object} obj - Source object
+   * @param {string} path - Dot-separated path
+   * @returns {*} - Value at path or null
+   */
+  function getNestedValue(obj, path) {
+    if (!obj || !path) return null;
+    return path.split('.').reduce((o, p) => (o ? o[p] : null), obj);
+  }
+
+  // Export functions globally
+  window.renderDeepDiveForensics = renderDeepDiveForensics;
+  window.getNestedValue = getNestedValue;
+
+})();
+</script>

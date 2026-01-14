@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+      --facebook: #1877f2;
+      --twitter: #1da1f2;
+      --linkedin: #0a66c2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"] { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus { outline: none; border-color: var(--primary); }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .tab { padding: 12px 20px; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+    
+    .score-bar { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--bg); border-radius: 8px; margin-bottom: 16px; }
+    .score-value { font-size: 32px; font-weight: 600; color: var(--primary); }
+    .score-label { color: var(--muted); }
+    
+    .preview-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .preview-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .preview-header { padding: 10px 14px; font-weight: 500; font-size: 13px; color: white; display: flex; align-items: center; gap: 8px; }
+    .preview-header.facebook { background: var(--facebook); }
+    .preview-header.twitter { background: var(--twitter); }
+    .preview-header.linkedin { background: var(--linkedin); }
+    .preview-body { padding: 0; }
+    .preview-image { width: 100%; height: 120px; background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--muted); }
+    .preview-image img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-content { padding: 12px; }
+    .preview-title { font-weight: 500; font-size: 14px; margin-bottom: 4px; }
+    .preview-desc { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .preview-url { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    
+    .tag-list { list-style: none; }
+    .tag-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .tag-item:last-child { border-bottom: none; }
+    .tag-name { font-weight: 500; min-width: 140px; color: var(--primary); }
+    .tag-value { flex: 1; color: var(--text); word-break: break-all; }
+    .tag-missing { color: var(--muted); font-style: italic; }
+    
+    .issue-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--bg); border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
+    .issue-item:last-child { margin-bottom: 0; }
+    .issue-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+    .issue-badge.warning { background: #fef7e0; color: #e37400; }
+    .issue-badge.info { background: #e8f0fe; color: var(--primary); }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Social Meta Analyzer</h1>
+    <p class="subtitle">Open Graph and Twitter Card analysis</p>
+  </div>
+  
+  <div class="card">
+    <div class="form-group">
+      <label>Page URL</label>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="urlInput" placeholder="Enter URL to analyze...">
+        <button class="btn-primary" onclick="analyzeOG()">Analyze</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Analyzing social meta tags...</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="score-bar">
+      <div class="score-value" id="score">--</div>
+      <div class="score-label">Social Meta Score</div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('preview')">Previews</button>
+      <button class="tab" onclick="showTab('tags')">All Tags</button>
+      <button class="tab" onclick="showTab('issues')">Issues</button>
+    </div>
+    
+    <div id="previewTab">
+      <div class="preview-grid">
+        <div class="preview-card">
+          <div class="preview-header facebook">📘 Facebook</div>
+          <div class="preview-body">
+            <div class="preview-image" id="fbImage">No image</div>
+            <div class="preview-content">
+              <div class="preview-title" id="fbTitle">--</div>
+              <div class="preview-desc" id="fbDesc">--</div>
+              <div class="preview-url" id="fbUrl">--</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="preview-card">
+          <div class="preview-header twitter">🐦 Twitter</div>
+          <div class="preview-body">
+            <div class="preview-image" id="twImage">No image</div>
+            <div class="preview-content">
+              <div class="preview-title" id="twTitle">--</div>
+              <div class="preview-desc" id="twDesc">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card" id="tagsTab" style="display: none;">
+      <h3>Open Graph Tags</h3>
+      <ul class="tag-list" id="ogList"></ul>
+      <h3 style="margin-top: 20px;">Twitter Tags</h3>
+      <ul class="tag-list" id="twList"></ul>
+    </div>
+    
+    <div class="card" id="issuesTab" style="display: none;">
+      <div id="issuesList"></div>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to analyze its social sharing meta tags</p>
+  </div>
+  
+  <script>
+    let resultData = null;
+    
+    function analyzeOG() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { alert('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeOpenGraph({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        alert(data?.error || 'Analysis failed');
+        document.getElementById('empty').style.display = 'block';
+        return;
+      }
+      
+      resultData = data;
+      document.getElementById('score').textContent = (data.score || 0) + '%';
+      
+      renderPreviews(data);
+      renderTags(data);
+      renderIssues(data.issues || []);
+      
+      document.getElementById('results').style.display = 'block';
+    }
+    
+    function renderPreviews(data) {
+      const og = data.openGraph || {};
+      const tw = data.twitter || {};
+      const basic = data.basic || {};
+      
+      // Facebook preview
+      const fbImageEl = document.getElementById('fbImage');
+      if (og.image) {
+        fbImageEl.innerHTML = '<img src="' + og.image + '" onerror="this.parentElement.textContent=\'Image failed to load\'">';
+      } else {
+        fbImageEl.textContent = 'No image';
+      }
+      document.getElementById('fbTitle').textContent = og.title || basic.title || '--';
+      document.getElementById('fbDesc').textContent = og.description || basic.description || '--';
+      document.getElementById('fbUrl').textContent = data.url || '--';
+      
+      // Twitter preview
+      const twImageEl = document.getElementById('twImage');
+      if (tw.image || og.image) {
+        twImageEl.innerHTML = '<img src="' + (tw.image || og.image) + '" onerror="this.parentElement.textContent=\'Image failed to load\'">';
+      } else {
+        twImageEl.textContent = 'No image';
+      }
+      document.getElementById('twTitle').textContent = tw.title || og.title || basic.title || '--';
+      document.getElementById('twDesc').textContent = tw.description || og.description || basic.description || '--';
+    }
+    
+    function renderTags(data) {
+      const og = data.openGraph || {};
+      const tw = data.twitter || {};
+      
+      document.getElementById('ogList').innerHTML = Object.keys(og).map(function(key) {
+        return '<li class="tag-item"><span class="tag-name">og:' + key + '</span><span class="tag-value">' + og[key] + '</span></li>';
+      }).join('') || '<li class="tag-item tag-missing">No Open Graph tags found</li>';
+      
+      document.getElementById('twList').innerHTML = Object.keys(tw).map(function(key) {
+        return '<li class="tag-item"><span class="tag-name">twitter:' + key + '</span><span class="tag-value">' + tw[key] + '</span></li>';
+      }).join('') || '<li class="tag-item tag-missing">No Twitter tags found</li>';
+    }
+    
+    function renderIssues(issues) {
+      const list = document.getElementById('issuesList');
+      if (issues.length === 0) {
+        list.innerHTML = '<div class="empty">No issues found!</div>';
+        return;
+      }
+      
+      list.innerHTML = issues.map(function(issue) {
+        return '<div class="issue-item">' +
+          '<span class="issue-badge ' + issue.type + '">' + issue.platform + '</span>' +
+          '<span>' + issue.message + '</span>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('previewTab').style.display = tab === 'preview' ? 'block' : 'none';
+      document.getElementById('tagsTab').style.display = tab === 'tags' ? 'block' : 'none';
+      document.getElementById('issuesTab').style.display = tab === 'issues' ? 'block' : 'none';
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('empty').style.display = 'block';
+      alert('Error: ' + (err.message || 'Unknown error'));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= UI_getStyles() ?>
+  <style>
+    .outline-form {
+      display: grid;
+      grid-template-columns: 1fr 200px;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .form-row {
+      display: flex;
+      gap: 16px;
+    }
+    .form-row .form-group {
+      flex: 1;
+    }
+    .outline-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .outline-container {
+        grid-template-columns: 1fr;
+      }
+    }
+    .outline-preview {
+      background: var(--gray-50);
+      border-radius: var(--radius);
+      padding: 20px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .structured-outline {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .outline-section {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--gray-50);
+      cursor: pointer;
+    }
+    .section-header:hover {
+      background: var(--gray-100);
+    }
+    .section-title {
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-toggle {
+      color: var(--gray-500);
+      transition: transform 0.2s;
+    }
+    .section-toggle.expanded {
+      transform: rotate(90deg);
+    }
+    .section-body {
+      padding: 12px 16px;
+      border-top: 1px solid var(--gray-200);
+      display: none;
+    }
+    .section-body.expanded {
+      display: block;
+    }
+    .section-desc {
+      font-size: 13px;
+      color: var(--gray-600);
+      margin-bottom: 12px;
+    }
+    .subsection {
+      padding: 8px 12px;
+      margin-left: 16px;
+      border-left: 2px solid var(--primary);
+      margin-bottom: 8px;
+    }
+    .subsection-title {
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .subsection-desc {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+    .word-suggestion {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .expand-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      background: var(--gray-100);
+      border: 1px solid var(--gray-300);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .expand-btn:hover {
+      background: var(--gray-200);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Content Outline Generator</h1>
+    
+    <div class="card">
+      <div class="form-group">
+        <label class="label">Topic or Keyword</label>
+        <input type="text" id="topic" class="input" placeholder="e.g., How to Start a Blog">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="label">Content Type</label>
+          <select id="contentType" class="select">
+            <option value="blog">Blog Post</option>
+            <option value="guide">Comprehensive Guide</option>
+            <option value="tutorial">Tutorial</option>
+            <option value="listicle">Listicle</option>
+            <option value="review">Review</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">Outline Depth</label>
+          <select id="depth" class="select">
+            <option value="basic">Basic (3-4 sections)</option>
+            <option value="medium" selected>Medium (5-7 sections)</option>
+            <option value="detailed">Detailed (7-10 sections)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">Target Word Count</label>
+          <input type="number" id="wordCount" class="input" value="1500" step="100">
+        </div>
+      </div>
+      
+      <button onclick="generateOutline()" class="btn btn-primary">Generate Outline</button>
+    </div>
+    
+    <div id="loading" style="display: none; text-align: center; padding: 40px;">
+      <div class="loading"></div>
+      <p style="margin-top: 16px; color: var(--gray-500);">Generating outline...</p>
+    </div>
+    
+    <div id="results" style="display: none;">
+      <div class="outline-container">
+        <div class="card">
+          <div class="card-header">
+            <h3>Structured Outline</h3>
+            <div>
+              <button class="expand-btn" onclick="expandAll()">Expand All</button>
+              <button class="expand-btn" onclick="collapseAll()">Collapse All</button>
+            </div>
+          </div>
+          <div id="structuredOutline" class="structured-outline"></div>
+          <div class="action-buttons">
+            <button onclick="copyOutline()" class="btn btn-secondary">Copy as Markdown</button>
+            <button onclick="exportOutline()" class="btn btn-secondary">Export</button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3>Markdown Preview</h3>
+          <div id="outlinePreview" class="outline-preview"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let outlineData = null;
+    
+    function generateOutline() {
+      const topic = document.getElementById('topic').value;
+      if (!topic) {
+        alert('Please enter a topic');
+        return;
+      }
+      
+      const contentType = document.getElementById('contentType').value;
+      const depth = document.getElementById('depth').value;
+      const wordCount = parseInt(document.getElementById('wordCount').value) || 1500;
+      
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(handleOutlineResult)
+        .withFailureHandler(handleError)
+        .AI_generateDetailedOutline({
+          topic: topic,
+          contentType: contentType,
+          depth: depth,
+          totalWords: wordCount
+        });
+    }
+    
+    function handleOutlineResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data.ok) {
+        alert('Error: ' + data.error);
+        return;
+      }
+      
+      outlineData = data;
+      document.getElementById('results').style.display = 'block';
+      
+      // Render structured outline
+      const structuredContainer = document.getElementById('structuredOutline');
+      structuredContainer.innerHTML = (data.sections || []).map((section, idx) => `
+        <div class="outline-section">
+          <div class="section-header" onclick="toggleSection(${idx})">
+            <div class="section-title">
+              <span class="section-toggle" id="toggle-${idx}">▶</span>
+              ${section.title}
+              ${section.suggestedWords ? `<span class="word-suggestion">${section.suggestedWords} words</span>` : ''}
+            </div>
+          </div>
+          <div class="section-body" id="section-${idx}">
+            <div class="section-desc">${section.description || ''}</div>
+            ${(section.subsections || []).map(sub => `
+              <div class="subsection">
+                <div class="subsection-title">${sub.title}</div>
+                <div class="subsection-desc">${sub.description || ''}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+      
+      // Render markdown preview
+      renderMarkdownPreview();
+    }
+    
+    function toggleSection(idx) {
+      const body = document.getElementById('section-' + idx);
+      const toggle = document.getElementById('toggle-' + idx);
+      
+      body.classList.toggle('expanded');
+      toggle.classList.toggle('expanded');
+    }
+    
+    function expandAll() {
+      document.querySelectorAll('.section-body').forEach(el => el.classList.add('expanded'));
+      document.querySelectorAll('.section-toggle').forEach(el => el.classList.add('expanded'));
+    }
+    
+    function collapseAll() {
+      document.querySelectorAll('.section-body').forEach(el => el.classList.remove('expanded'));
+      document.querySelectorAll('.section-toggle').forEach(el => el.classList.remove('expanded'));
+    }
+    
+    function renderMarkdownPreview() {
+      if (!outlineData) return;
+      
+      let md = '# ' + outlineData.topic + '\n\n';
+      
+      (outlineData.sections || []).forEach(section => {
+        md += '## ' + section.title + '\n';
+        if (section.description) md += section.description + '\n';
+        md += '\n';
+        
+        (section.subsections || []).forEach(sub => {
+          md += '### ' + sub.title + '\n';
+          if (sub.description) md += sub.description + '\n';
+          md += '\n';
+        });
+      });
+      
+      document.getElementById('outlinePreview').textContent = md;
+    }
+    
+    function copyOutline() {
+      const preview = document.getElementById('outlinePreview').textContent;
+      navigator.clipboard.writeText(preview).then(() => {
+        alert('Copied to clipboard!');
+      });
+    }
+    
+    function exportOutline() {
+      const preview = document.getElementById('outlinePreview').textContent;
+      const blob = new Blob([preview], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'content-outline.md';
+      a.click();
+    }
+    
+    function handleError(error) {
+      document.getElementById('loading').style.display = 'none';
+      alert('Error: ' + error.message);
+    }
+  </script>
+</body>
+</html>

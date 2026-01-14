@@ -1,0 +1,474 @@
+<!--
+  +-----------------------------------------------------------------------------------+
+  |  UI_D3_TopicGalaxy.html - D3.js Radial Mind Map Visualization                     |
+  |  Creates interactive "Topic Galaxy" from discovered keywords                       |
+  |                                                                                    |
+  |  FEATURES:                                                                         |
+  |    - Radial D3.js Tree grouping by intent [What/Why/How/Vs/Or/Like]               |
+  |    - Interactive zoom and pan                                                      |
+  |    - Keyword clustering by semantic similarity                                     |
+  |    - Color-coded by difficulty/opportunity                                         |
+  |                                                                                    |
+  |  EXPORTS:                                                                          |
+  |    - window.renderTopicGalaxy(containerId, keywords, options)                      |
+  |    - window.showTopicGalaxyModal(keywords)                                         |
+  |                                                                                    |
+  |  DEPENDENCIES: D3.js v7 (loaded in UI_Scripts_App.html)                            |
+  +-----------------------------------------------------------------------------------+
+-->
+<style>
+  .topic-galaxy-container {
+    width: 100%;
+    height: 600px;
+    background: radial-gradient(circle at center, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .topic-galaxy-container svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .galaxy-node circle {
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 1.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .galaxy-node circle:hover {
+    stroke: #fff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+  
+  .galaxy-node text {
+    font-size: 10px;
+    fill: #e2e8f0;
+    text-anchor: middle;
+    pointer-events: none;
+    font-weight: 500;
+  }
+  
+  .galaxy-link {
+    fill: none;
+    stroke: rgba(148, 163, 184, 0.2);
+    stroke-width: 1px;
+  }
+  
+  .galaxy-center-node circle {
+    fill: url(#centerGradient) !important;
+    stroke: #f59e0b !important;
+    stroke-width: 3px;
+  }
+  
+  .galaxy-legend {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(15, 23, 42, 0.9);
+    border-radius: 12px;
+    padding: 12px 16px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+  
+  .galaxy-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+  }
+  
+  .galaxy-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  
+  .galaxy-stats {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(15, 23, 42, 0.9);
+    border-radius: 12px;
+    padding: 12px 16px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+  
+  .galaxy-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+  }
+  
+  .galaxy-stat-value {
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+  
+  .galaxy-tooltip {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #e2e8f0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+    max-width: 280px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+  
+  .galaxy-tooltip.visible {
+    opacity: 1;
+  }
+  
+  .galaxy-tooltip-keyword {
+    font-weight: 700;
+    font-size: 13px;
+    color: #a5b4fc;
+    margin-bottom: 6px;
+  }
+  
+  .galaxy-tooltip-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+  }
+  
+  .galaxy-tooltip-metric {
+    font-size: 10px;
+  }
+  
+  .galaxy-tooltip-metric span {
+    color: #94a3b8;
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  // Intent categories with colors
+  const INTENT_CATEGORIES = {
+    'what': { color: '#6366f1', label: 'What/Definition', patterns: ['what is', 'what are', 'define', 'meaning'] },
+    'why': { color: '#8b5cf6', label: 'Why/Reason', patterns: ['why', 'reason', 'because', 'cause'] },
+    'how': { color: '#22c55e', label: 'How/Tutorial', patterns: ['how to', 'how do', 'guide', 'tutorial', 'steps'] },
+    'vs': { color: '#f59e0b', label: 'Vs/Comparison', patterns: [' vs ', ' versus ', 'compared to', 'difference between'] },
+    'best': { color: '#ec4899', label: 'Best/Top', patterns: ['best ', 'top ', 'leading', 'premier'] },
+    'other': { color: '#64748b', label: 'Other', patterns: [] }
+  };
+  
+  // Difficulty colors
+  const DIFFICULTY_COLORS = {
+    easy: '#22c55e',     // Green (0-30)
+    medium: '#f59e0b',   // Amber (31-60)
+    hard: '#ef4444'      // Red (61-100)
+  };
+  
+  /**
+   * Categorize keyword by intent
+   */
+  function categorizeKeyword(keyword) {
+    const lower = (keyword || '').toLowerCase();
+    
+    for (const [intent, config] of Object.entries(INTENT_CATEGORIES)) {
+      if (intent === 'other') continue;
+      if (config.patterns.some(p => lower.includes(p))) {
+        return intent;
+      }
+    }
+    
+    return 'other';
+  }
+  
+  /**
+   * Get difficulty color
+   */
+  function getDifficultyColor(difficulty) {
+    const d = difficulty || 50;
+    if (d <= 30) return DIFFICULTY_COLORS.easy;
+    if (d <= 60) return DIFFICULTY_COLORS.medium;
+    return DIFFICULTY_COLORS.hard;
+  }
+  
+  /**
+   * Build hierarchical data structure for D3
+   */
+  function buildHierarchy(keywords, centerLabel) {
+    // Group by intent
+    const groups = {};
+    
+    keywords.forEach(kw => {
+      const keyword = typeof kw === 'string' ? kw : (kw.keyword || kw.query || kw.term || '');
+      const intent = categorizeKeyword(keyword);
+      
+      if (!groups[intent]) {
+        groups[intent] = {
+          name: INTENT_CATEGORIES[intent].label,
+          intent: intent,
+          children: []
+        };
+      }
+      
+      groups[intent].children.push({
+        name: keyword.length > 25 ? keyword.substring(0, 25) + '...' : keyword,
+        fullName: keyword,
+        size: kw.volume || kw.searchVolume || 100,
+        difficulty: kw.difficulty || kw.kd || 50,
+        traffic: kw.traffic || kw.estimatedTraffic || 0,
+        intent: intent,
+        isLeaf: true
+      });
+    });
+    
+    // Sort children by volume/importance
+    Object.values(groups).forEach(group => {
+      group.children.sort((a, b) => (b.size || 0) - (a.size || 0));
+      // Limit to top 20 per category for readability
+      group.children = group.children.slice(0, 20);
+    });
+    
+    return {
+      name: centerLabel || 'Topic Galaxy',
+      children: Object.values(groups).filter(g => g.children.length > 0)
+    };
+  }
+  
+  /**
+   * Render Topic Galaxy visualization
+   */
+  window.renderTopicGalaxy = function(containerId, keywords, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.error('Topic Galaxy container not found:', containerId);
+      return;
+    }
+    
+    // Clear existing content
+    container.innerHTML = '';
+    container.className = 'topic-galaxy-container';
+    
+    // Build hierarchy
+    const data = buildHierarchy(keywords, options.centerLabel || 'Keywords');
+    
+    // Get dimensions
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+    const radius = Math.min(width, height) / 2 - 80;
+    
+    // Create SVG
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('viewBox', [-width / 2, -height / 2, width, height]);
+    
+    // Add gradient definitions
+    const defs = svg.append('defs');
+    
+    // Center node gradient
+    const centerGradient = defs.append('radialGradient')
+      .attr('id', 'centerGradient');
+    centerGradient.append('stop').attr('offset', '0%').attr('stop-color', '#fbbf24');
+    centerGradient.append('stop').attr('offset', '100%').attr('stop-color', '#d97706');
+    
+    // Create hierarchical layout
+    const tree = d3.tree()
+      .size([2 * Math.PI, radius])
+      .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth);
+    
+    const root = tree(d3.hierarchy(data));
+    
+    // Create zoom behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.5, 3])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+      });
+    
+    svg.call(zoom);
+    
+    // Main group for zooming
+    const g = svg.append('g');
+    
+    // Links
+    g.append('g')
+      .attr('class', 'galaxy-links')
+      .selectAll('path')
+      .data(root.links())
+      .join('path')
+      .attr('class', 'galaxy-link')
+      .attr('d', d3.linkRadial()
+        .angle(d => d.x)
+        .radius(d => d.y));
+    
+    // Nodes
+    const node = g.append('g')
+      .attr('class', 'galaxy-nodes')
+      .selectAll('g')
+      .data(root.descendants())
+      .join('g')
+      .attr('class', d => `galaxy-node ${d.depth === 0 ? 'galaxy-center-node' : ''}`)
+      .attr('transform', d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`);
+    
+    // Node circles
+    node.append('circle')
+      .attr('r', d => {
+        if (d.depth === 0) return 25; // Center
+        if (d.depth === 1) return 15; // Categories
+        return Math.max(5, Math.min(12, Math.sqrt(d.data.size || 100) / 3));
+      })
+      .attr('fill', d => {
+        if (d.depth === 0) return 'url(#centerGradient)';
+        if (d.depth === 1) return INTENT_CATEGORIES[d.data.intent]?.color || '#64748b';
+        return getDifficultyColor(d.data.difficulty);
+      })
+      .style('opacity', d => d.depth === 2 ? 0.85 : 1);
+    
+    // Node labels
+    node.append('text')
+      .attr('dy', '0.31em')
+      .attr('x', d => d.x < Math.PI === !d.children ? 6 : -6)
+      .attr('text-anchor', d => d.x < Math.PI === !d.children ? 'start' : 'end')
+      .attr('transform', d => d.x >= Math.PI ? 'rotate(180)' : null)
+      .text(d => {
+        if (d.depth === 0) return d.data.name;
+        if (d.depth === 1) return d.data.name;
+        return d.data.name;
+      })
+      .style('font-size', d => d.depth === 0 ? '14px' : d.depth === 1 ? '11px' : '9px')
+      .style('font-weight', d => d.depth <= 1 ? '600' : '400')
+      .clone(true).lower()
+      .attr('stroke', 'rgba(15, 23, 42, 0.9)')
+      .attr('stroke-width', 3);
+    
+    // Tooltip
+    const tooltip = document.createElement('div');
+    tooltip.className = 'galaxy-tooltip';
+    container.appendChild(tooltip);
+    
+    node.on('mouseenter', function(event, d) {
+      if (d.depth < 2) return;
+      
+      const kwData = d.data;
+      tooltip.innerHTML = `
+        <div class="galaxy-tooltip-keyword">${kwData.fullName || kwData.name}</div>
+        <div class="galaxy-tooltip-metrics">
+          <div class="galaxy-tooltip-metric"><span>Volume:</span> ${(kwData.size || 0).toLocaleString()}</div>
+          <div class="galaxy-tooltip-metric"><span>Difficulty:</span> ${kwData.difficulty || 'N/A'}</div>
+          <div class="galaxy-tooltip-metric"><span>Traffic:</span> ${(kwData.traffic || 0).toLocaleString()}</div>
+          <div class="galaxy-tooltip-metric"><span>Intent:</span> ${INTENT_CATEGORIES[kwData.intent]?.label || 'Other'}</div>
+        </div>
+      `;
+      
+      tooltip.classList.add('visible');
+      tooltip.style.left = (event.offsetX + 10) + 'px';
+      tooltip.style.top = (event.offsetY + 10) + 'px';
+    });
+    
+    node.on('mousemove', function(event) {
+      tooltip.style.left = (event.offsetX + 10) + 'px';
+      tooltip.style.top = (event.offsetY + 10) + 'px';
+    });
+    
+    node.on('mouseleave', function() {
+      tooltip.classList.remove('visible');
+    });
+    
+    // Add legend
+    const legend = document.createElement('div');
+    legend.className = 'galaxy-legend';
+    legend.innerHTML = `
+      <div style="font-weight: 600; font-size: 11px; color: #f1f5f9; margin-bottom: 8px;">Intent Categories</div>
+      ${Object.entries(INTENT_CATEGORIES).slice(0, -1).map(([key, config]) => `
+        <div class="galaxy-legend-item">
+          <div class="galaxy-legend-dot" style="background: ${config.color}"></div>
+          <span>${config.label}</span>
+        </div>
+      `).join('')}
+      <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.2); font-weight: 600; font-size: 11px; color: #f1f5f9;">Difficulty</div>
+      <div class="galaxy-legend-item">
+        <div class="galaxy-legend-dot" style="background: ${DIFFICULTY_COLORS.easy}"></div>
+        <span>Easy (0-30)</span>
+      </div>
+      <div class="galaxy-legend-item">
+        <div class="galaxy-legend-dot" style="background: ${DIFFICULTY_COLORS.medium}"></div>
+        <span>Medium (31-60)</span>
+      </div>
+      <div class="galaxy-legend-item">
+        <div class="galaxy-legend-dot" style="background: ${DIFFICULTY_COLORS.hard}"></div>
+        <span>Hard (61-100)</span>
+      </div>
+    `;
+    container.appendChild(legend);
+    
+    // Add stats
+    const totalKeywords = keywords.length;
+    const avgDifficulty = keywords.reduce((sum, k) => sum + (k.difficulty || 50), 0) / totalKeywords;
+    const totalVolume = keywords.reduce((sum, k) => sum + (k.volume || k.searchVolume || 0), 0);
+    
+    const stats = document.createElement('div');
+    stats.className = 'galaxy-stats';
+    stats.innerHTML = `
+      <div class="galaxy-stat">🔑 <span class="galaxy-stat-value">${totalKeywords.toLocaleString()}</span> Keywords</div>
+      <div class="galaxy-stat">📊 <span class="galaxy-stat-value">${totalVolume.toLocaleString()}</span> Total Volume</div>
+      <div class="galaxy-stat">⚡ <span class="galaxy-stat-value">${Math.round(avgDifficulty)}</span> Avg Difficulty</div>
+    `;
+    container.appendChild(stats);
+    
+    console.log(`🌌 Topic Galaxy rendered: ${totalKeywords} keywords in ${Object.keys(data.children || []).length} categories`);
+    
+    return { svg, data, root };
+  };
+  
+  /**
+   * Show Topic Galaxy in a modal
+   */
+  window.showTopicGalaxyModal = function(keywords, options = {}) {
+    const modal = document.createElement('div');
+    modal.className = 'elite-modal-overlay';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    
+    modal.innerHTML = `
+      <div style="width:90vw;max-width:1200px;height:80vh;background:#0f172a;border-radius:24px;overflow:hidden;position:relative;border:1px solid rgba(99,102,241,0.3);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div style="padding:20px;border-bottom:1px solid rgba(148,163,184,0.1);display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:28px;">🌌</span>
+            <div>
+              <h2 style="margin:0;color:#f1f5f9;font-size:18px;font-weight:700;">${options.title || 'Topic Galaxy'}</h2>
+              <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">Interactive Keyword Mind Map</p>
+            </div>
+          </div>
+          <button onclick="this.closest('.elite-modal-overlay').remove()" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;">✕ Close</button>
+        </div>
+        <div id="topic-galaxy-modal-container" style="height:calc(100% - 80px);"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Allow click outside to close
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+    
+    // Render galaxy after modal is in DOM
+    setTimeout(() => {
+      window.renderTopicGalaxy('topic-galaxy-modal-container', keywords, {
+        centerLabel: options.centerLabel || 'Discovered Keywords'
+      });
+    }, 100);
+  };
+  
+  console.log('🌌 UI_D3_TopicGalaxy.html loaded - Topic Galaxy visualization ready');
+})();
+</script>

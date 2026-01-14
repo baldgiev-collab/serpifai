@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Settings</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --error: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 24px; }
+    h2 { font-size: 18px; margin-bottom: 16px; padding-top: 10px; border-top: 1px solid var(--border); }
+    h2:first-of-type { border-top: none; padding-top: 0; }
+    
+    .settings-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-help { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    
+    .form-row { display: flex; gap: 16px; }
+    .form-row .form-group { flex: 1; }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .status-badge.connected { background: rgba(35, 134, 54, 0.2); color: var(--success); }
+    .status-badge.disconnected { background: rgba(248, 81, 73, 0.2); color: var(--error); }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+    
+    .api-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .api-item-info { flex: 1; }
+    .api-item-name { font-weight: 500; margin-bottom: 2px; }
+    .api-item-desc { font-size: 12px; color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ Settings</h1>
+    
+    <div id="message" class="message"></div>
+    
+    <!-- API Keys Section -->
+    <div class="settings-section">
+      <h2>🔑 API Keys</h2>
+      
+      <div class="api-item">
+        <div class="api-item-info">
+          <div class="api-item-name">Serper API</div>
+          <div class="api-item-desc">Google Search results API</div>
+        </div>
+        <span class="status-badge" id="serperStatus">Checking...</span>
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-input" id="serperApiKey" placeholder="Enter Serper API Key">
+      </div>
+      
+      <div class="api-item">
+        <div class="api-item-info">
+          <div class="api-item-name">Google Gemini API</div>
+          <div class="api-item-desc">AI content generation</div>
+        </div>
+        <span class="status-badge" id="geminiStatus">Checking...</span>
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-input" id="geminiApiKey" placeholder="Enter Gemini API Key">
+      </div>
+      
+      <div class="api-item">
+        <div class="api-item-info">
+          <div class="api-item-name">PageSpeed API</div>
+          <div class="api-item-desc">Google PageSpeed Insights</div>
+        </div>
+        <span class="status-badge" id="pagespeedStatus">Checking...</span>
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-input" id="pagespeedApiKey" placeholder="Enter PageSpeed API Key">
+      </div>
+      
+      <button class="btn btn-primary" onclick="saveApiKeys()">Save API Keys</button>
+      <button class="btn btn-secondary" onclick="testApiKeys()">Test Connections</button>
+    </div>
+    
+    <!-- Gateway Configuration -->
+    <div class="settings-section">
+      <h2>🌐 Gateway Configuration</h2>
+      
+      <div class="form-group">
+        <label class="form-label">Gateway URL</label>
+        <input type="text" class="form-input" id="gatewayUrl" placeholder="https://your-gateway.com/api">
+        <div class="form-help">URL of your PHP gateway endpoint</div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Gateway API Key</label>
+        <input type="password" class="form-input" id="gatewayApiKey" placeholder="Gateway API Key">
+      </div>
+      
+      <button class="btn btn-primary" onclick="saveGateway()">Save Gateway</button>
+      <button class="btn btn-secondary" onclick="testGateway()">Test Connection</button>
+      <span class="status-badge" id="gatewayStatus">Not configured</span>
+    </div>
+    
+    <!-- MySQL Configuration -->
+    <div class="settings-section">
+      <h2>🗄️ MySQL Database</h2>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Host</label>
+          <input type="text" class="form-input" id="mysqlHost" placeholder="localhost">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Port</label>
+          <input type="text" class="form-input" id="mysqlPort" placeholder="3306">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Database Name</label>
+        <input type="text" class="form-input" id="mysqlDatabase" placeholder="serpifai">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" class="form-input" id="mysqlUser" placeholder="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" id="mysqlPassword" placeholder="password">
+        </div>
+      </div>
+      
+      <button class="btn btn-primary" onclick="saveMysql()">Save MySQL</button>
+      <button class="btn btn-secondary" onclick="testMysql()">Test Connection</button>
+      <button class="btn btn-secondary" onclick="initTables()">Initialize Tables</button>
+      <span class="status-badge" id="mysqlStatus">Not configured</span>
+    </div>
+    
+    <!-- UI Settings -->
+    <div class="settings-section">
+      <h2>🎨 UI Preferences</h2>
+      
+      <div class="form-group">
+        <label class="form-label">Theme</label>
+        <select class="form-input" id="themeSelect">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="serpifai">SerpifAI</option>
+        </select>
+      </div>
+      
+      <button class="btn btn-primary" onclick="saveTheme()">Save Theme</button>
+    </div>
+  </div>
+
+  <script>
+    function init() {
+      loadSettings();
+      checkConnections();
+    }
+    
+    function loadSettings() {
+      google.script.run
+        .withSuccessHandler(function(config) {
+          if (config) {
+            document.getElementById('themeSelect').value = config.theme || 'dark';
+          }
+        })
+        .UI_getPublicConfig();
+    }
+    
+    function checkConnections() {
+      // Check Serper
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateStatus('serperStatus', result && result.ok);
+        })
+        .FT_testSerperConnection();
+      
+      // Check Gemini
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateStatus('geminiStatus', result && result.ok);
+        })
+        .FT_testGeminiConnection();
+      
+      // Check Gateway
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateStatus('gatewayStatus', result && result.ok);
+        })
+        .GW_testConnection();
+      
+      // Check MySQL
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateStatus('mysqlStatus', result && result.ok);
+        })
+        .JDBC_testConnection();
+    }
+    
+    function updateStatus(elementId, connected) {
+      const el = document.getElementById(elementId);
+      if (connected) {
+        el.textContent = '✓ Connected';
+        el.className = 'status-badge connected';
+      } else {
+        el.textContent = '✗ Not connected';
+        el.className = 'status-badge disconnected';
+      }
+    }
+    
+    function saveApiKeys() {
+      const keys = {
+        SERPER_API_KEY: document.getElementById('serperApiKey').value,
+        GEMINI_API_KEY: document.getElementById('geminiApiKey').value,
+        PAGESPEED_API_KEY: document.getElementById('pagespeedApiKey').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showMessage('API keys saved!', 'success');
+            checkConnections();
+          } else {
+            showMessage(result.error || 'Failed to save', 'error');
+          }
+        })
+        .CORE_saveApiKeys(keys);
+    }
+    
+    function testApiKeys() {
+      showMessage('Testing connections...', 'success');
+      checkConnections();
+    }
+    
+    function saveGateway() {
+      const url = document.getElementById('gatewayUrl').value;
+      const apiKey = document.getElementById('gatewayApiKey').value;
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showMessage('Gateway configured!', 'success');
+            updateStatus('gatewayStatus', result.testResult?.ok);
+          } else {
+            showMessage(result.error || 'Failed to save', 'error');
+          }
+        })
+        .GW_configure(url, apiKey);
+    }
+    
+    function testGateway() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateStatus('gatewayStatus', result && result.ok);
+          showMessage(result.ok ? 'Gateway connected!' : 'Gateway test failed', result.ok ? 'success' : 'error');
+        })
+        .GW_testConnection();
+    }
+    
+    function saveMysql() {
+      const config = {
+        host: document.getElementById('mysqlHost').value,
+        port: document.getElementById('mysqlPort').value,
+        database: document.getElementById('mysqlDatabase').value,
+        user: document.getElementById('mysqlUser').value,
+        password: document.getElementById('mysqlPassword').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showMessage('MySQL configured!', 'success');
+            updateStatus('mysqlStatus', true);
+          } else {
+            showMessage(result.error || 'Failed to save', 'error');
+            updateStatus('mysqlStatus', false);
+          }
+        })
+        .JDBC_configure(config);
+    }
+    
+    function testMysql() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          updateStatus('mysqlStatus', result && result.ok);
+          showMessage(result.ok ? 'MySQL connected!' : 'MySQL test failed', result.ok ? 'success' : 'error');
+        })
+        .JDBC_testConnection();
+    }
+    
+    function initTables() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.ok) {
+            showMessage('Tables initialized!', 'success');
+          } else {
+            showMessage(result.error || 'Failed to init tables', 'error');
+          }
+        })
+        .ORACLE_initTables();
+    }
+    
+    function saveTheme() {
+      const theme = document.getElementById('themeSelect').value;
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showMessage('Theme saved!', 'success');
+        })
+        .UI_setTheme({ theme: theme });
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => { msg.className = 'message'; }, 5000);
+    }
+    
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

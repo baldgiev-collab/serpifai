@@ -1,0 +1,233 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     KW_Market_Gravity.html - Market Gravity & Niche Detection
+     Contains: calculateMarketGravityPositions, extractNicheFromCompetitor
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /**
+   * PHASE 2: MARKET GRAVITY CALCULATION (Scalar Math)
+   * X (Intent): (Commercial % - Informational %) normalized 0-100
+   * Y (Volatility): Frequency of Top 10 SERP changes (1-10 scale)
+   * Radius (Mass): (Competitor Monthly Traffic / Total Market Traffic) * 20
+   * [i] Hover: "Gravity is calculated by Traffic Mass (Size) vs. Authority Moat (Position)."
+   */
+  function calculateMarketGravityPositions(competitors, gemini) {
+    console.log('🌐 Calculating Market Gravity Positions (Scalar Math)...');
+
+    const positions = [];
+    const usedCoordinates = new Set();
+
+    // Calculate total market traffic for Radius (Mass) calculation
+    let totalMarketTraffic = 0;
+    competitors.slice(0, 5).forEach(comp => {
+      const pm = comp.processedMetrics || {};
+      totalMarketTraffic += pm.geminiEstimates?.monthlyTraffic || pm.estimatedTraffic || 50000;
+    });
+    if (totalMarketTraffic === 0) totalMarketTraffic = 500000; // Fallback
+
+    competitors.slice(0, 5).forEach((comp, idx) => {
+      const pm = comp.processedMetrics || {};
+      const domain = comp.domain || '';
+      const kwIntel = gemini.keywordIntelligence || {};
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // PHASE 1: RELATIONAL CALCULUS - SCALAR MARKET CALCULATION
+      // NO OVERLAPS: Every coordinate unique to the decimal point
+      // ═══════════════════════════════════════════════════════════════════════════
+
+      // Get estimated traffic from processedMetrics
+      const estTraffic = pm.geminiEstimates?.monthlyTraffic || pm.estimatedTraffic || 50000;
+
+      // MASS % = (Competitor_Traffic / Total_Market_Traffic) * 100
+      const massPercent = (estTraffic / totalMarketTraffic) * 100;
+
+      // X-Coord (Intent Velocity) = (Transactional * 1.0) + (Commercial * 0.5) - (Informational * 0.5)
+      const intentDistribution = kwIntel.intentDistribution || pm.intentBreakdown || {};
+      const transactionalPct = intentDistribution.transactional ||
+        (domain.includes('buy') || domain.includes('pricing') ? 35 : 20);
+      const commercialPct = intentDistribution.commercial ||
+        (domain.includes('tool') || domain.includes('app') ? 45 : 30);
+      const informationalPct = intentDistribution.informational || (100 - transactionalPct - commercialPct);
+      const intentVelocity = (transactionalPct * 1.0) + (commercialPct * 0.5) - (informationalPct * 0.5);
+      // Normalize to 0-100 with decimal precision for uniqueness
+      const xIntent = Math.round((((intentVelocity + 50) / 100) * 100 + (idx * 0.7)) * 10) / 10;
+
+      // Y-Coord (Authority Gap) = (Competitor_Auth - Our_Auth) / 10
+      const ourAuth = gemini.domainAuthority || 35; // Your domain authority baseline
+      const competitorAuth = pm.domainAuthority || pm.geminiEstimates?.authorityScore || (50 + idx * 8);
+      const authorityGap = (competitorAuth - ourAuth) / 10;
+      // Normalize to 1-10 with decimal precision
+      const yAuthGap = Math.round(Math.min(10, Math.max(1, 5 + authorityGap + (idx * 0.3))) * 10) / 10;
+
+      // Radius (Mass): Based on Mass % with visual scaling
+      const radius = Math.round(Math.min(25, Math.max(5, massPercent * 0.4)));
+
+      // Volatility Index (1-10): SERP position turnover frequency
+      const volatilityIndex = pm.geminiEstimates?.serpVolatility || pm.rankingVolatility ||
+        Math.round((10 - (competitorAuth / 12)) + (idx * 0.5));
+      const normalizedVolatility = Math.min(10, Math.max(1, volatilityIndex));
+
+      // Apply variance based on competitor size for visual distinction
+      const isBigPlayer = domain.includes('ahrefs') || domain.includes('semrush') || domain.includes('moz');
+      const baseX = isBigPlayer ? 70 : 40;
+      const baseY = isBigPlayer ? 2 : 6;
+
+      // Final coordinates with decimal precision (NO OVERLAPS)
+      let x = Math.round(Math.min(95, Math.max(5, xIntent * 0.7 + baseX * 0.3 + (idx * 1.7))) * 10) / 10;
+      let y = Math.round(Math.min(10, Math.max(1, yAuthGap * 0.6 + baseY * 0.4 + (idx * 0.4))) * 10) / 10;
+
+      // Variance Enforcement: No two at same coordinate
+      let attempts = 0;
+      while (usedCoordinates.has(`${x},${y}`) && attempts < 25) {
+        x += (idx % 2 === 0 ? 8 : -6) + (attempts % 4);
+        y += (idx % 3 === 0 ? 1 : -1);
+        x = Math.min(95, Math.max(5, x));
+        y = Math.min(10, Math.max(1, y));
+        attempts++;
+      }
+
+      usedCoordinates.add(`${x},${y}`);
+      console.log(`   📍 ${domain}: X=${x.toFixed(1)} (Intent Velocity), Y=${y.toFixed(1)} (Auth Gap), R=${radius} (Mass: ${massPercent.toFixed(1)}%)`);
+      positions.push({
+        x,
+        y,
+        radius,
+        intentVelocity: Math.round(intentVelocity * 10) / 10,
+        authorityGap: Math.round(authorityGap * 10) / 10,
+        volatilityIndex: normalizedVolatility,
+        massPercent: Math.round(massPercent * 100) / 100,
+        domain,
+        competitorAuth,
+        ourAuth,
+        // For UI display
+        xLabel: intentVelocity > 20 ? 'High Intent Velocity' : intentVelocity > 0 ? 'Moderate' : 'Informational',
+        yLabel: authorityGap > 3 ? 'High Auth Gap' : authorityGap > 0 ? 'Moderate Gap' : 'Competitive'
+      });
+    });
+
+    return positions;
+  }
+  window.calculateMarketGravityPositions = calculateMarketGravityPositions;
+
+  /**
+   * Extract niche category from competitor signals
+   * SMART NICHE DETECTION: Analyzes actual competitor content, titles, descriptions
+   * and domain patterns to determine the true business niche
+   */
+  function extractNicheFromCompetitor(comp, gemini) {
+    console.log('🔍 extractNicheFromCompetitor called for:', comp.domain);
+
+    // PRIORITY 0: Use Gemini's detected niche if available
+    const geminiNiche = gemini?.keywordIntelligence?.detectedNiche ||
+      gemini?.marketPosition?.primaryCategory ||
+      gemini?.categoryIntelligence?.category ||
+      gemini?.detectedNiche || '';
+
+    if (geminiNiche && geminiNiche.length > 2 && geminiNiche !== 'other') {
+      console.log('   ✅ Using Gemini detected niche:', geminiNiche);
+      return geminiNiche.toLowerCase().replace(/\s+/g, ' ').trim();
+    }
+
+    // PRIORITY 1: Extract from competitor's website data
+    const title = comp.synthesized?.content?.title || comp.synthesized?.website?.title ||
+      comp.website?.title || comp.phpFetcher?.title || '';
+    const description = comp.synthesized?.content?.description || comp.synthesized?.website?.description ||
+      comp.website?.description || comp.phpFetcher?.description || '';
+    const h1 = comp.website?.h1 || comp.phpFetcher?.headings?.h1?.[0] || '';
+    const domain = (comp.domain || '').toLowerCase();
+
+    // Combined text for analysis
+    const textToAnalyze = `${title} ${description} ${h1} ${domain}`.toLowerCase();
+
+    console.log('   📝 Analyzing text:', textToAnalyze.substring(0, 150) + '...');
+
+    // SMART NICHE DETECTION PATTERNS (ordered by specificity)
+    const nichePatterns = [
+      // Software Development & Tech Staffing (for toptal, turing, andela, etc.)
+      { pattern: /\b(software develop|tech talent|remote develop|hire develop|freelance develop|engineering team|software engineer|full.?stack|backend develop|frontend develop|developer platform|talent platform|tech hiring|developer network|remote tech|outsourc.*develop)\b/i, niche: 'software development talent' },
+      { pattern: /\b(toptal|turing|andela|globant|thoughtworks|hired|lemon\.io|arc\.dev|gun\.io)\b/i, niche: 'software development talent' },
+
+      // Digital Marketing & SEO Tools
+      { pattern: /\b(seo tool|seo software|seo platform|search engine optim|keyword research|backlink|rank track|serp|organic traffic|domain authority)\b/i, niche: 'SEO tools' },
+      { pattern: /\b(ahrefs|semrush|moz\.com|surfer|ubersuggest|serpapi|similarweb)\b/i, niche: 'SEO tools' },
+
+      // AI & Content Tools
+      { pattern: /\b(ai writ|content generat|copywriting|ai content|jasper|copy\.ai|writesonic|grammarly)\b/i, niche: 'AI content tools' },
+
+      // E-commerce & Marketplace
+      { pattern: /\b(ecommerce|e-commerce|online store|shop|marketplace|retail|dropship|amazon fba)\b/i, niche: 'ecommerce' },
+
+      // Gambling & Casino
+      { pattern: /\b(casino|gambling|betting|poker|slots|sportsbook|wagering|jackpot)\b/i, niche: 'online gambling' },
+
+      // Finance & Fintech
+      { pattern: /\b(fintech|finance|banking|payment|invest|trading|crypto|blockchain|insurance)\b/i, niche: 'fintech' },
+
+      // Healthcare & Medical
+      { pattern: /\b(health|medical|pharma|wellness|fitness|telehealth|patient|clinic|hospital)\b/i, niche: 'healthcare' },
+
+      // Education & Learning
+      { pattern: /\b(edtech|education|learning|course|training|tutorial|school|university|academy)\b/i, niche: 'education technology' },
+
+      // HR & Recruiting
+      { pattern: /\b(hr software|recruiting|staffing|job board|talent acquis|hiring platform|applicant track)\b/i, niche: 'HR technology' },
+
+      // CRM & Sales
+      { pattern: /\b(crm|sales software|lead gen|pipeline|salesforce|hubspot|customer relation)\b/i, niche: 'CRM and sales' },
+
+      // Project Management
+      { pattern: /\b(project manage|task manage|team collaborat|workflow|asana|trello|monday\.com|jira)\b/i, niche: 'project management' },
+
+      // Cloud & Infrastructure
+      { pattern: /\b(cloud|aws|azure|devops|infrastructure|kubernetes|docker|serverless)\b/i, niche: 'cloud infrastructure' },
+
+      // Cybersecurity
+      { pattern: /\b(security|cybersec|privacy|vpn|antivirus|firewall|threat|encrypt)\b/i, niche: 'cybersecurity' },
+
+      // Analytics & Data
+      { pattern: /\b(analytics|data platform|business intelligence|bi tool|dashboard|reporting|metrics)\b/i, niche: 'analytics' },
+
+      // Marketing Automation
+      { pattern: /\b(marketing automation|email market|newsletter|campaign|mailchimp|klaviyo|hubspot)\b/i, niche: 'marketing automation' },
+
+      // General SaaS
+      { pattern: /\b(saas|software as a service|subscription|platform|tool|solution)\b/i, niche: 'SaaS platform' }
+    ];
+
+    // Match against patterns
+    for (const { pattern, niche } of nichePatterns) {
+      if (pattern.test(textToAnalyze)) {
+        console.log('   ✅ Matched pattern niche:', niche);
+        return niche;
+      }
+    }
+
+    // PRIORITY 2: Extract from keywordSignals (PAA, related searches)
+    const keywordSignals = comp.keywordSignals || {};
+    const paaQuestions = keywordSignals.peopleAlsoAsk || [];
+    const relatedSearches = keywordSignals.relatedSearches || [];
+
+    if (paaQuestions.length > 0 || relatedSearches.length > 0) {
+      const signalText = [...paaQuestions.map(p => p.question || p), ...relatedSearches.map(r => r.query || r)].join(' ').toLowerCase();
+
+      for (const { pattern, niche } of nichePatterns) {
+        if (pattern.test(signalText)) {
+          console.log('   ✅ Matched signal niche:', niche);
+          return niche;
+        }
+      }
+    }
+
+    // PRIORITY 3: Analyze all competitor domains to determine collective niche
+    console.log('   ⚠️ No pattern match, using default based on domain analysis');
+
+    // Special case: if domain contains common patterns
+    if (domain.includes('toptal') || domain.includes('turing') || domain.includes('andela') ||
+      domain.includes('globant') || domain.includes('thoughtworks')) {
+      return 'software development talent';
+    }
+
+    // Fallback to generic but still useful
+    return 'technology services';
+  }
+  window.extractNicheFromCompetitor = extractNicheFromCompetitor;
+</script>

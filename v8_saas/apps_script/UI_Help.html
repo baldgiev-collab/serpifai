@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      padding: 24px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .faq-item { margin-bottom: 12px; }
+    .faq-q {
+      font-weight: 500;
+      font-size: 13px;
+      color: #667eea;
+      margin-bottom: 4px;
+    }
+    .faq-a { font-size: 13px; color: #a0a0a0; line-height: 1.5; }
+    .shortcut {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .shortcut:last-child { border-bottom: none; }
+    .key {
+      background: rgba(255,255,255,0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .api-list { list-style: none; font-size: 13px; }
+    .api-list li {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .api-list li:last-child { border-bottom: none; }
+    .api-name { color: #667eea; font-weight: 500; }
+    .api-desc { color: #888; font-size: 12px; }
+    a { color: #667eea; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .btn {
+      display: inline-block;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 8px;
+      color: #e0e0e0;
+      cursor: pointer;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📚 Help & Documentation</h2>
+  <p class="subtitle">SerpifAI Elite Intelligence Engine v8.0</p>
+  
+  <div class="section">
+    <div class="section-title">🚀 Quick Start</div>
+    <div class="faq-item">
+      <div class="faq-q">How do I start my first analysis?</div>
+      <div class="faq-a">
+        1. Go to <b>Serpifai → Configure API Keys</b> and add your API keys<br>
+        2. Open <b>Serpifai → Launch Dashboard</b><br>
+        3. Click <b>New Analysis</b> and enter your domain + competitors<br>
+        4. Wait for the 450-keyword forensic analysis to complete
+      </div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">What APIs do I need?</div>
+      <div class="faq-a">
+        At minimum: <b>Serper.dev</b> for SERP data. Optional: Gemini (AI analysis), 
+        PageSpeed Insights, OpenPageRank for enhanced intelligence.
+      </div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">🔑 API Reference</div>
+    <ul class="api-list">
+      <li>
+        <span class="api-name">Serper.dev</span>
+        <div class="api-desc">SERP data, AI Overview detection, featured snippets. Get key at serper.dev</div>
+      </li>
+      <li>
+        <span class="api-name">Google Gemini</span>
+        <div class="api-desc">AI-powered keyword clustering, competitor analysis. Free tier available.</div>
+      </li>
+      <li>
+        <span class="api-name">PageSpeed Insights</span>
+        <div class="api-desc">Core Web Vitals, performance scoring. Free with Google API key.</div>
+      </li>
+      <li>
+        <span class="api-name">OpenPageRank</span>
+        <div class="api-desc">Domain authority metrics. Free tier: 10 domains/request.</div>
+      </li>
+    </ul>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">⌨️ Menu Shortcuts</div>
+    <div class="shortcut">
+      <span>Launch Dashboard</span>
+      <span class="key">Serpifai → Dashboard</span>
+    </div>
+    <div class="shortcut">
+      <span>New Analysis</span>
+      <span class="key">Serpifai → New Analysis</span>
+    </div>
+    <div class="shortcut">
+      <span>Configure APIs</span>
+      <span class="key">Serpifai → API Keys</span>
+    </div>
+    <div class="shortcut">
+      <span>View Reports</span>
+      <span class="key">Serpifai → Reports</span>
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">❓ FAQ</div>
+    <div class="faq-item">
+      <div class="faq-q">Why 450 keywords?</div>
+      <div class="faq-a">
+        Our forensic analysis covers 9 modules × 50 keywords each = 450 total keywords. 
+        This provides comprehensive coverage of intent patterns, competitor gaps, and AI Overview opportunities.
+      </div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">How long does analysis take?</div>
+      <div class="faq-a">
+        Typically 8-15 minutes depending on API response times. Progress is shown in the dashboard.
+      </div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Where is my data stored?</div>
+      <div class="faq-a">
+        All data stays in your Google Sheet. API keys are stored in PropertiesService (encrypted by Google).
+      </div>
+    </div>
+  </div>
+  
+  <button class="btn" onclick="google.script.host.close()">Close Help</button>
+</body>
+</html>

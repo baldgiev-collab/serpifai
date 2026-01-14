@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      padding: 24px;
+    }
+    h2 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #a0a0a0;
+    }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 14px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .status.valid { color: #34d399; }
+    .status.missing { color: #f87171; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dot.green { background: #34d399; }
+    .dot.red { background: #f87171; }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #e0e0e0;
+    }
+    .message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+    .success { background: rgba(16,185,129,0.2); color: #34d399; }
+    .error { background: rgba(239,68,68,0.2); color: #f87171; }
+    .note {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🔑 Configure API Keys</h2>
+  
+  <div class="form-group">
+    <label>Gemini API Key *</label>
+    <input type="password" id="gemini" placeholder="Enter Gemini API key">
+    <div class="status" id="status-gemini"></div>
+    <div class="note">Get from: console.cloud.google.com</div>
+  </div>
+  
+  <div class="form-group">
+    <label>Serper API Key *</label>
+    <input type="password" id="serper" placeholder="Enter Serper API key">
+    <div class="status" id="status-serper"></div>
+    <div class="note">Get from: serper.dev</div>
+  </div>
+  
+  <div class="form-group">
+    <label>PageSpeed API Key (optional)</label>
+    <input type="password" id="pageSpeed" placeholder="Enter PageSpeed API key">
+    <div class="status" id="status-pageSpeed"></div>
+  </div>
+  
+  <div class="form-group">
+    <label>OpenPageRank API Key (optional)</label>
+    <input type="password" id="openPageRank" placeholder="Enter OpenPageRank API key">
+    <div class="status" id="status-openPageRank"></div>
+  </div>
+  
+  <div class="form-group">
+    <label>License Key *</label>
+    <input type="text" id="license" placeholder="Enter license key">
+    <div class="status" id="status-license"></div>
+  </div>
+  
+  <button class="btn btn-primary" onclick="saveKeys()">💾 Save API Keys</button>
+  <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+  
+  <div id="message"></div>
+  
+  <script>
+    function init() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          const missing = result.missing || [];
+          updateStatus('gemini', !missing.includes('GEMINI_API_KEY'));
+          updateStatus('serper', !missing.includes('SERPER_API_KEY'));
+          updateStatus('license', !missing.includes('LICENSE_KEY'));
+          updateStatus('pageSpeed', true);
+          updateStatus('openPageRank', true);
+        })
+        .UI_getApiStatus();
+    }
+    
+    function updateStatus(id, configured) {
+      const el = document.getElementById('status-' + id);
+      el.className = 'status ' + (configured ? 'valid' : 'missing');
+      el.innerHTML = '<span class="dot ' + (configured ? 'green' : 'red') + '"></span>' +
+        (configured ? 'Configured' : 'Not configured');
+    }
+    
+    function saveKeys() {
+      const keys = {
+        gemini: document.getElementById('gemini').value,
+        serper: document.getElementById('serper').value,
+        pageSpeed: document.getElementById('pageSpeed').value,
+        openPageRank: document.getElementById('openPageRank').value,
+        license: document.getElementById('license').value
+      };
+      
+      // Filter empty values
+      Object.keys(keys).forEach(k => { if (!keys[k]) delete keys[k]; });
+      
+      if (Object.keys(keys).length === 0) {
+        showMessage('Please enter at least one API key', 'error');
+        return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage('API keys saved successfully!', 'success');
+            init();
+          } else {
+            showMessage('Failed to save: ' + result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(err) {
+          showMessage('Error: ' + err.message, 'error');
+        })
+        .UI_saveApiKeys(keys);
+    }
+    
+    function showMessage(text, type) {
+      const el = document.getElementById('message');
+      el.className = 'message ' + type;
+      el.textContent = text;
+    }
+    
+    init();
+  </script>
+</body>
+</html>

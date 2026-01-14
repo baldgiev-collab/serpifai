@@ -1,0 +1,4 @@
+﻿**/**
+!v6_saas/apps_script/**/*.gs
+!v6_saas/apps_script/**/*.html
+!appsscript.json

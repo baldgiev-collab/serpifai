@@ -1,0 +1,529 @@
+<!--
+================================================================================
+UI_Elite_Opportunity_Engine.html - Elite Authority & Opportunity Scoring System
+================================================================================
+Extracted from UI_Scripts_App.html
+
+Contains:
+- calculateEliteAuthorityScore: Multi-signal hybrid authority engine
+- getKDTier: KD tier label and color helper
+- calculateFallbackEliteTraffic: Elite traffic & value calculator with CTR model
+- calculateOpportunityScore: Actionable opportunity score per competitor
+- showOpportunityModal: Opportunity score modal display
+
+Dependencies:
+- None (standalone utility functions)
+
+Window Exports:
+- window.calculateEliteAuthorityScore
+- window.getKDTier
+- window.calculateFallbackEliteTraffic
+- window.calculateOpportunityScore
+- window.showOpportunityModal
+================================================================================
+-->
+<script>
+  /**
+   * ---------------------------------------------------------------------------
+   * ELITE AUTHORITY SCORE CALCULATOR - Multi-Signal Hybrid Engine (2026)
+   * ---------------------------------------------------------------------------
+   * Combines multiple signals for Ahrefs/SEMrush-level accuracy:
+   * - Gemini Semantic Estimate: 40% weight (deep research authority analysis)
+   * - OpenPageRank Score: 30% weight (algorithmic authority)
+   * - Backlink Profile: 15% weight (link equity signals)
+   * - Domain Age/Trust: 15% weight (established presence)
+   */
+  function calculateEliteAuthorityScore(pm, apiData, synthesized) {
+    const signals = {
+      geminiEstimate: null,
+      pageRankScore: null,
+      backlinkSignal: null,
+      trustSignal: null
+    };
+    
+    // 1. GEMINI SEMANTIC ESTIMATE (40% weight) - Primary authority signal
+    // Gemini analyzes brand recognition, industry position, content authority
+    if (pm.authorityScore && pm.authorityScore > 0) {
+      signals.geminiEstimate = pm.authorityScore;
+    } else if (synthesized?.seo?.authorityScore) {
+      signals.geminiEstimate = synthesized.seo.authorityScore;
+    } else if (pm.domainAuthority && pm.domainAuthority > 0) {
+      signals.geminiEstimate = pm.domainAuthority;
+    }
+    
+    // 2. OPENPAGERANK SCORE (30% weight) - Algorithmic authority
+    const pageRank = pm.pageRank || apiData?.openPageRank?.page_rank_decimal || 0;
+    if (pageRank > 0) {
+      // PageRank is 0-10, convert to 0-100 with logarithmic scaling for higher accuracy
+      // Top sites like semrush.com have PR ~6.2-6.5, should map to 80-90 authority
+      signals.pageRankScore = Math.min(100, Math.round(
+        pageRank <= 3 ? pageRank * 8 :       // Low PR: linear scaling
+        pageRank <= 5 ? 24 + (pageRank - 3) * 12 :  // Medium: accelerated
+        pageRank <= 7 ? 48 + (pageRank - 5) * 18 :  // High: premium scaling
+        84 + (pageRank - 7) * 5              // Top tier: ceiling approach
+      ));
+    }
+    
+    // 3. BACKLINK PROFILE SIGNAL (15% weight)
+    const backlinks = pm.backlinks || pm.estimatedBacklinks || 0;
+    const refDomains = pm.refDomains || pm.estimatedRefDomains || 0;
+    if (backlinks > 0 || refDomains > 0) {
+      // Logarithmic scaling: 1M backlinks → 90, 100K → 70, 10K → 50
+      const backlinkScore = backlinks > 0 ? Math.min(100, Math.round(Math.log10(backlinks) * 15)) : 0;
+      const refDomainScore = refDomains > 0 ? Math.min(100, Math.round(Math.log10(refDomains) * 18)) : 0;
+      signals.backlinkSignal = Math.max(backlinkScore, refDomainScore);
+    }
+    
+    // 4. TRUST/DOMAIN AGE SIGNAL (15% weight)
+    // Inferred from schema presence, SSL, structured data, social proof
+    const seoScore = pm.seoScore || apiData?.pageSpeed?.scores?.seo || 0;
+    const hasSchema = synthesized?.technicalSEO?.hasSchema || false;
+    const hasSocialProof = synthesized?.seo?.socialProof?.total > 0;
+    signals.trustSignal = Math.min(100, Math.round(
+      (seoScore * 0.5) + (hasSchema ? 25 : 0) + (hasSocialProof ? 25 : 0)
+    )) || null;
+    
+    // HYBRID CALCULATION with weighted average
+    const weights = { gemini: 0.40, pageRank: 0.30, backlink: 0.15, trust: 0.15 };
+    let totalWeight = 0;
+    let weightedSum = 0;
+    
+    if (signals.geminiEstimate !== null) {
+      weightedSum += signals.geminiEstimate * weights.gemini;
+      totalWeight += weights.gemini;
+    }
+    if (signals.pageRankScore !== null) {
+      weightedSum += signals.pageRankScore * weights.pageRank;
+      totalWeight += weights.pageRank;
+    }
+    if (signals.backlinkSignal !== null) {
+      weightedSum += signals.backlinkSignal * weights.backlink;
+      totalWeight += weights.backlink;
+    }
+    if (signals.trustSignal !== null) {
+      weightedSum += signals.trustSignal * weights.trust;
+      totalWeight += weights.trust;
+    }
+    
+    // Calculate final score, normalize by available weights
+    if (totalWeight > 0) {
+      const finalScore = Math.round(weightedSum / totalWeight);
+      console.log(`      Authority Signals: gemini=${signals.geminiEstimate}, pageRank=${signals.pageRankScore}, backlinks=${signals.backlinkSignal}, trust=${signals.trustSignal} → Final: ${finalScore}`);
+      return Math.min(100, Math.max(1, finalScore));
+    }
+    
+    // Ultimate fallback: simple PageRank * 10
+    return pageRank > 0 ? Math.round(pageRank * 10) : 'N/A';
+  }
+  window.calculateEliteAuthorityScore = calculateEliteAuthorityScore;
+
+  /**
+   * Get KD Tier label and color
+   */
+  function getKDTier(kd) {
+    if (kd <= 20) return { label: 'Very Easy', color: '#22c55e', icon: '🟢' };
+    if (kd <= 40) return { label: 'Easy', color: '#84cc16', icon: '🟡' };
+    if (kd <= 60) return { label: 'Medium', color: '#f59e0b', icon: '🟠' };
+    if (kd <= 80) return { label: 'Hard', color: '#ef4444', icon: '🔴' };
+    return { label: 'Very Hard', color: '#7c3aed', icon: '🟣' };
+  }
+  window.getKDTier = getKDTier;
+  
+  /**
+   * ---------------------------------------------------------------------------
+   * ELITE TRAFFIC & VALUE CALCULATOR (2026 CTR Model)
+   * ---------------------------------------------------------------------------
+   * Fixes Traffic Value $0 bug by:
+   * 1. Using industry-based CPC estimation when API data unavailable
+   * 2. Applying volume estimation from authority signals
+   * 3. Cross-validating with Gemini traffic estimates
+   */
+  function calculateFallbackEliteTraffic(organic, pageRank, pm) {
+    // 2026 CTR Curve (Google Click Curve with AI Overview adjustments)
+    const CTR_CURVE = {
+      1: 0.398, 2: 0.187, 3: 0.102, 4: 0.072, 5: 0.051,
+      6: 0.037, 7: 0.028, 8: 0.021, 9: 0.016, 10: 0.012
+    };
+    
+    // INDUSTRY CPC LOOKUP TABLE (2026 averages)
+    // Used when Serper doesn't provide CPC data
+    const INDUSTRY_CPC = {
+      'saas': 3.50, 'software': 3.20, 'seo': 4.80, 'marketing': 3.80,
+      'finance': 5.20, 'insurance': 6.50, 'legal': 7.80, 'health': 2.40,
+      'ecommerce': 1.80, 'retail': 1.50, 'education': 2.20, 'travel': 2.00,
+      'technology': 3.00, 'business': 2.80, 'default': 2.50
+    };
+    
+    // Detect industry from keywords/domain for CPC estimation
+    const detectIndustry = (keyword, domain) => {
+      const text = (keyword + ' ' + domain).toLowerCase();
+      if (text.match(/seo|serp|keyword|backlink|ranking/)) return 'seo';
+      if (text.match(/saas|software|app|tool|platform/)) return 'saas';
+      if (text.match(/marketing|advertis|campaign|social/)) return 'marketing';
+      if (text.match(/finance|invest|bank|trading|crypto/)) return 'finance';
+      if (text.match(/health|medical|doctor|pharma/)) return 'health';
+      if (text.match(/shop|store|buy|ecommerce|product/)) return 'ecommerce';
+      if (text.match(/legal|lawyer|attorney|law/)) return 'legal';
+      return 'default';
+    };
+    
+    // Get estimated CPC for a keyword
+    const getEstimatedCPC = (keyword, domain) => {
+      const industry = detectIndustry(keyword, domain);
+      return INDUSTRY_CPC[industry] || INDUSTRY_CPC.default;
+    };
+    
+    // VOLUME ESTIMATION based on PageRank authority
+    // Higher authority domains rank for higher volume keywords
+    const getEstimatedVolume = (position, pageRank) => {
+      const baseVolume = position <= 2 ? 5000 : position <= 5 ? 2500 : 1000;
+      const authorityMultiplier = pageRank > 5 ? 2.0 : pageRank > 3 ? 1.5 : 1.0;
+      return Math.round(baseVolume * authorityMultiplier);
+    };
+    
+    let totalTraffic = 0;
+    let totalValue = 0;
+    const keywordBreakdown = [];
+    const pageTrafficMap = {};
+    
+    // Process organic results with industry-aware CPC estimation
+    const domain = pm?.domain || '';
+    
+    // ---------------------------------------------------------------------------
+    // FIX: If no organic results, estimate traffic value from authority signals
+    // This prevents $0 traffic value for high-authority sites
+    // ---------------------------------------------------------------------------
+    if (!organic || organic.length === 0) {
+      // Estimate based on PageRank authority
+      const authorityTraffic = pageRank > 5 ? 500000 : pageRank > 4 ? 100000 : pageRank > 3 ? 30000 : pageRank > 2 ? 10000 : 3000;
+      const avgCPC = detectIndustry('', domain) === 'seo' ? 4.80 : detectIndustry('', domain) === 'saas' ? 3.50 : 2.50;
+      const estimatedValue = Math.round(authorityTraffic * avgCPC * 0.1); // ~10% keyword monetization
+      
+      return {
+        organicTraffic: authorityTraffic,
+        trafficValue: estimatedValue,
+        trafficValueFormatted: '$' + estimatedValue.toLocaleString() + '/mo',
+        avgPosition: 0,
+        relativeKD: pageRank > 5 ? 75 : pageRank > 4 ? 60 : pageRank > 3 ? 45 : 35,
+        kdTier: getKDTier(pageRank > 5 ? 75 : pageRank > 4 ? 60 : pageRank > 3 ? 45 : 35),
+        topPages: [],
+        keywordBreakdown: [],
+        serpFeatures: [],
+        serpModifier: 0,
+        methodology: 'Authority-Based Estimation (No SERP data)',
+        source: 'PageRank Fallback',
+        hasRealData: false
+      };
+    }
+    
+    organic.forEach((item, index) => {
+      const position = item.position || (index + 1);
+      if (position > 10) return;
+      
+      const keyword = item.title || item.query || `Keyword #${position}`;
+      const ctr = CTR_CURVE[position] || 0.005;
+      const volume = getEstimatedVolume(position, pageRank);
+      const traffic = Math.round(volume * ctr);
+      const cpc = item.cpc || getEstimatedCPC(keyword, domain);
+      const value = Math.round(traffic * cpc);
+      
+      keywordBreakdown.push({
+        keyword: keyword,
+        position: position,
+        volume: volume,
+        ctr: Math.round(ctr * 1000) / 10,
+        traffic: traffic,
+        cpc: cpc,
+        value: value,
+        industry: detectIndustry(keyword, domain)
+      });
+      
+      const url = item.link || '';
+      if (!pageTrafficMap[url]) {
+        pageTrafficMap[url] = {
+          url: url,
+          title: item.title || '',
+          traffic: 0,
+          keywords: 0
+        };
+      }
+      pageTrafficMap[url].traffic += traffic;
+      pageTrafficMap[url].keywords += 1;
+      
+      totalTraffic += traffic;
+      totalValue += value;
+    });
+    
+    // Build top pages
+    const topPages = Object.values(pageTrafficMap)
+      .sort((a, b) => b.traffic - a.traffic)
+      .slice(0, 10)
+      .map((p, i) => ({
+        ...p,
+        rank: i + 1,
+        trafficShare: totalTraffic > 0 ? Math.round((p.traffic / totalTraffic) * 1000) / 10 : 0
+      }));
+    
+    // ---------------------------------------------------------------
+    // DYNAMIC RELATIVE KD CALCULATION (2026)
+    // ---------------------------------------------------------------
+    // KD = How hard it is for YOUR site to compete with this competitor
+    // Formula: (competitorAuthority / userAuthority) * baseKD * competitiveModifier
+    const userAuthority = window.serpifaiUserAuthority || 30; // User can set in project settings, default 30
+    const competitorAuthority = pageRank > 0 ? Math.round(pageRank * 10) : 50;
+    const avgKeywordDifficulty = keywordBreakdown.length > 0 
+      ? keywordBreakdown.reduce((sum, k) => sum + (k.position <= 3 ? 70 : k.position <= 5 ? 55 : 40), 0) / keywordBreakdown.length
+      : 50;
+    
+    // Competitive ratio: if competitor has 2x your authority, KD is harder
+    const competitiveRatio = competitorAuthority / Math.max(userAuthority, 1);
+    const baseKD = Math.min(100, Math.max(10, avgKeywordDifficulty * competitiveRatio * 0.8));
+    
+    // Apply modifiers based on keyword breakdown
+    const highVolumeKeywords = keywordBreakdown.filter(k => k.volume > 3000).length;
+    const kdModifier = highVolumeKeywords > 3 ? 1.15 : highVolumeKeywords > 1 ? 1.05 : 1.0;
+    
+    const relativeKD = Math.min(100, Math.max(1, Math.round(baseKD * kdModifier)));
+    console.log(`      Relative KD: user=${userAuthority}, comp=${competitorAuthority}, avgKD=${avgKeywordDifficulty.toFixed(1)}, ratio=${competitiveRatio.toFixed(2)} → ${relativeKD}`);
+    
+    return {
+      organicTraffic: totalTraffic,
+      trafficValue: totalValue,
+      trafficValueFormatted: '$' + totalValue.toLocaleString() + '/mo',
+      avgPosition: organic.length > 0 
+        ? Math.round(organic.reduce((sum, o) => sum + (o.position || 0), 0) / organic.length * 10) / 10 
+        : 0,
+      relativeKD: relativeKD,
+      kdTier: getKDTier(relativeKD),
+      topPages: topPages,
+      keywordBreakdown: keywordBreakdown.slice(0, 20),
+      serpFeatures: [],
+      serpModifier: 0,
+      methodology: 'Client-Side Fallback',
+      source: 'Fallback Estimation',
+      hasRealData: organic.length > 0
+    };
+  }
+  window.calculateFallbackEliteTraffic = calculateFallbackEliteTraffic;
+
+  /**
+   * -----------------------------------------------------------------------------------
+   * OPPORTUNITY SCORE CALCULATION (Task 34)
+   * Calculates actionable opportunity score for each competitor
+   * Higher score = Better opportunity for the user to capture traffic
+   * -----------------------------------------------------------------------------------
+   */
+  function calculateOpportunityScore(comp, userAuthority = 30) {
+    const pm = comp.processedMetrics || {};
+    const synthesized = comp.synthesized || {};
+    
+    let score = 0;
+    const factors = [];
+    
+    // 1. TRAFFIC VALUE OPPORTUNITY (0-25 pts)
+    // High traffic value + lower authority = good opportunity
+    const trafficValue = pm.trafficValue || 0;
+    const compAuthority = pm.authorityScore || pm.pageRank * 10 || 50;
+    const valuePerAuthority = trafficValue / Math.max(compAuthority, 1);
+    const valueScore = Math.min(25, Math.round(Math.log10(valuePerAuthority + 1) * 10));
+    score += valueScore;
+    if (valueScore > 15) {
+      factors.push({ factor: 'High Value/Authority Ratio', points: valueScore, icon: '💰' });
+    }
+    
+    // 2. AUTHORITY GAP (0-25 pts)
+    // If user's authority is close to or exceeds competitor, easier opportunity
+    const authorityGap = compAuthority - userAuthority;
+    const authorityScore = authorityGap <= 0 ? 25 : 
+                          authorityGap <= 10 ? 20 :
+                          authorityGap <= 20 ? 15 :
+                          authorityGap <= 30 ? 10 : 5;
+    score += authorityScore;
+    if (authorityScore >= 15) {
+      factors.push({ factor: 'Reachable Authority', points: authorityScore, icon: '🎯' });
+    }
+    
+    // 3. CONTENT QUALITY WEAKNESS (0-20 pts)
+    // Lower content scores = opportunity to outperform
+    const contentScore = pm.contentScore || synthesized.content?.quality || 70;
+    const contentOpp = contentScore < 50 ? 20 : contentScore < 65 ? 15 : contentScore < 80 ? 10 : 5;
+    score += contentOpp;
+    if (contentOpp >= 15) {
+      factors.push({ factor: 'Weak Content Quality', points: contentOpp, icon: '📝' });
+    }
+    
+    // 4. TECHNICAL WEAKNESS (0-15 pts)
+    // Lower PageSpeed/SEO = opportunity
+    const siteHealth = pm.siteHealth || pm.seoScore || 70;
+    const perfScore = pm.performanceScore || pm.pageSpeed || 70;
+    const technicalScore = ((100 - siteHealth) / 100 * 7.5) + ((100 - perfScore) / 100 * 7.5);
+    score += Math.round(technicalScore);
+    if (technicalScore >= 10) {
+      factors.push({ factor: 'Technical Weaknesses', points: Math.round(technicalScore), icon: '⚙️' });
+    }
+    
+    // 5. DECLINING TREND (0-15 pts)
+    // Declining competitors = opportunity to capture their audience
+    const trendChange = pm.trendChange || 0;
+    const trendScore = trendChange < -10 ? 15 : trendChange < -5 ? 10 : trendChange < 0 ? 5 : 0;
+    score += trendScore;
+    if (trendScore >= 10) {
+      factors.push({ factor: 'Declining Traffic', points: trendScore, icon: '📉' });
+    }
+    
+    // Ensure score is between 0-100
+    score = Math.min(100, Math.max(0, score));
+    
+    // Determine tier
+    let tier, color, icon, label;
+    if (score >= 75) {
+      tier = 'excellent';
+      color = '#10b981';
+      icon = '🚀';
+      label = 'Excellent Opportunity';
+    } else if (score >= 55) {
+      tier = 'good';
+      color = '#3b82f6';
+      icon = '✅';
+      label = 'Good Opportunity';
+    } else if (score >= 35) {
+      tier = 'moderate';
+      color = '#f59e0b';
+      icon = '⚠';
+      label = 'Moderate Opportunity';
+    } else {
+      tier = 'difficult';
+      color = '#ef4444';
+      icon = '❌';
+      label = 'Difficult';
+    }
+    
+    return {
+      score: score,
+      tier: tier,
+      color: color,
+      icon: icon,
+      label: label,
+      factors: factors.slice(0, 3), // Top 3 factors
+      breakdown: {
+        valueOpp: valueScore,
+        authorityGap: authorityScore,
+        contentOpp: contentOpp,
+        technicalOpp: Math.round(technicalScore),
+        trendOpp: trendScore
+      },
+      recommendation: score >= 55 
+        ? 'Prioritize this competitor for content gap analysis and outreach.'
+        : score >= 35
+        ? 'Good target for long-term content strategy.'
+        : 'Focus on other competitors first, then tackle this one.'
+    };
+  }
+  window.calculateOpportunityScore = calculateOpportunityScore;
+  
+  /**
+   * Show Opportunity Score Modal
+   */
+  window.showOpportunityModal = function(domain, encodedData) {
+    try {
+      const data = JSON.parse(decodeURIComponent(encodedData));
+      const opp = data.opportunity || {};
+      const factors = opp.factors || [];
+      const breakdown = opp.breakdown || {};
+      
+      // Build factors list
+      const factorsHtml = factors.map(f => `
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <span style="font-size: 24px;">${f.icon}</span>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: #374151;">${f.factor}</div>
+            <div style="font-size: 12px; color: #6b7280;">+${f.points} points</div>
+          </div>
+          <div style="font-size: 20px; font-weight: 800; color: ${opp.color};">+${f.points}</div>
+        </div>
+      `).join('') || '<div style="padding: 12px; color: #6b7280;">No significant opportunities detected</div>';
+      
+      // Build score breakdown
+      const breakdownItems = [
+        { label: 'Value/Authority', score: breakdown.valueOpp || 0, max: 25 },
+        { label: 'Authority Gap', score: breakdown.authorityGap || 0, max: 25 },
+        { label: 'Content Weakness', score: breakdown.contentOpp || 0, max: 20 },
+        { label: 'Technical Issues', score: breakdown.technicalOpp || 0, max: 15 },
+        { label: 'Declining Trend', score: breakdown.trendOpp || 0, max: 15 }
+      ];
+      
+      const breakdownHtml = breakdownItems.map(item => {
+        const pct = (item.score / item.max) * 100;
+        return `
+          <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+              <span style="color: #374151;">${item.label}</span>
+              <span style="color: #6b7280;">${item.score}/${item.max}</span>
+            </div>
+            <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+              <div style="height: 100%; width: ${pct}%; background: ${opp.color}; border-radius: 3px;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      const modalHtml = `
+        <div id="opportunity-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center;" onclick="if(event.target.id==='opportunity-modal')this.remove()">
+          <div style="background: #f8fafc; border-radius: 20px; max-width: 600px; width: 95%; max-height: 90vh; overflow: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
+            
+            <!-- Header with Score -->
+            <div style="padding: 24px; background: linear-gradient(135deg, ${opp.color} 0%, ${opp.color}dd 100%); border-radius: 20px 20px 0 0; text-align: center; color: white;">
+              <div style="font-size: 60px; font-weight: 900;">${opp.score}</div>
+              <div style="font-size: 14px; opacity: 0.9;">Opportunity Score</div>
+              <div style="display: inline-block; margin-top: 12px; padding: 6px 16px; background: rgba(255,255,255,0.2); border-radius: 20px; font-size: 13px; font-weight: 600;">
+                ${opp.icon} ${opp.label}
+              </div>
+              <button onclick="this.closest('#opportunity-modal').remove()" style="position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px;">×</button>
+            </div>
+            
+            <!-- Domain -->
+            <div style="padding: 16px 24px; background: white; text-align: center; border-bottom: 1px solid #e5e7eb;">
+              <span style="font-size: 16px; font-weight: 600; color: #374151;">🌐 ${domain}</span>
+            </div>
+            
+            <!-- Key Factors -->
+            <div style="padding: 20px 24px;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #374151;">🎯 Key Opportunity Factors</h3>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${factorsHtml}
+              </div>
+            </div>
+            
+            <!-- Score Breakdown -->
+            <div style="padding: 20px 24px; background: white;">
+              <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #374151;">📊 Score Breakdown</h3>
+              ${breakdownHtml}
+            </div>
+            
+            <!-- Recommendation -->
+            <div style="padding: 20px 24px;">
+              <div style="background: ${opp.score >= 55 ? '#dcfce7' : opp.score >= 35 ? '#fef9c3' : '#fee2e2'}; border-radius: 12px; padding: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 18px;">💡</span>
+                  <span style="font-weight: 700; color: ${opp.score >= 55 ? '#166534' : opp.score >= 35 ? '#854d0e' : '#991b1b'};">Recommendation</span>
+                </div>
+                <p style="margin: 0; font-size: 13px; color: ${opp.score >= 55 ? '#166534' : opp.score >= 35 ? '#854d0e' : '#991b1b'};">
+                  ${opp.recommendation || 'Analyze this competitor\'s content strategy for opportunities.'}
+                </p>
+              </div>
+            </div>
+            
+            <!-- Footer -->
+            <div style="padding: 16px 24px; background: #f8fafc; border-radius: 0 0 20px 20px; font-size: 11px; color: #64748b; text-align: center;">
+              ℹ️ Score based on traffic value, authority gap, content quality, technical factors, and trend analysis
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch (e) {
+      console.error('Error showing opportunity modal:', e);
+    }
+  };
+</script>

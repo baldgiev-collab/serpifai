@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab { padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"], textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus, textarea:focus { outline: none; border-color: var(--primary); }
+    textarea { min-height: 100px; resize: vertical; }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    
+    .similarity-meter { margin: 20px 0; }
+    .meter-bar { height: 20px; background: var(--bg); border-radius: 10px; overflow: hidden; }
+    .meter-fill { height: 100%; border-radius: 10px; transition: width 0.5s; }
+    .meter-fill.duplicate { background: var(--danger); }
+    .meter-fill.near { background: var(--warning); }
+    .meter-fill.similar { background: #fbbc04; }
+    .meter-fill.unique { background: var(--success); }
+    .meter-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--muted); }
+    
+    .result-status { padding: 20px; text-align: center; border-radius: 8px; margin: 16px 0; }
+    .result-status.duplicate { background: #fce8e6; }
+    .result-status.near-duplicate { background: #fef7e0; }
+    .result-status.similar { background: #fef7e0; }
+    .result-status.unique { background: #e6f4ea; }
+    .result-status h2 { font-size: 48px; margin-bottom: 8px; }
+    
+    .duplicate-pair { display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--bg); border-radius: 8px; margin-bottom: 12px; }
+    .pair-url { flex: 1; word-break: break-all; font-size: 13px; }
+    .pair-similarity { flex-shrink: 0; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .pair-similarity.high { background: #fce8e6; color: var(--danger); }
+    .pair-similarity.medium { background: #fef7e0; color: #e37400; }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+    .stat-item { padding: 12px; background: var(--bg); border-radius: 8px; text-align: center; }
+    .stat-value { font-size: 20px; font-weight: 500; color: var(--primary); }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Duplicate Content Checker</h1>
+    <p class="subtitle">Detect and compare duplicate content</p>
+  </div>
+  
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('compare')">Compare Pages</div>
+    <div class="tab" onclick="switchTab('analyze')">Analyze URL</div>
+    <div class="tab" onclick="switchTab('batch')">Batch Check</div>
+  </div>
+  
+  <!-- Compare Tab -->
+  <div id="compare-tab" class="tab-content active">
+    <div class="card">
+      <h3>Compare Two Pages</h3>
+      <div class="form-group">
+        <label>First URL</label>
+        <input type="text" id="url1" placeholder="https://example.com/page1">
+      </div>
+      <div class="form-group">
+        <label>Second URL</label>
+        <input type="text" id="url2" placeholder="https://example.com/page2">
+      </div>
+      <button class="btn-primary" onclick="comparePages()">Compare</button>
+    </div>
+    
+    <div id="compare-result" style="display: none;">
+      <div class="result-status" id="compareStatus">
+        <h2 id="similarityPercent">0%</h2>
+        <p id="statusLabel">Similarity</p>
+      </div>
+      
+      <div class="similarity-meter">
+        <div class="meter-bar">
+          <div class="meter-fill" id="meterFill" style="width: 0%"></div>
+        </div>
+        <div class="meter-labels">
+          <span>Unique</span>
+          <span>Similar</span>
+          <span>Near-Duplicate</span>
+          <span>Duplicate</span>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>Recommendation</h3>
+        <p id="recommendation">--</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Analyze Tab -->
+  <div id="analyze-tab" class="tab-content">
+    <div class="card">
+      <h3>Analyze Single URL</h3>
+      <div class="form-group">
+        <label>URL</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="analyzeUrl" placeholder="https://example.com/page">
+          <button class="btn-primary" onclick="analyzeUrl()">Analyze</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="analyze-result" style="display: none;">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value" id="wordCount">0</div>
+          <div class="stat-label">Words</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="uniquenessScore">0</div>
+          <div class="stat-label">Uniqueness Score</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="lexicalDiv">0</div>
+          <div class="stat-label">Lexical Diversity</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="paragraphs">0</div>
+          <div class="stat-label">Paragraphs</div>
+        </div>
+      </div>
+      
+      <div class="card" id="variationsCard">
+        <h3>Potential Issues</h3>
+        <div id="variationsList"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Batch Tab -->
+  <div id="batch-tab" class="tab-content">
+    <div class="card">
+      <h3>Batch Duplicate Check</h3>
+      <div class="form-group">
+        <label>URLs (one per line, max 10)</label>
+        <textarea id="batchUrls" placeholder="https://example.com/page1&#10;https://example.com/page2&#10;https://example.com/page3"></textarea>
+      </div>
+      <button class="btn-primary" onclick="batchCheck()">Find Duplicates</button>
+    </div>
+    
+    <div id="batch-result" style="display: none;">
+      <div class="card" id="duplicatesCard">
+        <h3>🔴 Duplicates</h3>
+        <div id="duplicatesList"></div>
+      </div>
+      <div class="card" id="nearDuplicatesCard">
+        <h3>🟡 Near-Duplicates</h3>
+        <div id="nearDuplicatesList"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Analyzing content...</p>
+  </div>
+  
+  <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tab + '-tab').classList.add('active');
+    }
+    
+    function showLoading() { document.getElementById('loading').style.display = 'block'; }
+    function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+    
+    function comparePages() {
+      const url1 = document.getElementById('url1').value.trim();
+      const url2 = document.getElementById('url2').value.trim();
+      if (!url1 || !url2) { alert('Enter both URLs'); return; }
+      
+      showLoading();
+      document.getElementById('compare-result').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(handleCompareResult)
+        .withFailureHandler(handleError)
+        .FT_comparePages({ url1: url1, url2: url2 });
+    }
+    
+    function handleCompareResult(data) {
+      hideLoading();
+      if (!data || !data.ok) { alert(data?.error || 'Failed'); return; }
+      
+      const similarity = data.similarity;
+      document.getElementById('similarityPercent').textContent = similarity + '%';
+      
+      const status = data.status;
+      const statusEl = document.getElementById('compareStatus');
+      statusEl.className = 'result-status ' + status;
+      document.getElementById('statusLabel').textContent = status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
+      
+      const fill = document.getElementById('meterFill');
+      fill.style.width = similarity + '%';
+      fill.className = 'meter-fill';
+      if (similarity > 90) fill.classList.add('duplicate');
+      else if (similarity > 70) fill.classList.add('near');
+      else if (similarity > 50) fill.classList.add('similar');
+      else fill.classList.add('unique');
+      
+      document.getElementById('recommendation').textContent = data.recommendation;
+      document.getElementById('compare-result').style.display = 'block';
+    }
+    
+    function analyzeUrl() {
+      const url = document.getElementById('analyzeUrl').value.trim();
+      if (!url) { alert('Enter a URL'); return; }
+      
+      showLoading();
+      document.getElementById('analyze-result').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(handleAnalyzeResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeDuplicateContent({ url: url });
+    }
+    
+    function handleAnalyzeResult(data) {
+      hideLoading();
+      if (!data || !data.ok) { alert(data?.error || 'Failed'); return; }
+      
+      document.getElementById('wordCount').textContent = data.content?.wordCount || 0;
+      document.getElementById('paragraphs').textContent = data.content?.paragraphCount || 0;
+      document.getElementById('uniquenessScore').textContent = data.uniquenessIndicators?.uniquenessScore || 0;
+      document.getElementById('lexicalDiv').textContent = data.uniquenessIndicators?.lexicalDiversity || 0;
+      
+      const variations = data.metaVariations || [];
+      const list = document.getElementById('variationsList');
+      if (variations.length === 0) {
+        list.innerHTML = '<div class="empty">No issues detected</div>';
+      } else {
+        list.innerHTML = variations.map(v => 
+          '<div class="duplicate-pair"><div class="pair-url"><strong>' + v.issue + '</strong><br>' + v.description + '</div></div>'
+        ).join('');
+      }
+      
+      document.getElementById('analyze-result').style.display = 'block';
+    }
+    
+    function batchCheck() {
+      const urls = document.getElementById('batchUrls').value.trim().split('\n').filter(u => u.trim());
+      if (urls.length < 2) { alert('Enter at least 2 URLs'); return; }
+      
+      showLoading();
+      document.getElementById('batch-result').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(handleBatchResult)
+        .withFailureHandler(handleError)
+        .FT_findDuplicates({ urls: urls });
+    }
+    
+    function handleBatchResult(data) {
+      hideLoading();
+      if (!data || !data.ok) { alert(data?.error || 'Failed'); return; }
+      
+      renderPairs('duplicatesList', data.duplicates, 'high');
+      renderPairs('nearDuplicatesList', data.nearDuplicates, 'medium');
+      
+      document.getElementById('batch-result').style.display = 'block';
+    }
+    
+    function renderPairs(elementId, pairs, level) {
+      const list = document.getElementById(elementId);
+      if (!pairs || pairs.length === 0) {
+        list.innerHTML = '<div class="empty">None found</div>';
+        return;
+      }
+      
+      list.innerHTML = pairs.map(p => 
+        '<div class="duplicate-pair">' +
+          '<div class="pair-url">' + p.url1 + '</div>' +
+          '<div style="font-size: 20px;">↔</div>' +
+          '<div class="pair-url">' + p.url2 + '</div>' +
+          '<div class="pair-similarity ' + level + '">' + p.similarity + '%</div>' +
+        '</div>'
+      ).join('');
+    }
+    
+    function handleError(err) {
+      hideLoading();
+      alert('Error: ' + (err.message || 'Unknown'));
+    }
+  </script>
+</body>
+</html>

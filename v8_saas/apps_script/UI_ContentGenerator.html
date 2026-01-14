@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Content Generator</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    
+    .tabs {
+      display: flex;
+      gap: 5px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .tab:hover { color: var(--text-primary); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .form-textarea { min-height: 100px; resize: vertical; font-family: inherit; }
+    
+    .form-row { display: flex; gap: 15px; }
+    .form-row .form-group { flex: 1; }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--text-secondary); cursor: not-allowed; }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    
+    .output-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      display: none;
+    }
+    .output-section.active { display: block; }
+    
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .output-content {
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      padding: 20px;
+      white-space: pre-wrap;
+      font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+      display: none;
+    }
+    .loading.active { display: block; }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .message.success { display: block; background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+    
+    .copy-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    .copy-btn:hover { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✍️ Content Generator</h1>
+    <div id="message" class="message"></div>
+    
+    <div class="tabs">
+      <div class="tab active" data-tab="article">📄 Article</div>
+      <div class="tab" data-tab="outline">📋 Outline</div>
+      <div class="tab" data-tab="meta">🏷️ Meta Tags</div>
+      <div class="tab" data-tab="faq">❓ FAQ</div>
+    </div>
+    
+    <div class="tab-content active" id="tab-article">
+      <div class="section">
+        <div class="form-group">
+          <label class="form-label">Topic / Title</label>
+          <input type="text" class="form-input" id="articleTopic" placeholder="Enter the main topic">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Target Keyword</label>
+            <input type="text" class="form-input" id="articleKeyword" placeholder="Primary keyword">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Word Count</label>
+            <select class="form-select" id="articleLength">
+              <option value="500">Short (~500 words)</option>
+              <option value="1000" selected>Medium (~1000 words)</option>
+              <option value="2000">Long (~2000 words)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tone</label>
+          <select class="form-select" id="articleTone">
+            <option value="professional">Professional</option>
+            <option value="casual">Casual</option>
+            <option value="formal">Formal</option>
+            <option value="friendly">Friendly</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="generateArticle()">✨ Generate Article</button>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="tab-outline">
+      <div class="section">
+        <div class="form-group">
+          <label class="form-label">Topic</label>
+          <input type="text" class="form-input" id="outlineTopic" placeholder="Article topic">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Keywords (comma-separated)</label>
+          <input type="text" class="form-input" id="outlineKeywords" placeholder="keyword1, keyword2, keyword3">
+        </div>
+        <button class="btn btn-primary" onclick="generateOutline()">📋 Generate Outline</button>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="tab-meta">
+      <div class="section">
+        <div class="form-group">
+          <label class="form-label">Page Title or Content Summary</label>
+          <textarea class="form-textarea" id="metaContent" placeholder="Enter page content or summary"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Keyword</label>
+          <input type="text" class="form-input" id="metaKeyword" placeholder="Primary keyword">
+        </div>
+        <button class="btn btn-primary" onclick="generateMeta()">🏷️ Generate Meta Tags</button>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="tab-faq">
+      <div class="section">
+        <div class="form-group">
+          <label class="form-label">Topic</label>
+          <input type="text" class="form-input" id="faqTopic" placeholder="Topic for FAQ">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Number of Questions</label>
+          <select class="form-select" id="faqCount">
+            <option value="5" selected>5 Questions</option>
+            <option value="10">10 Questions</option>
+            <option value="15">15 Questions</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="generateFaq()">❓ Generate FAQ</button>
+      </div>
+    </div>
+    
+    <div class="loading" id="loading">
+      <p>🤖 AI is generating content...</p>
+      <p>This may take a moment</p>
+    </div>
+    
+    <div class="output-section" id="output">
+      <div class="output-header">
+        <h2 id="outputTitle">Generated Content</h2>
+        <button class="copy-btn" onclick="copyOutput()">📋 Copy</button>
+      </div>
+      <div class="output-content" id="outputContent"></div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+    
+    function generateArticle() {
+      const topic = document.getElementById('articleTopic').value.trim();
+      const keyword = document.getElementById('articleKeyword').value.trim();
+      const length = document.getElementById('articleLength').value;
+      const tone = document.getElementById('articleTone').value;
+      
+      if (!topic) return showMessage('Please enter a topic', 'error');
+      
+      callAI('article', { topic, keyword, length, tone });
+    }
+    
+    function generateOutline() {
+      const topic = document.getElementById('outlineTopic').value.trim();
+      const keywords = document.getElementById('outlineKeywords').value.trim();
+      
+      if (!topic) return showMessage('Please enter a topic', 'error');
+      
+      callAI('outline', { topic, keywords: keywords.split(',').map(k => k.trim()) });
+    }
+    
+    function generateMeta() {
+      const content = document.getElementById('metaContent').value.trim();
+      const keyword = document.getElementById('metaKeyword').value.trim();
+      
+      if (!content) return showMessage('Please enter content summary', 'error');
+      
+      callAI('meta', { content, keyword });
+    }
+    
+    function generateFaq() {
+      const topic = document.getElementById('faqTopic').value.trim();
+      const count = document.getElementById('faqCount').value;
+      
+      if (!topic) return showMessage('Please enter a topic', 'error');
+      
+      callAI('faq', { topic, count: parseInt(count) });
+    }
+    
+    function callAI(type, params) {
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('output').classList.remove('active');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          document.getElementById('loading').classList.remove('active');
+          if (result.ok) {
+            showOutput(type, result.content || result.text || JSON.stringify(result.data, null, 2));
+          } else {
+            showMessage(result.error || 'Generation failed', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('loading').classList.remove('active');
+          showMessage('Error: ' + error.message, 'error');
+        })
+        .AI_generateContent({ type: type, params: params });
+    }
+    
+    function showOutput(type, content) {
+      const titles = { article: 'Generated Article', outline: 'Content Outline', meta: 'Meta Tags', faq: 'FAQ' };
+      document.getElementById('outputTitle').textContent = titles[type] || 'Generated Content';
+      document.getElementById('outputContent').textContent = content;
+      document.getElementById('output').classList.add('active');
+    }
+    
+    function copyOutput() {
+      const content = document.getElementById('outputContent').textContent;
+      navigator.clipboard.writeText(content).then(() => showMessage('Copied!', 'success'));
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      setTimeout(() => msg.className = 'message', 3000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!--
+  ╔═══════════════════════════════════════════════════════════════════════════════════╗
+  ║  UI_Raw_Data_Tables.html - Elite Raw Data Comparison System                       ║
+  ║  Renders side-by-side competitor comparison tables (Ahrefs/SEMrush style)         ║
+  ║                                                                                    ║
+  ║  Dependencies: UI_Table_Helpers.html (getNestedValue, renderFieldValue, etc.)     ║
+  ║  Exports: renderRawDataComparisonTable, renderGeminiComparativeInsight            ║
+  ╚═══════════════════════════════════════════════════════════════════════════════════╝
+-->
+<script>
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // ELITE RAW DATA COMPARISON SYSTEM - Ahrefs/SEMrush Level
+  // Display actual H1, H2, H3, Meta, Schema for all competitors side-by-side
+  // ═══════════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Render a raw data comparison table showing all competitors side-by-side
+   * Like Ahrefs Site Audit or SEMrush Site Audit comparison
+   * @param {Object} config - { title, icon, description, competitors, dataExtractor, fields }
+   * @returns {string} HTML string
+   */
+  window.renderRawDataComparisonTable = function(config) {
+    const { title, icon, description, competitors, dataExtractor, fields, geminiInsight } = config;
+    
+    if (!competitors || competitors.length === 0) {
+      return `<div style="padding: 16px; background: #fef3c7; border-radius: 8px; color: #92400e;">No competitor data available</div>`;
+    }
+
+    let html = `
+      <div class="raw-data-comparison-section" style="background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 16px 20px; color: white;">
+          <h3 style="margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">${icon || '📊'}</span>
+            ${title || 'Raw Data Comparison'}
+          </h3>
+          ${description ? `<p style="margin: 8px 0 0; font-size: 13px; opacity: 0.9;">${description}</p>` : ''}
+        </div>
+        
+        ${geminiInsight ? `
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 14px 20px; border-bottom: 1px solid #f59e0b;">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <span style="font-size: 18px;">🤖</span>
+              <div>
+                <strong style="color: #92400e; font-size: 13px;">GEMINI COMPARATIVE INSIGHT</strong>
+                <p style="margin: 6px 0 0; color: #78350f; font-size: 14px; line-height: 1.5;">${geminiInsight}</p>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; min-width: 800px;">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th style="padding: 12px 16px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; border-bottom: 2px solid #e2e8f0; width: 160px;">Metric</th>
+                ${competitors.slice(0, 6).map((c, idx) => `
+                  <th style="padding: 12px 16px; text-align: left; font-size: 13px; color: #1e293b; font-weight: 600; border-bottom: 2px solid #e2e8f0; min-width: 140px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="width: 24px; height: 24px; border-radius: 50%; background: ${window.getCompetitorColor(idx)}; color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">${idx + 1}</span>
+                      ${window.truncateDomain(c.domain || 'Unknown')}
+                    </div>
+                  </th>
+                `).join('')}
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    // Extract data for each competitor using extractRealMetrics when available
+    const competitorData = competitors.slice(0, 6).map((c, idx) => {
+      try {
+        const realMetrics = typeof window.extractRealMetrics === 'function' ? window.extractRealMetrics(c) : null;
+        const customData = dataExtractor ? dataExtractor(c, idx, realMetrics) : {};
+        return { ...realMetrics, ...customData, _raw: c, _realMetrics: realMetrics };
+      } catch (e) {
+        console.warn('Data extraction error for', c.domain, e);
+        return { _raw: c };
+      }
+    });
+
+    // Render each field as a row
+    fields.forEach((field, fieldIdx) => {
+      html += `
+        <tr style="background: ${fieldIdx % 2 === 0 ? 'white' : '#f8fafc'};">
+          <td style="padding: 12px 16px; font-size: 13px; color: #64748b; font-weight: 500; border-bottom: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 14px;">${field.icon || '📌'}</span>
+              ${field.label}
+            </div>
+          </td>
+      `;
+
+      // Find the best value for highlighting
+      let bestValue = null;
+      let bestIdx = -1;
+      
+      const allValues = competitorData.map((data, idx) => {
+        let val = window.getNestedValue(data, field.key);
+        if ((val === null || val === undefined || val === 0) && data._realMetrics) {
+          const altPaths = [`technical.${field.key}`, `content.${field.key}`, `authority.${field.key}`, `serp.${field.key}`, `gemini.${field.key}`];
+          for (const altPath of altPaths) {
+            const altVal = window.getNestedValue(data._realMetrics, altPath);
+            if (altVal !== null && altVal !== undefined && altVal !== 0) { val = altVal; break; }
+          }
+        }
+        return { val, idx };
+      });
+      
+      if (field.compareMode === 'highest') {
+        allValues.forEach(({val, idx}) => {
+          const numVal = typeof val === 'number' ? val : (typeof val === 'string' ? parseFloat(val) : 0);
+          if (numVal > (bestValue || 0)) { bestValue = numVal; bestIdx = idx; }
+        });
+      } else if (field.compareMode === 'lowest') {
+        allValues.forEach(({val, idx}) => {
+          const numVal = typeof val === 'number' ? val : (typeof val === 'string' ? parseFloat(val) : Infinity);
+          if (numVal > 0 && numVal < (bestValue || Infinity)) { bestValue = numVal; bestIdx = idx; }
+        });
+      } else if (field.compareMode === 'longest') {
+        allValues.forEach(({val, idx}) => {
+          const len = typeof val === 'string' ? val.length : (Array.isArray(val) ? val.length : 0);
+          if (len > (bestValue || 0)) { bestValue = len; bestIdx = idx; }
+        });
+      }
+
+      // Render each competitor's value
+      competitorData.forEach((data, idx) => {
+        let value = allValues[idx].val;
+        const isWinner = idx === bestIdx && bestValue !== null && bestValue !== 0;
+        
+        const detailData = {
+          key: field.key, label: field.label,
+          competitors: competitorData.map((d, i) => {
+            const rm = d._realMetrics || {};
+            return {
+              domain: d.domain || competitors[i]?.domain || 'Unknown',
+              value: allValues[i].val,
+              source: rm.technical?.source || rm.content?.source || rm.authority?.source || 'Data Layer'
+            };
+          })
+        };
+        
+        html += `
+          <td style="padding: 12px 16px; font-size: 13px; color: #1e293b; border-bottom: 1px solid #e2e8f0; vertical-align: top; ${isWinner ? 'background: #ecfdf5;' : ''}" 
+              class="clickable-metric" 
+              onclick='window.showEnhancedMetricModal("${window.escapeHtml(field.key)}", "${window.escapeHtml(field.label)}", ${JSON.stringify(detailData.competitors).replace(/'/g, "\\'")})'
+              title="${window.escapeHtml(field.label)}: ${window.escapeHtml(String(value))}">
+            ${window.renderFieldValue(value, field.type, isWinner)}
+          </td>
+        `;
+      });
+      html += `</tr>`;
+    });
+
+    html += `</tbody></table></div></div>`;
+    return html;
+  };
+
+  /**
+   * Render a Gemini comparative insight card for a section
+   * @param {Object} config - { title, icon, analysis, winner, gaps, recommendations, confidence }
+   * @returns {string} HTML string
+   */
+  window.renderGeminiComparativeInsight = function(config) {
+    const { title, icon, analysis, winner, gaps, recommendations, confidence } = config;
+    
+    if (!analysis) return '';
+
+    return `
+      <div class="gemini-insight-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          <span style="font-size: 28px;">🤖</span>
+          <div style="flex: 1;">
+            <h4 style="margin: 0 0 8px; font-size: 16px; color: #92400e; font-weight: 700;">
+              ${icon || '📊'} ${title || 'Gemini Comparative Analysis'}
+            </h4>
+            <p style="margin: 0 0 12px; font-size: 14px; color: #78350f; line-height: 1.6;">${analysis}</p>
+            
+            ${winner ? `
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                <span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">🏆 LEADER</span>
+                <span style="font-size: 14px; font-weight: 600; color: #065f46;">${winner}</span>
+              </div>
+            ` : ''}
+            
+            ${gaps && gaps.length > 0 ? `
+              <div style="margin-top: 12px;">
+                <strong style="font-size: 13px; color: #92400e;">Key Gaps Identified:</strong>
+                <ul style="margin: 8px 0 0; padding-left: 20px;">
+                  ${gaps.slice(0, 3).map(g => `<li style="font-size: 13px; color: #78350f; margin-bottom: 4px;">${g}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+            
+            ${recommendations && recommendations.length > 0 ? `
+              <div style="margin-top: 12px;">
+                <strong style="font-size: 13px; color: #92400e;">💡 Recommendations:</strong>
+                <ul style="margin: 8px 0 0; padding-left: 20px;">
+                  ${recommendations.slice(0, 3).map(r => `<li style="font-size: 13px; color: #78350f; margin-bottom: 4px;">${r}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+            
+            ${confidence ? `
+              <div style="margin-top: 12px; font-size: 12px; color: #92400e;">
+                <span style="opacity: 0.7;">Confidence: </span>
+                <span style="font-weight: 600;">${confidence}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  console.log('✅ UI_Raw_Data_Tables.html loaded');
+</script>

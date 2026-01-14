@@ -1,0 +1,473 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UI_Elite_Charts_Market.html
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Market Intelligence Chart Renderers
+ * Extracted from V6 UI_Elite_Charts.html (lines 474-908)
+ * 
+ * Dependencies: 
+ * - UI_Elite_Charts_Utils.html (formatting utilities)
+ * - UI_Elite_Charts_Core.html (getCompetitorColors, extractDomains)
+ * 
+ * Contents:
+ * - renderMarketShareChart: Traffic share distribution doughnut
+ * - renderMarketTrendsChart: Authority momentum trends line chart
+ * - renderCategoryGapChart: Category gap opportunities bar chart
+ * - renderNarrativeChart: Narrative archetype analysis stacked bar
+ * - renderMomentumHeatmap: Momentum landscape bubble chart
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Market Share Distribution Chart (Doughnut)
+ * Shows traffic share distribution across competitors
+ */
+function renderMarketShareChart(data) {
+  const ctx = document.getElementById('chart-comp-market-share');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const labels = competitors.map(c => c.domain || c.competitor || 'Unknown');
+  
+  // Get REAL traffic data from processedMetrics or Gemini marketIntelligence
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const geminiMarket = geminiData.marketIntelligence?.marketShare || {};
+  const geminiShares = geminiMarket.competitorShares || [];
+  
+  console.log('📊 renderMarketShareChart - Data source:', {
+    hasGeminiAnalysis: !!data.geminiAnalysis,
+    hasAnalysis: !!data.analysis,
+    geminiKeys: Object.keys(geminiData),
+    hasMarketShare: !!geminiMarket.competitorShares
+  });
+  
+  // Build traffic values - prioritize Gemini, then processedMetrics
+  const trafficValues = competitors.map((c, idx) => {
+    const geminiShare = geminiShares.find(s => s.domain === c.domain);
+    const realTraffic = c.processedMetrics?.estimatedTraffic || c.processedMetrics?.organicTraffic || 0;
+    if (realTraffic > 0) {
+      return realTraffic;
+    }
+    if (geminiShare && typeof geminiShare.trafficShare === 'number') {
+      const totalMarket = geminiMarket.totalMarketTraffic || 1000000;
+      return Math.round(geminiShare.trafficShare * totalMarket);
+    }
+    return c.processedMetrics?.domainAuthority ? c.processedMetrics.domainAuthority * 1000 : 10000;
+  });
+  
+  // Calculate percentages
+  const totalTraffic = trafficValues.reduce((sum, val) => sum + val, 0);
+  const marketShare = trafficValues.map(traffic => 
+    totalTraffic > 0 ? Math.round((traffic / totalTraffic) * 100) : Math.round(100 / labels.length)
+  );
+  
+  const gradientColors = ['#667eea', '#764ba2', '#34a853', '#fbbc04', '#ea4335', '#00acc1'];
+  
+  console.log('📊 Market Share Chart - Traffic:', trafficValues, 'Shares:', marketShare);
+  
+  // Destroy existing chart before creating new one
+  if (window.competitorCharts && window.competitorCharts['market-share']) {
+    window.competitorCharts['market-share'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['market-share'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: marketShare,
+        backgroundColor: gradientColors.slice(0, labels.length),
+        borderWidth: 3,
+        borderColor: '#fff',
+        hoverOffset: 15,
+        hoverBorderWidth: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '55%',
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 1500,
+        easing: 'easeOutQuart'
+      },
+      plugins: {
+        legend: { 
+          position: 'right', 
+          labels: { font: { size: 11, weight: '500' }, padding: 12, usePointStyle: true } 
+        },
+        title: {
+          display: true,
+          text: '📈 Traffic Share Distribution',
+          font: { size: 14, weight: '700' },
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const traffic = trafficValues[context.dataIndex];
+              return [
+                `Share: ${context.raw}%`,
+                `Est. Traffic: ${traffic.toLocaleString()}/mo`,
+                `SOV Rank: #${context.dataIndex + 1}`
+              ];
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Market Trends Chart (Line)
+ * Shows authority momentum trends over quarters
+ */
+function renderMarketTrendsChart(data) {
+  const ctx = document.getElementById('chart-comp-market-trends');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const months = ['Q-3', 'Q-2', 'Q-1', 'Current'];
+  const colors = ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'];
+  
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const marketIntel = geminiData.marketIntelligence || {};
+  
+  console.log('📊 renderMarketTrendsChart - Data:', {
+    competitorsCount: competitors.length,
+    hasGemini: !!marketIntel.trendForecasting,
+    source: data.geminiAnalysis ? 'geminiAnalysis' : data.analysis ? 'analysis' : 'none'
+  });
+  
+  if (!Array.isArray(competitors) || competitors.length === 0) {
+    console.warn('⚠️ renderMarketTrendsChart: No valid competitors array');
+    return;
+  }
+  
+  const geminiMomentum = marketIntel.trendForecasting?.momentum || [];
+  const macroMomentum = marketIntel.macroMicroMomentum?.competitorMomentum || [];
+  
+  const datasets = competitors.slice(0, 5).map((comp, index) => {
+    const currentAuthority = comp.processedMetrics?.authorityScore ||
+                            comp.processedMetrics?.domainAuthority || 50;
+    
+    const geminiTrend = geminiMomentum.find(m => m.domain === comp.domain);
+    const macroTrend = macroMomentum.find(m => m.domain === comp.domain);
+    const trend = geminiTrend?.trend || macroTrend?.momentum || 'Stable';
+    
+    let trendMultiplier = 1;
+    if (trend === 'Rising') trendMultiplier = 1.15;
+    else if (trend === 'Declining') trendMultiplier = 0.85;
+    
+    const baseValue = currentAuthority / trendMultiplier;
+    const trendData = [
+      Math.round(baseValue * 0.88),
+      Math.round(baseValue * 0.93),
+      Math.round(baseValue * 0.97),
+      currentAuthority
+    ];
+    
+    return {
+      label: `${comp.domain || 'Competitor ' + (index + 1)} (${trend})`,
+      data: trendData,
+      borderColor: colors[index % colors.length],
+      backgroundColor: colors[index % colors.length] + '15',
+      tension: 0.4,
+      borderWidth: 3,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      pointBackgroundColor: colors[index % colors.length],
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      fill: true
+    };
+  });
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['market-trends']) {
+    window.competitorCharts['market-trends'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['market-trends'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: { duration: 2000, easing: 'easeOutQuart' },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          max: 100, 
+          ticks: { font: { size: 11 }, stepSize: 25 },
+          title: { display: true, text: 'Authority Score', font: { size: 11, weight: '600' } },
+          grid: { color: 'rgba(0,0,0,0.06)' }
+        },
+        x: { 
+          grid: { display: false }, 
+          ticks: { font: { size: 11, weight: '500' } }
+        }
+      },
+      plugins: {
+        legend: { 
+          position: 'bottom', 
+          labels: { font: { size: 11 }, padding: 15, usePointStyle: true } 
+        },
+        title: { 
+          display: true, 
+          text: '📉 Authority Momentum Trends', 
+          font: { size: 14, weight: '700' }, 
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const change = context.dataIndex > 0 
+                ? context.raw - context.dataset.data[context.dataIndex - 1]
+                : 0;
+              const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+              return `${context.dataset.label.split(' (')[0]}: ${context.raw} ${arrow}${Math.abs(change)}`;
+            }
+          }
+        }
+      },
+      interaction: { intersect: false, mode: 'index' }
+    }
+  });
+}
+
+/**
+ * Category Gap Chart (Horizontal Bar)
+ * Shows category gap opportunities with competition levels
+ */
+function renderCategoryGapChart(data) {
+  const ctx = document.getElementById('chart-comp-category-gaps');
+  if (!ctx) return;
+  
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const gapAnalysis = geminiData.keywordIntelligence?.gapAnalysis || {};
+  const categoryGaps = geminiData.marketIntelligence?.categoryGaps || {};
+  
+  let priorityGaps = [];
+  
+  if (gapAnalysis.criticalGaps?.length > 0) {
+    priorityGaps = gapAnalysis.criticalGaps.map(gap => ({
+      gap: gap.keyword || gap.gap || gap.topic,
+      opportunity: gap.opportunityScore || Math.round(100 - (gap.difficulty || 50)),
+      competition: gap.difficulty > 60 ? 'High' : gap.difficulty > 30 ? 'Medium' : 'Low'
+    }));
+  } else if (categoryGaps.priorityGaps?.length > 0) {
+    priorityGaps = categoryGaps.priorityGaps;
+  } else if (data.competitors?.length > 0) {
+    const competitors = data.competitors;
+    const allKeywords = competitors.flatMap(c => c.processedMetrics?.topKeywords || []);
+    const uniqueGaps = [...new Set(allKeywords.slice(0, 6))];
+    priorityGaps = uniqueGaps.map((kw, idx) => ({
+      gap: typeof kw === 'string' ? kw : kw.keyword || `Gap ${idx + 1}`,
+      opportunity: 80 - (idx * 10),
+      competition: idx < 2 ? 'Low' : idx < 4 ? 'Medium' : 'High'
+    }));
+  }
+  
+  if (priorityGaps.length === 0) {
+    priorityGaps = [{ gap: 'Run analysis to discover gaps', opportunity: 50, competition: 'Unknown' }];
+  }
+  
+  const labels = priorityGaps.slice(0, 6).map(g => g.gap || g.name || g.keyword || 'Gap');
+  const opportunities = priorityGaps.slice(0, 6).map(g => g.opportunity || g.score || 50);
+  const competition = priorityGaps.slice(0, 6).map(g => {
+    const comp = g.competition || 'Medium';
+    return comp === 'Low' ? 25 : comp === 'Medium' ? 50 : comp === 'High' ? 75 : 40;
+  });
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['category-gaps']) {
+    window.competitorCharts['category-gaps'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['category-gaps'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Opportunity Score', data: opportunities, backgroundColor: '#34a853', borderRadius: 6 },
+        { label: 'Competition Level', data: competition, backgroundColor: '#fbbc04', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      animation: { duration: 1500, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, usePointStyle: true } },
+        title: { display: true, text: '🎯 Category Gap Opportunities', font: { size: 13, weight: '700' } }
+      },
+      scales: {
+        x: { beginAtZero: true, max: 100 },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+/**
+ * Narrative Chart (Stacked Bar)
+ * Shows narrative archetype analysis across competitors
+ */
+function renderNarrativeChart(data) {
+  const ctx = document.getElementById('chart-comp-narrative');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const narrativeData = geminiData.marketIntelligence?.narrativeAudit || {};
+  const competitorNarratives = narrativeData.competitorNarratives || [];
+  
+  const labels = competitors.slice(0, 5).map(c => c.domain || 'Competitor');
+  const archetypes = ['Innovator', 'Authority', 'Challenger', 'Specialist', 'Mainstream'];
+  const colors = ['#667eea', '#34a853', '#ea4335', '#fbbc04', '#764ba2'];
+  
+  const datasets = archetypes.map((archetype, idx) => {
+    const values = competitors.slice(0, 5).map((comp) => {
+      const pm = comp.processedMetrics || {};
+      const narrative = competitorNarratives.find(n => n.domain === comp.domain);
+      
+      if (narrative && narrative.archetype === archetype) {
+        return narrative.strength || 80;
+      }
+      
+      switch (archetype) {
+        case 'Authority':
+          return Math.round((pm.authorityScore || pm.domainAuthority || 40) * 0.8 + (pm.pageRank || 5) * 3);
+        case 'Innovator':
+          return Math.round((pm.performanceScore || 50) * 0.6 + (pm.seoScore || 50) * 0.3);
+        case 'Challenger':
+          return Math.round(45 + (pm.estimatedBacklinks ? Math.min(40, Math.log10(pm.estimatedBacklinks) * 8) : 15));
+        case 'Specialist':
+          return Math.round(35 + (pm.organicKeywords ? Math.min(45, Math.log10(pm.organicKeywords) * 10) : 20));
+        case 'Mainstream':
+          const traffic = pm.estimatedTraffic || 10000;
+          return Math.round(30 + Math.min(50, Math.log10(traffic) * 6));
+        default:
+          return 40;
+      }
+    });
+    return {
+      label: archetype,
+      data: values,
+      backgroundColor: colors[idx] + '90',
+      borderColor: colors[idx],
+      borderWidth: 2,
+      borderRadius: 4
+    };
+  });
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['narrative']) {
+    window.competitorCharts['narrative'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['narrative'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      animation: { duration: 1500, easing: 'easeOutQuart' },
+      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, max: 300 } },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 9 }, usePointStyle: true } },
+        title: { display: true, text: '📖 Narrative Archetype Analysis', font: { size: 13, weight: '700' } }
+      }
+    }
+  });
+}
+
+/**
+ * Momentum Heatmap (Bubble Chart)
+ * Shows momentum landscape with authority vs traffic index
+ */
+function renderMomentumHeatmap(data) {
+  const ctx = document.getElementById('chart-comp-momentum-heatmap');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const momentumData = geminiData.marketIntelligence?.macroMicroMomentum || {};
+  const competitorMomentum = momentumData.competitorMomentum || [];
+  
+  const bubbleData = competitors.slice(0, 6).map((comp) => {
+    const pm = comp.processedMetrics || {};
+    const momentum = competitorMomentum.find(m => m.domain === comp.domain);
+    return {
+      x: pm.authorityScore || 50,
+      y: pm.estimatedTraffic ? Math.log10(pm.estimatedTraffic) * 15 : 30,
+      r: momentum?.growthRate ? Math.abs(momentum.growthRate) * 2 + 8 : 12
+    };
+  });
+  
+  const labels = competitors.slice(0, 6).map(c => c.domain || 'Competitor');
+  const colors = ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa', '#00acc1'];
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['momentum-heatmap']) {
+    window.competitorCharts['momentum-heatmap'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['momentum-heatmap'] = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: labels.map((label, idx) => ({
+        label,
+        data: [bubbleData[idx]],
+        backgroundColor: colors[idx] + '80',
+        borderColor: colors[idx],
+        borderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 2000, easing: 'easeOutElastic' },
+      scales: {
+        x: { title: { display: true, text: 'Authority Score' }, min: 0, max: 100 },
+        y: { title: { display: true, text: 'Traffic Index' }, min: 0, max: 80 }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 9 }, usePointStyle: true } },
+        title: { 
+          display: true, 
+          text: `🔥 Momentum Landscape (Search: ${momentumData.searchVolumeGrowth || 'Stable'}, AI: ${momentumData.aiAdoptionLevel || 'Moderate'})`, 
+          font: { size: 12, weight: '700' } 
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderMarketShareChart = renderMarketShareChart;
+window.renderMarketTrendsChart = renderMarketTrendsChart;
+window.renderCategoryGapChart = renderCategoryGapChart;
+window.renderNarrativeChart = renderNarrativeChart;
+window.renderMomentumHeatmap = renderMomentumHeatmap;
+
+console.log('✅ UI_Elite_Charts_Market.html loaded - 5 market intelligence chart functions');
+</script>

@@ -1,0 +1,136 @@
+<script>
+(function () {
+  window.SerpifAI = window.SerpifAI || {};
+  const root = window.SerpifAI;
+  root.log = root.log || {};
+
+  window._pageLoadTime = window._pageLoadTime || Date.now();
+  console.log('⏰ Page load timestamp:', window._pageLoadTime);
+
+  window._googleScriptCallCount = 0;
+  window._googleScriptCalls = [];
+  window._intervals = [];
+  window._timeouts = [];
+
+  const originalSetInterval = window.setInterval;
+  window.setInterval = function (fn, delay) {
+    const stack = new Error().stack;
+    window._intervals.push({ fn: fn.toString().substr(0, 100), delay, stack });
+    console.log('⏱️ setInterval registered:', delay + 'ms', fn.toString().substr(0, 50));
+    return originalSetInterval(fn, delay);
+  };
+
+  const originalSetTimeout = window.setTimeout;
+  window.setTimeout = function (fn, delay) {
+    window._timeouts.push({ fn: fn.toString().substr(0, 100), delay });
+    return originalSetTimeout(fn, delay);
+  };
+
+  originalSetTimeout(function () {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      console.log('🔍 DIAGNOSTIC: Wrapping google.script.run to track calls...');
+
+      const originalRun = google.script.run;
+      const wrappedRun = new Proxy(originalRun, {
+        get: function (target, prop) {
+          if (typeof target[prop] === 'function') {
+            return function () {
+              window._googleScriptCallCount++;
+              const callInfo = {
+                id: window._googleScriptCallCount,
+                method: prop,
+                timestamp: Date.now(),
+                timeSincePageLoad: Date.now() - window._pageLoadTime,
+                stack: new Error().stack.split('\n').slice(2, 6).join('\n')
+              };
+              window._googleScriptCalls.push(callInfo);
+
+              console.log('📞 GOOGLE SCRIPT CALL #' + callInfo.id);
+              console.log('   Method:', prop);
+              console.log('   Time since page load:', callInfo.timeSincePageLoad + 'ms');
+              console.log('   Call stack:', callInfo.stack);
+
+              return target[prop].apply(target, arguments);
+            };
+          }
+          return target[prop];
+        }
+      });
+
+      google.script.run = wrappedRun;
+      console.log('✅ google.script.run wrapped successfully');
+    }
+  }, 100);
+
+  window.diagnoseCharts = function () {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔬 CHART.JS DIAGNOSTIC REPORT');
+    console.log('═══════════════════════════════════════════════════════');
+
+    console.log('\n📦 1. CHART.JS LIBRARY STATUS:');
+    if (typeof Chart === 'undefined') {
+      console.error('   ❌ Chart.js is NOT loaded!');
+      console.log('   💡 Check if scr' + 'ipt tag for chart.js is in the HTML head');
+      return;
+    }
+    console.log('   ✅ Chart.js is loaded');
+    console.log('   📊 Version:', Chart.version);
+    console.log('   🔧 Registered controllers:', Object.keys(Chart.registry?.controllers || {}).join(', '));
+
+    console.log('\n🖼️ 2. CANVAS ELEMENTS STATUS:');
+    var canvasIds = [
+      'chart-content-depth', 'chart-content-radar', 'chart-serp-visibility', 'chart-content-investment',
+      'chart-tech-radar', 'chart-tech-bar',
+      'chart-keyword-distribution', 'chart-keyword-radar',
+      'chart-conversion-funnel', 'chart-conversion-models',
+      'chart-distribution-backlinks', 'chart-distribution-radar',
+      'chart-audience-emotional', 'chart-audience-jtbd',
+      'chart-geo-radar', 'chart-geo-platforms',
+      'chart-authority-velocity', 'chart-authority-network',
+      'chart-predictive-forecast', 'chart-predictive-quality',
+      'chart-strategic-ocean', 'chart-strategic-moat',
+      'chart-scoring-radar', 'chart-scoring-bar'
+    ];
+    var found = 0, missing = 0;
+    canvasIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        found++;
+        var rect = el.getBoundingClientRect();
+        console.log('   ✅ ' + id + ' - Size: ' + Math.round(rect.width) + 'x' + Math.round(rect.height));
+      } else {
+        missing++;
+        console.log('   ❌ ' + id + ' - NOT IN DOM');
+      }
+    });
+    console.log('   📊 Summary: ' + found + ' found, ' + missing + ' missing');
+
+    console.log('\n📈 3. CHART INSTANCES (window.competitorCharts):');
+    if (!window.competitorCharts) {
+      console.log('   ⚠️ window.competitorCharts is undefined');
+    } else {
+      var chartKeys = Object.keys(window.competitorCharts);
+      console.log('   📊 Total instances:', chartKeys.length);
+      chartKeys.forEach(function (key) {
+        var chart = window.competitorCharts[key];
+        console.log('   ' + key + ':', chart ? '✅ Active' : '❌ Null');
+      });
+    }
+
+    console.log('\n💾 6. CACHED COMPETITOR DATA:');
+    if (window._lastCompetitorData) {
+      console.log('   ✅ Competitor data is cached');
+      console.log('   📊 Competitors:', window._lastCompetitorData.competitors?.length || 0);
+    } else {
+      console.log('   ⚠️ No cached competitor data - run analysis first');
+    }
+  };
+
+  setTimeout(function () {
+    console.log('\n🔬 AUTO-DIAGNOSTIC: Running chart diagnosis...');
+    window.diagnoseCharts();
+  }, 5000);
+
+  root.log.diagnoseCharts = window.diagnoseCharts;
+})();
+</script>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .version {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .stat-item {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .progress-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .status-idle { background: rgba(107, 114, 128, 0.3); color: #9ca3af; }
+    .status-processing { background: rgba(59, 130, 246, 0.3); color: #60a5fa; }
+    .status-completed { background: rgba(16, 185, 129, 0.3); color: #34d399; }
+    .status-error { background: rgba(239, 68, 68, 0.3); color: #f87171; }
+    .status-paused { background: rgba(245, 158, 11, 0.3); color: #fbbf24; }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      width: 100%;
+      margin-top: 8px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .api-status {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .api-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .api-chip.configured { color: #34d399; }
+    .api-chip.missing { color: #f87171; }
+    
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    
+    .dot.green { background: #34d399; }
+    .dot.red { background: #f87171; }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+    
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">🚀 SerpifAI Elite</div>
+    <div class="version" id="version">Loading...</div>
+  </div>
+  
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <div>Loading dashboard...</div>
+  </div>
+  
+  <div id="content" style="display: none;">
+    <!-- Analysis Status -->
+    <div class="card">
+      <div class="card-title">⚡ Analysis Status</div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="status-badge" class="status-badge status-idle">
+          <span class="dot"></span>
+          <span id="status-text">Idle</span>
+        </span>
+        <span id="progress-text" style="font-size: 12px; color: #888;">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+      </div>
+      <div id="action-buttons">
+        <button class="btn btn-primary" id="btn-start" onclick="startAnalysis()">
+          🎯 Start Analysis
+        </button>
+      </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="card">
+      <div class="card-title">📊 Statistics</div>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-value" id="stat-keywords">0</div>
+          <div class="stat-label">Keywords</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-competitors">0</div>
+          <div class="stat-label">Competitors</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-processed">0</div>
+          <div class="stat-label">Processed</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-failed">0</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- API Status -->
+    <div class="card">
+      <div class="card-title">🔑 API Status</div>
+      <div class="api-status" id="api-status">
+        <!-- Populated by JS -->
+      </div>
+      <button class="btn btn-secondary" onclick="google.script.run.UI_showApiConfig()">
+        ⚙️ Configure APIs
+      </button>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="card">
+      <div class="card-title">⚡ Quick Actions</div>
+      <button class="btn btn-secondary" onclick="refreshData()">
+        🔄 Refresh Data
+      </button>
+      <button class="btn btn-secondary" onclick="google.script.run.UI_showKeywordReport()">
+        📋 Keyword Report
+      </button>
+      <button class="btn btn-secondary" onclick="google.script.run.UI_showCompetitorReport()">
+        🏢 Competitor Report
+      </button>
+    </div>
+  </div>
+  
+  <script>
+    let pollingInterval = null;
+    
+    function init() {
+      google.script.run
+        .withSuccessHandler(handleDashboardData)
+        .withFailureHandler(handleError)
+        .UI_getDashboardData();
+    }
+    
+    function handleDashboardData(data) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      document.getElementById('version').textContent = data.version || 'v8.0.0';
+      
+      // Update statistics
+      const kw = data.keywords || {};
+      const comp = data.competitors || {};
+      const fetch = data.fetchStatus || {};
+      
+      document.getElementById('stat-keywords').textContent = formatNumber(kw.total || 0);
+      document.getElementById('stat-competitors').textContent = formatNumber(comp.total || 0);
+      document.getElementById('stat-processed').textContent = formatNumber(fetch.stats?.processed || 0);
+      document.getElementById('stat-failed').textContent = formatNumber(fetch.stats?.failed || 0);
+      
+      // Update status
+      updateStatus(fetch.status || 'IDLE', fetch.progress?.percentage || 0);
+      
+      // Update API status
+      updateApiStatus();
+      
+      // Start polling if processing
+      if (fetch.status === 'PROCESSING') {
+        startPolling();
+      }
+    }
+    
+    function updateStatus(status, percentage) {
+      const badge = document.getElementById('status-badge');
+      const text = document.getElementById('status-text');
+      const progressText = document.getElementById('progress-text');
+      const progressFill = document.getElementById('progress-fill');
+      const buttons = document.getElementById('action-buttons');
+      
+      badge.className = 'status-badge status-' + status.toLowerCase();
+      text.textContent = status;
+      progressText.textContent = percentage + '%';
+      progressFill.style.width = percentage + '%';
+      
+      // Update buttons based on status
+      if (status === 'PROCESSING') {
+        buttons.innerHTML = '<button class="btn btn-secondary" onclick="pauseAnalysis()">⏸️ Pause</button>';
+      } else if (status === 'PAUSED') {
+        buttons.innerHTML = '<button class="btn btn-primary" onclick="resumeAnalysis()">▶️ Resume</button>';
+      } else if (status === 'COMPLETED') {
+        buttons.innerHTML = '<button class="btn btn-primary" onclick="startAnalysis()">🔄 New Analysis</button>';
+      } else {
+        buttons.innerHTML = '<button class="btn btn-primary" onclick="startAnalysis()">🎯 Start Analysis</button>';
+      }
+    }
+    
+    function updateApiStatus() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          const container = document.getElementById('api-status');
+          const apis = [
+            { key: 'gemini', label: 'Gemini', required: true },
+            { key: 'serper', label: 'Serper', required: true },
+            { key: 'pageSpeed', label: 'PageSpeed', required: false },
+            { key: 'openPageRank', label: 'PageRank', required: false }
+          ];
+          
+          container.innerHTML = apis.map(api => {
+            const missing = result.missing?.includes(api.key.toUpperCase() + '_API_KEY');
+            const configured = !missing;
+            return '<div class="api-chip ' + (configured ? 'configured' : 'missing') + '">' +
+              '<span class="dot ' + (configured ? 'green' : 'red') + '"></span>' +
+              api.label +
+            '</div>';
+          }).join('');
+        })
+        .UI_getApiStatus();
+    }
+    
+    function startAnalysis() {
+      google.script.run.UI_showAnalysis();
+    }
+    
+    function pauseAnalysis() {
+      google.script.run
+        .withSuccessHandler(function() { refreshData(); })
+        .UI_pauseAnalysis();
+    }
+    
+    function resumeAnalysis() {
+      google.script.run
+        .withSuccessHandler(function() { 
+          refreshData();
+          startPolling();
+        })
+        .UI_resumeAnalysis();
+    }
+    
+    function refreshData() {
+      init();
+    }
+    
+    function startPolling() {
+      if (pollingInterval) return;
+      pollingInterval = setInterval(function() {
+        google.script.run
+          .withSuccessHandler(function(status) {
+            updateStatus(status.status, status.progress?.percentage || 0);
+            document.getElementById('stat-processed').textContent = 
+              formatNumber(status.stats?.processed || 0);
+            
+            if (status.status !== 'PROCESSING') {
+              stopPolling();
+              refreshData();
+            }
+          })
+          .UI_getAnalysisProgress();
+      }, 5000);
+    }
+    
+    function stopPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    }
+    
+    function formatNumber(num) {
+      return num.toLocaleString();
+    }
+    
+    function handleError(error) {
+      console.error(error);
+      document.getElementById('loading').innerHTML = 
+        '<div style="color: #f87171;">Error loading dashboard</div>';
+    }
+    
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>

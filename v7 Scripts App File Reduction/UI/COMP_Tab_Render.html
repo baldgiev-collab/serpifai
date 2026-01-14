@@ -1,0 +1,479 @@
+<!--
+  COMP_Tab_Render.html
+  Competitor Intelligence Tab Rendering & Switching Functions
+  Extracted from UI_Scripts_App.html (Lines 3790-4244)
+  Phase 6 of Proxy Barrel Refactoring
+  
+  Functions exposed to window scope:
+  - openCompetitorIntelligenceTab
+  - renderCompetitorIntelligence
+  - initializeCompetitorTabs
+  - refreshChartsForTab
+-->
+<script>
+  console.log('🔧 COMP_Tab_Render.html loading...');
+
+  /**
+   * Open Competitor Intelligence sidebar tab
+   */
+  window.openCompetitorIntelligenceTab = function() {
+    // Activate the Competitor Intelligence nav button
+    const navButtons = document.querySelectorAll('.nav-subbtn');
+    navButtons.forEach(btn => {
+      if (btn.textContent.includes('Competitor Intelligence')) {
+        btn.click();
+      }
+    });
+  };
+
+  /**
+   * Render complete competitor intelligence UI
+   * Updated to use existing HTML structure from components_competitors.html
+   */
+  window.renderCompetitorIntelligence = function(data) {
+    try {
+      console.log('🎨 Rendering Competitor Intelligence UI with data:', data);
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // CRITICAL: Remove any stale data warning banners FIRST
+      // These may have been saved with old failed analysis data
+      // ═══════════════════════════════════════════════════════════════════════════
+      const staleWarning = document.getElementById('stale-data-warning');
+      if (staleWarning) {
+        console.log('🧹 Removing stale data warning banner');
+        staleWarning.remove();
+      }
+      // Remove any banners containing error patterns
+      document.querySelectorAll('[style*="ff6b6b"], [style*="ee5a24"], [style*="c0392b"]').forEach(el => {
+        if (el.innerHTML && (el.innerHTML.includes('Stale') || el.innerHTML.includes('Failed') || el.innerHTML.includes('Error'))) {
+          console.log('🧹 Removing error banner element');
+          el.remove();
+        }
+      });
+
+      // Verify comp-results container exists
+      const resultsContainer = document.getElementById('comp-results');
+      if (!resultsContainer) {
+        console.error('❌ comp-results container not found in HTML');
+        return;
+      }
+
+      // CRITICAL: Show results, hide empty/loading states
+      const emptyState = document.getElementById('comp-empty-state');
+      const loadingState = document.getElementById('comp-loading-state');
+
+      if (emptyState) emptyState.style.display = 'none';
+      if (loadingState) loadingState.style.display = 'none';
+      resultsContainer.style.display = 'block';
+      
+      // Show action bar
+      const actionBar = document.getElementById('comp-action-bar');
+      if (actionBar) {
+        actionBar.style.display = 'flex';
+        console.log('✅ Action bar visible');
+      }
+
+      // CRITICAL: Cache competitor data for chart refresh on tab switch
+      window._lastCompetitorData = data;
+      window.currentCompetitorData = data;
+      console.log('💾 Cached competitor data for chart refresh');
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // NEW: STORE ORGANIZED DATA & ELITE TAB INTELLIGENCE GLOBALLY
+      // This ensures real data from Oracle/FT_OracleDataOrganizer is accessible everywhere
+      // ═══════════════════════════════════════════════════════════════════════════
+      const eliteIntel = data.eliteTabIntelligence || data.analysis?.eliteTabIntelligence || data.geminiAnalysis?.eliteTabIntelligence;
+      if (eliteIntel) {
+        window._eliteTabIntelligence = eliteIntel;
+        console.log('🎯 Stored eliteTabIntelligence globally');
+        
+        // Store organized data from FT_OracleDataOrganizer
+        if (eliteIntel.organizedData) {
+          window._organizedData = eliteIntel.organizedData;
+          console.log(`📦 Stored organizedData globally: ${eliteIntel.organizedData.length} competitors`);
+        }
+      }
+      
+      // Also check for organizedData at top level
+      if (data.organizedData && !window._organizedData) {
+        window._organizedData = data.organizedData;
+        console.log(`📦 Stored top-level organizedData: ${data.organizedData.length} competitors`);
+      }
+
+      // ELITE: Extract all structured evidence for proof/detail modals
+      if (data.competitors && Array.isArray(data.competitors)) {
+        if (typeof extractAllEvidence === 'function') {
+          extractAllEvidence(data.competitors);
+          console.log('📋 Extracted structured evidence for', data.competitors.length, 'competitors');
+        }
+      }
+
+      // Safely access metadata with fallbacks
+      const competitorCount = data.competitors ? data.competitors.length : 0;
+      const totalMetrics = data.metadata && data.metadata.totalMetrics ? data.metadata.totalMetrics : 200;
+      const completeness = data.metadata && data.metadata.dataCompleteness ? data.metadata.dataCompleteness : 100;
+
+      console.log(`📊 Rendering ${competitorCount} competitors | ${totalMetrics} metrics | ${completeness}% complete`);
+
+      // Populate Overview Tab
+      if (typeof populateOverviewTab === 'function') {
+        populateOverviewTab(data);
+      }
+
+      // Check for Gemini Analysis format FIRST (highest priority)
+      const hasGeminiData = data.geminiAnalysis ||
+        (data.analysis && (data.analysis.executiveBrief || data.analysis.marketIntelligence || data.analysis.categories));
+
+      if (hasGeminiData) {
+        console.log('📊 ELITE FORMAT DETECTED: Populating tabs from Gemini Analysis...');
+        if (typeof populateCategoryIntelligenceTab === 'function') populateCategoryIntelligenceTab(data);
+        if (typeof populateBrandPositioningTab === 'function') populateBrandPositioningTab(data);
+        if (typeof populateTechnicalSEOTab === 'function') populateTechnicalSEOTab(data);
+        if (typeof populateContentIntelligenceTab === 'function') populateContentIntelligenceTab(data);
+        if (typeof populateKeywordStrategyTab === 'function') populateKeywordStrategyTab(data);
+        if (typeof populateContentSystemsTab === 'function') populateContentSystemsTab(data);
+        if (typeof populateConversionDataTab === 'function') populateConversionDataTab(data);
+        if (typeof populateDistributionDataTab === 'function') populateDistributionDataTab(data);
+        if (typeof populateAudienceIntelligenceTab === 'function') populateAudienceIntelligenceTab(data);
+        if (typeof populateGeoAeoIntelligenceTab === 'function') populateGeoAeoIntelligenceTab(data);
+        if (typeof populateAuthorityInfluenceTab === 'function') populateAuthorityInfluenceTab(data);
+        if (typeof populatePerformancePredictiveTab === 'function') populatePerformancePredictiveTab(data);
+        if (typeof populateStrategicOpportunitiesTab === 'function') populateStrategicOpportunitiesTab(data);
+        if (typeof populateScoringEngineTab === 'function') populateScoringEngineTab(data);
+      } else if (data.analysis && data.analysis.categories && Array.isArray(data.analysis.categories)) {
+        if (typeof populateAllTabsFromCategories === 'function') {
+          populateAllTabsFromCategories(data.analysis.categories, data.competitors);
+        }
+      } else if (data.intelligence) {
+        if (data.intelligence.technicalSEO && typeof populateTechnicalSEOTab === 'function') populateTechnicalSEOTab(data);
+        if (data.intelligence.contentIntelligence && typeof populateContentIntelligenceTab === 'function') populateContentIntelligenceTab(data);
+        if (data.intelligence.keywordStrategy && typeof populateKeywordStrategyTab === 'function') populateKeywordStrategyTab(data);
+        if (data.intelligence.categoryIntelligence && typeof populateCategoryIntelligenceTab === 'function') populateCategoryIntelligenceTab(data);
+        if (data.intelligence.brandPositioning && typeof populateBrandPositioningTab === 'function') populateBrandPositioningTab(data);
+        if (data.intelligence.contentSystems && typeof populateContentSystemsTab === 'function') populateContentSystemsTab(data);
+        if (data.intelligence.conversionData && typeof populateConversionDataTab === 'function') populateConversionDataTab(data);
+        if (data.intelligence.distributionData && typeof populateDistributionDataTab === 'function') populateDistributionDataTab(data);
+        if (data.intelligence.audienceIntelligence && typeof populateAudienceIntelligenceTab === 'function') populateAudienceIntelligenceTab(data);
+        if (data.intelligence.geoAeoIntelligence && typeof populateGeoAeoIntelligenceTab === 'function') populateGeoAeoIntelligenceTab(data);
+        if (data.intelligence.authorityInfluence && typeof populateAuthorityInfluenceTab === 'function') populateAuthorityInfluenceTab(data);
+        if (data.intelligence.performancePredictive && typeof populatePerformancePredictiveTab === 'function') populatePerformancePredictiveTab(data);
+        if (data.intelligence.strategicOpportunities && typeof populateStrategicOpportunitiesTab === 'function') populateStrategicOpportunitiesTab(data);
+        if (data.intelligence.scoringEngine && typeof populateScoringEngineTab === 'function') populateScoringEngineTab(data);
+      } else {
+        console.log('⚠️ No structured data found for tab population - attempting fallback...');
+        if (data.competitors && data.competitors.length > 0) {
+          if (typeof populateCategoryIntelligenceTab === 'function') populateCategoryIntelligenceTab(data);
+          if (typeof populateBrandPositioningTab === 'function') populateBrandPositioningTab(data);
+        }
+      }
+
+      // Initialize tab switching
+      window.initializeCompetitorTabs();
+
+      // Render charts
+      if (typeof renderAllCompetitorCharts === 'function') {
+        setTimeout(() => renderAllCompetitorCharts(data), 500);
+      }
+
+      // Inject insights
+      if (typeof injectGeminiInsightsToAllTabs === 'function') {
+        setTimeout(() => injectGeminiInsightsToAllTabs(data), 800);
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // NEW COMPONENTS INJECTION (v9.5)
+      // Adds the "Elite" forensic cards to the existing design
+      // Call this LAST to ensure it appends to the already populated tabs
+      // ═══════════════════════════════════════════════════════════════════════════
+      if (typeof injectEliteForensicsToLegacyUI === 'function') {
+        setTimeout(() => {
+          console.log('💎 Adding Elite Forensic components to existing design...');
+          injectEliteForensicsToLegacyUI(data);
+        }, 1000);
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // UPDATE ACTION BAR METADATA
+      // ═══════════════════════════════════════════════════════════════════════════
+      const competitorCountEl = document.getElementById('comp-competitor-count');
+      const timestampEl = document.getElementById('comp-analysis-timestamp');
+      
+      if (competitorCountEl) {
+        const count = data.competitors?.length || 0;
+        competitorCountEl.textContent = count;
+      }
+      
+      if (timestampEl) {
+        const ts = data.metadata?.timestamp || data.timestamp || new Date().toISOString();
+        timestampEl.textContent = new Date(ts).toLocaleDateString();
+      }
+
+      console.log('✅ Competitor Intelligence UI rendered successfully');
+
+    } catch (error) {
+      console.error('❌ Error in renderCompetitorIntelligence:', error);
+      const emptyState = document.getElementById('comp-empty-state');
+      if (emptyState) {
+        emptyState.innerHTML = `
+          <div class="empty-state-icon" style="color: #ef4444;">⚠️</div>
+          <h3 class="empty-state-title">Rendering Error</h3>
+          <p class="empty-state-text">${error.message}</p>
+          <button class="primary-btn" onclick="location.reload()">🔄 Reload</button>
+        `;
+        emptyState.style.display = 'flex';
+      }
+    }
+  };
+
+  /**
+   * Initialize competitor tab switching functionality
+   */
+  window.initializeCompetitorTabs = function() {
+    console.log('🔄 Initializing competitor tab switching...');
+
+    // CRITICAL: Prevent duplicate event listener registration
+    if (window._tabsInitialized) {
+      console.log('⚠️ Tabs already initialized, skipping duplicate registration');
+      return;
+    }
+    window._tabsInitialized = true;
+
+    // Get all tab buttons and panels
+    const tabButtons = document.querySelectorAll('.comp-tab-btn');
+    const tabPanels = document.querySelectorAll('.comp-tab-panel');
+
+    if (!tabButtons.length || !tabPanels.length) {
+      console.error('❌ Tab buttons or panels not found');
+      return;
+    }
+
+    // Add click handler to each button
+    tabButtons.forEach(button => {
+      button.addEventListener('click', function () {
+        const tabId = this.getAttribute('data-comp-tab');
+        if (!tabId) return;
+
+        console.log(`🔄 Switching to tab: ${tabId}`);
+
+        // Remove active class from all buttons
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+
+        // Add active class to clicked button
+        this.classList.add('active');
+
+        // Hide all panels
+        tabPanels.forEach(panel => {
+          panel.classList.remove('active');
+          panel.style.display = 'none';
+        });
+
+        // Show selected panel
+        const targetPanel = document.querySelector(`.comp-tab-panel[data-comp-panel="${tabId}"]`);
+        if (targetPanel) {
+          targetPanel.classList.add('active');
+          targetPanel.style.display = 'block';
+          console.log(`✅ Activated tab panel: ${tabId}`);
+
+          // CRITICAL FIX: Re-render charts after tab becomes visible
+          // Charts need visible parent to calculate dimensions
+          setTimeout(() => {
+            console.log(`🔄 Refreshing charts for tab: ${tabId}`);
+            window.refreshChartsForTab(tabId);
+          }, 100);
+        } else {
+          console.error(`❌ Tab panel not found for: ${tabId}`);
+        }
+      });
+    });
+
+    // Activate first tab (Overview)
+    const firstPanel = document.querySelector('.comp-tab-panel[data-comp-panel="overview"]');
+    if (firstPanel) {
+      firstPanel.style.display = 'block';
+    }
+
+    // Hide all other panels initially
+    tabPanels.forEach((panel, index) => {
+      if (index > 0) {
+        panel.style.display = 'none';
+      }
+    });
+
+    console.log('✅ Tab switching initialized');
+  };
+
+  /**
+   * CRITICAL: Refresh charts when tab becomes visible
+   * Charts rendered while parent is display:none have zero dimensions
+   * This function triggers re-render after tab visibility change
+   */
+  window.refreshChartsForTab = function(tabId) {
+    console.log('🔄 refreshChartsForTab called for:', tabId);
+
+    // Get cached competitor data
+    const cachedData = window._lastCompetitorData;
+    if (!cachedData || !cachedData.competitors) {
+      console.warn('⚠️ No cached competitor data for chart refresh');
+      return;
+    }
+
+    const competitors = cachedData.competitors;
+
+    // Map tab IDs to their render functions
+    const tabRenderMap = {
+      'content': () => {
+        // Skip chart rendering if Elite mode is active (no canvas elements exist)
+        const eliteData = cachedData.eliteTabIntelligence || window._eliteTabIntelligence;
+        if (eliteData?.contentStrategy) {
+          console.log('📊 Content tab using Elite mode - no canvas charts to refresh');
+          return;
+        }
+        // Only render charts if canvas elements exist (fallback mode)
+        const chartCanvas = document.getElementById('chart-content-depth');
+        if (!chartCanvas) {
+          console.log('📊 Content charts not available (Elite mode active)');
+          return;
+        }
+        console.log('📊 Re-rendering Content Intelligence charts...');
+        if (typeof renderContentIntelligenceCharts === 'function') {
+          renderContentIntelligenceCharts(competitors);
+        }
+      },
+      'technical': () => {
+        console.log('📊 Re-rendering Technical SEO charts...');
+        if (typeof renderTechnicalSEOCharts === 'function') {
+          const calculateRAGReadiness = window.calculateRAGReadiness || ((c) => ({ score: 50 }));
+          renderTechnicalSEOCharts(competitors, calculateRAGReadiness);
+        }
+      },
+      'keywords': () => {
+        console.log('📊 Re-rendering Keyword Strategy charts...');
+        if (typeof renderKeywordStrategyCharts === 'function') {
+          renderKeywordStrategyCharts(competitors, null);
+        }
+      },
+      'conversion': () => {
+        console.log('📊 Re-rendering Conversion charts...');
+        if (typeof renderConversionCharts === 'function') {
+          const conversionData = competitors.map(c => ({
+            domain: c.domain,
+            funnelScore: c.processedMetrics?.funnelScore || 50,
+            landingPersuasion: c.processedMetrics?.landingPersuasion || 50,
+            revenueModel: c.processedMetrics?.revenueModel || 'Unknown'
+          }));
+          renderConversionCharts(conversionData);
+        }
+      },
+      'distribution': () => {
+        console.log('📊 Re-rendering Distribution charts...');
+        if (typeof renderDistributionCharts === 'function') {
+          const distData = competitors.map(c => ({
+            domain: c.domain,
+            pageRank: c.apiData?.openPageRank?.page_rank_decimal || c.processedMetrics?.domainAuthority || 0,
+            domainAuthority: c.processedMetrics?.domainAuthority || 50,
+            serpResults: (c.apiData?.serper?.organic || []).length,
+            serpVisibility: c.processedMetrics?.serpVisibility || 50,
+            externalLinks: c.processedMetrics?.externalLinks || 0
+          }));
+          renderDistributionCharts(distData);
+        }
+      },
+      'audience': () => {
+        console.log('📊 Re-rendering Audience charts...');
+        if (typeof renderAudienceCharts === 'function') {
+          const audienceMetrics = competitors.map(c => ({
+            domain: c.domain,
+            personaDepth: c.processedMetrics?.personaDepth || 50,
+            emotionalResonance: c.processedMetrics?.emotionalResonance || 50,
+            jtbdMatch: c.processedMetrics?.jtbdMatch || 50,
+            wordCount: c.synthesized?.website?.wordCount || 0,
+            b2bScore: c.processedMetrics?.b2bScore || 3
+          }));
+          renderAudienceCharts(audienceMetrics);
+        }
+      },
+      'geo': () => {
+        console.log('📊 Re-rendering GEO/AEO charts...');
+        if (typeof renderGeoAeoCharts === 'function') {
+          const geoData = competitors.map(c => ({
+            domain: c.domain,
+            aiReadinessScore: c.processedMetrics?.aiReadinessScore || 50,
+            schemaCount: (c.synthesized?.website?.schemaTypes || []).length,
+            answerAuthority: c.processedMetrics?.answerAuthority || 50,
+            factualIntegrity: c.processedMetrics?.factualIntegrity || 50,
+            paaCount: (c.apiData?.serper?.peopleAlsoAsk || []).length
+          }));
+          renderGeoAeoCharts(geoData);
+        }
+      },
+      'authority': () => {
+        console.log('📊 Re-rendering Authority charts...');
+        if (typeof renderAuthorityCharts === 'function') {
+          const authorityData = competitors.map(c => ({
+            domain: c.domain,
+            pageRank: c.apiData?.openPageRank?.page_rank_decimal || 0,
+            topicalRelevance: c.processedMetrics?.topicalRelevance || 50,
+            internalLinks: c.processedMetrics?.internalLinks || 10,
+            externalLinks: c.processedMetrics?.externalLinks || 5
+          }));
+          renderAuthorityCharts(authorityData);
+        }
+      },
+      'performance': () => {
+        console.log('📊 Re-rendering Performance charts...');
+        if (typeof renderPredictiveCharts === 'function') {
+          const perfData = competitors.map(c => ({
+            domain: c.domain,
+            performance: c.apiData?.pageSpeed?.scores?.performance || c.processedMetrics?.performanceScore || 50,
+            seo: c.apiData?.pageSpeed?.scores?.seo || c.processedMetrics?.seoScore || 50,
+            accessibility: c.apiData?.pageSpeed?.scores?.accessibility || 50,
+            bestPractices: c.apiData?.pageSpeed?.scores?.bestPractices || 50,
+            pageRank: c.apiData?.openPageRank?.page_rank_decimal || 0
+          }));
+          renderPredictiveCharts(perfData);
+        }
+      },
+      'opportunity': () => {
+        console.log('📊 Re-rendering Strategic Opportunity charts...');
+        if (typeof renderStrategicCharts === 'function') {
+          const strategicData = competitors.map(c => ({
+            domain: c.domain,
+            moatStrength: c.processedMetrics?.moatStrength || 50,
+            opportunityScore: c.processedMetrics?.opportunityScore || 50,
+            performance: c.apiData?.pageSpeed?.scores?.performance || 50,
+            wordCount: c.synthesized?.website?.wordCount || 0,
+            schemaCount: (c.synthesized?.website?.schemaTypes || []).length,
+            entryPoints: c.processedMetrics?.entryPoints || 5
+          }));
+          renderStrategicCharts(strategicData);
+        }
+      },
+      'scoring': () => {
+        console.log('📊 Re-rendering Scoring Engine charts...');
+        if (typeof renderScoringCharts === 'function') {
+          const scoringData = competitors.map(c => ({
+            domain: c.domain,
+            overall: c.processedMetrics?.overallScore || c.processedMetrics?.competitorScore || 50,
+            technical: c.processedMetrics?.technicalScore || c.processedMetrics?.siteHealth || 50,
+            authority: c.processedMetrics?.authorityScore || 50,
+            content: c.processedMetrics?.contentScore || 50,
+            brand: c.processedMetrics?.brandScore || 50,
+            visibility: c.processedMetrics?.visibilityScore || 50
+          }));
+          renderScoringCharts(scoringData);
+        }
+      }
+    };
+
+    // Execute the render function for this tab
+    if (tabRenderMap[tabId]) {
+      tabRenderMap[tabId]();
+    } else {
+      console.log('ℹ️ No chart refresh needed for tab:', tabId);
+    }
+  };
+
+  console.log('✅ COMP_Tab_Render.html loaded');
+  console.log('   Exposed: openCompetitorIntelligenceTab, renderCompetitorIntelligence');
+  console.log('   Exposed: initializeCompetitorTabs, refreshChartsForTab');
+</script>

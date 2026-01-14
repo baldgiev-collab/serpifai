@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"] { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus { outline: none; border-color: var(--primary); }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    
+    .score-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .score-card { text-align: center; padding: 30px 20px; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .score-card.desktop { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .score-label { font-size: 14px; opacity: 0.9; margin-bottom: 10px; }
+    .score-value { font-size: 56px; font-weight: 700; }
+    .score-grade { font-size: 18px; margin-top: 8px; opacity: 0.9; }
+    
+    .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .metric-item { background: var(--bg); padding: 14px; border-radius: 8px; text-align: center; }
+    .metric-value { font-size: 18px; font-weight: 600; }
+    .metric-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .metric-value.good { color: var(--success); }
+    .metric-value.needs-improvement { color: var(--warning); }
+    .metric-value.poor { color: var(--danger); }
+    
+    .rec-list { list-style: none; }
+    .rec-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .rec-item:last-child { border-bottom: none; }
+    .rec-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .rec-icon.high { background: #fce8e6; color: var(--danger); }
+    .rec-icon.medium { background: #fef7e0; color: #e37400; }
+    .rec-icon.low { background: #e8f0fe; color: var(--primary); }
+    .rec-title { font-weight: 500; margin-bottom: 4px; }
+    .rec-desc { font-size: 13px; color: var(--muted); }
+    .rec-impact { font-size: 12px; color: var(--success); margin-top: 4px; }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .tab { padding: 12px 20px; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Performance Analysis</h1>
+    <p class="subtitle">Page speed and performance metrics</p>
+  </div>
+  
+  <div class="card">
+    <div class="form-group">
+      <label>Page URL</label>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="urlInput" placeholder="Enter URL to analyze...">
+        <button class="btn-primary" onclick="analyzePerformance()">Analyze</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Analyzing performance...</p>
+    <p style="font-size: 12px; margin-top: 8px;">This may take 15-30 seconds</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="score-row">
+      <div class="score-card">
+        <div class="score-label">📱 Mobile</div>
+        <div class="score-value" id="mobileScore">--</div>
+        <div class="score-grade" id="mobileGrade"></div>
+      </div>
+      <div class="score-card desktop">
+        <div class="score-label">🖥️ Desktop</div>
+        <div class="score-value" id="desktopScore">--</div>
+        <div class="score-grade" id="desktopGrade"></div>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('mobile')">Mobile Metrics</button>
+      <button class="tab" onclick="showTab('desktop')">Desktop Metrics</button>
+    </div>
+    
+    <div class="card" id="mobileTab">
+      <h3>Mobile Metrics</h3>
+      <div class="metrics-grid" id="mobileMetrics"></div>
+    </div>
+    
+    <div class="card" id="desktopTab" style="display: none;">
+      <h3>Desktop Metrics</h3>
+      <div class="metrics-grid" id="desktopMetrics"></div>
+    </div>
+    
+    <div class="card">
+      <h3>Recommendations</h3>
+      <ul class="rec-list" id="recsList"></ul>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to analyze its performance</p>
+  </div>
+  
+  <script>
+    let resultData = null;
+    
+    function analyzePerformance() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { alert('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzePerformance({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        alert(data?.error || 'Analysis failed');
+        document.getElementById('empty').style.display = 'block';
+        return;
+      }
+      
+      resultData = data;
+      
+      // Update scores
+      const mobileScore = data.mobile?.score || 0;
+      const desktopScore = data.desktop?.score || 0;
+      
+      document.getElementById('mobileScore').textContent = mobileScore;
+      document.getElementById('desktopScore').textContent = desktopScore;
+      document.getElementById('mobileGrade').textContent = getGrade(mobileScore);
+      document.getElementById('desktopGrade').textContent = getGrade(desktopScore);
+      
+      // Render metrics
+      renderMetrics('mobileMetrics', data.mobile);
+      renderMetrics('desktopMetrics', data.desktop);
+      
+      // Render recommendations
+      renderRecommendations(data.recommendations || []);
+      
+      document.getElementById('results').style.display = 'block';
+    }
+    
+    function getGrade(score) {
+      if (score >= 90) return 'Excellent';
+      if (score >= 75) return 'Good';
+      if (score >= 50) return 'Needs Work';
+      if (score >= 25) return 'Poor';
+      return 'Critical';
+    }
+    
+    function renderMetrics(containerId, metrics) {
+      if (!metrics) return;
+      
+      const items = [
+        { label: 'FCP', value: metrics.fcp, threshold: [1800, 3000] },
+        { label: 'LCP', value: metrics.lcp, threshold: [2500, 4000] },
+        { label: 'CLS', value: metrics.cls, threshold: [0.1, 0.25] },
+        { label: 'TTI', value: metrics.tti, threshold: [3800, 7300] },
+        { label: 'TBT', value: metrics.tbt, threshold: [200, 600] },
+        { label: 'Speed Index', value: metrics.speedIndex, threshold: [3400, 5800] }
+      ];
+      
+      document.getElementById(containerId).innerHTML = items.map(function(item) {
+        return '<div class="metric-item">' +
+          '<div class="metric-value">' + (item.value || '--') + '</div>' +
+          '<div class="metric-label">' + item.label + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function renderRecommendations(recs) {
+      const list = document.getElementById('recsList');
+      
+      if (recs.length === 0) {
+        list.innerHTML = '<li class="empty">No recommendations - great performance!</li>';
+        return;
+      }
+      
+      list.innerHTML = recs.map(function(rec) {
+        const iconSymbol = rec.type === 'high' ? '!' : (rec.type === 'medium' ? '△' : 'i');
+        return '<li class="rec-item">' +
+          '<div class="rec-icon ' + rec.type + '">' + iconSymbol + '</div>' +
+          '<div>' +
+            '<div class="rec-title">' + rec.title + '</div>' +
+            '<div class="rec-desc">' + rec.description + '</div>' +
+            (rec.impact ? '<div class="rec-impact">' + rec.impact + '</div>' : '') +
+          '</div>' +
+          '</li>';
+      }).join('');
+    }
+    
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('mobileTab').style.display = tab === 'mobile' ? 'block' : 'none';
+      document.getElementById('desktopTab').style.display = tab === 'desktop' ? 'block' : 'none';
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('empty').style.display = 'block';
+      alert('Error: ' + (err.message || 'Unknown error'));
+    }
+  </script>
+</body>
+</html>

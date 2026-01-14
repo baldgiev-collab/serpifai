@@ -1,0 +1,309 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UI_Elite_Charts_Content.html
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Content Intelligence & Keyword Strategy Chart Renderers
+ * Extracted from V6 UI_Elite_Charts.html (lines 1178-1429)
+ * 
+ * Dependencies: 
+ * - UI_Elite_Charts_Utils.html (formatDecimal, safeGet)
+ * - UI_Elite_Charts_Core.html (getCompetitorColors, extractDomains, extractMetric)
+ * 
+ * Contents:
+ * - renderContentAuthorityChart: Content depth radar
+ * - renderTrafficMixChart: Traffic source mix stacked bar
+ * - renderKeywordGapChart: Keyword opportunity matrix bubble
+ * - renderIntentFunnelChart: Search intent distribution bar
+ * - renderSystemsWorkflowChart: Content systems maturity bar
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Content Authority Chart (Radar)
+ * Shows content depth across competitors
+ */
+function renderContentAuthorityChart(data) {
+  const ctx = document.getElementById('chart-comp-content-authority');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['content-authority']) {
+    window.competitorCharts['content-authority'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['content-authority'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Content Depth',
+        data: extractMetric(competitors, 'processedMetrics.contentDepth'),
+        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        borderColor: 'rgba(59, 130, 246, 0.8)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: { display: true, text: 'Content Authority & Depth' }
+      }
+    }
+  });
+}
+
+/**
+ * Traffic Mix Chart (Stacked Bar)
+ * Shows estimated traffic source distribution
+ */
+function renderTrafficMixChart(data) {
+  const ctx = document.getElementById('chart-comp-traffic-mix');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['traffic-mix']) {
+    window.competitorCharts['traffic-mix'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Traffic mix estimated from authority signals
+  window.competitorCharts['traffic-mix'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: extractDomains(competitors),
+      datasets: [
+        { 
+          label: 'Organic', 
+          data: competitors.map(c => {
+            const authScore = safeGet(c, 'processedMetrics.authorityScore', 50);
+            return Math.min(80, Math.max(40, 45 + authScore * 0.35));
+          }), 
+          backgroundColor: 'rgba(34, 197, 94, 0.7)' 
+        },
+        { 
+          label: 'Direct', 
+          data: competitors.map(c => {
+            const authScore = safeGet(c, 'processedMetrics.authorityScore', 50);
+            return Math.min(30, Math.max(10, 15 + authScore * 0.15));
+          }), 
+          backgroundColor: 'rgba(59, 130, 246, 0.7)' 
+        },
+        { 
+          label: 'Referral', 
+          data: competitors.map(c => {
+            const backlinks = safeGet(c, 'processedMetrics.estimatedBacklinks', 10000);
+            return Math.min(20, Math.max(3, 5 + Math.log10(backlinks) * 2));
+          }), 
+          backgroundColor: 'rgba(251, 146, 60, 0.7)' 
+        },
+        { 
+          label: 'Social', 
+          data: competitors.map(() => Math.min(15, Math.max(2, 8))), 
+          backgroundColor: 'rgba(168, 85, 247, 0.7)' 
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: 'Traffic Source Mix (Estimated from Signals)' },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + formatDecimal(context.raw, 1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+/**
+ * Keyword Gap Chart (Bubble)
+ * Shows keyword opportunity matrix - SEO Depth vs Domain Authority
+ */
+function renderKeywordGapChart(data) {
+  const ctx = document.getElementById('chart-comp-keyword-gap');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['keyword-gap']) {
+    window.competitorCharts['keyword-gap'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['keyword-gap'] = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: competitors.map((comp, idx) => ({
+        label: comp.domain,
+        data: [{
+          x: comp.processedMetrics?.seoDepthIndex || 
+             comp.categories?.contentIntelligence?.metrics?.seoDepthIndex || 50,
+          y: comp.processedMetrics?.domainAuthority || 
+             comp.categories?.authorityInfluence?.metrics?.domainAuthority || 50,
+          r: 15
+        }],
+        backgroundColor: getCompetitorColors(competitors.length)[idx]
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Keyword Opportunity Matrix' },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              return `${context.dataset.label}: SEO ${context.parsed.x}, Authority ${context.parsed.y}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { 
+          title: { display: true, text: 'SEO Depth Index' },
+          beginAtZero: true,
+          max: 100
+        },
+        y: { 
+          title: { display: true, text: 'Domain Authority' },
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Intent Funnel Chart (Bar)
+ * Shows search intent distribution across funnel stages
+ */
+function renderIntentFunnelChart(data) {
+  const ctx = document.getElementById('chart-comp-intent-funnel');
+  if (!ctx) return;
+  
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  const keywordData = analysis.keywordIntelligence || analysis.categories?.keywordStrategy || {};
+  
+  // Industry averages for B2B SaaS
+  const intentData = {
+    informational: keywordData.intentDistribution?.informational || 45,
+    commercial: keywordData.intentDistribution?.commercial || 30,
+    transactional: keywordData.intentDistribution?.transactional || 15,
+    navigational: keywordData.intentDistribution?.navigational || 10
+  };
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['intent-funnel']) {
+    window.competitorCharts['intent-funnel'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['intent-funnel'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Informational', 'Commercial', 'Transactional', 'Navigational'],
+      datasets: [{
+        label: 'Keyword Distribution',
+        data: [intentData.informational, intentData.commercial, intentData.transactional, intentData.navigational],
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.7)',
+          'rgba(34, 197, 94, 0.7)',
+          'rgba(251, 146, 60, 0.7)',
+          'rgba(168, 85, 247, 0.7)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: 'Search Intent Funnel' },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ': ' + formatDecimal(context.raw, 1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percentage' } }
+      }
+    }
+  });
+}
+
+/**
+ * Systems Workflow Chart (Bar)
+ * Shows content systems maturity based on internal link quality
+ */
+function renderSystemsWorkflowChart(data) {
+  const ctx = document.getElementById('chart-comp-systems-workflow');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['systems-workflow']) {
+    window.competitorCharts['systems-workflow'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['systems-workflow'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Internal Links Quality',
+        data: competitors.map(c => {
+          const links = c.rawData?.seoSnapshot?.internalLinks?.total || 0;
+          return Math.min(links * 10, 100);
+        }),
+        backgroundColor: 'rgba(34, 197, 94, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Content Systems Maturity' }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderContentAuthorityChart = renderContentAuthorityChart;
+window.renderTrafficMixChart = renderTrafficMixChart;
+window.renderKeywordGapChart = renderKeywordGapChart;
+window.renderIntentFunnelChart = renderIntentFunnelChart;
+window.renderSystemsWorkflowChart = renderSystemsWorkflowChart;
+
+console.log('✅ UI_Elite_Charts_Content.html loaded - 5 content intelligence chart functions');
+</script>

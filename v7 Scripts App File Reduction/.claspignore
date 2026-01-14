@@ -1,0 +1,17 @@
+# Ignore V6 reference folder
+V6 working with 36K Scripts App/**
+
+# Ignore PHP backend folders (deployed separately to server)
+serpifai_php/**
+php_backend/**
+
+# Ignore git and other files
+.git/**
+.gitignore
+.clasp.json
+README.md
+REF_MANIFEST.md
+*.md
+
+# Ignore node modules if any
+node_modules/**

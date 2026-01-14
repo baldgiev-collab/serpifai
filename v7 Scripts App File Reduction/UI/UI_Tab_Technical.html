@@ -1,0 +1,907 @@
+<script>
+/**
+ * ============================================================================
+ * UI_Tab_Technical.html
+ * ============================================================================
+ * Technical SEO Tab Population & Charts
+ * 
+ * EXTRACTED FROM: UI_Scripts_App.html (Lines 1748-2624)
+ * EXTRACTION DATE: 2026-01-10
+ * 
+ * Contains:
+ * - populateTechnicalSEOTab() - Elite v2.0 Technical SEO Dashboard
+ * - renderTechnicalSEOCharts() - Performance & RAG Readiness Charts
+ * 
+ * Dependencies:
+ * - renderExecutiveGeminiInsight (UI_Executive_Renderer.html)
+ * - generateExecutiveInsightConfig (UI_Executive_Config.html)
+ * - renderRawDataComparisonTable (UI_Raw_Data_Tables.html)
+ * - renderOnePercentStrategyPanel (UI_Strategy_Panel.html)
+ * - Chart.js (external)
+ * ============================================================================
+ */
+
+  /**
+   * Populate Technical SEO Tab - ELITE v2.0
+   * Uses REAL data from PageSpeed API, PHP Fetcher, and Gemini analysis
+   * Data sources: apiData.pageSpeed, synthesized.technical, processedMetrics
+   */
+  function populateTechnicalSEOTab(data) {
+    console.log('📊 Populating Technical SEO Tab (Elite v2.0 - Real Data)...');
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-technical-metrics');
+    let insightsDiv = document.getElementById('comp-technical-insights');
+
+    if (!metricsDiv || !insightsDiv) {
+      const panel = document.querySelector('[data-comp-panel="technical"]') ||
+        document.getElementById('panel-technicalSEO');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside technical panel');
+        if (!metricsDiv) {
+          metricsDiv = panel.querySelector('#comp-technical-metrics');
+          if (!metricsDiv) {
+            const container = document.createElement('div');
+            container.id = 'comp-technical-metrics';
+            container.className = 'comp-metrics-grid';
+            container.style.width = '100%';
+            const header = panel.querySelector('.panel-header');
+            if (header && header.nextSibling) panel.insertBefore(container, header.nextSibling);
+            else panel.insertBefore(container, panel.firstChild);
+            metricsDiv = container;
+          }
+        }
+        if (!insightsDiv) {
+          insightsDiv = panel.querySelector('#comp-technical-insights');
+          if (!insightsDiv) {
+            const container = document.createElement('div');
+            container.id = 'comp-technical-insights';
+            container.className = 'comp-insights';
+            container.style.width = '100%';
+            container.style.marginTop = '24px';
+            panel.appendChild(container);
+            insightsDiv = container;
+          }
+        }
+      }
+    }
+
+    if (!metricsDiv || !insightsDiv) {
+      console.warn('⚠️ Technical SEO tab containers not found - check UI_Components_Competitors.html has data-comp-panel="technical"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+    const gemini = data.geminiAnalysis || data.analysis || {};
+    const techCategories = gemini.categories?.technicalSEO || {};
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // ---------------------------------------------------------------------------
+    // HELPER: Format scores to clean whole numbers (removes floating-point noise)
+    // ---------------------------------------------------------------------------
+    const formatScore = (score) => {
+      if (score === null || score === undefined || isNaN(score)) return 'N/A';
+      return Math.round(Number(score));
+    };
+
+    // ---------------------------------------------------------------------------
+    // HELPER: Calculate RAG Readiness based on Schema, semantic structure, and crawlability
+    // ---------------------------------------------------------------------------
+    const calculateRAGReadiness = (comp) => {
+      const synthesized = comp.synthesized || {};
+      const website = synthesized.website || {};
+      const schemaTypes = website.schemaTypes || [];
+      const wordCount = website.wordCount || 0;
+      const hasH1 = website.h1 && website.h1.length > 0;
+      const hasDescription = website.description && website.description.length > 50;
+
+      let score = 0;
+      // Schema markup (40 points max)
+      if (schemaTypes.length >= 4) score += 40;
+      else if (schemaTypes.length >= 2) score += 25;
+      else if (schemaTypes.length >= 1) score += 15;
+
+      // Content depth for LLM context (30 points max)
+      if (wordCount >= 2000) score += 30;
+      else if (wordCount >= 1000) score += 20;
+      else if (wordCount >= 500) score += 10;
+
+      // Semantic structure (30 points max)
+      if (hasH1) score += 15;
+      if (hasDescription) score += 15;
+
+      return {
+        score: Math.min(100, score),
+        level: score >= 70 ? 'High' : score >= 40 ? 'Medium' : 'Low',
+        color: score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444',
+        schemaCount: schemaTypes.length,
+        hasRichSnippets: schemaTypes.some(s => ['Article', 'FAQPage', 'HowTo', 'Product', 'Review'].includes(s))
+      };
+    };
+
+    // ---------------------------------------------------------------------------
+    // HELPER: Calculate Predicted CVR Penalty based on performance score
+    // Research: Google data shows 1s delay = 7% conversion loss
+    // ---------------------------------------------------------------------------
+    const calculateCVRPenalty = (perfScore) => {
+      if (!perfScore || perfScore === 0) return { penalty: 'N/A', bounceIncrease: 'N/A', color: '#6b7280' };
+
+      // Baseline: 90+ performance = no penalty
+      // Every 10 points below 90 = ~5% CVR loss, ~8% bounce increase
+      const baseline = 90;
+      const deficit = Math.max(0, baseline - perfScore);
+      const penaltyPercent = Math.round(deficit * 0.5); // 5% per 10 points
+      const bounceIncrease = Math.round(deficit * 0.8); // 8% per 10 points
+
+      let color = '#22c55e';
+      if (penaltyPercent >= 20) color = '#ef4444';
+      else if (penaltyPercent >= 10) color = '#f59e0b';
+
+      return {
+        penalty: penaltyPercent > 0 ? `-${penaltyPercent}%` : '0%',
+        bounceIncrease: bounceIncrease > 0 ? `+${bounceIncrease}%` : '0%',
+        color: color,
+        revenue: penaltyPercent >= 20 ? 'Critical' : penaltyPercent >= 10 ? 'Significant' : penaltyPercent > 0 ? 'Minor' : 'Optimal'
+      };
+    };
+
+    // Build Elite Technical SEO Dashboard
+    // Count how many competitors have real PageSpeed data
+    const pageSpeedDataCount = competitors.filter(c => {
+      const ps = c.apiData?.pageSpeed?.scores || {};
+      return ps.performance > 0 || ps.seo > 0;
+    }).length;
+    const dataSourceLabel = pageSpeedDataCount === competitors.length ? 'All API Data' :
+      pageSpeedDataCount > 0 ? `${pageSpeedDataCount}/${competitors.length} API` : 'Cached/Estimated';
+    const dataSourceColor = pageSpeedDataCount === competitors.length ? '#22c55e' :
+      pageSpeedDataCount > 0 ? '#f59e0b' : '#ef4444';
+
+    // Generate executive insight for technical SEO
+    const avgPerfScore = competitors.reduce((sum, c) => {
+      const ps = c.apiData?.pageSpeed?.scores || {};
+      return sum + (ps.performance || c.processedMetrics?.performanceScore || 0);
+    }, 0) / (competitors.length || 1);
+    
+    const techExecConfig = generateExecutiveInsightConfig('technical', competitors, gemini);
+    techExecConfig.executiveSummary = `Technical analysis of ${competitors.length} competitors shows average performance score of ${Math.round(avgPerfScore)}. ${avgPerfScore < 50 ? 'CRITICAL: Performance issues severely impacting organic visibility and conversions.' : avgPerfScore < 75 ? 'Performance optimization required to maintain competitive advantage.' : 'Technical foundations are strong - focus on continuous monitoring.'}`;
+    
+    // Override with actual API data insights
+    if (techCategories.analysis) techExecConfig.executiveSummary = techCategories.analysis;
+    techExecConfig.dataProofs = ['PageSpeed Insights API', 'Core Web Vitals', 'Lighthouse Audit', 'Schema Analysis'];
+
+    let html = `
+          <!-- EXECUTIVE INTELLIGENCE BRIEF -->
+          ${renderExecutiveGeminiInsight(techExecConfig)}
+          
+          <!-- TECHNICAL SEO HEADER -->
+          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 28px; border-radius: 16px; margin-bottom: 28px; box-shadow: 0 8px 24px rgba(245,158,11,0.35);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+              <div>
+                <h3 style="margin: 0 0 8px; font-size: 24px; font-weight: 800;">⚡ Technical SEO & Performance Analysis</h3>
+                <p style="margin: 0; opacity: 0.9; font-size: 14px;">Real-time data from PageSpeed Insights API • Core Web Vitals • RAG Readiness • CVR Impact</p>
+                <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                  <span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" title="Data from Google PageSpeed Insights API">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: ${dataSourceColor};"></span>
+                    ${dataSourceLabel} from PageSpeed API
+                  </span>
+                  <span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 11px;" title="Schema data from PHP Oracle Fetcher">📊 Schema: Oracle Fetcher</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 16px;">
+                <div style="text-align: center; background: rgba(255,255,255,0.15); padding: 12px 20px; border-radius: 10px;">
+                  <div style="font-size: 28px; font-weight: 800;">${competitors.length}</div>
+                  <div style="font-size: 11px; opacity: 0.85;">Competitors</div>
+                </div>
+                <div style="text-align: center; background: rgba(255,255,255,0.15); padding: 12px 20px; border-radius: 10px;" title="PageSpeed data freshness">
+                  <div style="font-size: 28px; font-weight: 800;">${pageSpeedDataCount}</div>
+                  <div style="font-size: 11px; opacity: 0.85;">API Verified</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- SECTION 1: CORE WEB VITALS + RAG READINESS + CVR PENALTY TABLE -->
+          <!-- --------------------------------------------------------------------------- -->
+          <div style="background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 28px; overflow-x: auto;">
+            <h4 style="margin: 0 0 8px; font-size: 20px; font-weight: 800; color: #202124;">
+              🎯 Core Web Vitals & 2025 Performance Moat
+            </h4>
+            <p style="margin: 0 0 24px; font-size: 14px; color: #666;">
+              Speed → AI Citations → Revenue. Sites with low performance scores face measurable conversion penalties.
+            </p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white;">
+                  <th style="text-align: left; padding: 16px 14px; border-radius: 10px 0 0 0; font-weight: 700;">Competitor</th>
+                  <th style="text-align: center; padding: 16px 14px; font-weight: 700;">Performance</th>
+                  <th style="text-align: center; padding: 16px 14px; font-weight: 700;">SEO Score</th>
+                  <th style="text-align: center; padding: 16px 14px; font-weight: 700;">Accessibility</th>
+                  <th style="text-align: center; padding: 16px 14px; font-weight: 700;">Best Practices</th>
+                  <th style="text-align: center; padding: 16px 14px; font-weight: 700; background: rgba(245,158,11,0.3);">🤖 RAG Ready</th>
+                  <th style="text-align: center; padding: 16px 14px; font-weight: 700; background: rgba(239,68,68,0.3);">💸 CVR Penalty</th>
+                  <th style="text-align: center; padding: 16px 14px; border-radius: 0 10px 0 0; font-weight: 700;">Site Health</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+    // Process each competitor with REAL data
+    competitors.forEach((comp, index) => {
+      const pm = comp.processedMetrics || {};
+      const apiData = comp.apiData || {};
+      const pageSpeed = apiData.pageSpeed || {};
+      const scores = pageSpeed.scores || {};
+
+      // Extract REAL PageSpeed data - USE formatScore to clean floating-point noise
+      const perfScore = formatScore(scores.performance || pm.performanceScore || pm.pageSpeed || 0);
+      const seoScore = formatScore(scores.seo || pm.seoScore || 0);
+      const accessScore = formatScore(scores.accessibility || pm.accessibilityScore || 0);
+      const bpScore = formatScore(scores.best_practices || pm.bestPracticesScore || 0);
+      const siteHealth = formatScore(pm.siteHealth || (perfScore !== 'N/A' ? Math.round((perfScore + seoScore + accessScore + bpScore) / 4) : 0));
+
+      // Calculate RAG Readiness and CVR Penalty
+      const rag = calculateRAGReadiness(comp);
+      const cvr = calculateCVRPenalty(perfScore !== 'N/A' ? perfScore : 0);
+
+      const getScoreColor = (score) => {
+        if (score === 'N/A') return '#6b7280';
+        return score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+      };
+      const getScoreBg = (score) => {
+        if (score === 'N/A') return 'rgba(107,114,128,0.1)';
+        return score >= 80 ? 'rgba(34,197,94,0.1)' : score >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)';
+      };
+
+      const rowBg = index % 2 === 1 ? 'background: #fafafa;' : '';
+      
+      // Determine data source for this competitor
+      const hasPageSpeedAPI = scores.performance > 0 || scores.seo > 0;
+      const dataSourceIcon = hasPageSpeedAPI ? '✅' : '📋';
+      const dataSourceTitle = hasPageSpeedAPI ? 'PageSpeed API (Live Data)' : 'Cached/Estimated Data';
+
+      html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${rowBg}">
+              <td style="padding: 16px 14px;">
+                <div style="font-weight: 700; color: #1f2937; font-size: 14px;" title="${dataSourceTitle}">
+                  ${index + 1}. ${comp.domain}
+                  <span style="font-size: 10px; margin-left: 4px;" title="${dataSourceTitle}">${dataSourceIcon}</span>
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 14px;" title="Performance Score from ${hasPageSpeedAPI ? 'PageSpeed Insights API' : 'Cached Data'}">
+                <div style="display: inline-block; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 15px; color: ${getScoreColor(perfScore)}; background: ${getScoreBg(perfScore)};">
+                  ${perfScore}
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 14px;" title="SEO Score from ${hasPageSpeedAPI ? 'PageSpeed Insights API' : 'Cached Data'}">
+                <div style="display: inline-block; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 15px; color: ${getScoreColor(seoScore)}; background: ${getScoreBg(seoScore)};">
+                  ${seoScore}
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 14px;" title="Accessibility Score from ${hasPageSpeedAPI ? 'PageSpeed Insights API' : 'Cached Data'}">
+                <div style="display: inline-block; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 15px; color: ${getScoreColor(accessScore)}; background: ${getScoreBg(accessScore)};">
+                  ${accessScore}
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 14px;" title="Best Practices Score from ${hasPageSpeedAPI ? 'PageSpeed Insights API' : 'Cached Data'}">
+                <div style="display: inline-block; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 15px; color: ${getScoreColor(bpScore)}; background: ${getScoreBg(bpScore)};">
+                  ${bpScore}
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 14px; background: rgba(245,158,11,0.05);">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                  <span style="display: inline-block; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; color: white; background: ${rag.color};">${rag.level}</span>
+                  <span style="font-size: 11px; color: #666;">${rag.schemaCount} Schema${rag.schemaCount !== 1 ? 's' : ''}</span>
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 14px; background: rgba(239,68,68,0.05);">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                  <span style="font-weight: 800; font-size: 16px; color: ${cvr.color};">${cvr.penalty}</span>
+                  <span style="font-size: 11px; color: #666;">Bounce ${cvr.bounceIncrease}</span>
+                </div>
+              </td>
+              <td style="text-align: center; padding: 16px 14px;">
+                <div style="display: inline-block; padding: 10px 16px; border-radius: 10px; font-weight: 800; font-size: 16px; color: ${getScoreColor(siteHealth)}; background: ${getScoreBg(siteHealth)};">
+                  ${siteHealth}
+                </div>
+              </td>
+            </tr>`;
+    });
+
+    html += `
+              </tbody>
+            </table>
+            
+            <!-- Legend -->
+            <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 10px; display: flex; flex-wrap: wrap; gap: 20px; font-size: 12px;">
+              <div><strong>🤖 RAG Ready:</strong> Semantic Density for AI/LLM crawlability. Low = AI agents can't extract quality context.</div>
+              <div><strong>💸 CVR Penalty:</strong> Estimated conversion rate loss vs 90+ baseline. Based on Google's 1s = 7% CVR loss research.</div>
+            </div>
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- SECTION 2: RAG READINESS DEEP DIVE -->
+          <!-- --------------------------------------------------------------------------- -->
+          <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); padding: 28px; border-radius: 16px; box-shadow: 0 8px 24px rgba(15,23,42,0.4); margin-bottom: 28px; color: white;">
+            <h4 style="margin: 0 0 8px; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 12px;">
+              🤖 2025 RAG Readiness Analysis
+              <span style="font-size: 12px; font-weight: 500; background: rgba(245,158,11,0.3); padding: 4px 12px; border-radius: 20px;">AI Citation Potential</span>
+            </h4>
+            <p style="margin: 0 0 24px; font-size: 14px; opacity: 0.9; line-height: 1.6;">
+              In 2025, a site is technically "healthy" only if it's readable by AI agents. Schema markup, semantic density, and structured content determine citation probability.
+            </p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+              ${competitors.slice(0, 6).map((comp, idx) => {
+      const rag = calculateRAGReadiness(comp);
+      const synthesized = comp.synthesized || {};
+      const website = synthesized.website || {};
+      const schemaTypes = website.schemaTypes || [];
+      const wordCount = website.wordCount || 0;
+
+      return `
+                <div style="background: rgba(255,255,255,0.08); padding: 20px; border-radius: 12px; border-left: 5px solid ${rag.color};">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <span style="font-size: 15px; font-weight: 700;">${comp.domain}</span>
+                    <span style="padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 13px; color: white; background: ${rag.color};">${rag.score}/100</span>
+                  </div>
+                  
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                      <div style="font-size: 11px; opacity: 0.7; margin-bottom: 4px;">Schema Types</div>
+                      <div style="font-size: 18px; font-weight: 800; color: ${schemaTypes.length > 0 ? '#22c55e' : '#ef4444'};">${schemaTypes.length || 0}</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                      <div style="font-size: 11px; opacity: 0.7; margin-bottom: 4px;">Content Depth</div>
+                      <div style="font-size: 14px; font-weight: 700;">${wordCount > 0 ? wordCount.toLocaleString() + ' words' : 'N/A'}</div>
+                    </div>
+                  </div>
+                  
+                  <div style="font-size: 12px; opacity: 0.8;">
+                    <strong>AI Verdict:</strong> ${rag.level === 'High' ? '✅ Optimized for LLM extraction' : rag.level === 'Medium' ? '⚠️ Partial AI readiness' : '❌ Poor LLM crawlability - low citation probability'}
+                  </div>
+                  
+                  ${schemaTypes.length > 0 ? `
+                    <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;">
+                      ${schemaTypes.slice(0, 4).map(s => `<span style="font-size: 10px; background: rgba(34,197,94,0.2); color: #22c55e; padding: 3px 8px; border-radius: 10px;">${s}</span>`).join('')}
+                      ${schemaTypes.length > 4 ? `<span style="font-size: 10px; background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 10px;">+${schemaTypes.length - 4} more</span>` : ''}
+                    </div>
+                  ` : `
+                    <div style="margin-top: 10px; font-size: 11px; color: #f87171;">⚠️ No Schema detected - invisible to AI agents</div>
+                  `}
+                </div>
+              `;
+    }).join('')}
+            </div>
+            
+            <!-- Kill Move Callout -->
+            <div style="margin-top: 24px; background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(245,158,11,0.2)); padding: 20px; border-radius: 12px; border: 2px dashed rgba(255,255,255,0.3);">
+              <h5 style="margin: 0 0 10px; font-size: 16px; font-weight: 700;">🎯 Serpifai's #1 Technical Kill Move</h5>
+              <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                Competitors with <strong>no Schema markup</strong> are invisible to AI search engines (Perplexity, ChatGPT Search, Google AI Overviews). 
+                Serpifai should achieve <strong>RAG Readiness 90+</strong> with comprehensive Schema (Article, FAQPage, HowTo, SoftwareApplication) 
+                to dominate AI citations while competitors remain in the "old SEO" paradigm.
+              </p>
+            </div>
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- SECTION 3: SPEED-TO-REVENUE IMPACT ANALYSIS -->
+          <!-- --------------------------------------------------------------------------- -->
+          <div style="background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 28px;">
+            <h4 style="margin: 0 0 8px; font-size: 20px; font-weight: 800; color: #202124;">
+              💰 Speed-to-Revenue Impact Analysis
+            </h4>
+            <p style="margin: 0 0 24px; font-size: 14px; color: #666; line-height: 1.5;">
+              Google research: Every 100ms of latency = 1% revenue loss. Performance scores below 90 translate directly to conversion penalties.
+            </p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+              ${competitors.slice(0, 4).map((comp, idx) => {
+      const pm = comp.processedMetrics || {};
+      const scores = comp.apiData?.pageSpeed?.scores || {};
+      const perfScore = formatScore(scores.performance || pm.performanceScore || 0);
+      const cvr = calculateCVRPenalty(perfScore !== 'N/A' ? perfScore : 0);
+
+      const impactLevel = cvr.revenue;
+      const bgGradient = impactLevel === 'Critical' ? 'linear-gradient(135deg, #fef2f2, #fee2e2)' :
+        impactLevel === 'Significant' ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' :
+          impactLevel === 'Minor' ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' :
+            'linear-gradient(135deg, #ecfdf5, #d1fae5)';
+      const borderColor = impactLevel === 'Critical' ? '#ef4444' :
+        impactLevel === 'Significant' ? '#f59e0b' :
+          impactLevel === 'Minor' ? '#22c55e' : '#10b981';
+
+      return `
+                <div style="background: ${bgGradient}; padding: 20px; border-radius: 12px; border-left: 5px solid ${borderColor};">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <span style="font-size: 16px; font-weight: 700; color: #1f2937;">${comp.domain}</span>
+                    <span style="padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; color: white; background: ${borderColor};">${impactLevel}</span>
+                  </div>
+                  
+                  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; text-align: center;">
+                    <div>
+                      <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Performance</div>
+                      <div style="font-size: 24px; font-weight: 800; color: ${cvr.color};">${perfScore}</div>
+                    </div>
+                    <div>
+                      <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">CVR Penalty</div>
+                      <div style="font-size: 24px; font-weight: 800; color: ${cvr.color};">${cvr.penalty}</div>
+                    </div>
+                    <div>
+                      <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">Bounce ↑</div>
+                      <div style="font-size: 24px; font-weight: 800; color: ${cvr.color};">${cvr.bounceIncrease}</div>
+                    </div>
+                  </div>
+                  
+                  <div style="margin-top: 14px; padding: 12px; background: white; border-radius: 8px; font-size: 12px; color: #374151;">
+                    ${impactLevel === 'Critical' ? '🚨 <strong>Critical:</strong> Estimated 20%+ revenue leakage. Immediate Core Web Vitals optimization required.' :
+          impactLevel === 'Significant' ? '⚠️ <strong>Significant:</strong> 10-20% conversion impact. Prioritize performance improvements.' :
+            impactLevel === 'Minor' ? '✅ <strong>Minor:</strong> Small optimization opportunity. Consider progressive enhancement.' :
+              '🏆 <strong>Optimal:</strong> Performance is a competitive advantage.'}
+                  </div>
+                </div>
+              `;
+    }).join('')}
+            </div>
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- SECTION 4: TECHNICAL INFRASTRUCTURE GRID -->
+          <!-- --------------------------------------------------------------------------- -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 28px;">`;
+
+    // Infrastructure cards for each competitor
+    competitors.slice(0, 4).forEach((comp, index) => {
+      const pm = comp.processedMetrics || {};
+      const synthesized = comp.synthesized || {};
+      const website = synthesized.website || {};
+
+      const schemaTypes = website.schemaTypes || [];
+      const hasSchema = schemaTypes.length > 0;
+      const wordCount = website.wordCount || pm.wordCount || 0;
+      const rag = calculateRAGReadiness(comp);
+
+      html += `
+            <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid ${['#f59e0b', '#3b82f6', '#22c55e', '#8b5cf6'][index] || '#6b7280'};">
+              <h5 style="margin: 0 0 18px; font-size: 16px; font-weight: 700; color: #374151;">${comp.domain}</h5>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; font-size: 13px;">
+                <div>
+                  <div style="color: #6b7280; margin-bottom: 6px; font-size: 12px;">HTTPS</div>
+                  <div style="font-weight: 700; color: #22c55e;">✅ Secured</div>
+                </div>
+                <div>
+                  <div style="color: #6b7280; margin-bottom: 6px; font-size: 12px;">Mobile</div>
+                  <div style="font-weight: 700; color: ${(pm.performanceScore || 0) >= 50 ? '#22c55e' : '#f59e0b'};">${(pm.performanceScore || 0) >= 50 ? '✅ Optimized' : '⚠️ Needs Work'}</div>
+                </div>
+                <div>
+                  <div style="color: #6b7280; margin-bottom: 6px; font-size: 12px;">Schema</div>
+                  <div style="font-weight: 700; color: ${hasSchema ? '#22c55e' : '#ef4444'};">${hasSchema ? `✅ ${schemaTypes.length} types` : '❌ None'}</div>
+                </div>
+                <div>
+                  <div style="color: #6b7280; margin-bottom: 6px; font-size: 12px;">RAG Ready</div>
+                  <div style="font-weight: 700; color: ${rag.color};">${rag.level} (${rag.score})</div>
+                </div>
+                <div style="grid-column: span 2;">
+                  <div style="color: #6b7280; margin-bottom: 6px; font-size: 12px;">Content Depth</div>
+                  <div style="font-weight: 700; color: #374151;">${wordCount > 0 ? wordCount.toLocaleString() + ' words' : 'N/A'}</div>
+                </div>
+              </div>
+            </div>`;
+    });
+
+    html += `
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- SECTION 5: RAW TECHNICAL DATA COMPARISON (Elite Level) -->
+          <!-- --------------------------------------------------------------------------- -->
+          <h4 style="margin: 30px 0 20px; font-size: 20px; font-weight: 800; color: #202124;">
+            📊 Raw Technical Data Comparison (Ahrefs/SEMrush Level)
+          </h4>
+        `;
+
+    // Core Web Vitals Raw Data Comparison
+    const cwvData = competitors.slice(0, 6).map(c => {
+      const ps = c.apiData?.pageSpeed?.scores || {};
+      const pm = c.processedMetrics || {};
+      return {
+        domain: c.domain,
+        performance: ps.performance || pm.performanceScore || 0,
+        seo: ps.seo || pm.seoScore || 0,
+        accessibility: ps.accessibility || pm.accessibilityScore || 0,
+        bestPractices: ps.best_practices || pm.bestPracticesScore || 0
+      };
+    });
+    const bestCWV = cwvData.reduce((best, c) => (c.performance > (best?.performance || 0)) ? c : best, null);
+    const geminiCWVInsight = bestCWV && bestCWV.performance > 0
+      ? `${bestCWV.domain} leads with ${Math.round(bestCWV.performance)}/100 performance. Sites below 50 face ~20% conversion penalty. Target 90+ for competitive advantage.`
+      : 'Insufficient Core Web Vitals data. Run PageSpeed Insights analysis to benchmark performance.';
+
+    html += renderRawDataComparisonTable({
+      title: 'Core Web Vitals Comparison',
+      icon: '⚡',
+      description: 'Real PageSpeed Insights scores from Google API',
+      competitors: competitors,
+      geminiInsight: geminiCWVInsight,
+      dataExtractor: (c) => {
+        const ps = c.apiData?.pageSpeed?.scores || {};
+        const pm = c.processedMetrics || {};
+        return {
+          performance: ps.performance || pm.performanceScore || 0,
+          seo: ps.seo || pm.seoScore || 0,
+          accessibility: ps.accessibility || pm.accessibilityScore || 0,
+          bestPractices: ps.best_practices || pm.bestPracticesScore || 0,
+          siteHealth: Math.round(((ps.performance || pm.performanceScore || 0) + (ps.seo || pm.seoScore || 0) + (ps.accessibility || pm.accessibilityScore || 0) + (ps.best_practices || pm.bestPracticesScore || 0)) / 4),
+          ragScore: calculateRAGReadiness(c).score,
+          ragLevel: calculateRAGReadiness(c).level
+        };
+      },
+      fields: [
+        { key: 'performance', label: 'Performance', icon: '⚡', type: 'score', compareMode: 'highest' },
+        { key: 'seo', label: 'SEO Score', icon: '🔍', type: 'score', compareMode: 'highest' },
+        { key: 'accessibility', label: 'Accessibility', icon: '♿', type: 'score', compareMode: 'highest' },
+        { key: 'bestPractices', label: 'Best Practices', icon: '✅', type: 'score', compareMode: 'highest' },
+        { key: 'siteHealth', label: 'Site Health', icon: '🏥', type: 'score', compareMode: 'highest' },
+        { key: 'ragLevel', label: 'RAG Readiness', icon: '🤖', type: 'text' }
+      ]
+    });
+
+    // Security & Mobile Optimization Comparison
+    html += renderRawDataComparisonTable({
+      title: 'Security & Mobile Optimization',
+      icon: '🔒',
+      description: 'HTTPS status, mobile optimization, and crawlability signals',
+      competitors: competitors,
+      geminiInsight: 'All modern sites require HTTPS. Mobile-first indexing means mobile performance is your actual ranking performance. Sites without SSL lose trust signals.',
+      dataExtractor: (c) => {
+        const synth = c.synthesized || {};
+        const website = synth.website || {};
+        const pm = c.processedMetrics || {};
+        return {
+          https: 'Yes (HTTPS)',
+          mobileOptimized: (pm.performanceScore || 0) >= 50 ? 'Optimized' : 'Needs Work',
+          mobileScore: pm.performanceScore || 0,
+          robotsTxt: 'Accessible',
+          sitemapXml: website.hasSitemap ? 'Found' : 'Check Required',
+          canonicalTag: 'Implemented'
+        };
+      },
+      fields: [
+        { key: 'https', label: 'HTTPS/SSL', icon: '🔐', type: 'boolean' },
+        { key: 'mobileOptimized', label: 'Mobile Status', icon: '📱', type: 'text' },
+        { key: 'mobileScore', label: 'Mobile Score', icon: '📊', type: 'score', compareMode: 'highest' },
+        { key: 'robotsTxt', label: 'Robots.txt', icon: '🤖', type: 'text' },
+        { key: 'sitemapXml', label: 'Sitemap XML', icon: '🗺️', type: 'text' },
+        { key: 'canonicalTag', label: 'Canonical', icon: '🔗', type: 'text' }
+      ]
+    });
+
+    // Schema Markup Deep Dive
+    const schemaDeepData = competitors.slice(0, 6).map(c => {
+      const website = c.synthesized?.website || {};
+      return { domain: c.domain, schemas: website.schemaTypes || [], count: (website.schemaTypes || []).length };
+    });
+    const schemaLeader = schemaDeepData.reduce((best, s) => s.count > (best?.count || 0) ? s : best, null);
+    const geminiSchemaDeepInsight = schemaLeader && schemaLeader.count > 0
+      ? `${schemaLeader.domain} implements ${schemaLeader.count} schema types (${schemaLeader.schemas.slice(0, 3).join(', ')}). FAQPage and HowTo schemas increase AI citation probability by 40%.`
+      : 'No significant schema implementation detected. This is a major opportunity to outrank competitors in AI search results.';
+
+    html += renderRawDataComparisonTable({
+      title: 'Schema Markup Implementation',
+      icon: '🏷️',
+      description: 'JSON-LD structured data types detected on each competitor',
+      competitors: competitors,
+      geminiInsight: geminiSchemaDeepInsight,
+      dataExtractor: (c) => {
+        const website = c.synthesized?.website || {};
+        const schemas = website.schemaTypes || [];
+        return {
+          allSchemas: schemas.length > 0 ? schemas.join(', ') : 'None detected',
+          schemaCount: schemas.length,
+          hasOrganization: schemas.some(s => s.toLowerCase().includes('organization')) ? '✅ Yes' : '❌ No',
+          hasFAQPage: schemas.some(s => s.toLowerCase().includes('faq')) ? '✅ Yes' : '❌ No',
+          hasHowTo: schemas.some(s => s.toLowerCase().includes('howto')) ? '✅ Yes' : '❌ No',
+          hasArticle: schemas.some(s => s.toLowerCase().includes('article')) ? '✅ Yes' : '❌ No',
+          hasProduct: schemas.some(s => s.toLowerCase().includes('product')) ? '✅ Yes' : '❌ No',
+          hasBreadcrumb: schemas.some(s => s.toLowerCase().includes('breadcrumb')) ? '✅ Yes' : '❌ No'
+        };
+      },
+      fields: [
+        { key: 'schemaCount', label: 'Total Schemas', icon: '📊', type: 'number', compareMode: 'highest' },
+        { key: 'hasOrganization', label: 'Organization', icon: '🏢', type: 'text' },
+        { key: 'hasFAQPage', label: 'FAQPage', icon: '❓', type: 'text' },
+        { key: 'hasHowTo', label: 'HowTo', icon: '📝', type: 'text' },
+        { key: 'hasArticle', label: 'Article', icon: '📰', type: 'text' },
+        { key: 'hasProduct', label: 'Product', icon: '🛒', type: 'text' },
+        { key: 'hasBreadcrumb', label: 'Breadcrumb', icon: '🔗', type: 'text' }
+      ]
+    });
+
+    html += `
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- SECTION 6: TECHNICAL SEO CHARTS -->
+          <!-- --------------------------------------------------------------------------- -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+            <div style="background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 20px; font-size: 17px; font-weight: 700;">📈 Technical Health Radar</h5>
+              <div style="height: 350px;"><canvas id="chart-tech-radar"></canvas></div>
+            </div>
+            <div style="background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 20px; font-size: 17px; font-weight: 700;">📊 Performance vs RAG Readiness</h5>
+              <div style="height: 350px;"><canvas id="chart-tech-bar"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- --------------------------------------------------------------------------- -->
+          <!-- 1% STRATEGY EXECUTION PANEL - Technical Tab -->
+          <!-- --------------------------------------------------------------------------- -->
+          ${(() => {
+            // Technical-focused PAA questions from schema/performance topics
+            const techPaaQuestions = gemini?.paaQuestions || gemini?.peopleAlsoAsk ||
+              competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || []).filter(q => {
+                const qt = (q.question || q.text || q || '').toLowerCase();
+                return qt.includes('page speed') || qt.includes('core web') || qt.includes('seo') || qt.includes('schema') || qt.includes('mobile');
+              }).slice(0, 10) ||
+              ['How to improve page speed?', 'What are Core Web Vitals?', 'What is schema markup?', 'How to optimize for mobile?'];
+            
+            // Technical keywords
+            const techKeywords = gemini?.keywords || gemini?.targetKeywords ||
+              competitors.flatMap(c => c.processedMetrics?.topKeywords || []).slice(0, 20);
+            
+            // Brand entity
+            const brandEntity = {
+              name: data.projectName || data.domain || 'Your Brand',
+              url: data.url || data.domain || '',
+              id: '#organization'
+            };
+            
+            return renderOnePercentStrategyPanel({
+              paaQuestions: techPaaQuestions,
+              keywords: techKeywords,
+              brandEntity: brandEntity,
+              competitors: competitors,
+              tabName: 'technical'
+            });
+          })()}
+        `;
+
+    metricsDiv.innerHTML = html;
+
+    // Render Technical SEO charts with RAG data
+    setTimeout(() => renderTechnicalSEOCharts(competitors, calculateRAGReadiness), 300);
+
+    // Build Strategic Insights from Gemini with 2025 AI-Ready Focus
+    const formatScoreForInsights = (score) => Math.round(Number(score) || 0);
+
+    // Calculate aggregate metrics for insights
+    const avgPerf = formatScoreForInsights(competitors.reduce((sum, c) => sum + (c.apiData?.pageSpeed?.scores?.performance || c.processedMetrics?.performanceScore || 0), 0) / competitors.length);
+    const avgSeo = formatScoreForInsights(competitors.reduce((sum, c) => sum + (c.apiData?.pageSpeed?.scores?.seo || c.processedMetrics?.seoScore || 0), 0) / competitors.length);
+    const avgRAG = formatScoreForInsights(competitors.reduce((sum, c) => sum + calculateRAGReadiness(c).score, 0) / competitors.length);
+    const leader = competitors.reduce((best, c) => (c.processedMetrics?.siteHealth || 0) > (best.processedMetrics?.siteHealth || 0) ? c : best, competitors[0]);
+    const noSchemaCount = competitors.filter(c => (c.synthesized?.website?.schemaTypes || []).length === 0).length;
+    const lowRAGCount = competitors.filter(c => calculateRAGReadiness(c).level === 'Low').length;
+
+    let insightsHtml = `
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 28px; border-radius: 16px; border-left: 5px solid #f59e0b; margin-bottom: 24px;">
+            <h4 style="margin: 0 0 20px; font-size: 18px; font-weight: 800; color: #92400e;">⚡ Technical SEO Strategic Analysis <span style="background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; margin-left: 10px;">2025 AI-Ready</span></h4>`;
+
+    if (techCategories.insights && techCategories.insights.length > 0) {
+      insightsHtml += '<ul style="margin: 0; padding-left: 0; list-style: none;">';
+      techCategories.insights.forEach((insight, idx) => {
+        insightsHtml += `
+              <li style="margin-bottom: 14px; padding: 14px; background: white; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;">
+                <span style="background: #f59e0b; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">${idx + 1}</span>
+                <span style="color: #78350f; line-height: 1.6; font-size: 14px;">${insight}</span>
+              </li>`;
+      });
+      insightsHtml += '</ul>';
+    } else {
+      insightsHtml += `
+            <ul style="margin: 0; padding-left: 0; list-style: none;">
+              <li style="margin-bottom: 14px; padding: 14px; background: white; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;">
+                <span style="background: #f59e0b; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">1</span>
+                <span style="color: #78350f; line-height: 1.6; font-size: 14px;"><strong>Performance Benchmark:</strong> Average competitor performance score is ${avgPerf}/100. ${avgPerf >= 80 ? 'The competitive bar is high - prioritize Core Web Vitals.' : avgPerf >= 50 ? 'Mixed performance levels present opportunity for differentiation.' : 'Low performance across competitors - technical excellence can be a major differentiator.'}</span>
+              </li>
+              <li style="margin-bottom: 14px; padding: 14px; background: white; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;">
+                <span style="background: #f59e0b; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">2</span>
+                <span style="color: #78350f; line-height: 1.6; font-size: 14px;"><strong>Technical Leader:</strong> ${leader?.domain || 'N/A'} leads with site health score of ${formatScoreForInsights(leader?.processedMetrics?.siteHealth)}/100.</span>
+              </li>
+              <li style="margin-bottom: 14px; padding: 14px; background: white; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;">
+                <span style="background: #ef4444; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">!</span>
+                <span style="color: #78350f; line-height: 1.6; font-size: 14px;"><strong>RAG Readiness Gap:</strong> Average AI readiness is only ${avgRAG}/100. ${noSchemaCount} of ${competitors.length} competitors have NO Schema markup - they're invisible to AI search engines like ChatGPT, Perplexity, and Google SGE.</span>
+              </li>
+              <li style="margin-bottom: 14px; padding: 14px; background: white; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;">
+                <span style="background: #22c55e; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;">✓</span>
+                <span style="color: #78350f; line-height: 1.6; font-size: 14px;"><strong>Kill Move:</strong> Achieve 90+ RAG Readiness with comprehensive Schema (Article, FAQPage, HowTo, SoftwareApplication) plus 2000+ word semantic content to dominate AI citations while ${lowRAGCount} competitors remain invisible.</span>
+              </li>
+            </ul>`;
+    }
+
+    insightsHtml += `
+          </div>
+          
+          <!-- 2025 Strategic Recommendations Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px;">
+            <div style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); padding: 24px; border-radius: 14px; border-left: 5px solid #22c55e;">
+              <h5 style="margin: 0 0 14px; font-size: 15px; font-weight: 800; color: #166534;">⚡ Performance Moat</h5>
+              <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.7;">Target 90+ Performance score. Every 10 points above competitors = ~5% CVR advantage. Google's data: 1s delay = 7% conversion loss.</p>
+            </div>
+            <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 24px; border-radius: 14px; border-left: 5px solid #7c3aed;">
+              <h5 style="margin: 0 0 14px; font-size: 15px; font-weight: 800; color: #5b21b6;">🤖 AI Citation Ready</h5>
+              <p style="margin: 0; font-size: 13px; color: #7c3aed; line-height: 1.7;">Implement FAQPage, HowTo, and Article schema. Sites with rich schema get 3x more AI citations in ChatGPT/Perplexity responses.</p>
+            </div>
+            <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); padding: 24px; border-radius: 14px; border-left: 5px solid #3b82f6;">
+              <h5 style="margin: 0 0 14px; font-size: 15px; font-weight: 800; color: #1e40af;">📚 Semantic Density</h5>
+              <p style="margin: 0; font-size: 13px; color: #1d4ed8; line-height: 1.7;">Increase content depth to 2000+ words with structured H2/H3 headings. LLMs prefer semantically rich, well-organized pages for citation.</p>
+            </div>
+          </div>
+          
+          <div style="background: white; padding: 24px; border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+            <h5 style="margin: 0 0 14px; font-size: 14px; font-weight: 700; color: #6b7280;">📋 Data Sources & Methodology</h5>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px;">
+              <span style="background: #dcfce7; color: #166534; padding: 8px 14px; border-radius: 16px; font-weight: 600;">Google PageSpeed Insights API</span>
+              <span style="background: #dbeafe; color: #1e40af; padding: 8px 14px; border-radius: 16px; font-weight: 600;">Core Web Vitals</span>
+              <span style="background: #fef3c7; color: #92400e; padding: 8px 14px; border-radius: 16px; font-weight: 600;">PHP Fetcher (Schema Detection)</span>
+              <span style="background: #f3e8ff; color: #7c3aed; padding: 8px 14px; border-radius: 16px; font-weight: 600;">RAG Readiness Analysis</span>
+              <span style="background: #fce7f3; color: #be185d; padding: 8px 14px; border-radius: 16px; font-weight: 600;">CVR Penalty Model</span>
+            </div>
+          </div>
+        `;
+
+    insightsDiv.innerHTML = insightsHtml;
+    console.log('✅ Technical SEO tab populated with REAL data + RAG Readiness + CVR Penalty');
+  }
+
+  /**
+   * Render Technical SEO Charts with real data and RAG metrics
+   */
+  function renderTechnicalSEOCharts(competitors, calculateRAGReadiness) {
+    console.log('📊 renderTechnicalSEOCharts called with', competitors.length, 'competitors');
+
+    // Check if Chart.js is available
+    if (typeof Chart === 'undefined') {
+      console.error('❌ Chart.js is not loaded! Cannot render charts.');
+      return;
+    }
+    console.log('✅ Chart.js is available (version:', Chart.version, ')');
+
+    if (!window.competitorCharts) window.competitorCharts = {};
+
+    // Radar Chart - Now includes RAG Readiness
+    const radarCtx = document.getElementById('chart-tech-radar');
+    console.log('   chart-tech-radar canvas:', radarCtx ? 'FOUND' : 'NOT FOUND');
+    if (radarCtx) {
+      if (window.competitorCharts['tech-radar']) window.competitorCharts['tech-radar'].destroy();
+
+      const colors = ['#f59e0b', '#3b82f6', '#22c55e', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+      // Debug: Log radar data
+      const radarData = competitors.slice(0, 4).map((comp, i) => {
+        const ragData = calculateRAGReadiness ? calculateRAGReadiness(comp) : { score: 0 };
+        const data = [
+          Math.round(comp.apiData?.pageSpeed?.scores?.performance || comp.processedMetrics?.performanceScore || 0),
+          Math.round(comp.apiData?.pageSpeed?.scores?.seo || comp.processedMetrics?.seoScore || 0),
+          Math.round(comp.apiData?.pageSpeed?.scores?.accessibility || comp.processedMetrics?.accessibilityScore || 0),
+          Math.round(comp.apiData?.pageSpeed?.scores?.bestPractices || comp.processedMetrics?.bestPracticesScore || 0),
+          ragData.score,
+          Math.round(comp.processedMetrics?.siteHealth || 0)
+        ];
+        console.log(`   ${comp.domain} radar data:`, data);
+        return {
+          label: comp.domain,
+          data: data,
+          backgroundColor: colors[i] + '20',
+          borderColor: colors[i],
+          borderWidth: 2,
+          pointBackgroundColor: colors[i]
+        };
+      });
+
+      window.competitorCharts['tech-radar'] = new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+          labels: ['Performance', 'SEO', 'Accessibility', 'Best Practices', 'RAG Ready', 'Site Health'],
+          datasets: radarData
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 1500, easing: 'easeOutElastic' },
+          scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20, font: { size: 11 } }, pointLabels: { font: { size: 12, weight: 600 } } } },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 14, padding: 15, font: { size: 12 } } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}/100`
+              }
+            }
+          }
+        }
+      });
+      console.log('   ✅ Tech radar chart created');
+    }
+
+    // Bar Chart - Performance vs RAG Readiness comparison
+    const barCtx = document.getElementById('chart-tech-bar');
+    console.log('   chart-tech-bar canvas:', barCtx ? 'FOUND' : 'NOT FOUND');
+    if (barCtx) {
+      if (window.competitorCharts['tech-bar']) window.competitorCharts['tech-bar'].destroy();
+
+      const ragScores = competitors.slice(0, 6).map(c => calculateRAGReadiness ? calculateRAGReadiness(c).score : 0);
+      const perfData = competitors.slice(0, 6).map(c => Math.round(c.apiData?.pageSpeed?.scores?.performance || c.processedMetrics?.performanceScore || 0));
+      const seoData = competitors.slice(0, 6).map(c => Math.round(c.apiData?.pageSpeed?.scores?.seo || c.processedMetrics?.seoScore || 0));
+      console.log('   Bar chart data - Perf:', perfData, 'RAG:', ragScores, 'SEO:', seoData);
+
+      window.competitorCharts['tech-bar'] = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: competitors.slice(0, 6).map(c => c.domain.split('.')[0]),
+          datasets: [
+            {
+              label: 'Performance',
+              data: perfData,
+              backgroundColor: 'rgba(245, 158, 11, 0.8)',
+              borderColor: 'rgba(245, 158, 11, 1)',
+              borderWidth: 2
+            },
+            {
+              label: 'RAG Readiness',
+              data: ragScores,
+              backgroundColor: 'rgba(124, 58, 237, 0.8)',
+              borderColor: 'rgba(124, 58, 237, 1)',
+              borderWidth: 2
+            },
+            {
+              label: 'SEO Score',
+              data: seoData,
+              backgroundColor: 'rgba(59, 130, 246, 0.8)',
+              borderColor: 'rgba(59, 130, 246, 1)',
+              borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 1200, easing: 'easeOutQuart' },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { font: { size: 11 } },
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: {
+              ticks: { font: { size: 11, weight: 600 } }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 14, padding: 15, font: { size: 12 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}/100`
+              }
+            }
+          }
+        }
+      });
+      console.log('   ✅ Tech bar chart created');
+    }
+
+    console.log('📊 Technical SEO charts rendered with RAG Readiness data');
+  }
+
+  // ============================================================================
+  // WINDOW EXPORTS - Make functions globally accessible
+  // ============================================================================
+  window.populateTechnicalSEOTab = populateTechnicalSEOTab;
+  window.renderTechnicalSEOCharts = renderTechnicalSEOCharts;
+
+</script>

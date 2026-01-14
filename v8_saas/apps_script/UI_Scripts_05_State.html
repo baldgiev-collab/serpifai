@@ -1,0 +1,71 @@
+<script>
+(function () {
+  window.SerpifAI = window.SerpifAI || {};
+  const root = window.SerpifAI;
+  root.state = root.state || {};
+
+  function getItem(key, fallback) {
+    try {
+      var val = localStorage.getItem(key);
+      if (val === null) return fallback;
+      return val;
+    } catch (e) {
+      console.warn('localStorage read error:', e);
+      return fallback;
+    }
+  }
+
+  function setItem(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      console.warn('localStorage write error:', e);
+      return false;
+    }
+  }
+
+  function getBool(key, fallback) {
+    var val = getItem(key, null);
+    if (val === null) return !!fallback;
+    return val === 'true';
+  }
+
+  function setBool(key, val) {
+    return setItem(key, val ? 'true' : 'false');
+  }
+
+  function getJSON(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    } catch (e) {
+      console.warn('localStorage JSON parse error:', e);
+      return fallback;
+    }
+  }
+
+  function setJSON(key, obj) {
+    try {
+      localStorage.setItem(key, JSON.stringify(obj));
+      return true;
+    } catch (e) {
+      console.warn('localStorage JSON write error:', e);
+      return false;
+    }
+  }
+
+  root.state.getItem = root.state.getItem || getItem;
+  root.state.setItem = root.state.setItem || setItem;
+  root.state.getBool = root.state.getBool || getBool;
+  root.state.setBool = root.state.setBool || setBool;
+  root.state.getJSON = root.state.getJSON || getJSON;
+  root.state.setJSON = root.state.setJSON || setJSON;
+
+  if (root._exportGlobal) {
+    root._exportGlobal('serpifaiGetState', root.state.getItem);
+    root._exportGlobal('serpifaiSetState', root.state.setItem);
+  }
+})();
+</script>

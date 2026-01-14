@@ -1,0 +1,561 @@
+<!--
+  ELITE_Fetcher_Technical.html
+  ═══════════════════════════════════════════════════════════════════════════
+  SERPIFAI Elite Technical SEO Intelligence v1.0
+  Advanced technical analysis for Core Web Vitals, RAG readiness, and more
+  
+  Features:
+  - Core Web Vitals analysis (LCP, FID, CLS)
+  - PageSpeed insights integration
+  - Mobile-first indexing readiness
+  - Schema.org markup detection
+  - RAG/LLM optimization scoring
+  - Security and accessibility checks
+  
+  Dependencies: ELITE_Fetcher_Core.html
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<script>
+(function() {
+  'use strict';
+  
+  console.log('⚙️ ELITE_Fetcher_Technical.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ELITE TECHNICAL FETCHER CLASS
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  class EliteTechnicalFetcher extends window.EliteFetcher {
+    constructor(config = {}) {
+      super(config);
+      this.moduleName = 'Technical Intelligence';
+      this.version = '1.0.0';
+      
+      // Technical-specific configuration
+      this.technicalConfig = {
+        cwvThresholds: {
+          lcp: { good: 2500, needsImprovement: 4000 },
+          fid: { good: 100, needsImprovement: 300 },
+          cls: { good: 0.1, needsImprovement: 0.25 },
+          ttfb: { good: 800, needsImprovement: 1800 }
+        },
+        schemaTypes: ['Organization', 'WebSite', 'Article', 'Product', 'FAQPage', 'HowTo', 'LocalBusiness', 'BreadcrumbList'],
+        securityChecks: ['https', 'hsts', 'csp', 'xframe'],
+        ...config
+      };
+      
+      console.log(`   ✅ ${this.moduleName} v${this.version} initialized`);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MAIN TECHNICAL ANALYSIS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async analyzeTechnical(domain, options = {}) {
+      console.log(`⚙️ Analyzing technical SEO for ${domain}...`);
+      
+      const normalizedDomain = this.normalizeDomain(domain);
+      
+      const fetchersConfig = [
+        { id: 'elite', fetcher: (d) => this.extractEliteTechnicalData(d), required: false },
+        { id: 'pageSpeed', fetcher: (d) => this.extractPageSpeedData(d), required: false },
+        { id: 'phpFetcher', fetcher: (d) => this.extractPHPFetcherTechnical(d), required: false }
+      ];
+      
+      try {
+        const aggregated = await this.fetchWithFallback(normalizedDomain, fetchersConfig);
+        return this.enrichTechnicalData(aggregated, normalizedDomain);
+      } catch (error) {
+        console.error(`❌ Technical analysis failed for ${domain}:`, error);
+        return this.generateFallbackTechnical(normalizedDomain);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA SOURCE EXTRACTORS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    extractEliteTechnicalData(domain) {
+      const competitors = window._competitorData || window.globalData?.competitors || [];
+      const compData = competitors.find(c => this.normalizeDomain(c.domain || c.url) === domain);
+      
+      if (!compData) return null;
+      
+      const synthesized = compData.synthesized || {};
+      const website = synthesized.website || {};
+      const technical = synthesized.technical || {};
+      const performance = synthesized.performance || {};
+      
+      return {
+        // Core Web Vitals
+        lcp: performance.lcp || technical.largestContentfulPaint || null,
+        fid: performance.fid || technical.firstInputDelay || null,
+        cls: performance.cls || technical.cumulativeLayoutShift || null,
+        ttfb: performance.ttfb || technical.timeToFirstByte || null,
+        
+        // PageSpeed scores
+        performanceScore: performance.score || technical.performanceScore || null,
+        accessibilityScore: technical.accessibilityScore || null,
+        bestPracticesScore: technical.bestPracticesScore || null,
+        seoScore: technical.seoScore || null,
+        
+        // Mobile
+        mobileOptimized: technical.mobileOptimized ?? website.viewport !== undefined,
+        hasViewport: !!website.viewport,
+        
+        // Schema
+        schemaTypes: website.schemaTypes || technical.schemaTypes || [],
+        hasStructuredData: (website.schemaTypes || []).length > 0,
+        
+        // Security
+        isHttps: (compData.url || '').startsWith('https'),
+        
+        // Content metrics
+        wordCount: website.wordCount || synthesized.content?.wordCount || 0,
+        imageCount: website.images?.length || 0,
+        headingCount: (website.headings || []).length,
+        
+        _source: 'elite',
+        _timestamp: Date.now()
+      };
+    }
+    
+    extractPageSpeedData(domain) {
+      const pageSpeedData = window._pageSpeedCache?.[domain];
+      
+      if (!pageSpeedData) return null;
+      
+      const lighthouse = pageSpeedData.lighthouseResult || {};
+      const audits = lighthouse.audits || {};
+      const categories = lighthouse.categories || {};
+      
+      return {
+        performanceScore: Math.round((categories.performance?.score || 0) * 100),
+        accessibilityScore: Math.round((categories.accessibility?.score || 0) * 100),
+        bestPracticesScore: Math.round((categories['best-practices']?.score || 0) * 100),
+        seoScore: Math.round((categories.seo?.score || 0) * 100),
+        
+        lcp: audits['largest-contentful-paint']?.numericValue || null,
+        fid: audits['max-potential-fid']?.numericValue || null,
+        cls: audits['cumulative-layout-shift']?.numericValue || null,
+        ttfb: audits['server-response-time']?.numericValue || null,
+        
+        fcp: audits['first-contentful-paint']?.numericValue || null,
+        tti: audits['interactive']?.numericValue || null,
+        tbt: audits['total-blocking-time']?.numericValue || null,
+        
+        _source: 'pageSpeed',
+        _timestamp: Date.now()
+      };
+    }
+    
+    extractPHPFetcherTechnical(domain) {
+      const phpData = window._phpFetcherCache?.[domain];
+      
+      if (!phpData) return null;
+      
+      const metadata = phpData.metadata || {};
+      const headers = phpData.headers || {};
+      
+      return {
+        statusCode: metadata.statusCode || 200,
+        contentType: headers['content-type'] || 'text/html',
+        cacheControl: headers['cache-control'] || null,
+        hasHSTS: !!headers['strict-transport-security'],
+        hasCSP: !!headers['content-security-policy'],
+        hasXFrame: !!headers['x-frame-options'],
+        
+        serverType: headers.server || 'Unknown',
+        poweredBy: headers['x-powered-by'] || null,
+        
+        loadTime: metadata.loadTime || null,
+        contentLength: parseInt(headers['content-length']) || null,
+        
+        _source: 'phpFetcher',
+        _timestamp: Date.now()
+      };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA ENRICHMENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    enrichTechnicalData(data, domain) {
+      // Calculate Core Web Vitals grades
+      const cwvGrades = this.calculateCWVGrades(data);
+      
+      // Calculate RAG/LLM readiness
+      const ragReadiness = this.calculateRAGReadiness(data);
+      
+      // Calculate mobile readiness
+      const mobileReadiness = this.calculateMobileReadiness(data);
+      
+      // Schema analysis
+      const schemaAnalysis = this.analyzeSchema(data.schemaTypes || []);
+      
+      // Security score
+      const securityScore = this.calculateSecurityScore(data);
+      
+      // Overall technical health
+      const technicalHealth = this.calculateTechnicalHealth(data, cwvGrades, securityScore);
+      
+      return {
+        ...data,
+        cwvGrades,
+        ragReadiness,
+        mobileReadiness,
+        schemaAnalysis,
+        securityScore,
+        technicalHealth,
+        recommendations: this.generateRecommendations(data, cwvGrades, securityScore)
+      };
+    }
+    
+    calculateCWVGrades(data) {
+      const thresholds = this.technicalConfig.cwvThresholds;
+      
+      const getGrade = (value, metric) => {
+        if (value === null || value === undefined) {
+          return { grade: 'N/A', color: '#9ca3af', status: 'unknown' };
+        }
+        
+        const t = thresholds[metric];
+        if (value <= t.good) {
+          return { grade: 'Good', color: '#22c55e', status: 'pass' };
+        } else if (value <= t.needsImprovement) {
+          return { grade: 'Needs Improvement', color: '#f59e0b', status: 'warning' };
+        }
+        return { grade: 'Poor', color: '#ef4444', status: 'fail' };
+      };
+      
+      return {
+        lcp: { value: data.lcp, ...getGrade(data.lcp, 'lcp'), unit: 'ms' },
+        fid: { value: data.fid, ...getGrade(data.fid, 'fid'), unit: 'ms' },
+        cls: { value: data.cls, ...getGrade(data.cls, 'cls'), unit: '' },
+        ttfb: { value: data.ttfb, ...getGrade(data.ttfb, 'ttfb'), unit: 'ms' },
+        overallCWV: this.calculateOverallCWV(data)
+      };
+    }
+    
+    calculateOverallCWV(data) {
+      const metrics = ['lcp', 'fid', 'cls'];
+      const thresholds = this.technicalConfig.cwvThresholds;
+      
+      let passCount = 0;
+      let measuredCount = 0;
+      
+      metrics.forEach(metric => {
+        const value = data[metric];
+        if (value !== null && value !== undefined) {
+          measuredCount++;
+          if (value <= thresholds[metric].good) {
+            passCount++;
+          }
+        }
+      });
+      
+      if (measuredCount === 0) {
+        return { status: 'unknown', label: 'No Data', color: '#9ca3af' };
+      }
+      
+      const passRate = passCount / measuredCount;
+      if (passRate >= 0.75) {
+        return { status: 'good', label: 'Passing', color: '#22c55e' };
+      } else if (passRate >= 0.5) {
+        return { status: 'warning', label: 'Needs Work', color: '#f59e0b' };
+      }
+      return { status: 'poor', label: 'Failing', color: '#ef4444' };
+    }
+    
+    calculateRAGReadiness(data) {
+      let score = 0;
+      const factors = [];
+      
+      // Structured data is critical for RAG
+      if (data.hasStructuredData) {
+        score += 25;
+        factors.push({ factor: 'Structured Data', status: 'pass', icon: '✅' });
+      } else {
+        factors.push({ factor: 'Structured Data', status: 'fail', icon: '❌' });
+      }
+      
+      // Content depth
+      const wordCount = data.wordCount || 0;
+      if (wordCount >= 1500) {
+        score += 20;
+        factors.push({ factor: 'Content Depth (1500+ words)', status: 'pass', icon: '✅' });
+      } else if (wordCount >= 500) {
+        score += 10;
+        factors.push({ factor: 'Content Depth', status: 'partial', icon: '🟡' });
+      } else {
+        factors.push({ factor: 'Content Depth', status: 'fail', icon: '❌' });
+      }
+      
+      // Heading structure
+      const headingCount = data.headingCount || 0;
+      if (headingCount >= 5) {
+        score += 15;
+        factors.push({ factor: 'Heading Structure', status: 'pass', icon: '✅' });
+      } else if (headingCount >= 2) {
+        score += 8;
+        factors.push({ factor: 'Heading Structure', status: 'partial', icon: '🟡' });
+      } else {
+        factors.push({ factor: 'Heading Structure', status: 'fail', icon: '❌' });
+      }
+      
+      // FAQ/HowTo schema (highly RAG-friendly)
+      const schemaTypes = data.schemaTypes || [];
+      if (schemaTypes.includes('FAQPage') || schemaTypes.includes('HowTo')) {
+        score += 20;
+        factors.push({ factor: 'FAQ/HowTo Schema', status: 'pass', icon: '✅' });
+      }
+      
+      // Performance (fast sites get indexed better)
+      if (data.performanceScore >= 80) {
+        score += 10;
+        factors.push({ factor: 'Page Performance', status: 'pass', icon: '✅' });
+      } else if (data.performanceScore >= 50) {
+        score += 5;
+        factors.push({ factor: 'Page Performance', status: 'partial', icon: '🟡' });
+      }
+      
+      // HTTPS
+      if (data.isHttps) {
+        score += 10;
+        factors.push({ factor: 'HTTPS Security', status: 'pass', icon: '✅' });
+      } else {
+        factors.push({ factor: 'HTTPS Security', status: 'fail', icon: '❌' });
+      }
+      
+      return {
+        score: Math.min(100, score),
+        tier: this.getRAGTier(score),
+        factors
+      };
+    }
+    
+    getRAGTier(score) {
+      if (score >= 80) return { label: 'Excellent', color: '#22c55e', icon: '🚀' };
+      if (score >= 60) return { label: 'Good', color: '#84cc16', icon: '👍' };
+      if (score >= 40) return { label: 'Fair', color: '#f59e0b', icon: '🔧' };
+      return { label: 'Poor', color: '#ef4444', icon: '⚠️' };
+    }
+    
+    calculateMobileReadiness(data) {
+      let score = 0;
+      const factors = [];
+      
+      if (data.hasViewport) {
+        score += 30;
+        factors.push({ factor: 'Viewport Meta', status: 'pass' });
+      } else {
+        factors.push({ factor: 'Viewport Meta', status: 'fail' });
+      }
+      
+      if (data.mobileOptimized) {
+        score += 30;
+        factors.push({ factor: 'Mobile Optimized', status: 'pass' });
+      }
+      
+      // Performance impacts mobile
+      if (data.performanceScore >= 70) {
+        score += 20;
+        factors.push({ factor: 'Mobile Performance', status: 'pass' });
+      } else if (data.performanceScore >= 40) {
+        score += 10;
+        factors.push({ factor: 'Mobile Performance', status: 'partial' });
+      }
+      
+      // CLS is critical for mobile
+      if (data.cls !== null && data.cls <= 0.1) {
+        score += 20;
+        factors.push({ factor: 'Layout Stability', status: 'pass' });
+      }
+      
+      return {
+        score: Math.min(100, score),
+        tier: score >= 80 ? 'Ready' : score >= 50 ? 'Partial' : 'Not Ready',
+        color: score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444',
+        factors
+      };
+    }
+    
+    analyzeSchema(schemaTypes) {
+      const analysis = {
+        types: schemaTypes,
+        count: schemaTypes.length,
+        hasOrganization: schemaTypes.includes('Organization'),
+        hasWebSite: schemaTypes.includes('WebSite'),
+        hasArticle: schemaTypes.includes('Article'),
+        hasProduct: schemaTypes.includes('Product'),
+        hasFAQ: schemaTypes.includes('FAQPage'),
+        hasHowTo: schemaTypes.includes('HowTo'),
+        hasBreadcrumb: schemaTypes.includes('BreadcrumbList'),
+        hasLocalBusiness: schemaTypes.includes('LocalBusiness')
+      };
+      
+      // Calculate schema coverage score
+      let score = 0;
+      if (analysis.hasOrganization) score += 15;
+      if (analysis.hasWebSite) score += 10;
+      if (analysis.hasArticle) score += 15;
+      if (analysis.hasFAQ) score += 20;
+      if (analysis.hasHowTo) score += 20;
+      if (analysis.hasBreadcrumb) score += 10;
+      if (analysis.hasProduct) score += 15;
+      
+      analysis.score = Math.min(100, score);
+      analysis.tier = score >= 60 ? 'Comprehensive' : score >= 30 ? 'Basic' : 'Minimal';
+      
+      return analysis;
+    }
+    
+    calculateSecurityScore(data) {
+      let score = 0;
+      const checks = [];
+      
+      if (data.isHttps) {
+        score += 40;
+        checks.push({ check: 'HTTPS', status: 'pass', icon: '🔒' });
+      } else {
+        checks.push({ check: 'HTTPS', status: 'fail', icon: '⚠️' });
+      }
+      
+      if (data.hasHSTS) {
+        score += 20;
+        checks.push({ check: 'HSTS', status: 'pass', icon: '🛡️' });
+      }
+      
+      if (data.hasCSP) {
+        score += 20;
+        checks.push({ check: 'Content Security Policy', status: 'pass', icon: '🛡️' });
+      }
+      
+      if (data.hasXFrame) {
+        score += 20;
+        checks.push({ check: 'X-Frame-Options', status: 'pass', icon: '🛡️' });
+      }
+      
+      return {
+        score,
+        tier: score >= 80 ? 'Secure' : score >= 50 ? 'Moderate' : 'Vulnerable',
+        color: score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444',
+        checks
+      };
+    }
+    
+    calculateTechnicalHealth(data, cwvGrades, securityScore) {
+      const weights = {
+        performance: 0.25,
+        cwv: 0.25,
+        security: 0.2,
+        seo: 0.15,
+        accessibility: 0.15
+      };
+      
+      let score = 0;
+      
+      score += (data.performanceScore || 0) * weights.performance;
+      
+      const cwvScore = cwvGrades.overallCWV.status === 'good' ? 100 : 
+                       cwvGrades.overallCWV.status === 'warning' ? 60 : 30;
+      score += cwvScore * weights.cwv;
+      
+      score += (securityScore.score || 0) * weights.security;
+      score += (data.seoScore || 0) * weights.seo;
+      score += (data.accessibilityScore || 0) * weights.accessibility;
+      
+      return {
+        score: Math.round(score),
+        tier: score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Poor',
+        color: score >= 80 ? '#22c55e' : score >= 60 ? '#84cc16' : score >= 40 ? '#f59e0b' : '#ef4444'
+      };
+    }
+    
+    generateRecommendations(data, cwvGrades, securityScore) {
+      const recommendations = [];
+      
+      // CWV recommendations
+      if (cwvGrades.lcp.status === 'fail') {
+        recommendations.push({
+          priority: 'high',
+          category: 'performance',
+          title: 'Improve Largest Contentful Paint',
+          action: 'Optimize images, use lazy loading, improve server response time',
+          icon: '🖼️'
+        });
+      }
+      
+      if (cwvGrades.cls.status === 'fail') {
+        recommendations.push({
+          priority: 'high',
+          category: 'performance',
+          title: 'Fix Layout Shift Issues',
+          action: 'Add size attributes to images/videos, avoid inserting content above existing content',
+          icon: '📐'
+        });
+      }
+      
+      // Security recommendations
+      if (!data.isHttps) {
+        recommendations.push({
+          priority: 'critical',
+          category: 'security',
+          title: 'Enable HTTPS',
+          action: 'Install SSL certificate and redirect all HTTP traffic to HTTPS',
+          icon: '🔒'
+        });
+      }
+      
+      // Schema recommendations
+      if (!data.hasStructuredData) {
+        recommendations.push({
+          priority: 'medium',
+          category: 'seo',
+          title: 'Add Structured Data',
+          action: 'Implement Schema.org markup (Organization, Article, FAQ)',
+          icon: '📊'
+        });
+      }
+      
+      return recommendations;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FALLBACK - RETURNS EMPTY (No fake data per Lead Architect mandate)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    generateFallbackTechnical(domain) {
+      console.log(`   ⚠️ No real technical data available for ${domain} - returning empty`);
+      console.log(`   💡 Real data requires: PageSpeed API key configured in Settings`);
+      
+      // REMOVED: Random fallback values
+      // Return zeros/empty to show "No data available" state in UI
+      return {
+        performanceScore: 0,
+        lcp: 0,
+        cls: 0,
+        isHttps: null,  // Unknown without real check
+        hasStructuredData: null,
+        schemaTypes: [],
+        _isEstimate: false,
+        _isEmpty: true,
+        _confidence: 0,
+        _source: 'none',
+        _message: 'No technical data - configure PageSpeed API for real metrics',
+        _timestamp: Date.now()
+      };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GLOBAL EXPORT
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.EliteTechnicalFetcher = EliteTechnicalFetcher;
+  window.eliteTechnicalFetcher = new EliteTechnicalFetcher();
+  
+  console.log('✅ ELITE_Fetcher_Technical.html loaded');
+
+})();
+</script>

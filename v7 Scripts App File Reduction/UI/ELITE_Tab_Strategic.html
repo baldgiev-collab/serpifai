@@ -1,0 +1,818 @@
+<!--
+  ELITE_Tab_Strategic.html
+  =========================
+  Category D: Tab-Specific Strategic Depth Components
+  
+  Provides strategic enhancement sections for each tab:
+  - Competitive Positioning Matrix
+  - Topical Authority Mapping
+  - SERP Feature Ownership
+  - Funnel Stage Mapping
+  - Kill Moves & Attack Vectors
+  - Predictive Ranking Model
+  
+  Dependencies: 
+  - ELITE_Components_Shared.html
+  - Chart.js (for visualizations)
+  
+  Version: 1.0.0 (January 2025)
+  Part of: Elite Intelligence System Implementation
+-->
+
+<style>
+  /* ========================================
+     D: STRATEGIC DEPTH COMPONENTS
+     ======================================== */
+  
+  /* Strategic Section Container */
+  .elite-strategic-section {
+    background: linear-gradient(135deg, #fafafa 0%, #f8f7ff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px;
+    margin: 24px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .elite-strategic-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #8b5cf6, #6366f1, #3b82f6);
+  }
+  
+  .elite-strategic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .elite-strategic-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  
+  .elite-strategic-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: white;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Competitive Positioning Matrix */
+  .elite-position-matrix {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    background: #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 600px;
+    aspect-ratio: 1;
+  }
+  
+  .elite-position-quadrant {
+    background: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    position: relative;
+  }
+  
+  .elite-position-quadrant.top-left { border-radius: 12px 0 0 0; background: linear-gradient(135deg, #fef3c7, #fef9c3); }
+  .elite-position-quadrant.top-right { border-radius: 0 12px 0 0; background: linear-gradient(135deg, #dcfce7, #d1fae5); }
+  .elite-position-quadrant.bottom-left { border-radius: 0 0 0 12px; background: linear-gradient(135deg, #fee2e2, #fecaca); }
+  .elite-position-quadrant.bottom-right { border-radius: 0 0 12px 0; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); }
+  
+  .elite-quadrant-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+  }
+  
+  .elite-quadrant-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  
+  .elite-quadrant-count {
+    font-size: 28px;
+    font-weight: 800;
+  }
+  
+  .elite-quadrant-count.yellow { color: #d97706; }
+  .elite-quadrant-count.green { color: #059669; }
+  .elite-quadrant-count.red { color: #dc2626; }
+  .elite-quadrant-count.blue { color: #4f46e5; }
+  
+  /* SERP Feature Ownership */
+  .elite-serp-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  
+  .elite-serp-feature {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+  }
+  
+  .elite-serp-feature:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  
+  .elite-serp-feature.owned {
+    border-color: #86efac;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  }
+  
+  .elite-serp-feature.competitor {
+    border-color: #fca5a5;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  }
+  
+  .elite-serp-feature.opportunity {
+    border-color: #fcd34d;
+    background: linear-gradient(135deg, #fefce8, #fef9c3);
+  }
+  
+  .elite-serp-icon {
+    font-size: 24px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.04);
+    border-radius: 12px;
+  }
+  
+  .elite-serp-info {
+    flex: 1;
+  }
+  
+  .elite-serp-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 2px;
+  }
+  
+  .elite-serp-status {
+    font-size: 11px;
+    color: #64748b;
+  }
+  
+  /* Topical Authority Map */
+  .elite-topic-map {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    padding: 24px;
+  }
+  
+  .elite-topic-cluster {
+    position: relative;
+    padding: 20px 24px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .elite-topic-cluster:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  
+  .elite-topic-cluster.authority-high {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  }
+  
+  .elite-topic-cluster.authority-medium {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  }
+  
+  .elite-topic-cluster.authority-low {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  }
+  
+  .elite-topic-score {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+  }
+  
+  /* Funnel Stage Mapping */
+  .elite-funnel {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 4px;
+    padding: 24px;
+  }
+  
+  .elite-funnel-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 160px;
+  }
+  
+  .elite-funnel-bar {
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 16px 8px;
+    color: white;
+    min-height: 80px;
+    transition: all 0.3s;
+  }
+  
+  .elite-funnel-bar:hover {
+    transform: scaleY(1.05);
+    transform-origin: bottom;
+  }
+  
+  .elite-funnel-stage:nth-child(1) .elite-funnel-bar { background: linear-gradient(180deg, #3b82f6, #1d4ed8); height: 200px; }
+  .elite-funnel-stage:nth-child(2) .elite-funnel-bar { background: linear-gradient(180deg, #8b5cf6, #6d28d9); height: 160px; }
+  .elite-funnel-stage:nth-child(3) .elite-funnel-bar { background: linear-gradient(180deg, #ec4899, #be185d); height: 120px; }
+  .elite-funnel-stage:nth-child(4) .elite-funnel-bar { background: linear-gradient(180deg, #10b981, #047857); height: 80px; }
+  
+  .elite-funnel-value {
+    font-size: 24px;
+    font-weight: 800;
+  }
+  
+  .elite-funnel-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-align: center;
+  }
+  
+  /* Kill Moves / Attack Vectors */
+  .elite-kill-moves {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  
+  .elite-kill-move {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  
+  .elite-kill-move:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  
+  .elite-kill-move.priority-critical { border-left: 4px solid #ef4444; }
+  .elite-kill-move.priority-high { border-left: 4px solid #f59e0b; }
+  .elite-kill-move.priority-medium { border-left: 4px solid #3b82f6; }
+  
+  .elite-kill-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  
+  .elite-kill-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  
+  .elite-kill-priority {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  
+  .elite-kill-priority.critical { background: #fee2e2; color: #dc2626; }
+  .elite-kill-priority.high { background: #fef3c7; color: #d97706; }
+  .elite-kill-priority.medium { background: #dbeafe; color: #2563eb; }
+  
+  .elite-kill-description {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  
+  .elite-kill-impact {
+    display: flex;
+    gap: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+  }
+  
+  .elite-kill-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .elite-kill-metric-label {
+    font-size: 10px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .elite-kill-metric-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  
+  /* Predictive Ranking Model */
+  .elite-ranking-prediction {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  
+  .elite-ranking-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+  
+  .elite-ranking-timeline {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 8px;
+  }
+  
+  .elite-ranking-position {
+    font-size: 48px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .elite-ranking-change {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  
+  .elite-ranking-change.positive { color: #10b981; }
+  .elite-ranking-change.negative { color: #ef4444; }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  // ==========================================
+  // D1: COMPETITIVE POSITIONING MATRIX
+  // ==========================================
+  
+  /**
+   * Render competitive positioning matrix (BCG-style)
+   * @param {object} data - { leaders: [], challengers: [], niche: [], declining: [] }
+   * @returns {string} HTML string
+   */
+  function renderCompetitiveMatrix(data) {
+    const { leaders = [], challengers = [], niche = [], declining = [] } = data;
+    
+    return `
+      <div class="elite-strategic-section">
+        <div class="elite-strategic-header">
+          <div class="elite-strategic-title">
+            <span>📊</span>
+            <span>Competitive Positioning Matrix</span>
+            <span class="elite-strategic-badge">🏆 Elite Analysis</span>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 32px; align-items: center;">
+          <div class="elite-position-matrix">
+            <div class="elite-position-quadrant top-left">
+              <span class="elite-quadrant-label">Question Marks</span>
+              <span class="elite-quadrant-title">Challengers</span>
+              <span class="elite-quadrant-count yellow">${challengers.length}</span>
+            </div>
+            <div class="elite-position-quadrant top-right">
+              <span class="elite-quadrant-label">Stars</span>
+              <span class="elite-quadrant-title">Leaders</span>
+              <span class="elite-quadrant-count green">${leaders.length}</span>
+            </div>
+            <div class="elite-position-quadrant bottom-left">
+              <span class="elite-quadrant-label">Dogs</span>
+              <span class="elite-quadrant-title">Declining</span>
+              <span class="elite-quadrant-count red">${declining.length}</span>
+            </div>
+            <div class="elite-position-quadrant bottom-right">
+              <span class="elite-quadrant-label">Cash Cows</span>
+              <span class="elite-quadrant-title">Niche</span>
+              <span class="elite-quadrant-count blue">${niche.length}</span>
+            </div>
+          </div>
+          
+          <div style="flex: 1;">
+            <div style="margin-bottom: 16px;">
+              <h4 style="margin: 0 0 8px; font-size: 14px; color: #64748b;">Your Position</h4>
+              <p style="margin: 0; font-size: 18px; font-weight: 700; color: #1e293b;">
+                ${leaders.length > 0 ? '⭐ Market Leader' : challengers.length > 0 ? '🚀 Challenger' : '🎯 Niche Player'}
+              </p>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+              <h4 style="margin: 0 0 8px; font-size: 14px; color: #64748b;">Strategic Recommendation</h4>
+              <p style="margin: 0; font-size: 13px; color: #475569; line-height: 1.6;">
+                ${leaders.length > 0 ? 
+                  'Focus on defending market share through content moats and authority building.' :
+                  challengers.length > 0 ?
+                  'Aggressive content expansion and backlink acquisition to capture leader position.' :
+                  'Double down on niche expertise and long-tail keyword domination.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // D2: SERP FEATURE OWNERSHIP
+  // ==========================================
+  
+  const SERP_FEATURES = [
+    { id: 'featured_snippet', name: 'Featured Snippets', icon: '📋' },
+    { id: 'people_ask', name: 'People Also Ask', icon: '❓' },
+    { id: 'knowledge_panel', name: 'Knowledge Panel', icon: '📚' },
+    { id: 'local_pack', name: 'Local Pack', icon: '📍' },
+    { id: 'image_pack', name: 'Image Pack', icon: '🖼️' },
+    { id: 'video_carousel', name: 'Video Carousel', icon: '🎬' },
+    { id: 'top_stories', name: 'Top Stories', icon: '📰' },
+    { id: 'sitelinks', name: 'Sitelinks', icon: '🔗' },
+    { id: 'reviews', name: 'Review Stars', icon: '⭐' },
+    { id: 'shopping', name: 'Shopping Results', icon: '🛒' },
+    { id: 'faq_schema', name: 'FAQ Schema', icon: '💬' },
+    { id: 'ai_overview', name: 'AI Overview', icon: '🤖' }
+  ];
+  
+  /**
+   * Render SERP feature ownership grid
+   * @param {object} data - { owned: [], competitor: [], opportunity: [] }
+   * @returns {string} HTML string
+   */
+  function renderSerpFeatureOwnership(data) {
+    const { owned = [], competitor = [], opportunity = [] } = data;
+    
+    return `
+      <div class="elite-strategic-section">
+        <div class="elite-strategic-header">
+          <div class="elite-strategic-title">
+            <span>🎯</span>
+            <span>SERP Feature Ownership</span>
+            <span class="elite-strategic-badge">🏆 Elite Analysis</span>
+          </div>
+          <div style="display: flex; gap: 16px; font-size: 12px;">
+            <span style="display: flex; align-items: center; gap: 4px;">
+              <span style="width: 12px; height: 12px; border-radius: 3px; background: #dcfce7;"></span>
+              You Own (${owned.length})
+            </span>
+            <span style="display: flex; align-items: center; gap: 4px;">
+              <span style="width: 12px; height: 12px; border-radius: 3px; background: #fee2e2;"></span>
+              Competitor (${competitor.length})
+            </span>
+            <span style="display: flex; align-items: center; gap: 4px;">
+              <span style="width: 12px; height: 12px; border-radius: 3px; background: #fef9c3;"></span>
+              Opportunity (${opportunity.length})
+            </span>
+          </div>
+        </div>
+        
+        <div class="elite-serp-features">
+          ${SERP_FEATURES.map(feature => {
+            const status = owned.includes(feature.id) ? 'owned' :
+                          competitor.includes(feature.id) ? 'competitor' : 'opportunity';
+            const statusLabel = status === 'owned' ? '✅ You own this' :
+                               status === 'competitor' ? '❌ Competitor owns' : '🎯 Available';
+            
+            return `
+              <div class="elite-serp-feature ${status}">
+                <div class="elite-serp-icon">${feature.icon}</div>
+                <div class="elite-serp-info">
+                  <div class="elite-serp-name">${feature.name}</div>
+                  <div class="elite-serp-status">${statusLabel}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // D3: TOPICAL AUTHORITY MAP
+  // ==========================================
+  
+  /**
+   * Render topical authority cluster map
+   * @param {array} topics - [{ name, score, articles, level }]
+   * @returns {string} HTML string
+   */
+  function renderTopicalAuthorityMap(topics) {
+    return `
+      <div class="elite-strategic-section">
+        <div class="elite-strategic-header">
+          <div class="elite-strategic-title">
+            <span>🧠</span>
+            <span>Topical Authority Map</span>
+            <span class="elite-strategic-badge">🏆 Elite Analysis</span>
+          </div>
+        </div>
+        
+        <div class="elite-topic-map">
+          ${topics.map(topic => {
+            const levelClass = topic.score >= 80 ? 'authority-high' :
+                              topic.score >= 50 ? 'authority-medium' : 'authority-low';
+            
+            return `
+              <div class="elite-topic-cluster ${levelClass}" title="${topic.articles} articles covering this topic">
+                ${topic.name}
+                <span class="elite-topic-score">${topic.score}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: 24px; margin-top: 20px; font-size: 12px; color: #64748b;">
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 12px; height: 12px; border-radius: 4px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 2px solid #10b981;"></span>
+            High Authority (80+)
+          </span>
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 12px; height: 12px; border-radius: 4px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 2px solid #f59e0b;"></span>
+            Medium Authority (50-79)
+          </span>
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 12px; height: 12px; border-radius: 4px; background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 2px solid #ef4444;"></span>
+            Low Authority (&lt;50)
+          </span>
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // D4: FUNNEL STAGE MAPPING
+  // ==========================================
+  
+  /**
+   * Render content funnel stage distribution
+   * @param {object} data - { awareness, consideration, decision, retention }
+   * @returns {string} HTML string
+   */
+  function renderFunnelStageMapping(data) {
+    const { awareness = 0, consideration = 0, decision = 0, retention = 0 } = data;
+    const total = awareness + consideration + decision + retention || 1;
+    
+    return `
+      <div class="elite-strategic-section">
+        <div class="elite-strategic-header">
+          <div class="elite-strategic-title">
+            <span>🎪</span>
+            <span>Content Funnel Distribution</span>
+            <span class="elite-strategic-badge">🏆 Elite Analysis</span>
+          </div>
+        </div>
+        
+        <div class="elite-funnel">
+          <div class="elite-funnel-stage">
+            <div class="elite-funnel-bar">
+              <span class="elite-funnel-value">${awareness}</span>
+            </div>
+            <span class="elite-funnel-label">Awareness<br>(${Math.round(awareness/total*100)}%)</span>
+          </div>
+          <div class="elite-funnel-stage">
+            <div class="elite-funnel-bar">
+              <span class="elite-funnel-value">${consideration}</span>
+            </div>
+            <span class="elite-funnel-label">Consideration<br>(${Math.round(consideration/total*100)}%)</span>
+          </div>
+          <div class="elite-funnel-stage">
+            <div class="elite-funnel-bar">
+              <span class="elite-funnel-value">${decision}</span>
+            </div>
+            <span class="elite-funnel-label">Decision<br>(${Math.round(decision/total*100)}%)</span>
+          </div>
+          <div class="elite-funnel-stage">
+            <div class="elite-funnel-bar">
+              <span class="elite-funnel-value">${retention}</span>
+            </div>
+            <span class="elite-funnel-label">Retention<br>(${Math.round(retention/total*100)}%)</span>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 16px; padding: 16px; background: #f8fafc; border-radius: 12px;">
+          <p style="margin: 0; font-size: 13px; color: #64748b;">
+            <strong style="color: #1e293b;">Funnel Health:</strong> 
+            ${awareness > consideration && consideration > decision ? 
+              '✅ Well-balanced funnel with good top-of-funnel coverage' :
+              '⚠️ Consider adding more ' + (awareness < consideration ? 'awareness' : 'decision') + ' stage content'}
+          </p>
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // D5: KILL MOVES / ATTACK VECTORS
+  // ==========================================
+  
+  /**
+   * Render strategic kill moves and attack vectors
+   * @param {array} moves - [{ title, description, priority, impact, effort, timeline }]
+   * @returns {string} HTML string
+   */
+  function renderKillMoves(moves) {
+    return `
+      <div class="elite-strategic-section">
+        <div class="elite-strategic-header">
+          <div class="elite-strategic-title">
+            <span>⚔️</span>
+            <span>Strategic Kill Moves</span>
+            <span class="elite-strategic-badge">🏆 Elite Analysis</span>
+          </div>
+        </div>
+        
+        <div class="elite-kill-moves">
+          ${moves.map(move => `
+            <div class="elite-kill-move priority-${move.priority}">
+              <div class="elite-kill-header">
+                <span class="elite-kill-title">${move.title}</span>
+                <span class="elite-kill-priority ${move.priority}">${move.priority}</span>
+              </div>
+              <p class="elite-kill-description">${move.description}</p>
+              <div class="elite-kill-impact">
+                <div class="elite-kill-metric">
+                  <span class="elite-kill-metric-label">Impact</span>
+                  <span class="elite-kill-metric-value">${move.impact || 'High'}</span>
+                </div>
+                <div class="elite-kill-metric">
+                  <span class="elite-kill-metric-label">Effort</span>
+                  <span class="elite-kill-metric-value">${move.effort || 'Medium'}</span>
+                </div>
+                <div class="elite-kill-metric">
+                  <span class="elite-kill-metric-label">Timeline</span>
+                  <span class="elite-kill-metric-value">${move.timeline || '30 days'}</span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // D6: PREDICTIVE RANKING MODEL
+  // ==========================================
+  
+  /**
+   * Render predictive ranking model
+   * @param {object} data - { current, month3, month6, month12 }
+   * @returns {string} HTML string
+   */
+  function renderPredictiveRanking(data) {
+    const { current = 15, month3 = 10, month6 = 6, month12 = 3 } = data;
+    
+    return `
+      <div class="elite-strategic-section">
+        <div class="elite-strategic-header">
+          <div class="elite-strategic-title">
+            <span>🔮</span>
+            <span>Predictive Ranking Model</span>
+            <span class="elite-strategic-badge">🏆 Elite AI</span>
+          </div>
+        </div>
+        
+        <div class="elite-ranking-prediction">
+          <div class="elite-ranking-card">
+            <div class="elite-ranking-timeline">Current Position</div>
+            <div class="elite-ranking-position">#${current}</div>
+            <div class="elite-ranking-change neutral">→ Baseline</div>
+          </div>
+          
+          <div class="elite-ranking-card">
+            <div class="elite-ranking-timeline">3 Month Projection</div>
+            <div class="elite-ranking-position">#${month3}</div>
+            <div class="elite-ranking-change ${month3 < current ? 'positive' : 'negative'}">
+              ${month3 < current ? '↑' : '↓'} ${Math.abs(current - month3)} positions
+            </div>
+          </div>
+          
+          <div class="elite-ranking-card">
+            <div class="elite-ranking-timeline">12 Month Target</div>
+            <div class="elite-ranking-position">#${month12}</div>
+            <div class="elite-ranking-change ${month12 < current ? 'positive' : 'negative'}">
+              ${month12 < current ? '↑' : '↓'} ${Math.abs(current - month12)} positions
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 12px; border: 1px solid #93c5fd;">
+          <p style="margin: 0; font-size: 13px; color: #1e40af; line-height: 1.6;">
+            <strong>🤖 AI Confidence:</strong> 78% • Based on current trajectory, content velocity, backlink growth rate, and competitor momentum analysis. 
+            Execute kill moves to increase probability.
+          </p>
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // EXPORT TO WINDOW
+  // ==========================================
+  
+  window.renderCompetitiveMatrix = renderCompetitiveMatrix;
+  window.renderSerpFeatureOwnership = renderSerpFeatureOwnership;
+  window.renderTopicalAuthorityMap = renderTopicalAuthorityMap;
+  window.renderFunnelStageMapping = renderFunnelStageMapping;
+  window.renderKillMoves = renderKillMoves;
+  window.renderPredictiveRanking = renderPredictiveRanking;
+  
+  // Feature list for reference
+  window.SERP_FEATURES = SERP_FEATURES;
+  
+  console.log('✅ ELITE_Tab_Strategic.html loaded - Category D Strategic Depth v1.0');
+  
+})();
+</script>

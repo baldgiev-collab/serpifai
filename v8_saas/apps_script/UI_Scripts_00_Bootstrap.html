@@ -1,0 +1,21 @@
+<script>
+(function () {
+  window.SerpifAI = window.SerpifAI || {};
+  const root = window.SerpifAI;
+
+  root.version = root.version || 'v8';
+  root.modules = root.modules || {};
+
+  root.utils = root.utils || {};
+  root.log = root.log || {};
+  root.api = root.api || {};
+  root.state = root.state || {};
+  root.ui = root.ui || {};
+
+  root._exportGlobal = root._exportGlobal || function (name, value) {
+    if (!name) return;
+    if (typeof window[name] === 'undefined') window[name] = value;
+    return value;
+  };
+})();
+</script>

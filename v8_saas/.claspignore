@@ -1,0 +1,32 @@
+# .claspignore - V8 Production Ignore File
+# ==========================================
+
+# Documentation
+*.md
+!appsscript.json
+
+# Development files
+*.backup
+*.bak
+*.tmp
+*.log
+
+# Test files (if any outside apps_script)
+test/**
+tests/**
+
+# Node/NPM (if used for local tooling)
+node_modules/**
+package*.json
+
+# Git
+.git/**
+.gitignore
+
+# IDE
+.vscode/**
+.idea/**
+
+# Other folders
+php_backend/**
+serpifai_php/**

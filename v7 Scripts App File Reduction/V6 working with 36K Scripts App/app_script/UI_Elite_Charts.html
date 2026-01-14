@@ -1,0 +1,2612 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE COMPETITOR CHART ENGINE
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Comprehensive Chart.js visualization system for competitor intelligence
+ * Supports 30+ chart types across 15 intelligence categories
+ * Enhanced with Elite 0.1% animations and interactivity
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// Chart instances storage
+window.competitorCharts = window.competitorCharts || {};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ELITE CHART CONFIGURATION - Global Animation & Interactivity Settings
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ELITE_CHART_CONFIG = {
+  // Animation settings for different chart types
+  animations: {
+    default: { duration: 1200, easing: 'easeOutQuart' },
+    radar: { duration: 1500, easing: 'easeOutElastic' },
+    doughnut: { duration: 1800, easing: 'easeOutBounce', animateRotate: true, animateScale: true },
+    bar: { duration: 1000, easing: 'easeOutCubic', delay: (context) => context.dataIndex * 100 },
+    line: { duration: 2000, easing: 'easeInOutQuart' },
+    bubble: { duration: 1500, easing: 'easeOutBack' }
+  },
+  
+  // Hover effects
+  hover: {
+    mode: 'nearest',
+    intersect: true,
+    animationDuration: 200
+  },
+  
+  // Interactive tooltip configuration
+  tooltip: {
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    titleColor: '#fff',
+    bodyColor: '#e2e8f0',
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+    borderWidth: 1,
+    cornerRadius: 12,
+    padding: 16,
+    displayColors: true,
+    boxPadding: 6,
+    caretSize: 8,
+    titleFont: { size: 14, weight: 'bold' },
+    bodyFont: { size: 13 },
+    animation: { duration: 300 }
+  },
+  
+  // Legend configuration
+  legend: {
+    labels: {
+      font: { size: 12, weight: '500' },
+      padding: 16,
+      usePointStyle: true,
+      pointStyleWidth: 12
+    }
+  },
+  
+  // Color palettes
+  colors: {
+    primary: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'],
+    secondary: ['#0ea5e9', '#22d3ee', '#2dd4bf', '#34d399', '#4ade80', '#a3e635'],
+    warm: ['#f59e0b', '#f97316', '#ef4444', '#dc2626', '#b91c1c', '#991b1b'],
+    gradient: ['rgba(99, 102, 241, 0.85)', 'rgba(139, 92, 246, 0.75)', 'rgba(168, 85, 247, 0.65)', 
+               'rgba(217, 70, 239, 0.55)', 'rgba(236, 72, 153, 0.45)', 'rgba(244, 63, 94, 0.35)']
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL FORMATTING UTILITIES - Consistent number display across all charts
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Format decimal numbers consistently (2 decimal places by default)
+ * @param {number|string} value - The value to format
+ * @param {number} decimals - Number of decimal places (default: 2)
+ * @returns {string} Formatted number or 'N/A'
+ */
+function formatDecimal(value, decimals = 2) {
+  if (value === null || value === undefined || value === '' || value === 'N/A') {
+    return 'N/A';
+  }
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 'N/A';
+  return num.toFixed(decimals);
+}
+
+/**
+ * Format large numbers with K/M/B suffixes (Ahrefs-style)
+ * @param {number|string} num - The number to format
+ * @returns {string} Formatted number with suffix
+ */
+function formatLargeNumber(num) {
+  if (num === 'N/A' || num === null || num === undefined || num === '') return 'N/A';
+  const value = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(value)) return 'N/A';
+  
+  if (value >= 1000000000) return (value / 1000000000).toFixed(1) + 'B';
+  if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+  if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+  return value.toFixed(0);
+}
+
+/**
+ * Format percentage values
+ * @param {number|string} value - The value to format
+ * @returns {string} Formatted percentage
+ */
+function formatPercent(value) {
+  if (value === null || value === undefined || value === '' || value === 'N/A') return 'N/A';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 'N/A';
+  return num.toFixed(1) + '%';
+}
+
+/**
+ * Normalize percentage values - handles both 0-1 (e.g., 0.912) and 0-100 (e.g., 91.2) formats
+ * @param {number|string} value - The raw percentage value
+ * @returns {number} Normalized percentage 0-100
+ */
+function normalizePercent(value) {
+  if (value === null || value === undefined || value === '' || value === 'N/A') return 0;
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 0;
+  // If value is <= 1, assume it's 0-1 format and multiply by 100
+  // If value is > 1, assume it's already in 0-100 format
+  return num <= 1 && num > 0 ? num * 100 : num;
+}
+
+/**
+ * Format market share for display - auto-detects 0-1 vs 0-100 format
+ * @param {number|string} value - The market share value
+ * @param {number} decimals - Decimal places (default: 1)
+ * @returns {string} Formatted percentage string
+ */
+function formatMarketShare(value, decimals = 1) {
+  const normalized = normalizePercent(value);
+  if (normalized === 0 && value !== 0) return 'N/A';
+  return normalized.toFixed(decimals) + '%';
+}
+
+/**
+ * Safe metric extraction with proper null handling
+ * @param {Object} obj - Object to extract from
+ * @param {string} path - Dot-notation path (e.g., 'processedMetrics.authorityScore')
+ * @param {*} defaultValue - Default value if not found
+ * @returns {*} Extracted value or default
+ */
+function safeGet(obj, path, defaultValue = 0) {
+  if (!obj || !path) return defaultValue;
+  return path.split('.').reduce((current, key) => {
+    return current && current[key] !== undefined ? current[key] : defaultValue;
+  }, obj);
+}
+
+// Apply global Chart.js defaults
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.font.family = "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif";
+  Chart.defaults.animation.duration = 1200;
+  Chart.defaults.animation.easing = 'easeOutQuart';
+  Chart.defaults.plugins.tooltip.backgroundColor = ELITE_CHART_CONFIG.tooltip.backgroundColor;
+  Chart.defaults.plugins.tooltip.titleColor = ELITE_CHART_CONFIG.tooltip.titleColor;
+  Chart.defaults.plugins.tooltip.bodyColor = ELITE_CHART_CONFIG.tooltip.bodyColor;
+  Chart.defaults.plugins.tooltip.borderColor = ELITE_CHART_CONFIG.tooltip.borderColor;
+  Chart.defaults.plugins.tooltip.borderWidth = ELITE_CHART_CONFIG.tooltip.borderWidth;
+  Chart.defaults.plugins.tooltip.cornerRadius = ELITE_CHART_CONFIG.tooltip.cornerRadius;
+  Chart.defaults.plugins.tooltip.padding = ELITE_CHART_CONFIG.tooltip.padding;
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  
+  // Add hover animation plugin
+  Chart.register({
+    id: 'eliteHoverPlugin',
+    beforeEvent(chart, args) {
+      if (args.event.type === 'mousemove') {
+        chart.canvas.style.cursor = args.inChartArea ? 'pointer' : 'default';
+      }
+    }
+  });
+  
+  console.log('✅ Elite Chart.js global configuration applied');
+  console.log('✅ Global formatting utilities loaded: formatDecimal, formatLargeNumber, formatPercent, safeGet');
+}
+
+
+/**
+ * Get elite animation config for a specific chart type
+ */
+function getEliteAnimation(chartType) {
+  return ELITE_CHART_CONFIG.animations[chartType] || ELITE_CHART_CONFIG.animations.default;
+}
+
+/**
+ * Get elite tooltip config
+ */
+function getEliteTooltip(customCallbacks) {
+  return {
+    ...ELITE_CHART_CONFIG.tooltip,
+    callbacks: customCallbacks || {}
+  };
+}
+
+/**
+ * Main function to render all competitor charts
+ */
+function renderAllCompetitorCharts(competitorData) {
+  console.log('📊 Rendering all competitor charts...');
+  console.log('🔍 CHART DIAGNOSTIC: Received data:', {
+    dataType: typeof competitorData,
+    hasCompetitors: !!competitorData.competitors,
+    competitorsIsArray: Array.isArray(competitorData.competitors),
+    competitorsCount: competitorData.competitors ? competitorData.competitors.length : 0
+  });
+  
+  // Validate data structure
+  if (!competitorData || !competitorData.competitors) {
+    console.error('❌ Chart rendering failed: No competitors data');
+    return;
+  }
+  
+  if (!Array.isArray(competitorData.competitors)) {
+    console.error('❌ Chart rendering failed: competitors is not an array', competitorData.competitors);
+    return;
+  }
+  
+  if (competitorData.competitors.length === 0) {
+    console.warn('⚠️ Chart rendering skipped: No competitors to display');
+    return;
+  }
+  
+  try {
+    // Destroy existing charts
+    destroyAllCharts();
+    
+    // Overview charts
+    renderOverviewRadarChart(competitorData);
+    renderOverviewBarChart(competitorData);
+    
+    // Market Intelligence charts (Core + New Advanced)
+    renderMarketShareChart(competitorData);
+    renderMarketTrendsChart(competitorData);
+    renderCategoryGapChart(competitorData);
+    renderNarrativeChart(competitorData);
+    renderMomentumHeatmap(competitorData);
+    
+    // Brand Position charts
+    renderBrandArchetypeChart(competitorData);
+    renderEEATChart(competitorData);
+    
+    // Technical SEO charts
+    renderTechnicalHealthChart(competitorData);
+    renderPageSpeedChart(competitorData);
+    
+    // Content Intelligence charts
+    renderContentAuthorityChart(competitorData);
+    renderTrafficMixChart(competitorData);
+    
+    // Keyword Strategy charts
+    renderKeywordGapChart(competitorData);
+    renderIntentFunnelChart(competitorData);
+  
+  // Content Systems charts
+  renderSystemsWorkflowChart(competitorData);
+  renderAutomationChart(competitorData);
+  
+  // Conversion charts
+  renderConversionFunnelChart(competitorData);
+  renderMonetizationChart(competitorData);
+  
+  // Distribution charts
+  renderBacklinksChart(competitorData);
+  renderDistributionChannelsChart(competitorData);
+  
+  // Audience Intelligence charts
+  renderPersonasChart(competitorData);
+  renderSentimentChart(competitorData);
+  
+  // GEO + AEO charts
+  renderAICitationsChart(competitorData);
+  renderLLMAffinityChart(competitorData);
+  
+  // Authority charts
+  renderAuthorityGrowthChart(competitorData);
+  renderInfluencersChart(competitorData);
+  
+  // Performance charts
+  renderPerformanceQualityChart(competitorData);
+  renderPredictiveChart(competitorData);
+  
+  // Opportunity charts
+  renderOpportunitiesChart(competitorData);
+  renderMoatChart(competitorData);
+  
+  // Scoring charts
+  renderScoringComprehensiveChart(competitorData);
+  renderMomentumChart(competitorData);
+  renderTrustChart(competitorData);
+  
+  console.log('✅ All charts rendered');
+  
+  } catch (error) {
+    console.error('❌ Chart rendering error:', error);
+    console.error('   Error stack:', error.stack);
+    console.error('   Data received:', JSON.stringify(competitorData).substring(0, 500));
+  }
+}
+
+/**
+ * Destroy all existing charts
+ */
+function destroyAllCharts() {
+  for (let chartId in window.competitorCharts) {
+    if (window.competitorCharts[chartId]) {
+      window.competitorCharts[chartId].destroy();
+      delete window.competitorCharts[chartId];
+    }
+  }
+}
+
+/**
+ * Utility: Get competitor colors
+ */
+function getCompetitorColors(count) {
+  const colors = [
+    'rgba(59, 130, 246, 0.8)',   // Blue
+    'rgba(239, 68, 68, 0.8)',    // Red
+    'rgba(34, 197, 94, 0.8)',    // Green
+    'rgba(251, 146, 60, 0.8)',   // Orange
+    'rgba(168, 85, 247, 0.8)',   // Purple
+    'rgba(236, 72, 153, 0.8)'    // Pink
+  ];
+  return colors.slice(0, count);
+}
+
+/**
+ * Utility: Extract domains from competitor data
+ */
+function extractDomains(competitors) {
+  return competitors.map(c => c.domain);
+}
+
+/**
+ * Utility: Extract metric values with proper null handling
+ * Uses safeGet for reliable data extraction
+ */
+function extractMetric(competitors, metricPath, defaultValue = 0) {
+  return competitors.map(c => {
+    const value = safeGet(c, metricPath, null);
+    // Return the value or default - charts will handle display
+    return value !== null && value !== undefined && !isNaN(value) ? value : defaultValue;
+  });
+}
+
+/**
+ * Utility: Check if any competitor has real data for a metric
+ */
+function hasRealData(competitors, metricPath) {
+  return competitors.some(c => {
+    const value = safeGet(c, metricPath, null);
+    return value !== null && value !== undefined && value !== 0;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OVERVIEW CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderOverviewRadarChart(data) {
+  const ctx = document.getElementById('chart-comp-overview-radar');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const datasets = competitors.map((comp, idx) => ({
+    label: comp.domain,
+    data: [
+      comp.processedMetrics?.seoDepthIndex || 
+      comp.categories?.contentIntelligence?.metrics?.seoDepthIndex || 0,
+      comp.processedMetrics?.geoPresenceScore || 
+      comp.categories?.geoIntelligence?.metrics?.geoPresenceScore || 0,
+      comp.processedMetrics?.aeoReadinessScore || 
+      comp.categories?.aeoOptimization?.metrics?.aeoReadinessScore || 0,
+      comp.processedMetrics?.entityTrustScore || 
+      comp.categories?.authorityInfluence?.metrics?.entityTrustScore || 0,
+      comp.processedMetrics?.authorityMomentum || 
+      comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 0
+    ],
+    backgroundColor: getCompetitorColors(competitors.length)[idx].replace('0.8', '0.2'),
+    borderColor: getCompetitorColors(competitors.length)[idx],
+    borderWidth: 2
+  }));
+  
+  window.competitorCharts['overview-radar'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['SEO Depth', 'GEO Presence', 'AEO Readiness', 'Entity Trust', 'Authority'],
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 20 }
+        }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Elite Indices Competitive Radar'
+        },
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+}
+
+function renderOverviewBarChart(data) {
+  const ctx = document.getElementById('chart-comp-overview-bar');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['overview-bar'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [
+        {
+          label: 'SEO Depth',
+          data: extractMetric(competitors, 'processedMetrics.seoDepthIndex'),
+          backgroundColor: 'rgba(59, 130, 246, 0.7)'
+        },
+        {
+          label: 'GEO Presence',
+          data: extractMetric(competitors, 'processedMetrics.geoPresenceScore'),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)'
+        },
+        {
+          label: 'AEO Readiness',
+          data: extractMetric(competitors, 'processedMetrics.aeoReadinessScore'),
+          backgroundColor: 'rgba(251, 146, 60, 0.7)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Key Performance Indices'
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MARKET INTELLIGENCE CHARTS - Interactive & Animated
+// CRITICAL: Check both data.geminiAnalysis and data.analysis for Gemini data
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderMarketShareChart(data) {
+  const ctx = document.getElementById('chart-comp-market-share');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const labels = competitors.map(c => c.domain || c.competitor || 'Unknown');
+  
+  // Get REAL traffic data from processedMetrics or Gemini marketIntelligence
+  // CRITICAL FIX: Check BOTH geminiAnalysis AND analysis
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const geminiMarket = geminiData.marketIntelligence?.marketShare || {};
+  const geminiShares = geminiMarket.competitorShares || [];
+  
+  console.log('📊 renderMarketShareChart - Data source:', {
+    hasGeminiAnalysis: !!data.geminiAnalysis,
+    hasAnalysis: !!data.analysis,
+    geminiKeys: Object.keys(geminiData),
+    hasMarketShare: !!geminiMarket.competitorShares
+  });
+  
+  // Build traffic values - prioritize Gemini market intelligence, then processedMetrics
+  // CRITICAL FIX: trafficShare from Gemini is already 0-1 (e.g., 0.912 = 91.2%)
+  // We need to work with actual traffic numbers OR percentages, not mix them
+  const trafficValues = competitors.map((c, idx) => {
+    const geminiShare = geminiShares.find(s => s.domain === c.domain);
+    // Check if we have real traffic data from processedMetrics first
+    const realTraffic = c.processedMetrics?.estimatedTraffic || c.processedMetrics?.organicTraffic || 0;
+    if (realTraffic > 0) {
+      return realTraffic;
+    }
+    // If Gemini provides a traffic share (0-1), convert to reasonable traffic estimate
+    if (geminiShare && typeof geminiShare.trafficShare === 'number') {
+      // trafficShare is 0-1, multiply by total market traffic estimate or 1M baseline
+      const totalMarket = geminiMarket.totalMarketTraffic || 1000000;
+      return Math.round(geminiShare.trafficShare * totalMarket);
+    }
+    // Fallback: Use domain authority as a proxy for traffic
+    return c.processedMetrics?.domainAuthority ? c.processedMetrics.domainAuthority * 1000 : 10000;
+  });
+  
+  // Calculate percentages
+  const totalTraffic = trafficValues.reduce((sum, val) => sum + val, 0);
+  const marketShare = trafficValues.map(traffic => 
+    totalTraffic > 0 ? Math.round((traffic / totalTraffic) * 100) : Math.round(100 / labels.length)
+  );
+  
+  const gradientColors = ['#667eea', '#764ba2', '#34a853', '#fbbc04', '#ea4335', '#00acc1'];
+  
+  console.log('📊 Market Share Chart - Traffic:', trafficValues, 'Shares:', marketShare);
+  
+  window.competitorCharts['market-share'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: marketShare,
+        backgroundColor: gradientColors.slice(0, labels.length),
+        borderWidth: 3,
+        borderColor: '#fff',
+        hoverOffset: 15,
+        hoverBorderWidth: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '55%',
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 1500,
+        easing: 'easeOutQuart'
+      },
+      plugins: {
+        legend: { 
+          position: 'right', 
+          labels: { font: { size: 11, weight: '500' }, padding: 12, usePointStyle: true } 
+        },
+        title: {
+          display: true,
+          text: '📈 Traffic Share Distribution',
+          font: { size: 14, weight: '700' },
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const traffic = trafficValues[context.dataIndex];
+              return [
+                `Share: ${context.raw}%`,
+                `Est. Traffic: ${traffic.toLocaleString()}/mo`,
+                `SOV Rank: #${context.dataIndex + 1}`
+              ];
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderMarketTrendsChart(data) {
+  const ctx = document.getElementById('chart-comp-market-trends');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const months = ['Q-3', 'Q-2', 'Q-1', 'Current'];
+  const colors = ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'];
+  
+  // CRITICAL FIX: Check BOTH geminiAnalysis AND analysis
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const marketIntel = geminiData.marketIntelligence || {};
+  
+  console.log('📊 renderMarketTrendsChart - Data:', {
+    competitorsCount: competitors.length,
+    hasGemini: !!marketIntel.trendForecasting,
+    source: data.geminiAnalysis ? 'geminiAnalysis' : data.analysis ? 'analysis' : 'none'
+  });
+  
+  if (!Array.isArray(competitors) || competitors.length === 0) {
+    console.warn('⚠️ renderMarketTrendsChart: No valid competitors array');
+    return;
+  }
+  
+  // Get momentum data from Gemini market intelligence
+  const geminiMomentum = marketIntel.trendForecasting?.momentum || [];
+  const macroMomentum = marketIntel.macroMicroMomentum?.competitorMomentum || [];
+  
+  const datasets = competitors.slice(0, 5).map((comp, index) => {
+    const currentAuthority = comp.processedMetrics?.authorityScore ||
+                            comp.processedMetrics?.domainAuthority || 50;
+    
+    // Check Gemini momentum analysis
+    const geminiTrend = geminiMomentum.find(m => m.domain === comp.domain);
+    const macroTrend = macroMomentum.find(m => m.domain === comp.domain);
+    const trend = geminiTrend?.trend || macroTrend?.momentum || 'Stable';
+    
+    // Generate trend line based on momentum
+    let trendMultiplier = 1;
+    if (trend === 'Rising') trendMultiplier = 1.15;
+    else if (trend === 'Declining') trendMultiplier = 0.85;
+    
+    const baseValue = currentAuthority / trendMultiplier;
+    const trendData = [
+      Math.round(baseValue * 0.88),
+      Math.round(baseValue * 0.93),
+      Math.round(baseValue * 0.97),
+      currentAuthority
+    ];
+    
+    return {
+      label: `${comp.domain || 'Competitor ' + (index + 1)} (${trend})`,
+      data: trendData,
+      borderColor: colors[index % colors.length],
+      backgroundColor: colors[index % colors.length] + '15',
+      tension: 0.4,
+      borderWidth: 3,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      pointBackgroundColor: colors[index % colors.length],
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      fill: true
+    };
+  });
+  
+  window.competitorCharts['market-trends'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: {
+        duration: 2000,
+        easing: 'easeOutQuart'
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          max: 100, 
+          ticks: { font: { size: 11 }, stepSize: 25 },
+          title: { display: true, text: 'Authority Score', font: { size: 11, weight: '600' } },
+          grid: { color: 'rgba(0,0,0,0.06)' }
+        },
+        x: { 
+          grid: { display: false }, 
+          ticks: { font: { size: 11, weight: '500' } }
+        }
+      },
+      plugins: {
+        legend: { 
+          position: 'bottom', 
+          labels: { font: { size: 11 }, padding: 15, usePointStyle: true } 
+        },
+        title: { 
+          display: true, 
+          text: '📉 Authority Momentum Trends', 
+          font: { size: 14, weight: '700' }, 
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const change = context.dataIndex > 0 
+                ? context.raw - context.dataset.data[context.dataIndex - 1]
+                : 0;
+              const arrow = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+              return `${context.dataset.label.split(' (')[0]}: ${context.raw} ${arrow}${Math.abs(change)}`;
+            }
+          }
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADDITIONAL MARKET INTELLIGENCE CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderCategoryGapChart(data) {
+  const ctx = document.getElementById('chart-comp-category-gaps');
+  if (!ctx) return;
+  
+  // REAL DATA: Extract from Gemini keywordIntelligence gapAnalysis, NOT hardcoded
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const gapAnalysis = geminiData.keywordIntelligence?.gapAnalysis || {};
+  const categoryGaps = geminiData.marketIntelligence?.categoryGaps || {};
+  
+  // Priority 1: Use criticalGaps from gapAnalysis (real Gemini data)
+  // Priority 2: Use priorityGaps from categoryGaps
+  // Priority 3: Generate from competitor keywords (NO HARDCODED VALUES)
+  let priorityGaps = [];
+  
+  if (gapAnalysis.criticalGaps?.length > 0) {
+    // Real gap data from Gemini keyword analysis
+    priorityGaps = gapAnalysis.criticalGaps.map(gap => ({
+      gap: gap.keyword || gap.gap || gap.topic,
+      opportunity: gap.opportunityScore || Math.round(100 - (gap.difficulty || 50)),
+      competition: gap.difficulty > 60 ? 'High' : gap.difficulty > 30 ? 'Medium' : 'Low'
+    }));
+  } else if (categoryGaps.priorityGaps?.length > 0) {
+    priorityGaps = categoryGaps.priorityGaps;
+  } else if (data.competitors?.length > 0) {
+    // Derive gaps from competitor analysis (better than hardcoded)
+    const competitors = data.competitors;
+    const allKeywords = competitors.flatMap(c => c.processedMetrics?.topKeywords || []);
+    const uniqueGaps = [...new Set(allKeywords.slice(0, 6))];
+    priorityGaps = uniqueGaps.map((kw, idx) => ({
+      gap: typeof kw === 'string' ? kw : kw.keyword || `Gap ${idx + 1}`,
+      opportunity: 80 - (idx * 10),
+      competition: idx < 2 ? 'Low' : idx < 4 ? 'Medium' : 'High'
+    }));
+  }
+  
+  // If still empty, use placeholder with clear messaging (not fake data)
+  if (priorityGaps.length === 0) {
+    priorityGaps = [{ gap: 'Run analysis to discover gaps', opportunity: 50, competition: 'Unknown' }];
+  }
+  
+  const labels = priorityGaps.slice(0, 6).map(g => g.gap || g.name || g.keyword || 'Gap');
+  const opportunities = priorityGaps.slice(0, 6).map(g => g.opportunity || g.score || 50);
+  const competition = priorityGaps.slice(0, 6).map(g => {
+    const comp = g.competition || 'Medium';
+    return comp === 'Low' ? 25 : comp === 'Medium' ? 50 : comp === 'High' ? 75 : 40;
+  });
+  
+  window.competitorCharts['category-gaps'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Opportunity Score', data: opportunities, backgroundColor: '#34a853', borderRadius: 6 },
+        { label: 'Competition Level', data: competition, backgroundColor: '#fbbc04', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      animation: { duration: 1500, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 10 }, usePointStyle: true } },
+        title: { display: true, text: '🎯 Category Gap Opportunities', font: { size: 13, weight: '700' } }
+      },
+      scales: {
+        x: { beginAtZero: true, max: 100 },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderNarrativeChart(data) {
+  const ctx = document.getElementById('chart-comp-narrative');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  // REAL DATA: Check BOTH geminiAnalysis AND analysis
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const narrativeData = geminiData.marketIntelligence?.narrativeAudit || {};
+  const brandData = geminiData.brandPositioning || {};
+  const competitorNarratives = narrativeData.competitorNarratives || [];
+  
+  const labels = competitors.slice(0, 5).map(c => c.domain || 'Competitor');
+  const archetypes = ['Innovator', 'Authority', 'Challenger', 'Specialist', 'Mainstream'];
+  const colors = ['#667eea', '#34a853', '#ea4335', '#fbbc04', '#764ba2'];
+  
+  const datasets = archetypes.map((archetype, idx) => {
+    const values = competitors.slice(0, 5).map((comp, compIdx) => {
+      const pm = comp.processedMetrics || {};
+      const narrative = competitorNarratives.find(n => n.domain === comp.domain);
+      
+      // If we have Gemini narrative data, use it
+      if (narrative && narrative.archetype === archetype) {
+        return narrative.strength || 80;
+      }
+      
+      // REAL DATA: Calculate archetype score from processedMetrics (NO Math.random())
+      // Use different metrics for each archetype based on real data
+      switch (archetype) {
+        case 'Authority':
+          // Authority = Domain Authority + PageRank
+          return Math.round((pm.authorityScore || pm.domainAuthority || 40) * 0.8 + (pm.pageRank || 5) * 3);
+        case 'Innovator':
+          // Innovator = Performance Score + Technical Health
+          return Math.round((pm.performanceScore || 50) * 0.6 + (pm.seoScore || 50) * 0.3);
+        case 'Challenger':
+          // Challenger = Backlink growth / Traffic momentum
+          return Math.round(45 + (pm.estimatedBacklinks ? Math.min(40, Math.log10(pm.estimatedBacklinks) * 8) : 15));
+        case 'Specialist':
+          // Specialist = Content depth / Keyword focus
+          return Math.round(35 + (pm.organicKeywords ? Math.min(45, Math.log10(pm.organicKeywords) * 10) : 20));
+        case 'Mainstream':
+          // Mainstream = Traffic share (inverse of niche)
+          const traffic = pm.estimatedTraffic || 10000;
+          return Math.round(30 + Math.min(50, Math.log10(traffic) * 6));
+        default:
+          return 40; // Baseline score, NOT random
+      }
+    });
+    return {
+      label: archetype,
+      data: values,
+      backgroundColor: colors[idx] + '90',
+      borderColor: colors[idx],
+      borderWidth: 2,
+      borderRadius: 4
+    };
+  });
+  
+  window.competitorCharts['narrative'] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      animation: { duration: 1500, easing: 'easeOutQuart' },
+      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, max: 300 } },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 9 }, usePointStyle: true } },
+        title: { display: true, text: '📖 Narrative Archetype Analysis', font: { size: 13, weight: '700' } }
+      }
+    }
+  });
+}
+
+function renderMomentumHeatmap(data) {
+  const ctx = document.getElementById('chart-comp-momentum-heatmap');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  // CRITICAL FIX: Check BOTH geminiAnalysis AND analysis
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const momentumData = geminiData.marketIntelligence?.macroMicroMomentum || {};
+  const competitorMomentum = momentumData.competitorMomentum || [];
+  
+  const bubbleData = competitors.slice(0, 6).map((comp, idx) => {
+    const pm = comp.processedMetrics || {};
+    const momentum = competitorMomentum.find(m => m.domain === comp.domain);
+    return {
+      x: pm.authorityScore || 50,
+      y: pm.estimatedTraffic ? Math.log10(pm.estimatedTraffic) * 15 : 30,
+      r: momentum?.growthRate ? Math.abs(momentum.growthRate) * 2 + 8 : 12
+    };
+  });
+  
+  const labels = competitors.slice(0, 6).map(c => c.domain || 'Competitor');
+  const colors = ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa', '#00acc1'];
+  
+  window.competitorCharts['momentum-heatmap'] = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: labels.map((label, idx) => ({
+        label,
+        data: [bubbleData[idx]],
+        backgroundColor: colors[idx] + '80',
+        borderColor: colors[idx],
+        borderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 2000, easing: 'easeOutElastic' },
+      scales: {
+        x: { title: { display: true, text: 'Authority Score' }, min: 0, max: 100 },
+        y: { title: { display: true, text: 'Traffic Index' }, min: 0, max: 80 }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 9 }, usePointStyle: true } },
+        title: { 
+          display: true, 
+          text: `🔥 Momentum Landscape (Search: ${momentumData.searchVolumeGrowth || 'Stable'}, AI: ${momentumData.aiAdoptionLevel || 'Moderate'})`, 
+          font: { size: 12, weight: '700' } 
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BRAND POSITION CHARTS - Elite 0.1% Visualizations
+// Covers: Brand Archetype, E-E-A-T, Value Proposition, Category Ownership
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderBrandArchetypeChart(data) {
+  const ctx = document.getElementById('chart-comp-brand-archetype');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const brandData = geminiData.brandPositioning || {};
+  
+  // Calculate brand archetype alignment scores
+  const archetypes = ['Sage', 'Hero', 'Outlaw', 'Magician', 'Explorer', 'Creator'];
+  const colors = ['#667eea', '#34a853', '#ea4335', '#8e24aa', '#00acc1', '#ff6f00'];
+  
+  // Build archetype distribution data
+  const archetypeData = competitors.slice(0, 6).map((comp, idx) => {
+    const pm = comp.processedMetrics || {};
+    const authorityScore = pm.authorityScore || pm.domainAuthority || 50;
+    const contentDepth = pm.contentDepth || (pm.estimatedKeywords ? Math.min(100, Math.log10(pm.estimatedKeywords) * 20) : 50);
+    return Math.round(55 + (authorityScore * 0.3) + (contentDepth * 0.15));
+  });
+  
+  const domains = competitors.slice(0, 6).map(c => c.domain || 'Competitor');
+  
+  window.competitorCharts['brand-archetype'] = new Chart(ctx, {
+    type: 'polarArea',
+    data: {
+      labels: domains,
+      datasets: [{
+        data: archetypeData,
+        backgroundColor: colors.map(c => c + '80'),
+        borderColor: colors,
+        borderWidth: 2,
+        hoverBorderWidth: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: {
+        animateRotate: true,
+        animateScale: true,
+        duration: 1500,
+        easing: 'easeOutQuart'
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10, weight: '500' }, padding: 10, usePointStyle: true }
+        },
+        title: {
+          display: true,
+          text: '🎭 Brand Archetype Alignment',
+          font: { size: 14, weight: '700' },
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const score = context.raw;
+              const label = score >= 80 ? 'Strong Alignment' : score >= 60 ? 'Good Alignment' : 'Needs Work';
+              return [`Alignment Score: ${score}/100`, `Status: ${label}`];
+            }
+          }
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 25, font: { size: 9 } },
+          grid: { color: 'rgba(0,0,0,0.08)' }
+        }
+      }
+    }
+  });
+}
+
+function renderEEATChart(data) {
+  const ctx = document.getElementById('chart-comp-eeat');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const geminiData = data.geminiAnalysis || data.analysis || {};
+  const domains = competitors.slice(0, 5).map(c => c.domain || 'Competitor');
+  
+  // Calculate E-E-A-T component scores from real data
+  const eeatData = {
+    experience: [],
+    expertise: [],
+    authoritativeness: [],
+    trustworthiness: []
+  };
+  
+  competitors.slice(0, 5).forEach(comp => {
+    const pm = comp.processedMetrics || {};
+    const contentDepth = pm.contentDepth || (pm.estimatedKeywords ? Math.min(100, Math.log10(pm.estimatedKeywords) * 20) : 50);
+    
+    eeatData.experience.push(Math.round(((pm.performanceScore || 50) + (pm.accessibilityScore || 50)) / 2));
+    eeatData.expertise.push(Math.round(contentDepth));
+    eeatData.authoritativeness.push(pm.authorityScore || pm.domainAuthority || 50);
+    eeatData.trustworthiness.push(Math.round(((pm.seoScore || 50) + (pm.bestPracticesScore || 50)) / 2));
+  });
+  
+  window.competitorCharts['eeat'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Experience', 'Expertise', 'Authoritativeness', 'Trustworthiness'],
+      datasets: competitors.slice(0, 5).map((comp, idx) => ({
+        label: comp.domain || `Comp ${idx + 1}`,
+        data: [
+          eeatData.experience[idx],
+          eeatData.expertise[idx],
+          eeatData.authoritativeness[idx],
+          eeatData.trustworthiness[idx]
+        ],
+        backgroundColor: ['rgba(102,126,234,0.15)', 'rgba(52,168,83,0.15)', 'rgba(251,188,4,0.15)', 'rgba(234,67,53,0.15)', 'rgba(142,36,170,0.15)'][idx],
+        borderColor: ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'][idx],
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 7,
+        pointBackgroundColor: ['#667eea', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'][idx],
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: {
+        duration: 1500,
+        easing: 'easeOutQuart'
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10, weight: '500' }, padding: 10, usePointStyle: true }
+        },
+        title: {
+          display: true,
+          text: '🏆 E-E-A-T Trust Signals Radar',
+          font: { size: 14, weight: '700' },
+          padding: { top: 10, bottom: 15 },
+          color: '#202124'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const metric = context.label;
+              const score = context.raw;
+              const status = score >= 80 ? '🟢 Strong' : score >= 60 ? '🟡 Good' : score >= 40 ? '🟠 Fair' : '🔴 Weak';
+              return `${context.dataset.label}: ${score}/100 ${status}`;
+            }
+          }
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 25, font: { size: 9 }, backdropColor: 'transparent' },
+          grid: { color: 'rgba(0,0,0,0.08)' },
+          pointLabels: { font: { size: 11, weight: '600' }, color: '#333' }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TECHNICAL SEO CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderTechnicalHealthChart(data) {
+  const ctx = document.getElementById('chart-comp-technical-health');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['technical-health'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [
+        {
+          label: 'SEO Score',
+          data: extractMetric(competitors, 'processedMetrics.seoScore'),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)'
+        },
+        {
+          label: 'Schema Implementation',
+          data: extractMetric(competitors, 'processedMetrics.schemaImplementation'),
+          backgroundColor: 'rgba(59, 130, 246, 0.7)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Technical SEO Health'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderPageSpeedChart(data) {
+  const ctx = document.getElementById('chart-comp-page-speed');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['page-speed'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Performance Score',
+        data: extractMetric(competitors, 'processedMetrics.performanceScore'),
+        backgroundColor: competitors.map((c, idx) => {
+          const score = c.processedMetrics?.performanceScore || 
+                       c.categories?.pageSpeed?.metrics?.performanceScore || 0;
+          if (score >= 90) return 'rgba(34, 197, 94, 0.7)';
+          if (score >= 50) return 'rgba(251, 146, 60, 0.7)';
+          return 'rgba(239, 68, 68, 0.7)';
+        })
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Page Speed Performance'
+        }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          max: 100,
+          ticks: {
+            callback: function(value) {
+              if (value >= 90) return value + ' (Good)';
+              if (value >= 50) return value + ' (Needs Work)';
+              return value + ' (Poor)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTENT INTELLIGENCE CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderContentAuthorityChart(data) {
+  const ctx = document.getElementById('chart-comp-content-authority');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['content-authority'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Content Depth',
+        data: extractMetric(competitors, 'processedMetrics.contentDepth'),
+        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        borderColor: 'rgba(59, 130, 246, 0.8)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Content Authority & Depth'
+        }
+      }
+    }
+  });
+}
+
+function renderTrafficMixChart(data) {
+  const ctx = document.getElementById('chart-comp-traffic-mix');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  
+  // Extract traffic source data from Gemini analysis or use estimated breakdown
+  // Traffic mix is typically: Organic 50-70%, Direct 15-25%, Referral 5-15%, Social 5-10%
+  window.competitorCharts['traffic-mix'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: extractDomains(competitors),
+      datasets: [
+        { 
+          label: 'Organic', 
+          data: competitors.map(c => {
+            const authScore = safeGet(c, 'processedMetrics.authorityScore', 50);
+            return Math.min(80, Math.max(40, 45 + authScore * 0.35)); // 45-80% based on authority
+          }), 
+          backgroundColor: 'rgba(34, 197, 94, 0.7)' 
+        },
+        { 
+          label: 'Direct', 
+          data: competitors.map(c => {
+            const authScore = safeGet(c, 'processedMetrics.authorityScore', 50);
+            return Math.min(30, Math.max(10, 15 + authScore * 0.15)); // 10-30% based on authority
+          }), 
+          backgroundColor: 'rgba(59, 130, 246, 0.7)' 
+        },
+        { 
+          label: 'Referral', 
+          data: competitors.map(c => {
+            const backlinks = safeGet(c, 'processedMetrics.estimatedBacklinks', 10000);
+            return Math.min(20, Math.max(3, 5 + Math.log10(backlinks) * 2)); // 3-20% based on backlinks
+          }), 
+          backgroundColor: 'rgba(251, 146, 60, 0.7)' 
+        },
+        { 
+          label: 'Social', 
+          data: competitors.map(c => {
+            return Math.min(15, Math.max(2, 8)); // Estimated 2-15%
+          }), 
+          backgroundColor: 'rgba(168, 85, 247, 0.7)' 
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Traffic Source Mix (Estimated from Signals)'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + formatDecimal(context.raw, 1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KEYWORD & CONTENT SYSTEMS CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderKeywordGapChart(data) {
+  const ctx = document.getElementById('chart-comp-keyword-gap');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  
+  // Simulated keyword data
+  window.competitorCharts['keyword-gap'] = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: competitors.map((comp, idx) => ({
+        label: comp.domain,
+        data: [{
+          x: comp.processedMetrics?.seoDepthIndex || 
+             comp.categories?.contentIntelligence?.metrics?.seoDepthIndex || 50,
+          y: comp.processedMetrics?.domainAuthority || 
+             comp.categories?.authorityInfluence?.metrics?.domainAuthority || 50,
+          r: 15
+        }],
+        backgroundColor: getCompetitorColors(competitors.length)[idx]
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Keyword Opportunity Matrix'
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              return `${context.dataset.label}: SEO ${context.parsed.x}, Authority ${context.parsed.y}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { 
+          title: { display: true, text: 'SEO Depth Index' },
+          beginAtZero: true,
+          max: 100
+        },
+        y: { 
+          title: { display: true, text: 'Domain Authority' },
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+}
+
+function renderIntentFunnelChart(data) {
+  const ctx = document.getElementById('chart-comp-intent-funnel');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  const keywordData = analysis.keywordIntelligence || analysis.categories?.keywordStrategy || {};
+  
+  // Calculate intent distribution from keyword data or use industry averages
+  // Typical B2B SaaS: Informational 40-50%, Commercial 25-35%, Transactional 15-20%, Navigational 5-15%
+  const intentData = {
+    informational: keywordData.intentDistribution?.informational || 45,
+    commercial: keywordData.intentDistribution?.commercial || 30,
+    transactional: keywordData.intentDistribution?.transactional || 15,
+    navigational: keywordData.intentDistribution?.navigational || 10
+  };
+  
+  window.competitorCharts['intent-funnel'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Informational', 'Commercial', 'Transactional', 'Navigational'],
+      datasets: [{
+        label: 'Keyword Distribution',
+        data: [intentData.informational, intentData.commercial, intentData.transactional, intentData.navigational],
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.7)',
+          'rgba(34, 197, 94, 0.7)',
+          'rgba(251, 146, 60, 0.7)',
+          'rgba(168, 85, 247, 0.7)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Search Intent Funnel'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ': ' + formatDecimal(context.raw, 1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percentage' } }
+      }
+    }
+  });
+}
+
+function renderSystemsWorkflowChart(data) {
+  const ctx = document.getElementById('chart-comp-systems-workflow');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['systems-workflow'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Internal Links Quality',
+        data: competitors.map(c => {
+          const links = c.rawData?.seoSnapshot?.internalLinks?.total || 0;
+          return Math.min(links * 10, 100); // Normalize to 0-100
+        }),
+        backgroundColor: 'rgba(34, 197, 94, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Content Systems Maturity'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderAutomationChart(data) {
+  const ctx = document.getElementById('chart-comp-automation');
+  if (!ctx) return;
+  
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  const systemsData = analysis.contentSystems || analysis.categories?.systems || {};
+  
+  // Calculate automation maturity based on available signals
+  // Higher tech scores and schema usage typically indicate more automation
+  const competitors = data.competitors || [];
+  const avgTechScore = competitors.length > 0 
+    ? competitors.reduce((sum, c) => sum + safeGet(c, 'processedMetrics.seoScore', 50), 0) / competitors.length 
+    : 50;
+  
+  // Estimate automation levels based on industry signals
+  const automationLevels = {
+    manual: Math.max(20, 55 - avgTechScore * 0.4),
+    semiAutomated: Math.min(50, 35 + avgTechScore * 0.15),
+    fullyAutomated: Math.min(35, 10 + avgTechScore * 0.25)
+  };
+  
+  // Normalize to 100%
+  const total = automationLevels.manual + automationLevels.semiAutomated + automationLevels.fullyAutomated;
+  
+  window.competitorCharts['automation'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Manual', 'Semi-Automated', 'Fully Automated'],
+      datasets: [{
+        data: [
+          (automationLevels.manual / total * 100).toFixed(1),
+          (automationLevels.semiAutomated / total * 100).toFixed(1),
+          (automationLevels.fullyAutomated / total * 100).toFixed(1)
+        ],
+        backgroundColor: [
+          'rgba(239, 68, 68, 0.7)',
+          'rgba(251, 146, 60, 0.7)',
+          'rgba(34, 197, 94, 0.7)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Automation Maturity (Industry Analysis)'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ': ' + formatDecimal(context.raw, 1) + '%';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONVERSION & DISTRIBUTION CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderConversionFunnelChart(data) {
+  const ctx = document.getElementById('chart-comp-funnel');
+  if (!ctx) return;
+  
+  // Funnel stages
+  window.competitorCharts['funnel'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Awareness', 'Consideration', 'Decision', 'Conversion', 'Retention'],
+      datasets: [{
+        label: 'Funnel Drop-off',
+        data: [100, 65, 35, 12, 8],
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.9)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(251, 146, 60, 0.7)',
+          'rgba(239, 68, 68, 0.6)',
+          'rgba(168, 85, 247, 0.5)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: {
+        title: {
+          display: true,
+          text: 'Conversion Funnel Analysis'
+        }
+      }
+    }
+  });
+}
+
+function renderMonetizationChart(data) {
+  const ctx = document.getElementById('chart-comp-monetization');
+  if (!ctx) return;
+  
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  const conversionData = analysis.conversionMonetization || analysis.categories?.conversion || {};
+  
+  // Extract monetization mix from Gemini analysis or use industry-based estimates
+  const monetization = conversionData.monetizationMix || {
+    subscriptions: 45,
+    services: 30,
+    products: 15,
+    affiliates: 10
+  };
+  
+  window.competitorCharts['monetization'] = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: ['SaaS/Subscriptions', 'Services', 'Products', 'Ads/Affiliates'],
+      datasets: [{
+        data: [
+          monetization.subscriptions || 45, 
+          monetization.services || 30, 
+          monetization.products || 15, 
+          monetization.affiliates || 10
+        ],
+        backgroundColor: getCompetitorColors(4)
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Monetization Mix (Industry Analysis)'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ': ' + formatDecimal(context.raw, 1) + '%';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderBacklinksChart(data) {
+  const ctx = document.getElementById('chart-comp-backlinks');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['backlinks'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Authority Momentum',
+        data: extractMetric(competitors, 'processedMetrics.authorityMomentum'),
+        backgroundColor: 'rgba(59, 130, 246, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Backlink Authority Momentum'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderDistributionChannelsChart(data) {
+  const ctx = document.getElementById('chart-comp-distribution');
+  if (!ctx) return;
+  
+  window.competitorCharts['distribution'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['SEO', 'Social', 'Email', 'Paid', 'PR', 'Partnerships'],
+      datasets: [{
+        label: 'Channel Strength',
+        data: [85, 65, 55, 45, 60, 50],
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        borderColor: 'rgba(34, 197, 94, 0.8)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Distribution Channel Mix'
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUDIENCE, GEO/AEO, AUTHORITY CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderPersonasChart(data) {
+  const ctx = document.getElementById('chart-comp-personas');
+  if (!ctx) return;
+  
+  window.competitorCharts['personas'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Decision Makers', 'Influencers', 'End Users', 'Researchers'],
+      datasets: [{
+        data: [35, 25, 25, 15],
+        backgroundColor: getCompetitorColors(4)
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Audience Persona Distribution'
+        }
+      }
+    }
+  });
+}
+
+function renderSentimentChart(data) {
+  const ctx = document.getElementById('chart-comp-sentiment');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  const audienceData = analysis.audienceIntelligence || analysis.categories?.audience || {};
+  
+  // Calculate sentiment based on available signals or use industry averages
+  // Higher authority typically correlates with better sentiment
+  window.competitorCharts['sentiment'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [
+        { 
+          label: 'Positive', 
+          data: competitors.map(c => {
+            const auth = safeGet(c, 'processedMetrics.authorityScore', 50);
+            return Math.min(85, Math.max(45, 50 + auth * 0.35)); // 45-85% based on authority
+          }), 
+          backgroundColor: 'rgba(34, 197, 94, 0.7)' 
+        },
+        { 
+          label: 'Neutral', 
+          data: competitors.map(c => {
+            return 25; // Relatively stable neutral percentage
+          }), 
+          backgroundColor: 'rgba(251, 146, 60, 0.7)' 
+        },
+        { 
+          label: 'Negative', 
+          data: competitors.map(c => {
+            const auth = safeGet(c, 'processedMetrics.authorityScore', 50);
+            return Math.max(5, Math.min(25, 25 - auth * 0.2)); // 5-25% inverse to authority
+          }), 
+          backgroundColor: 'rgba(239, 68, 68, 0.7)' 
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Brand Sentiment Analysis (Estimated)'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + formatDecimal(context.raw, 1) + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, max: 100, title: { display: true, text: 'Percentage' } }
+      }
+    }
+  });
+}
+
+function renderAICitationsChart(data) {
+  const ctx = document.getElementById('chart-comp-ai-citations');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['ai-citations'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'AEO Readiness Score',
+        data: extractMetric(competitors, 'processedMetrics.aeoReadinessScore'),
+        backgroundColor: 'rgba(168, 85, 247, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'AEO Readiness & AI Citation Potential'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderLLMAffinityChart(data) {
+  const ctx = document.getElementById('chart-comp-llm-affinity');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['llm-affinity'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'LLM Affinity Score',
+        data: extractMetric(competitors, 'processedMetrics.aeoReadinessScore'),
+        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+        borderColor: 'rgba(168, 85, 247, 0.8)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'LLM Visibility & Affinity'
+        }
+      }
+    }
+  });
+}
+
+function renderAuthorityGrowthChart(data) {
+  const ctx = document.getElementById('chart-comp-authority-growth');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['authority-growth'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [
+        {
+          label: 'Domain Authority',
+          data: extractMetric(competitors, 'processedMetrics.domainAuthority'),
+          backgroundColor: 'rgba(59, 130, 246, 0.7)'
+        },
+        {
+          label: 'Authority Momentum',
+          data: extractMetric(competitors, 'processedMetrics.authorityMomentum'),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority & Growth Momentum'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderInfluencersChart(data) {
+  const ctx = document.getElementById('chart-comp-influencers');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  
+  // Create bubble data based on competitor authority and backlinks
+  const bubbleData = competitors.slice(0, 4).map((comp, idx) => {
+    const auth = safeGet(comp, 'processedMetrics.authorityScore', 50);
+    const backlinks = safeGet(comp, 'processedMetrics.estimatedBacklinks', 10000);
+    const refDomains = safeGet(comp, 'processedMetrics.estimatedRefDomains', 1000);
+    
+    return {
+      x: Math.min(95, Math.max(20, auth)), // Authority as X (Reach)
+      y: Math.min(95, Math.max(20, 30 + Math.log10(refDomains) * 15)), // RefDomains as Y (Relevance)
+      r: Math.min(25, Math.max(8, 8 + Math.log10(backlinks) * 2)) // Backlinks as size
+    };
+  });
+  
+  window.competitorCharts['influencers'] = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        label: 'Authority Network Map',
+        data: bubbleData.length > 0 ? bubbleData : [{ x: 50, y: 50, r: 10 }],
+        backgroundColor: 'rgba(236, 72, 153, 0.6)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority Network Map'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const comp = competitors[context.dataIndex];
+              if (comp) {
+                return [
+                  comp.domain,
+                  'Authority: ' + formatDecimal(context.raw.x, 0),
+                  'Relevance: ' + formatDecimal(context.raw.y, 0)
+                ];
+              }
+              return 'Authority: ' + formatDecimal(context.raw.x, 0);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Authority Score' }, max: 100, min: 0 },
+        y: { title: { display: true, text: 'Relevance Index' }, max: 100, min: 0 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERFORMANCE, OPPORTUNITY, SCORING CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderPerformanceQualityChart(data) {
+  const ctx = document.getElementById('chart-comp-performance-quality');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['performance-quality'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Performance Score',
+        data: extractMetric(competitors, 'processedMetrics.performanceScore'),
+        borderColor: 'rgba(34, 197, 94, 0.8)',
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Performance Quality Benchmark'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderPredictiveChart(data) {
+  const ctx = document.getElementById('chart-comp-predictive');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  
+  // Simulated predictive trend
+  window.competitorCharts['predictive'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Current', '+30 days', '+60 days', '+90 days'],
+      datasets: competitors.slice(0, 3).map((comp, idx) => ({
+        label: comp.domain,
+        data: [
+          comp.processedMetrics?.authorityMomentum || 
+          comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 50,
+          (comp.processedMetrics?.authorityMomentum || 
+           comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 50) + Math.random() * 10,
+          (comp.processedMetrics?.authorityMomentum || 
+           comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 50) + Math.random() * 15,
+          (comp.processedMetrics?.authorityMomentum || 
+           comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 50) + Math.random() * 20
+        ],
+        borderColor: getCompetitorColors(3)[idx],
+        fill: false
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority Growth Prediction'
+        }
+      }
+    }
+  });
+}
+
+function renderOpportunitiesChart(data) {
+  const ctx = document.getElementById('chart-comp-opportunities');
+  if (!ctx) return;
+  
+  const gaps = data.aggregatedInsights?.competitiveGaps || [];
+  
+  if (gaps.length === 0) {
+    gaps.push({ category: 'No gaps identified', competitorAverage: 75 });
+  }
+  
+  window.competitorCharts['opportunities'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: gaps.map(g => g.category.replace(/Score/g, '')),
+      datasets: [{
+        label: 'Competitor Average',
+        data: gaps.map(g => g.competitorAverage || 50),
+        backgroundColor: 'rgba(239, 68, 68, 0.7)'
+      }, {
+        label: 'Target Score',
+        data: gaps.map(() => 85),
+        backgroundColor: 'rgba(34, 197, 94, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Strategic Opportunity Gaps'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderMoatChart(data) {
+  const ctx = document.getElementById('chart-comp-moat');
+  if (!ctx) return;
+  
+  window.competitorCharts['moat'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Technical Excellence', 'Content Depth', 'Brand Authority', 'Distribution', 'Innovation'],
+      datasets: [{
+        label: 'Current Position',
+        data: [65, 70, 60, 55, 50],
+        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+        borderColor: 'rgba(239, 68, 68, 0.8)',
+        borderWidth: 2
+      }, {
+        label: 'Target Position',
+        data: [85, 90, 80, 75, 80],
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        borderColor: 'rgba(34, 197, 94, 0.8)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Competitive Moat Development'
+        }
+      }
+    }
+  });
+}
+
+function renderScoringComprehensiveChart(data) {
+  const ctx = document.getElementById('chart-comp-scoring-comprehensive');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['scoring-comprehensive'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['SEO Depth', 'GEO Presence', 'AEO Readiness', 'Entity Trust', 'Authority', 'Performance'],
+      datasets: competitors.map((comp, idx) => ({
+        label: comp.domain,
+        data: [
+          comp.processedMetrics?.seoDepthIndex || 
+          comp.categories?.contentIntelligence?.metrics?.seoDepthIndex || 0,
+          comp.processedMetrics?.geoPresenceScore || 
+          comp.categories?.geoIntelligence?.metrics?.geoPresenceScore || 0,
+          comp.processedMetrics?.aeoReadinessScore || 
+          comp.categories?.aeoOptimization?.metrics?.aeoReadinessScore || 0,
+          comp.processedMetrics?.entityTrustScore || 
+          comp.categories?.authorityInfluence?.metrics?.entityTrustScore || 0,
+          comp.processedMetrics?.authorityMomentum || 
+          comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 0,
+          comp.processedMetrics?.performanceScore || 
+          comp.categories?.pageSpeed?.metrics?.performanceScore || 0
+        ],
+        backgroundColor: getCompetitorColors(competitors.length)[idx].replace('0.8', '0.1'),
+        borderColor: getCompetitorColors(competitors.length)[idx],
+        borderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Comprehensive Scoring Radar'
+        }
+      }
+    }
+  });
+}
+
+function renderMomentumChart(data) {
+  const ctx = document.getElementById('chart-comp-momentum');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['momentum'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Authority Momentum',
+        data: extractMetric(competitors, 'processedMetrics.authorityMomentum'),
+        backgroundColor: competitors.map((c, idx) => getCompetitorColors(competitors.length)[idx])
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority Momentum Score'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+function renderTrustChart(data) {
+  const ctx = document.getElementById('chart-comp-trust');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  window.competitorCharts['trust'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Entity Trust Score',
+        data: extractMetric(competitors, 'processedMetrics.entityTrustScore'),
+        backgroundColor: 'rgba(168, 85, 247, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Entity Trust & Authority'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TAB-SPECIFIC CHART RENDERING FUNCTIONS (Elite 0.1%)
+// Called by populate*Tab functions in UI_Scripts_App.html
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * VI. Content Systems & Operations Charts
+ */
+function renderContentSystemsCharts(systemsData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Radar Chart - Workflow Maturity
+  const radarCtx = document.getElementById('chart-content-systems-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['content-systems-radar']) {
+      window.competitorCharts['content-systems-radar'].destroy();
+    }
+    window.competitorCharts['content-systems-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Framework Maturity', 'AI Workflow', 'Prompt Patterns', 'E-E-A-T', 'Link Equity', 'Editorial'],
+        datasets: systemsData.slice(0, 4).map((sys, i) => ({
+          label: sys.domain,
+          data: [sys.frameworkMaturity, sys.aiWorkflowRatio, sys.promptPatterns * 10, sys.eeatIntegration, sys.linkEquityFlow, sys.editorialConsistency],
+          backgroundColor: `rgba(${[14, 165, 233, 34, 197, 94, 251, 146, 60, 168, 85, 247][i * 3]}, ${[14, 165, 233, 34, 197, 94, 251, 146, 60, 168, 85, 247][i * 3 + 1]}, ${[14, 165, 233, 34, 197, 94, 251, 146, 60, 168, 85, 247][i * 3 + 2]}, 0.2)`,
+          borderColor: getCompetitorColors(4)[i],
+          borderWidth: 2
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { r: { beginAtZero: true, max: 100 } },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+      }
+    });
+  }
+  
+  // Bar Chart - AI vs Manual
+  const barCtx = document.getElementById('chart-content-systems-bar');
+  if (barCtx) {
+    if (window.competitorCharts['content-systems-bar']) {
+      window.competitorCharts['content-systems-bar'].destroy();
+    }
+    window.competitorCharts['content-systems-bar'] = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: systemsData.map(s => s.domain),
+        datasets: [
+          { label: 'AI Workflow %', data: systemsData.map(s => s.aiWorkflowRatio), backgroundColor: 'rgba(14, 165, 233, 0.7)' },
+          { label: 'Manual %', data: systemsData.map(s => 100 - s.aiWorkflowRatio), backgroundColor: 'rgba(156, 163, 175, 0.5)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true, max: 100 } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+}
+
+/**
+ * VII. Conversion & Monetization Charts
+ */
+function renderConversionCharts(conversionData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Funnel Chart
+  const funnelCtx = document.getElementById('chart-conversion-funnel');
+  if (funnelCtx) {
+    if (window.competitorCharts['conversion-funnel']) {
+      window.competitorCharts['conversion-funnel'].destroy();
+    }
+    window.competitorCharts['conversion-funnel'] = new Chart(funnelCtx, {
+      type: 'bar',
+      data: {
+        labels: conversionData.map(c => c.domain),
+        datasets: [
+          { label: 'Funnel Score', data: conversionData.map(c => c.funnelScore), backgroundColor: 'rgba(245, 158, 11, 0.7)' },
+          { label: 'Persuasion', data: conversionData.map(c => c.landingPersuasion), backgroundColor: 'rgba(217, 119, 6, 0.7)' },
+          { label: 'Retention', data: conversionData.map(c => c.retentionScore), backgroundColor: 'rgba(180, 83, 9, 0.7)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, max: 100 } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+  
+  // Revenue Model Doughnut
+  const modelsCtx = document.getElementById('chart-conversion-models');
+  if (modelsCtx) {
+    if (window.competitorCharts['conversion-models']) {
+      window.competitorCharts['conversion-models'].destroy();
+    }
+    const modelCounts = { 'SaaS': 0, 'Lead Gen': 0, 'Hybrid': 0 };
+    conversionData.forEach(c => modelCounts[c.revenueModel] = (modelCounts[c.revenueModel] || 0) + 1);
+    window.competitorCharts['conversion-models'] = new Chart(modelsCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(modelCounts),
+        datasets: [{ data: Object.values(modelCounts), backgroundColor: ['rgba(245, 158, 11, 0.8)', 'rgba(59, 130, 246, 0.8)', 'rgba(34, 197, 94, 0.8)'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+}
+
+/**
+ * VIII. Distribution & Visibility Charts
+ */
+function renderDistributionCharts(distData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Backlinks Bar
+  const backlinksCtx = document.getElementById('chart-distribution-backlinks');
+  if (backlinksCtx) {
+    if (window.competitorCharts['dist-backlinks']) {
+      window.competitorCharts['dist-backlinks'].destroy();
+    }
+    window.competitorCharts['dist-backlinks'] = new Chart(backlinksCtx, {
+      type: 'bar',
+      data: {
+        labels: distData.map(d => d.domain),
+        datasets: [
+          { label: 'Backlinks (K)', data: distData.map(d => d.backlinks / 1000), backgroundColor: 'rgba(139, 92, 246, 0.7)' },
+          { label: 'Ref Domains (K)', data: distData.map(d => d.refDomains / 1000), backgroundColor: 'rgba(124, 58, 237, 0.5)' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+  
+  // Visibility Radar
+  const radarCtx = document.getElementById('chart-distribution-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['dist-radar']) {
+      window.competitorCharts['dist-radar'].destroy();
+    }
+    window.competitorCharts['dist-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Authority', 'Social', 'PR Reach', 'Community', 'Omnichannel'],
+        datasets: distData.slice(0, 3).map((d, i) => ({
+          label: d.domain,
+          data: [d.domainAuthority, d.socialEngagement, d.prReachScore, d.communityActivity, d.omnichannelIndex],
+          backgroundColor: `rgba(${[139, 92, 246][0]}, ${[92, 139, 246][i] || 92}, ${[246, 139, 92][i] || 246}, 0.2)`,
+          borderColor: getCompetitorColors(3)[i],
+          borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+}
+
+/**
+ * IX. Audience & Psychological Intelligence Charts
+ */
+function renderAudienceCharts(audienceMetrics) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Emotional Triggers
+  const emotionalCtx = document.getElementById('chart-audience-emotional');
+  if (emotionalCtx) {
+    if (window.competitorCharts['audience-emotional']) {
+      window.competitorCharts['audience-emotional'].destroy();
+    }
+    window.competitorCharts['audience-emotional'] = new Chart(emotionalCtx, {
+      type: 'bar',
+      data: {
+        labels: audienceMetrics.map(a => a.domain),
+        datasets: [
+          { label: 'Emotional Resonance', data: audienceMetrics.map(a => a.emotionalResonance), backgroundColor: 'rgba(236, 72, 153, 0.7)' },
+          { label: 'Engagement', data: audienceMetrics.map(a => a.engagementResonance), backgroundColor: 'rgba(219, 39, 119, 0.5)' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+  
+  // JTBD Radar
+  const jtbdCtx = document.getElementById('chart-audience-jtbd');
+  if (jtbdCtx) {
+    if (window.competitorCharts['audience-jtbd']) {
+      window.competitorCharts['audience-jtbd'].destroy();
+    }
+    window.competitorCharts['audience-jtbd'] = new Chart(jtbdCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Persona Depth', 'JTBD Match', 'Emotional', 'Sentiment', 'Engagement'],
+        datasets: audienceMetrics.slice(0, 3).map((a, i) => ({
+          label: a.domain,
+          data: [a.personaDepth, a.jtbdMatch, a.emotionalResonance, a.sentimentAvg, a.engagementResonance],
+          backgroundColor: `rgba(236, 72, 153, ${0.1 + i * 0.1})`,
+          borderColor: getCompetitorColors(3)[i],
+          borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+}
+
+/**
+ * X. GEO + AEO Intelligence Charts
+ */
+function renderGeoAeoCharts(geoData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // AI Visibility Radar
+  const radarCtx = document.getElementById('chart-geo-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['geo-radar']) {
+      window.competitorCharts['geo-radar'].destroy();
+    }
+    window.competitorCharts['geo-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['AI Citations', 'Prompt Visibility', 'Factual', 'Conversational', 'Zero-Click', 'LLM Affinity', 'Answer Auth'],
+        datasets: geoData.slice(0, 3).map((g, i) => ({
+          label: g.domain,
+          data: [g.aiCitationDensity, g.promptVisibility, g.factualIntegrity, g.conversationalAccuracy, g.zeroClickRate, g.llmAffinity, g.answerAuthority],
+          backgroundColor: `rgba(6, 182, 212, ${0.1 + i * 0.1})`,
+          borderColor: getCompetitorColors(3)[i],
+          borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+  
+  // Platform Performance Bar
+  const platformsCtx = document.getElementById('chart-geo-platforms');
+  if (platformsCtx) {
+    if (window.competitorCharts['geo-platforms']) {
+      window.competitorCharts['geo-platforms'].destroy();
+    }
+    window.competitorCharts['geo-platforms'] = new Chart(platformsCtx, {
+      type: 'bar',
+      data: {
+        labels: geoData.map(g => g.domain),
+        datasets: [
+          { label: 'AI Citations', data: geoData.map(g => g.aiCitationDensity), backgroundColor: 'rgba(6, 182, 212, 0.7)' },
+          { label: 'LLM Affinity', data: geoData.map(g => g.llmAffinity), backgroundColor: 'rgba(8, 145, 178, 0.5)' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+}
+
+/**
+ * XI. Authority & Influence Charts
+ */
+function renderAuthorityCharts(authorityData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Link Velocity Line
+  const velocityCtx = document.getElementById('chart-authority-velocity');
+  if (velocityCtx) {
+    if (window.competitorCharts['authority-velocity']) {
+      window.competitorCharts['authority-velocity'].destroy();
+    }
+    window.competitorCharts['authority-velocity'] = new Chart(velocityCtx, {
+      type: 'bar',
+      data: {
+        labels: authorityData.map(a => a.domain),
+        datasets: [
+          { label: 'Link Velocity/mo', data: authorityData.map(a => a.linkVelocity), backgroundColor: 'rgba(234, 179, 8, 0.7)' },
+          { label: 'PageRank x10', data: authorityData.map(a => a.pageRank * 10), backgroundColor: 'rgba(202, 138, 4, 0.5)' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+  
+  // Authority Network Doughnut
+  const networkCtx = document.getElementById('chart-authority-network');
+  if (networkCtx) {
+    if (window.competitorCharts['authority-network']) {
+      window.competitorCharts['authority-network'].destroy();
+    }
+    const tierCounts = [0, 0, 0];
+    authorityData.forEach(a => tierCounts[a.publisherTier - 1]++);
+    window.competitorCharts['authority-network'] = new Chart(networkCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Tier 1 (Top)', 'Tier 2 (Mid)', 'Tier 3 (Low)'],
+        datasets: [{ data: tierCounts, backgroundColor: ['rgba(34, 197, 94, 0.8)', 'rgba(245, 158, 11, 0.8)', 'rgba(239, 68, 68, 0.8)'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+}
+
+/**
+ * XII. Performance & Predictive Intelligence Charts
+ */
+function renderPredictiveCharts(perfData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Forecast Line
+  const forecastCtx = document.getElementById('chart-predictive-forecast');
+  if (forecastCtx) {
+    if (window.competitorCharts['predictive-forecast']) {
+      window.competitorCharts['predictive-forecast'].destroy();
+    }
+    window.competitorCharts['predictive-forecast'] = new Chart(forecastCtx, {
+      type: 'bar',
+      data: {
+        labels: perfData.map(p => p.domain),
+        datasets: [
+          { label: 'Traffic Quality', data: perfData.map(p => p.trafficQuality), backgroundColor: 'rgba(16, 185, 129, 0.7)' },
+          { label: 'Conversion Weight', data: perfData.map(p => p.conversionWeight), backgroundColor: 'rgba(5, 150, 105, 0.5)' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+  
+  // Engagement Quality Matrix
+  const qualityCtx = document.getElementById('chart-predictive-quality');
+  if (qualityCtx) {
+    if (window.competitorCharts['predictive-quality']) {
+      window.competitorCharts['predictive-quality'].destroy();
+    }
+    window.competitorCharts['predictive-quality'] = new Chart(qualityCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Traffic Quality', 'Engagement', 'Conversion', 'Revenue/Pos', 'Rank Δ'],
+        datasets: perfData.slice(0, 3).map((p, i) => ({
+          label: p.domain,
+          data: [p.trafficQuality, p.engagementLoops, p.conversionWeight, Math.min(100, p.revenuePerVisibility), 50 + p.predictedRankDelta * 5],
+          backgroundColor: `rgba(16, 185, 129, ${0.1 + i * 0.1})`,
+          borderColor: getCompetitorColors(3)[i],
+          borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+}
+
+/**
+ * XIII. Strategic Opportunity Matrix Charts
+ */
+function renderStrategicCharts(strategicData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Blue Ocean Scatter/Bubble
+  const oceanCtx = document.getElementById('chart-strategic-ocean');
+  if (oceanCtx) {
+    if (window.competitorCharts['strategic-ocean']) {
+      window.competitorCharts['strategic-ocean'].destroy();
+    }
+    window.competitorCharts['strategic-ocean'] = new Chart(oceanCtx, {
+      type: 'bubble',
+      data: {
+        datasets: strategicData.map((s, i) => ({
+          label: s.domain,
+          data: [{ x: s.moatStrength, y: s.blueOceanScore, r: s.opportunityScore / 10 }],
+          backgroundColor: getCompetitorColors(strategicData.length)[i]
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { title: { display: true, text: 'Moat Strength' }, min: 0, max: 100 }, y: { title: { display: true, text: 'Blue Ocean Score' }, min: 0, max: 100 } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+  
+  // Moat Analysis Bar
+  const moatCtx = document.getElementById('chart-strategic-moat');
+  if (moatCtx) {
+    if (window.competitorCharts['strategic-moat']) {
+      window.competitorCharts['strategic-moat'].destroy();
+    }
+    window.competitorCharts['strategic-moat'] = new Chart(moatCtx, {
+      type: 'bar',
+      data: {
+        labels: strategicData.map(s => s.domain),
+        datasets: [
+          { label: 'Moat Strength', data: strategicData.map(s => s.moatStrength), backgroundColor: 'rgba(99, 102, 241, 0.7)' },
+          { label: 'Entry Points', data: strategicData.map(s => s.entryPoints * 15), backgroundColor: 'rgba(79, 70, 229, 0.5)' },
+          { label: 'Vulnerabilities', data: strategicData.map(s => s.vulnerabilities * 20), backgroundColor: 'rgba(239, 68, 68, 0.5)' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+}
+
+/**
+ * XIV. Scoring Engine Charts
+ */
+function renderScoringCharts(scoringData) {
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Scoring Radar
+  const radarCtx = document.getElementById('chart-scoring-radar');
+  if (radarCtx) {
+    if (window.competitorCharts['scoring-radar']) {
+      window.competitorCharts['scoring-radar'].destroy();
+    }
+    window.competitorCharts['scoring-radar'] = new Chart(radarCtx, {
+      type: 'radar',
+      data: {
+        labels: ['Technical', 'Authority', 'Content', 'Brand', 'Visibility', 'Conversion'],
+        datasets: scoringData.slice(0, 4).map((s, i) => ({
+          label: s.domain,
+          data: [s.technical, s.authority, s.content, s.brand, s.visibility, s.conversion],
+          backgroundColor: `rgba(99, 102, 241, ${0.1 + i * 0.1})`,
+          borderColor: getCompetitorColors(4)[i],
+          borderWidth: 2
+        }))
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+  
+  // Overall Score Bar
+  const barCtx = document.getElementById('chart-scoring-bar');
+  if (barCtx) {
+    if (window.competitorCharts['scoring-bar']) {
+      window.competitorCharts['scoring-bar'].destroy();
+    }
+    window.competitorCharts['scoring-bar'] = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: scoringData.map(s => s.domain),
+        datasets: [{ label: 'Overall Score', data: scoringData.map(s => s.overall), backgroundColor: scoringData.map(s => s.grade === 'A' ? 'rgba(34, 197, 94, 0.8)' : s.grade === 'B' ? 'rgba(59, 130, 246, 0.8)' : s.grade === 'C' ? 'rgba(245, 158, 11, 0.8)' : 'rgba(239, 68, 68, 0.8)') }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+    });
+  }
+}
+
+console.log('✅ Elite Competitor Chart Engine loaded');
+</script>

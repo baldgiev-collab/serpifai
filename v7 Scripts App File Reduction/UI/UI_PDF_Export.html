@@ -1,0 +1,574 @@
+<!--
+  +-----------------------------------------------------------------------------------+
+  │  UI_PDF_Export.html - PDF Export & Diagnostic Tools Module                        │
+  │  Extracted from UI_Scripts_App.html for modular architecture                       │
+  │                                                                                    │
+  │  EXPORTS:                                                                          │
+  │    - window.loadPDFLibraries() - Dynamic library loader for jsPDF & html2canvas   │
+  │    - window.exportReportToPDF() - Main PDF export function                         │
+  │    - window.DIAG_getLoopReport() - Console diagnostic tool                         │
+  +-----------------------------------------------------------------------------------+
+-->
+<script>
+  // @ts-nocheck
+
+  // ==========================================
+  // PDF EXPORT FUNCTIONALITY
+  // ==========================================
+
+  /**
+   * Load required libraries dynamically (jsPDF + html2canvas)
+   * @returns {Promise<void>}
+   */
+  window.loadPDFLibraries = function() {
+    return new Promise((resolve, reject) => {
+      // Check if already loaded
+      if (typeof jsPDF !== 'undefined' && typeof html2canvas !== 'undefined') {
+        resolve();
+        return;
+      }
+
+      let scriptsLoaded = 0;
+      const scriptsTotal = 2;
+
+      const checkAllLoaded = () => {
+        scriptsLoaded++;
+        if (scriptsLoaded === scriptsTotal) resolve();
+      };
+
+      // Load jsPDF
+      const jspdfScript = document.createElement('script');
+      jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      jspdfScript.onload = checkAllLoaded;
+      jspdfScript.onerror = () => reject(new Error('Failed to load jsPDF'));
+      document.head.appendChild(jspdfScript);
+
+      // Load html2canvas
+      const html2canvasScript = document.createElement('script');
+      html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      html2canvasScript.onload = checkAllLoaded;
+      html2canvasScript.onerror = () => reject(new Error('Failed to load html2canvas'));
+      document.head.appendChild(html2canvasScript);
+    });
+  };
+
+  /**
+   * Main PDF export function - generates a comprehensive PDF report
+   * from the Stage 1 analysis results
+   */
+  window.exportReportToPDF = async function () {
+    try {
+      // Pre-flight check: ensure report exists
+      const reportContainer = document.getElementById('stage1-unified-container');
+      if (!reportContainer) {
+        throw new Error('Report container not found');
+      }
+
+      // Check if report has been generated
+      const placeholder = reportContainer.querySelector('.report-placeholder-unified');
+      if (placeholder && placeholder.style.display !== 'none') {
+        showToast('⚠️ Please run Stage 1 analysis first to generate the report');
+        return;
+      }
+
+      // Show loading modal
+      const loadingModal = document.createElement('div');
+      loadingModal.className = 'pdf-loading-modal';
+      loadingModal.innerHTML = `
+            <div class="pdf-loading-content">
+              <div class="pdf-loading-icon">📄</div>
+              <h2 style="font-size:28px;font-weight:800;color:#111827;margin:20px 0 12px 0;">Generating PDF Report</h2>
+              <p style="color:#6b7280;margin-bottom:32px;font-size:15px;">This may take a few moments...</p>
+              <div class="pdf-progress-bar">
+                <div class="pdf-progress-fill" style="width:0%;"></div>
+              </div>
+              <div class="pdf-progress-text" style="margin-top:16px;font-size:14px;color:#9ca3af;font-weight:600;">Initializing...</div>
+            </div>
+          `;
+      document.body.appendChild(loadingModal);
+
+      // Update progress helper
+      const updateProgress = (current, total, message) => {
+        const percentage = Math.round((current / total) * 100);
+        const progressFill = loadingModal.querySelector('.pdf-progress-fill');
+        const progressText = loadingModal.querySelector('.pdf-progress-text');
+        if (progressFill) progressFill.style.width = `${percentage}%`;
+        if (progressText) progressText.textContent = message || `Processing section ${current} of ${total}...`;
+      };
+
+      // Load libraries
+      updateProgress(0, 100, 'Loading PDF libraries...');
+      await window.loadPDFLibraries();
+
+      // Initialize jsPDF
+      updateProgress(5, 100, 'Initializing document...');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'letter' // 612 x 792 pt
+      });
+
+      // PDF styling constants (matching SaaS design)
+      const pageWidth = 612;
+      const pageHeight = 792;
+      const margin = 40;
+      const contentWidth = pageWidth - (2 * margin);
+      let yPos = margin;
+
+      // Set font to Helvetica (close to Inter)
+      pdf.setFont('helvetica');
+
+      // Add title page
+      updateProgress(10, 100, 'Creating title page...');
+      pdf.setFontSize(44);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(17, 24, 39); // #111827
+      pdf.text('Market Research Report', pageWidth / 2, 180, { align: 'center' });
+
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(107, 114, 128); // #6b7280
+      const dateStr = new Date().toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      });
+      pdf.text(`Generated on ${dateStr}`, pageWidth / 2, 220, { align: 'center' });
+
+      // Add strategic summary
+      pdf.setFontSize(14);
+      pdf.setTextColor(75, 85, 99); // #4b5563
+      const summaryText = 'Comprehensive strategic analysis powered by AI-driven insights and data visualization.';
+      pdf.text(summaryText, pageWidth / 2, 260, { align: 'center', maxWidth: contentWidth - 80 });
+
+      // Get all sections - try multiple selectors for compatibility
+      let sections = document.querySelectorAll('.report-section-with-chart');
+      if (sections.length === 0) {
+        sections = document.querySelectorAll('.market-research-section');
+      }
+      if (sections.length === 0) {
+        sections = document.querySelectorAll('[data-section-num]');
+      }
+
+      const totalSections = sections.length;
+
+      if (totalSections === 0) {
+        throw new Error('No report sections found. Please run Stage 1 analysis first.');
+      }
+
+      // Helper function to add page break if needed
+      const checkPageBreak = (requiredSpace) => {
+        if (yPos + requiredSpace > pageHeight - margin - 40) {
+          pdf.addPage();
+          yPos = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Process each section
+      for (let i = 0; i < totalSections; i++) {
+        const section = sections[i];
+        const sectionNum = i + 1;
+        const progressPercent = 10 + Math.round((i / totalSections) * 85);
+
+        updateProgress(progressPercent, 100, `Processing section ${sectionNum} of ${totalSections}...`);
+
+        // Add new page for each section
+        pdf.addPage();
+        yPos = margin;
+
+        // Section number badge
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFillColor(59, 130, 246); // #3b82f6
+        pdf.roundedRect(margin, yPos, 80, 24, 12, 12, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(`SECTION ${sectionNum}`, margin + 40, yPos + 16, { align: 'center' });
+        yPos += 40;
+
+        // Section title - try multiple selectors
+        let sectionTitle = section.querySelector('.section-heading-with-icon, .section-heading, h2, h3');
+        if (sectionTitle) {
+          pdf.setFontSize(22);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(17, 24, 39);
+
+          // Extract just the text without emoji/icons
+          let titleText = sectionTitle.textContent.trim();
+          titleText = titleText.replace(/^[\d\.]+\s*/, ''); // Remove leading numbers
+          titleText = titleText.replace(/^[^\w\s]+\s*/, ''); // Remove leading emoji/symbols
+
+          const splitTitle = pdf.splitTextToSize(titleText, contentWidth);
+          pdf.text(splitTitle, margin, yPos);
+          yPos += (splitTitle.length * 28) + 20;
+        }
+
+        // Section content - extract ALL text content (paragraphs, lists, headings, etc.)
+        const sectionContent = section.querySelector('.section-text-content, .section-content, .section-body');
+        if (sectionContent) {
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(55, 65, 81); // #374151
+
+          // Function to recursively extract and render content
+          let contentRendered = false; // Track if any content was processed
+
+          const processContentNode = (node, indent = 0) => {
+            if (!node) return;
+
+            const indentSpacing = indent * 15; // Indent pixels
+
+            // Process element nodes
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const tagName = node.tagName.toLowerCase();
+
+              // Headings (h3, h4, h5)
+              if (tagName.match(/^h[3-6]$/)) {
+                const headingText = node.textContent.trim();
+                if (headingText) {
+                  checkPageBreak(40);
+                  pdf.setFontSize(14);
+                  pdf.setFont('helvetica', 'bold');
+                  pdf.setTextColor(17, 24, 39);
+                  const splitHeading = pdf.splitTextToSize(headingText, contentWidth - indentSpacing);
+                  pdf.text(splitHeading, margin + indentSpacing, yPos);
+                  yPos += (splitHeading.length * 18) + 16;
+                  pdf.setFontSize(12);
+                  pdf.setFont('helvetica', 'normal');
+                  pdf.setTextColor(55, 65, 81);
+                  contentRendered = true;
+                }
+              }
+              // Paragraphs
+              else if (tagName === 'p') {
+                const paraText = node.textContent.trim();
+                if (paraText && paraText.length > 10) {
+                  checkPageBreak(60);
+                  const splitPara = pdf.splitTextToSize(paraText, contentWidth - indentSpacing);
+                  const paraHeight = splitPara.length * 16;
+
+                  if (yPos + paraHeight > pageHeight - margin - 40) {
+                    pdf.addPage();
+                    yPos = margin;
+                  }
+
+                  pdf.text(splitPara, margin + indentSpacing, yPos);
+                  yPos += paraHeight + 12;
+                  contentRendered = true;
+                }
+              }
+              // Unordered lists
+              else if (tagName === 'ul') {
+                const listItems = node.querySelectorAll('li');
+                listItems.forEach(li => {
+                  const itemText = li.textContent.trim();
+                  if (itemText) {
+                    checkPageBreak(30);
+
+                    // Add bullet point
+                    pdf.setFontSize(16);
+                    pdf.setTextColor(59, 130, 246); // Blue bullet
+                    pdf.text('•', margin + indentSpacing, yPos);
+
+                    // Add text
+                    pdf.setFontSize(12);
+                    pdf.setTextColor(55, 65, 81);
+                    const splitItem = pdf.splitTextToSize(itemText, contentWidth - indentSpacing - 20);
+                    const itemHeight = splitItem.length * 16;
+
+                    if (yPos + itemHeight > pageHeight - margin - 40) {
+                      pdf.addPage();
+                      yPos = margin;
+                    }
+
+                    pdf.text(splitItem, margin + indentSpacing + 20, yPos);
+                    yPos += itemHeight + 8;
+                    contentRendered = true;
+                  }
+                });
+                yPos += 8; // Extra space after list
+              }
+              // Ordered lists
+              else if (tagName === 'ol') {
+                const listItems = node.querySelectorAll('li');
+                listItems.forEach((li, index) => {
+                  const itemText = li.textContent.trim();
+                  if (itemText) {
+                    checkPageBreak(30);
+
+                    // Add number
+                    pdf.setFontSize(12);
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setTextColor(59, 130, 246); // Blue number
+                    pdf.text(`${index + 1}.`, margin + indentSpacing, yPos);
+
+                    // Add text
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setTextColor(55, 65, 81);
+                    const splitItem = pdf.splitTextToSize(itemText, contentWidth - indentSpacing - 25);
+                    const itemHeight = splitItem.length * 16;
+
+                    if (yPos + itemHeight > pageHeight - margin - 40) {
+                      pdf.addPage();
+                      yPos = margin;
+                    }
+
+                    pdf.text(splitItem, margin + indentSpacing + 25, yPos);
+                    yPos += itemHeight + 8;
+                    contentRendered = true;
+                  }
+                });
+                yPos += 8; // Extra space after list
+              }
+              // Blockquotes
+              else if (tagName === 'blockquote') {
+                const quoteText = node.textContent.trim();
+                if (quoteText) {
+                  checkPageBreak(50);
+
+                  pdf.setFontSize(11);
+                  pdf.setFont('helvetica', 'italic');
+                  pdf.setTextColor(75, 85, 99);
+
+                  // Draw left border
+                  pdf.setDrawColor(59, 130, 246);
+                  pdf.setLineWidth(3);
+                  pdf.line(margin + indentSpacing, yPos - 10, margin + indentSpacing, yPos + 40);
+
+                  const splitQuote = pdf.splitTextToSize(quoteText, contentWidth - indentSpacing - 25);
+                  pdf.text(splitQuote, margin + indentSpacing + 20, yPos);
+                  yPos += (splitQuote.length * 15) + 20;
+
+                  pdf.setFont('helvetica', 'normal');
+                  pdf.setFontSize(12);
+                  pdf.setTextColor(55, 65, 81);
+                }
+              }
+              // Strong/bold text inline handling
+              else if (tagName === 'strong' || tagName === 'b') {
+                // These are handled inline by parent elements
+              }
+              // Divs and other containers - recurse through children
+              else if (tagName === 'div' || tagName === 'section' || tagName === 'article') {
+                Array.from(node.children).forEach(child => {
+                  processContentNode(child, indent);
+                });
+              }
+            }
+          };
+
+          // Process all child nodes
+          Array.from(sectionContent.children).forEach(child => {
+            processContentNode(child);
+          });
+
+          // Fallback: if NO content was rendered, extract all text as last resort
+          if (!contentRendered) {
+            console.warn('No structured content found, using fallback text extraction');
+            const allText = sectionContent.textContent.trim();
+            if (allText && allText.length > 20) {
+              const splitText = pdf.splitTextToSize(allText, contentWidth);
+              const textHeight = splitText.length * 16;
+
+              if (yPos + textHeight > pageHeight - margin - 40) {
+                pdf.addPage();
+                yPos = margin;
+              }
+
+              pdf.text(splitText, margin, yPos);
+              yPos += textHeight + 20;
+            }
+          }
+        }
+
+        // Add some spacing before chart
+        yPos += 16;
+        checkPageBreak(300); // Ensure space for chart
+
+        // Chart screenshot - try multiple selectors
+        let chartCanvas = section.querySelector('canvas.chart-canvas, canvas[id^="chart-"], canvas');
+
+        if (chartCanvas) {
+          try {
+            // Get the Chart.js instance for proper rendering
+            const canvasId = chartCanvas.id;
+            let chartInstance = null;
+
+            // Try to find the chart instance using GLOBAL references
+            if (window.chartInstances && canvasId) {
+              const instanceKey = window.canvasToInstanceMap ? window.canvasToInstanceMap[canvasId] : null;
+              chartInstance = instanceKey ? window.chartInstances[instanceKey] : null;
+
+              // Fallback to old method if mapping doesn't work
+              if (!chartInstance) {
+                chartInstance = window.chartInstances[canvasId] ||
+                  window.chartInstances[Object.keys(window.chartInstances).find(key =>
+                    window.chartInstances[key]?.canvas?.id === canvasId
+                  )];
+              }
+            }
+
+            // Capture the chart with html2canvas
+            const chartImage = await html2canvas(chartCanvas, {
+              scale: 2.5, // Higher DPI for better quality
+              backgroundColor: '#ffffff',
+              logging: false,
+              useCORS: true,
+              allowTaint: true,
+              windowWidth: chartCanvas.width,
+              windowHeight: chartCanvas.height
+            });
+
+            const imgData = chartImage.toDataURL('image/png', 1.0); // Max quality
+
+            // Calculate dimensions to fit page width
+            const maxChartWidth = contentWidth - 20;
+            const maxChartHeight = 320;
+
+            let chartWidth = maxChartWidth;
+            let chartHeight = (chartImage.height / chartImage.width) * chartWidth;
+
+            // If too tall, scale down
+            if (chartHeight > maxChartHeight) {
+              chartHeight = maxChartHeight;
+              chartWidth = (chartImage.width / chartImage.height) * chartHeight;
+            }
+
+            // Check if chart fits on current page
+            if (yPos + chartHeight > pageHeight - margin - 40) {
+              pdf.addPage();
+              yPos = margin;
+            }
+
+            // Add chart label
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(107, 114, 128);
+            pdf.text('DATA VISUALIZATION', margin, yPos);
+            yPos += 18;
+
+            // Center the chart
+            const chartX = margin + (contentWidth - chartWidth) / 2;
+
+            // Add chart with border
+            pdf.setDrawColor(229, 231, 235); // #e5e7eb
+            pdf.setLineWidth(1);
+            pdf.rect(chartX - 10, yPos - 10, chartWidth + 20, chartHeight + 20);
+
+            pdf.addImage(imgData, 'PNG', chartX, yPos, chartWidth, chartHeight, undefined, 'FAST');
+            yPos += chartHeight + 30;
+
+          } catch (chartError) {
+            console.warn('Failed to capture chart:', chartError);
+            // Add fallback with better styling
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'italic');
+            pdf.setTextColor(156, 163, 175);
+            pdf.text('[Chart visualization - see online report for interactive chart]', margin, yPos);
+            yPos += 24;
+          }
+        }
+
+        // Small delay to prevent browser freeze and allow rendering
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // Add final page with branding
+      updateProgress(95, 100, 'Finalizing PDF...');
+      pdf.addPage();
+
+      // Footer on last page
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(30, 58, 95);
+      pdf.text('Report Complete', pageWidth / 2, 300, { align: 'center' });
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(107, 114, 128);
+      pdf.text('This report was generated by SERPIFI SEO Intelligence Platform', pageWidth / 2, 330, { align: 'center' });
+      pdf.text(`Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 350, { align: 'center' });
+
+      // Save the PDF
+      updateProgress(100, 100, 'Downloading PDF...');
+      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for progress to show 100%
+
+      const reportProjectName = document.getElementById('projectNameInput')?.value?.trim() || 'Market-Research';
+      const filename = `${reportProjectName.replace(/[^a-z0-9]/gi, '_')}_Stage1_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+      pdf.save(filename);
+
+      // Remove loading modal
+      loadingModal.remove();
+      showToast('✅ PDF report downloaded successfully!');
+
+    } catch (error) {
+      console.error('PDF generation error:', error);
+
+      // Remove loading modal if exists
+      const loadingModal = document.querySelector('.pdf-loading-modal');
+      if (loadingModal) loadingModal.remove();
+
+      showToast(`❌ PDF generation failed: ${error.message}`);
+    }
+  };
+
+  // ============================================
+  // DIAGNOSTIC TOOLS - Run in console
+  // ============================================
+
+  /**
+   * Get diagnostic report of what's causing network loops
+   * Run in console: DIAG_getLoopReport()
+   */
+  window.DIAG_getLoopReport = function () {
+    console.log('');
+    console.log('---------------------------------------------------------------');
+    console.log('🔍 LOOP DIAGNOSTIC REPORT');
+    console.log('---------------------------------------------------------------');
+    console.log('');
+
+    console.log('⏱ TIME TRACKING:');
+    console.log('   Page loaded:', window._pageLoadTime ? new Date(window._pageLoadTime).toISOString() : 'N/A');
+    console.log('   Time since load:', window._pageLoadTime ? (Date.now() - window._pageLoadTime) + 'ms' : 'N/A');
+    console.log('');
+
+    console.log('📊 CALL COUNTS:');
+    console.log('   google.script.run calls:', window._googleScriptCalls ? window._googleScriptCalls.length : 0);
+    console.log('   fillFormData calls:', window._fillFormDataCalls ? window._fillFormDataCalls.length : 0);
+    console.log('');
+
+    console.log('⚠️ POTENTIAL ISSUES:');
+    let issues = 0;
+
+    // Check for call loops
+    if (window._googleScriptCalls && window._googleScriptCalls.length > 10) {
+      const recentCalls = window._googleScriptCalls.filter(c =>
+        Date.now() - c.timestamp < 5000
+      );
+      if (recentCalls.length > 3) {
+        console.warn('   🚨 ' + recentCalls.length + ' google.script calls in last 5 seconds');
+        issues++;
+      }
+    }
+
+    // Check for fillFormData loops
+    if (window._fillFormDataCalls) {
+      const recentFills = window._fillFormDataCalls.filter(t => Date.now() - t < 5000);
+      if (recentFills.length > 2) {
+        console.warn('   🚨 ' + recentFills.length + ' fillFormData calls in last 5 seconds');
+        issues++;
+      }
+    }
+
+    if (issues === 0) {
+      console.log('   ✅ No obvious loops detected');
+    }
+
+    console.log('');
+    console.log('---------------------------------------------------------------');
+  };
+
+  console.log('📄 UI_PDF_Export.html loaded');
+  console.log('   Exports: window.loadPDFLibraries, window.exportReportToPDF, window.DIAG_getLoopReport');
+
+</script>

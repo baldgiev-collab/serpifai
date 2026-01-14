@@ -1,0 +1,567 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ELITE TAB RENDERERS MODULE
+ * SEMrush/Ahrefs/Screaming Frog Level Intelligence for All Tabs
+ * Requires: ELITE_Config.html, ELITE_Helpers.html
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * TAB 1: OVERVIEW DASHBOARD - Executive Summary with Real Data
+ */
+function renderOverviewDashboardElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const exec = data.executiveSummary || {};
+  const landscape = data.competitiveLandscape || {};
+  const quickStats = data.quickStats || [];
+
+  let html = `
+  <div class="elite-overview-dashboard">
+    <div class="elite-executive-banner">
+      <h2 class="elite-section-title">📊 Executive Overview</h2>
+      <div class="elite-banner-stats">
+        <div class="elite-stat-item">
+          <span class="stat-value">${exec.totalCompetitors || 0}</span>
+          <span class="stat-label">Competitors</span>
+        </div>
+        <div class="elite-stat-item">
+          <span class="stat-value">${exec.averageAuthority || 0}</span>
+          <span class="stat-label">Avg Authority</span>
+        </div>
+        <div class="elite-stat-item">
+          <span class="stat-value">${exec.averagePerformance || 0}</span>
+          <span class="stat-label">Avg Performance</span>
+        </div>
+        <div class="elite-stat-item highlight">
+          <span class="stat-value">👑 ${exec.marketLeader || 'N/A'}</span>
+          <span class="stat-label">Market Leader</span>
+        </div>
+      </div>
+      <div class="elite-data-quality">
+        <span class="data-badge data-badge-${exec.dataQuality === 'High' ? 'real' : 'calculated'}">
+          ${exec.dataQuality === 'High' ? '✅ Real Data' : '📊 Calculated'}
+        </span>
+        <span class="analysis-date">Analysis: ${exec.analysisDate || 'Today'}</span>
+      </div>
+    </div>
+
+    <div class="elite-quick-stats-grid">
+      ${quickStats.map(stat => `
+        <div class="elite-quick-stat" style="border-left: 4px solid ${stat.color}">
+          <span class="stat-icon">${stat.icon}</span>
+          <div class="stat-content">
+            <span class="stat-value">${stat.value}</span>
+            <span class="stat-label">${stat.label}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="elite-competitive-landscape">
+      <h3 class="elite-subsection-title">🏢 Competitive Landscape</h3>
+      <div class="landscape-meta">
+        <span class="meta-badge">Concentration: ${landscape.marketConcentration || 'N/A'}</span>
+        <span class="meta-badge">Intensity: ${landscape.competitiveIntensity || 'N/A'}</span>
+        <span class="meta-badge">Barrier: ${landscape.barrierToEntry || 'N/A'}</span>
+      </div>
+      <div class="elite-competitor-table">
+        <table>
+          <thead>
+            <tr><th>Rank</th><th>Domain</th><th>Authority</th><th>Trust</th><th>Performance</th><th>Traffic Est.</th><th>Data Source</th></tr>
+          </thead>
+          <tbody>
+            ${(landscape.competitors || []).map(c => `
+              <tr>
+                <td><span class="rank-badge">#${c.rank}</span></td>
+                <td><strong>${c.domain}</strong></td>
+                <td><span class="score-pill score-${getScoreClass(c.domainAuthority)}">${c.domainAuthority}</span></td>
+                <td><span class="score-pill score-${getScoreClass(c.trustScore)}">${c.trustScore}</span></td>
+                <td><span class="score-pill score-${getScoreClass(c.performanceScore)}">${c.performanceScore}</span></td>
+                <td>${c.estimatedTraffic}</td>
+                <td><span class="source-badge">${c.dataSource}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="elite-data-source-footer">
+      <span class="source-label">📡 Data Source:</span>
+      <span class="source-value">${data.dataSource || 'Real Data + Forensic Analysis'}</span>
+      <span class="timestamp">Generated: ${data.generatedAt || new Date().toISOString()}</span>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+  console.log('✅ Overview Dashboard Elite rendered');
+}
+
+/**
+ * TAB 2: MARKET INTELLIGENCE - Competitive Landscape Analysis
+ */
+function renderMarketIntelligenceElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const marketShare = data.marketShare || {};
+  const profiles = data.competitorProfiles || [];
+  const serpVisibility = data.serpVisibility || {};
+
+  let html = `
+  <div class="elite-market-intelligence">
+    <h2 class="elite-section-title">📈 Market Intelligence</h2>
+    
+    <div class="elite-market-metrics">
+      <div class="market-metric-card"><span class="metric-icon">📊</span><span class="metric-value">${marketShare.concentration || 'N/A'}</span><span class="metric-label">Market Concentration</span></div>
+      <div class="market-metric-card"><span class="metric-icon">🏆</span><span class="metric-value">${serpVisibility.leader || 'N/A'}</span><span class="metric-label">Visibility Leader</span></div>
+      <div class="market-metric-card"><span class="metric-icon">📈</span><span class="metric-value">${serpVisibility.leaderScore || 0}</span><span class="metric-label">Leader Score</span></div>
+      <div class="market-metric-card"><span class="metric-icon">📉</span><span class="metric-value">${serpVisibility.averageScore || 0}</span><span class="metric-label">Avg Score</span></div>
+    </div>
+
+    <div class="elite-competitor-profiles">
+      <h3 class="elite-subsection-title">🏢 Competitor Profiles</h3>
+      <div class="profiles-grid">
+        ${profiles.slice(0, 6).map(p => `
+          <div class="profile-card elite-card">
+            <div class="profile-header">
+              <span class="profile-rank">#${p.marketRank || '-'}</span>
+              <span class="profile-domain">${p.domain}</span>
+            </div>
+            <div class="profile-metrics">
+              <div class="profile-metric"><span class="label">Visibility</span><span class="value">${p.visibilityScore}</span></div>
+              <div class="profile-metric"><span class="label">Traffic Share</span><span class="value">${p.estimatedTrafficShare}</span></div>
+              <div class="profile-metric"><span class="label">Domain Rating</span><span class="value">${p.domainRating}</span></div>
+              <div class="profile-metric"><span class="label">Organic Keywords</span><span class="value">${p.organicKeywords?.toLocaleString() || 0}</span></div>
+            </div>
+            <div class="profile-proof">
+              <span class="proof-badge">${p.proof?.dataSource || 'Analyzed'}</span>
+              <span class="confidence-badge confidence-${p.proof?.confidence || 'medium'}">${p.proof?.confidence || 'medium'}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * TAB 3: BRAND POSITION - Brand Strength & Sentiment
+ */
+function renderBrandPositionElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const rankings = data.brandRankings || [];
+
+  let html = `
+  <div class="elite-brand-position">
+    <h2 class="elite-section-title">🎯 Brand Position Analysis</h2>
+    <div class="elite-brand-rankings">
+      ${rankings.slice(0, 6).map(b => `
+        <div class="brand-ranking-card elite-card">
+          <div class="brand-header">
+            <span class="brand-rank">#${b.rank}</span>
+            <span class="brand-name">${b.brandName}</span>
+          </div>
+          <div class="brand-score-ring">
+            <svg viewBox="0 0 36 36" class="circular-chart">
+              <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#eee" stroke-width="3"/>
+              <path class="circle" stroke="${getScoreColor(b.brandStrengthScore)}" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-dasharray="${b.brandStrengthScore}, 100"/>
+            </svg>
+            <span class="score-center">${b.brandStrengthScore}</span>
+          </div>
+          <div class="brand-metrics">
+            <div class="brand-metric"><span class="label">SERP Ownership</span><span class="value">${b.brandedSearchRatio}</span></div>
+            <div class="brand-metric"><span class="label">Sentiment</span><span class="value sentiment-${b.sentimentAnalysis?.sentiment?.toLowerCase() || 'neutral'}">${b.sentimentAnalysis?.sentiment || 'N/A'}</span></div>
+            <div class="brand-metric"><span class="label">Trust Score</span><span class="value">${b.trustScore}</span></div>
+          </div>
+          <div class="brand-differentiators">
+            ${(b.differentiators || []).map(d => `<span class="diff-tag">${d}</span>`).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * TAB 4: TECHNICAL SEO - Core Web Vitals & Technical Health
+ */
+function renderTechnicalSeoElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const rankings = data.healthRankings || [];
+  const issueSummary = data.issueSummary || {};
+
+  let html = `
+  <div class="elite-technical-seo">
+    <h2 class="elite-section-title">⚙️ Technical SEO Analysis</h2>
+    
+    <div class="elite-issue-summary">
+      <div class="issue-stat critical"><span class="issue-count">${issueSummary.criticalCount || 0}</span><span class="issue-label">Critical</span></div>
+      <div class="issue-stat high"><span class="issue-count">${issueSummary.highCount || 0}</span><span class="issue-label">High</span></div>
+      <div class="issue-stat total"><span class="issue-count">${issueSummary.totalIssues || 0}</span><span class="issue-label">Total Issues</span></div>
+    </div>
+
+    <div class="elite-cwv-table">
+      <h3 class="elite-subsection-title">📊 Core Web Vitals Comparison</h3>
+      <table class="cwv-comparison-table">
+        <thead><tr><th>Domain</th><th>Health</th><th>LCP</th><th>FID</th><th>CLS</th><th>TTFB</th><th>Performance</th><th>SEO</th></tr></thead>
+        <tbody>
+          ${rankings.slice(0, 6).map(r => `
+            <tr>
+              <td><strong>${r.domain}</strong></td>
+              <td><span class="health-badge health-${r.healthLevel?.toLowerCase().replace(' ', '-') || 'average'}">${r.healthScore}</span></td>
+              <td class="cwv-cell cwv-${r.coreWebVitals?.LCP?.status || 'unknown'}">${r.coreWebVitals?.LCP?.value || '-'}ms</td>
+              <td class="cwv-cell cwv-${r.coreWebVitals?.FID?.status || 'unknown'}">${r.coreWebVitals?.FID?.value || '-'}ms</td>
+              <td class="cwv-cell cwv-${r.coreWebVitals?.CLS?.status || 'unknown'}">${r.coreWebVitals?.CLS?.value || '-'}</td>
+              <td class="cwv-cell cwv-${r.coreWebVitals?.TTFB?.status || 'unknown'}">${r.coreWebVitals?.TTFB?.value || '-'}ms</td>
+              <td><span class="score-pill score-${getScoreClass(r.lighthouseScores?.performance)}">${r.lighthouseScores?.performance || '-'}</span></td>
+              <td><span class="score-pill score-${getScoreClass(r.lighthouseScores?.seo)}">${r.lighthouseScores?.seo || '-'}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div class="cwv-legend">
+        <span class="legend-item cwv-GOOD">● Good</span>
+        <span class="legend-item cwv-NEEDS_IMPROVEMENT">● Needs Improvement</span>
+        <span class="legend-item cwv-POOR">● Poor</span>
+      </div>
+    </div>
+
+    <div class="elite-schema-analysis">
+      <h3 class="elite-subsection-title">📋 Schema Coverage</h3>
+      <div class="schema-grid">
+        ${rankings.slice(0, 6).map(r => `
+          <div class="schema-card">
+            <div class="schema-header"><span class="domain">${r.domain}</span><span class="coverage">${r.schemaAnalysis?.coverage || '0%'}</span></div>
+            <div class="schema-detected">${(r.schemaAnalysis?.detected || []).slice(0, 4).map(s => `<span class="schema-tag">${s}</span>`).join('')}</div>
+            <div class="schema-missing"><span class="missing-label">Missing:</span>${(r.schemaAnalysis?.missing || []).slice(0, 3).map(s => `<span class="missing-tag">${s}</span>`).join('')}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * TAB 5: CONTENT INTEL - Content Inventory & Quality
+ */
+function renderContentIntelElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const rankings = data.qualityRankings || [];
+  const comparison = data.contentComparison || {};
+
+  let html = `
+  <div class="elite-content-intel">
+    <h2 class="elite-section-title">📝 Content Intelligence</h2>
+    
+    <div class="elite-content-stats">
+      <div class="content-stat-card"><span class="stat-value">${comparison.avgWordCount?.toLocaleString() || 0}</span><span class="stat-label">Avg Word Count</span></div>
+      <div class="content-stat-card"><span class="stat-value">${comparison.avgHeadings || 0}</span><span class="stat-label">Avg Headings</span></div>
+      <div class="content-stat-card"><span class="stat-value">${comparison.avgQualityScore || 0}</span><span class="stat-label">Avg Quality</span></div>
+      <div class="content-stat-card highlight"><span class="stat-value">${comparison.topPerformer || 'N/A'}</span><span class="stat-label">Top Performer</span></div>
+    </div>
+
+    <div class="elite-content-rankings">
+      <h3 class="elite-subsection-title">📊 Quality Rankings</h3>
+      <div class="content-rankings-grid">
+        ${rankings.slice(0, 6).map(r => `
+          <div class="content-rank-card elite-card">
+            <div class="rank-header">
+              <span class="rank-badge">#${r.rank}</span>
+              <span class="domain">${r.domain}</span>
+              <span class="quality-badge quality-${r.qualityLevel?.toLowerCase().replace(' ', '-') || 'average'}">${r.contentQualityScore}</span>
+            </div>
+            <div class="content-metrics">
+              <div class="metric-row"><span class="metric-label">📄 Words</span><span class="metric-value">${r.contentInventory?.wordCount?.toLocaleString() || 0}</span></div>
+              <div class="metric-row"><span class="metric-label">📑 Headings</span><span class="metric-value">${r.contentInventory?.totalHeadings || 0}</span></div>
+              <div class="metric-row"><span class="metric-label">⏱️ Read Time</span><span class="metric-value">${r.contentInventory?.estimatedReadTime || 'N/A'}</span></div>
+              <div class="metric-row"><span class="metric-label">📈 Depth</span><span class="metric-value">${r.contentDepth?.level || 'Standard'}</span></div>
+            </div>
+            <div class="eeat-section">
+              <span class="eeat-label">E-E-A-T Score:</span>
+              <span class="eeat-score eeat-${r.eeatAnalysis?.level?.toLowerCase() || 'moderate'}">${r.eeatAnalysis?.score || 0}</span>
+              <div class="eeat-signals">${(r.eeatAnalysis?.signals || []).map(s => `<span class="signal-tag">${s}</span>`).join('')}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * TAB 6: KEYWORD STRATEGY - Keyword Analysis & Gap Detection
+ */
+function renderKeywordStrategyElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const rankings = data.visibilityRankings || [];
+  const gapMatrix = data.keywordGapMatrix || {};
+  const questions = data.questionOpportunities || {};
+
+  let html = `
+  <div class="elite-keyword-strategy">
+    <h2 class="elite-section-title">🔑 Keyword Strategy</h2>
+    
+    <div class="elite-gap-summary">
+      <div class="gap-stat-card"><span class="stat-value">${gapMatrix.totalKeywordsAnalyzed?.toLocaleString() || 0}</span><span class="stat-label">Keywords Analyzed</span></div>
+      <div class="gap-stat-card"><span class="stat-value">${gapMatrix.avgVisibility || 0}</span><span class="stat-label">Avg Visibility</span></div>
+      <div class="gap-stat-card highlight"><span class="stat-value">${gapMatrix.quickWins || 0}</span><span class="stat-label">Quick Wins</span></div>
+      <div class="gap-stat-card"><span class="stat-value">${questions.total || 0}</span><span class="stat-label">Question Opportunities</span></div>
+    </div>
+
+    <div class="elite-visibility-rankings">
+      <h3 class="elite-subsection-title">📈 Visibility Rankings</h3>
+      <table class="visibility-table">
+        <thead><tr><th>Rank</th><th>Domain</th><th>Visibility</th><th>Top 3</th><th>Top 10</th><th>Top 20</th><th>Est. Keywords</th><th>PAA Questions</th></tr></thead>
+        <tbody>
+          ${rankings.slice(0, 6).map(r => `
+            <tr>
+              <td><span class="rank-badge">#${r.rank}</span></td>
+              <td><strong>${r.domain}</strong></td>
+              <td><span class="visibility-score">${r.visibilityScore}</span></td>
+              <td>${r.rankingDistribution?.top3 || 0}</td>
+              <td>${r.rankingDistribution?.top10 || 0}</td>
+              <td>${r.rankingDistribution?.top20 || 0}</td>
+              <td>${r.keywordPortfolio?.estimated?.toLocaleString() || 0}</td>
+              <td>${r.serpFeatures?.paaQuestions || 0}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="elite-question-opportunities">
+      <h3 class="elite-subsection-title">❓ Question Opportunities (PAA)</h3>
+      <div class="questions-grid">
+        ${(questions.topQuestions || []).slice(0, 8).map(q => `
+          <div class="question-card"><span class="question-icon">❓</span><span class="question-text">${typeof q === 'object' ? q.question : q}</span></div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * TAB 12: AUTHORITY - Trust & Link Authority
+ */
+function renderAuthorityElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const rankings = data.authorityRankings || [];
+  const eeatSummary = data.eeatSummary || {};
+
+  let html = `
+  <div class="elite-authority">
+    <h2 class="elite-section-title">🏛️ Authority Analysis</h2>
+    
+    <div class="elite-eeat-summary">
+      <div class="eeat-card"><span class="eeat-value">${eeatSummary.avgScore || 0}</span><span class="eeat-label">Avg E-E-A-T Score</span></div>
+      <div class="eeat-card highlight"><span class="eeat-value">${eeatSummary.strongEEAT || 0}</span><span class="eeat-label">Strong E-E-A-T</span></div>
+      <div class="eeat-card warning"><span class="eeat-value">${eeatSummary.weakEEAT || 0}</span><span class="eeat-label">Weak E-E-A-T</span></div>
+      <div class="eeat-card"><span class="eeat-value">${eeatSummary.topPerformer || 'N/A'}</span><span class="eeat-label">Top Performer</span></div>
+    </div>
+
+    <div class="elite-authority-rankings">
+      <h3 class="elite-subsection-title">📊 Authority Rankings</h3>
+      <div class="authority-grid">
+        ${rankings.slice(0, 6).map(r => `
+          <div class="authority-card elite-card">
+            <div class="authority-header">
+              <span class="rank">#${r.rank}</span>
+              <span class="domain">${r.domain}</span>
+              <span class="level-badge level-${r.authorityLevel?.toLowerCase() || 'moderate'}">${r.authorityLevel}</span>
+            </div>
+            <div class="link-metrics">
+              <div class="metric"><span class="label">Domain Rating</span><span class="value">${r.linkMetrics?.domainRating || 0}</span></div>
+              <div class="metric"><span class="label">Trust Flow</span><span class="value">${r.linkMetrics?.trustFlow || 0}</span></div>
+              <div class="metric"><span class="label">Citation Flow</span><span class="value">${r.linkMetrics?.citationFlow || 0}</span></div>
+            </div>
+            <div class="backlink-profile">
+              <span class="backlinks">🔗 ${r.backlinkProfile?.totalBacklinks || '0'} backlinks</span>
+              <span class="domains">🌐 ${r.backlinkProfile?.referringDomains || 0} domains</span>
+            </div>
+            <div class="eeat-breakdown">
+              <div class="eeat-bar" title="Expertise"><span class="bar-label">E</span><div class="bar-fill" style="width: ${r.eeatAnalysis?.expertise?.score || 0}%"></div></div>
+              <div class="eeat-bar" title="Experience"><span class="bar-label">E</span><div class="bar-fill" style="width: ${r.eeatAnalysis?.experience?.score || 0}%"></div></div>
+              <div class="eeat-bar" title="Authoritativeness"><span class="bar-label">A</span><div class="bar-fill" style="width: ${r.eeatAnalysis?.authoritativeness?.score || 0}%"></div></div>
+              <div class="eeat-bar" title="Trustworthiness"><span class="bar-label">T</span><div class="bar-fill" style="width: ${r.eeatAnalysis?.trustworthiness?.score || 0}%"></div></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * TAB 13: PERFORMANCE - Ranking Trends & Traffic
+ */
+function renderPerformanceElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const rankings = data.performanceRankings || [];
+  const trafficComparison = data.trafficComparison || {};
+  const trendSummary = data.trendSummary || {};
+
+  let html = `
+  <div class="elite-performance">
+    <h2 class="elite-section-title">📈 Performance Analysis</h2>
+    
+    <div class="elite-traffic-summary">
+      <div class="traffic-card"><span class="traffic-value">${trafficComparison.totalEstimatedTraffic || '0'}</span><span class="traffic-label">Total Est. Traffic</span></div>
+      <div class="traffic-card"><span class="traffic-value">${trafficComparison.avgTraffic || '0'}</span><span class="traffic-label">Avg Traffic</span></div>
+      <div class="traffic-card highlight"><span class="traffic-value">${trafficComparison.trafficLeader || 'N/A'}</span><span class="traffic-label">Traffic Leader</span></div>
+    </div>
+
+    <div class="elite-trend-summary">
+      <div class="trend-stat improving"><span class="trend-icon">📈</span><span class="trend-value">${trendSummary.improving || 0}</span><span class="trend-label">Improving</span></div>
+      <div class="trend-stat declining"><span class="trend-icon">📉</span><span class="trend-value">${trendSummary.declining || 0}</span><span class="trend-label">Declining</span></div>
+      <div class="trend-stat stable"><span class="trend-icon">➡️</span><span class="trend-value">${trendSummary.stable || 0}</span><span class="trend-label">Stable</span></div>
+    </div>
+
+    <div class="elite-performance-rankings">
+      <h3 class="elite-subsection-title">🏆 Performance Rankings</h3>
+      <table class="performance-table">
+        <thead><tr><th>Rank</th><th>Domain</th><th>Score</th><th>Visibility</th><th>Traffic Est.</th><th>30d Trend</th><th>PageSpeed</th><th>SEO</th></tr></thead>
+        <tbody>
+          ${rankings.slice(0, 6).map(r => `
+            <tr>
+              <td><span class="rank-badge">#${r.rank}</span></td>
+              <td><strong>${r.domain}</strong></td>
+              <td><span class="score-pill score-${getScoreClass(r.overallPerformance)}">${r.overallPerformance}</span></td>
+              <td>${r.visibilityMetrics?.score || 0}</td>
+              <td>${r.trafficEstimation?.monthlyVisits || '0'}</td>
+              <td class="trend-cell trend-${r.rankingTrends?.last30Days?.direction || 'stable'}">${r.visibilityMetrics?.trend || '0%'}</td>
+              <td><span class="score-pill score-${getScoreClass(r.technicalPerformance?.pageSpeed)}">${r.technicalPerformance?.pageSpeed || '-'}</span></td>
+              <td><span class="score-pill score-${getScoreClass(r.technicalPerformance?.seoScore)}">${r.technicalPerformance?.seoScore || '-'}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+/**
+ * TAB 14: OPPORTUNITIES - Gap Analysis & Quick Wins
+ */
+function renderOpportunitiesElite(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+
+  const quickWins = data.quickWins || {};
+  const priorityMatrix = data.priorityMatrix || {};
+  const summary = data.opportunitySummary || {};
+  const gapAnalysis = data.gapAnalysis || {};
+
+  let html = `
+  <div class="elite-opportunities">
+    <h2 class="elite-section-title">🎯 Opportunity Analysis</h2>
+    
+    <div class="elite-opportunity-summary">
+      <div class="opp-stat-card"><span class="stat-value">${summary.totalGapsIdentified || 0}</span><span class="stat-label">Total Gaps</span></div>
+      <div class="opp-stat-card highlight"><span class="stat-value">${summary.quickWinCount || 0}</span><span class="stat-label">Quick Wins</span></div>
+      <div class="opp-stat-card warning"><span class="stat-value">${summary.highPriorityCount || 0}</span><span class="stat-label">High Priority</span></div>
+      <div class="opp-stat-card"><span class="stat-value">${summary.mostVulnerable || 'N/A'}</span><span class="stat-label">Most Vulnerable</span></div>
+    </div>
+
+    <div class="elite-priority-matrix">
+      <h3 class="elite-subsection-title">📊 Priority Matrix</h3>
+      <div class="priority-grid">
+        <div class="priority-column do-first">
+          <h4>🚀 Do First (${priorityMatrix.doFirst?.count || 0})</h4>
+          <p class="column-desc">Low effort, High impact</p>
+          ${(priorityMatrix.doFirst?.items || []).slice(0, 3).map(i => `<div class="priority-item"><span class="item-type">${i.type}</span><span class="item-area">${i.area}</span></div>`).join('')}
+        </div>
+        <div class="priority-column do-next">
+          <h4>📌 Do Next (${priorityMatrix.doNext?.count || 0})</h4>
+          <p class="column-desc">Strategic priorities</p>
+          ${(priorityMatrix.doNext?.items || []).slice(0, 3).map(i => `<div class="priority-item"><span class="item-type">${i.type}</span><span class="item-area">${i.area}</span></div>`).join('')}
+        </div>
+        <div class="priority-column plan-for">
+          <h4>📅 Plan For (${priorityMatrix.planFor?.count || 0})</h4>
+          <p class="column-desc">Major projects</p>
+          ${(priorityMatrix.planFor?.items || []).slice(0, 3).map(i => `<div class="priority-item"><span class="item-type">${i.type}</span><span class="item-area">${i.area}</span></div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="elite-quick-wins">
+      <h3 class="elite-subsection-title">⚡ Quick Wins</h3>
+      <div class="quick-wins-grid">
+        ${(quickWins.topOpportunities || []).slice(0, 6).map(w => `
+          <div class="quick-win-card">
+            <div class="win-header"><span class="win-type type-${w.type?.toLowerCase() || 'general'}">${w.type}</span><span class="win-area">${w.area}</span></div>
+            <div class="win-details">
+              <p class="win-opportunity">${w.opportunity}</p>
+              <div class="win-meta"><span class="effort effort-${w.effort?.toLowerCase() || 'medium'}">Effort: ${w.effort}</span><span class="impact impact-${w.impact?.toLowerCase() || 'medium'}">Impact: ${w.impact}</span></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="elite-gap-analysis">
+      <h3 class="elite-subsection-title">🔍 Gap Analysis by Category</h3>
+      <div class="gap-categories">
+        <div class="gap-category"><h4>⚙️ Technical (${gapAnalysis.technical?.count || 0})</h4><ul>${(gapAnalysis.technical?.commonIssues || []).map(i => `<li>${i}</li>`).join('')}</ul></div>
+        <div class="gap-category"><h4>📝 Content (${gapAnalysis.content?.count || 0})</h4><ul>${(gapAnalysis.content?.commonIssues || []).map(i => `<li>${i}</li>`).join('')}</ul></div>
+        <div class="gap-category"><h4>🏛️ Authority (${gapAnalysis.authority?.count || 0})</h4><ul>${(gapAnalysis.authority?.commonIssues || []).map(i => `<li>${i}</li>`).join('')}</ul></div>
+      </div>
+    </div>
+  </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════════
+window.renderOverviewDashboardElite = renderOverviewDashboardElite;
+window.renderMarketIntelligenceElite = renderMarketIntelligenceElite;
+window.renderBrandPositionElite = renderBrandPositionElite;
+window.renderTechnicalSeoElite = renderTechnicalSeoElite;
+window.renderContentIntelElite = renderContentIntelElite;
+window.renderKeywordStrategyElite = renderKeywordStrategyElite;
+window.renderAuthorityElite = renderAuthorityElite;
+window.renderPerformanceElite = renderPerformanceElite;
+window.renderOpportunitiesElite = renderOpportunitiesElite;
+
+console.log('✅ ELITE_TabRenderers.html loaded');
+</script>

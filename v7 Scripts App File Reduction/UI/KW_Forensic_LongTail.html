@@ -1,0 +1,342 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════
+     KW_Forensic_LongTail.html - KEYWORD FORENSIC SYSTEM - Long-Tail & FAQ Generators
+     
+     Extracted from UI_Scripts_App.html for modularization
+     Contains: generateForensicLongTailKWs, generateForensicFAQKWs
+     
+     Dependencies: KW_Money_Moat.html (generateTip, analyzeCompetitorMoat), classifyIntent
+     ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+
+  /**
+   * Generate 5 Long-Tail Quick Wins - High-intent, low-volume
+   * 
+   * ZERO-REPETITION RULE: Uses globalKeywordSet to ensure no duplicates across 105 KWs
+   * 2025 DEEP RESEARCH: GEO (Generative Engine Optimization), RAG-ready content
+   * 
+   * @param {Object} comp - Competitor data object
+   * @param {Object} gemini - Gemini AI analysis data
+   * @param {string} niche - Target niche/industry
+   * @param {Array} templates - Keyword templates
+   * @param {Set} globalKeywordSet - Global set of used keywords (Zero-Repetition enforcement)
+   * @param {number} compIndex - Competitor index (0-4) for unique positioning
+   */
+  function generateForensicLongTailKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    console.log(`🎯 Generating Long-Tail KWs for Competitor ${compIndex + 1} with Zero-Repetition...`);
+
+    const keywords = [];
+    const kwIntel = gemini.keywordIntelligence || {};
+    const domain = comp.domain || '';
+    const serper = comp.stages?.serper?.data || comp.apiData?.serper || {};
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0: Extract REAL keywords from competitor's keywordSignals
+    // ═══════════════════════════════════════════════════════════════════════════
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    const paaQuestions = keywordSignals.peopleAlsoAsk || serper.peopleAlsoAsk || [];
+    const relatedSearches = keywordSignals.relatedSearches || serper.relatedSearches || [];
+
+    console.log(`   🚀 ForensicLongTail for ${domain}: PAA=${paaQuestions.length}, Related=${relatedSearches.length}`);
+
+    // Analyze moat for this competitor
+    const moatAnalysis = analyzeCompetitorMoat(comp, gemini);
+    const moat_type = moatAnalysis.primaryMoat || 'Content';
+
+    // MOAT-BREAKER TACTICS for Long-Tail (Low Competition = Quick Win)
+    const longTailMoatBreakers = {
+      'Brand': 'Target "vs" and "alternative to" comparison queries with feature matrices',
+      'Content': 'Create hyper-specific use-case guides with Schema markup for each variant',
+      'Technical': 'Add interactive calculators/tools that auto-generate unique long-tail pages',
+      'Authority': 'Partner with micro-influencers in sub-niches for authentic long-tail coverage'
+    };
+    const moatBreaker = longTailMoatBreakers[moat_type] || longTailMoatBreakers['Content'];
+
+    // Helper to add keyword with zero-repetition check
+    const addIfUnique = (kwData) => {
+      const kwText = kwData.kw.toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && keywords.length < 5) {
+        globalKeywordSet.add(kwText);
+        keywords.push(kwData);
+        return true;
+      }
+      return false;
+    };
+
+    // PRIORITY 0A: PAA questions are PERFECT long-tail (natural language)
+    paaQuestions.slice(0, 3).forEach((p, idx) => {
+      const question = (typeof p === 'string' ? p : p.question || p.title || '').trim();
+      if (question.length > 15) {
+        const diff = 0;
+        const clash = 5;
+        const aioScore = 5;
+
+        addIfUnique({
+          kw: question,
+          ui_cat: 'tail',
+          type: 'Long-Tail',
+          category: 'Quick Win',
+          volume: 'Low',
+          difficulty: diff,
+          intent: 'Informational',
+          conversionPotential: 'High',
+          leader: domain,
+          source: 'Serper PAA',
+          aio_risk: aioScore,
+          entity_id: `entity_longtail_c${compIndex}_${keywords.length + 1}`,
+          moat_type: moat_type,
+          moatBreaker: moatBreaker,
+          clash: clash,
+          tip: generateTip(question, clash, aioScore, moat_type, moatBreaker),
+          x: 76 + (compIndex * 0.4),
+          y: 8 + (compIndex * 0.3)
+        });
+      }
+    });
+
+    // PRIORITY 0B: Related searches with 4+ words are long-tail
+    relatedSearches.slice(0, 4).forEach(r => {
+      const query = (typeof r === 'string' ? r : r.query || r).trim();
+      if (query.split(' ').length >= 4) {
+        const diff = 0;
+        const clash = 5;
+        const aioScore = 5;
+
+        addIfUnique({
+          kw: query,
+          ui_cat: 'tail',
+          type: 'Long-Tail',
+          category: 'Quick Win',
+          volume: 'Low',
+          difficulty: diff,
+          intent: classifyIntent(query),
+          conversionPotential: 'High',
+          leader: domain,
+          source: 'Serper Related',
+          aio_risk: aioScore,
+          entity_id: `entity_longtail_c${compIndex}_${keywords.length + 1}`,
+          moat_type: moat_type,
+          moatBreaker: moatBreaker,
+          clash: clash,
+          tip: generateTip(query, clash, aioScore, moat_type, moatBreaker),
+          x: 75 + (compIndex * 0.4),
+          y: 5 + (compIndex * 0.3)
+        });
+      }
+    });
+
+    // Priority 1: From Gemini long-tail analysis
+    if (kwIntel.longTailKeywords?.quickWins) {
+      kwIntel.longTailKeywords.quickWins.slice(0, 3).forEach((kw, idx) => {
+        const kwText = kw.keyword || kw;
+        const diff = kw.difficulty || (20 + idx * 5);
+        const clash = 5;
+        const aioScore = 5;
+
+        addIfUnique({
+          kw: kwText,
+          ui_cat: 'tail',
+          type: 'Long-Tail',
+          category: 'Quick Win',
+          volume: 'Low',
+          difficulty: diff,
+          intent: kw.searchIntent || 'Transactional',
+          conversionPotential: kw.conversionPotential || 'High',
+          leader: domain,
+          source: 'Gemini AI',
+          aio_risk: aioScore,
+          entity_id: `entity_longtail_c${compIndex}_${keywords.length + 1}`,
+          moat_type: moat_type,
+          moatBreaker: moatBreaker,
+          clash: clash,
+          tip: generateTip(kwText, clash, aioScore, moat_type, moatBreaker),
+          x: 80 + (compIndex * 0.3),
+          y: 10 + (compIndex * 0.5)
+        });
+      });
+    }
+
+    // FALLBACK: 2025 templates if still below target
+    if (keywords.length < 5) {
+      console.log(`   ⚠️ ForensicLongTail ${domain}: Using templates to fill ${5 - keywords.length} remaining slots`);
+      const longTail2025ByComp = [
+        [`how to get cited by AI overviews for ${niche} 2025`, `${niche} citation optimization for Perplexity`, `best ${niche} tools for RAG visibility`],
+        [`${niche} ROI calculator for enterprise teams`, `enterprise ${niche} implementation checklist`, `${niche} vs manual process cost comparison`],
+        [`${niche} for small business step by step`, `how to automate ${niche} with AI tools`, `${niche} integration with existing workflows`],
+        [`${niche} alternatives ranked by feature`, `${niche} vs competitors 2025 comparison`, `switching from manual to ${niche} automation`],
+        [`${niche} API integration tutorial`, `${niche} webhook configuration guide`, `${niche} custom implementation examples`]
+      ];
+
+      const compTemplates = longTail2025ByComp[compIndex % 5] || longTail2025ByComp[0];
+      let templateIdx = 0;
+
+      while (keywords.length < 5 && templateIdx < compTemplates.length + 3) {
+        const template = compTemplates[templateIdx % compTemplates.length];
+        const diff = 0;
+        const clash = 5;
+
+        addIfUnique({
+          kw: template,
+          ui_cat: 'tail',
+          type: 'Long-Tail',
+          category: 'Quick Win',
+          volume: 'Low',
+          difficulty: diff,
+          intent: 'Transactional',
+          conversionPotential: 'High',
+          leader: domain,
+          source: 'Template',
+          aio_risk: 3,
+          entity_id: `entity_longtail_c${compIndex}_${keywords.length + 1}`,
+          moat_type: moat_type,
+          moatBreaker: moatBreaker,
+          clash: clash,
+          tip: generateTip(template, clash, 3, moat_type, moatBreaker),
+          x: 78 + (compIndex * 0.5),
+          y: 8 + (compIndex * 0.4)
+        });
+        templateIdx++;
+      }
+    }
+
+    console.log(`   ✅ ForensicLongTail ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => k.source !== 'Template').length} from real data)`);
+    return keywords.slice(0, 5);
+  }
+  window.generateForensicLongTailKWs = generateForensicLongTailKWs;
+
+  /**
+   * Generate 4 FAQ/PAA Targets - Question-based queries
+   * 
+   * ZERO-REPETITION RULE: Uses globalKeywordSet to ensure no duplicates across 105 KWs
+   * 2025 DEEP RESEARCH: Focus on AI Overview citation gaps, Perplexity answer optimization
+   * 
+   * [i] Hover: "FAQ keywords have 9/10 AIO Risk - AI Overviews will likely answer these directly.
+   *             Counter-strategy: Create definitive, structured answers that BECOME the citation source."
+   * 
+   * @param {Object} comp - Competitor data object
+   * @param {Object} gemini - Gemini AI analysis data
+   * @param {string} niche - Target niche/industry
+   * @param {Array} templates - Keyword templates
+   * @param {Set} globalKeywordSet - Global set of used keywords (Zero-Repetition enforcement)
+   * @param {number} compIndex - Competitor index (0-4) for unique positioning
+   */
+  function generateForensicFAQKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    console.log(`❓ Generating FAQ/PAA KWs for Competitor ${compIndex + 1} with Zero-Repetition...`);
+
+    const keywords = [];
+    const serper = comp.stages?.serper?.data || comp.apiData?.serper || {};
+    const domain = comp.domain || '';
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0: Extract REAL keywords from competitor's keywordSignals
+    // PAA questions are the BEST source for FAQ keywords
+    // ═══════════════════════════════════════════════════════════════════════════
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    const paa = keywordSignals.peopleAlsoAsk || serper.peopleAlsoAsk || [];
+
+    console.log(`   ❓ ForensicFAQ for ${domain}: PAA=${paa.length}`);
+
+    // Analyze moat for this competitor
+    const moatAnalysis = analyzeCompetitorMoat(comp, gemini);
+    const moat_type = moatAnalysis.primaryMoat || 'Content';
+
+    // FAQ-SPECIFIC MOAT-BREAKER TACTICS
+    const faqMoatBreakers = {
+      'Brand': 'Create unbiased "vs" comparison FAQ pages with structured data for PAA capture',
+      'Content': 'Build interactive FAQ widgets with dynamic answer expansion + Schema markup',
+      'Technical': 'Add FAQ schema to every product page with programmatic answer generation',
+      'Authority': 'Source FAQ answers with expert quotes and link to primary research'
+    };
+    const moatBreaker = faqMoatBreakers[moat_type] || faqMoatBreakers['Content'];
+
+    // Helper to add keyword with zero-repetition check
+    const addIfUnique = (kwData) => {
+      const kwText = kwData.kw.toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && keywords.length < 4) {
+        globalKeywordSet.add(kwText);
+        keywords.push(kwData);
+        return true;
+      }
+      return false;
+    };
+
+    // Priority 1: From actual PAA data (most valuable - REAL from Serper)
+    paa.slice(0, 4).forEach((p, idx) => {
+      const question = (typeof p === 'string' ? p : p.question || p.title || '').trim();
+      if (question.length > 10) {
+        const diff = 0;
+        const clash = 5;
+        const aioScore = 9;
+
+        addIfUnique({
+          kw: question,
+          ui_cat: 'llm',
+          type: 'FAQ',
+          category: 'PAA Target',
+          volume: 'Medium',
+          difficulty: diff,
+          intent: 'Informational',
+          snippetType: 'Featured Snippet',
+          leader: domain,
+          source: 'Serper PAA',
+          aio_risk: aioScore,
+          entity_id: `entity_faq_c${compIndex}_${keywords.length + 1}`,
+          moat_type: moat_type,
+          moatBreaker: moatBreaker,
+          clash: clash,
+          tip: generateTip(question, clash, aioScore, moat_type, moatBreaker),
+          x: 10 + (compIndex * 0.5),
+          y: 25 + (compIndex * 0.4)
+        });
+      }
+    });
+
+    // FALLBACK: AI-Focused FAQ Templates if still below target
+    if (keywords.length < 4) {
+      console.log(`   ⚠️ ForensicFAQ ${domain}: Using templates to fill ${4 - keywords.length} remaining slots`);
+      const faq2025ByComp = [
+        [`what is ${niche} and how does it work in 2025`, `why is ${niche} important for modern businesses`, `what problems does ${niche} solve`],
+        [`how does ${niche} work with AI overviews`, `will AI replace ${niche} professionals`, `how to optimize ${niche} for Google SGE`],
+        [`what are the best ${niche} alternatives in 2025`, `how to choose the right ${niche} tool`, `what features matter most in ${niche}`],
+        [`is ${niche} worth the investment for small business`, `what is the ROI of implementing ${niche}`, `how long until ${niche} pays for itself`],
+        [`how long does ${niche} implementation take`, `what skills needed for ${niche}`, `common ${niche} implementation mistakes`]
+      ];
+
+      const compFAQs = faq2025ByComp[compIndex % 5] || faq2025ByComp[0];
+      let faqIdx = 0;
+
+      while (keywords.length < 4 && faqIdx < compFAQs.length + 3) {
+        const question = compFAQs[faqIdx % compFAQs.length];
+        const diff = 0;
+        const clash = 5;
+        const aioScore = 9;
+
+        addIfUnique({
+          kw: question,
+          ui_cat: 'llm',
+          type: 'FAQ',
+          category: 'PAA Target',
+          volume: 'Medium',
+          difficulty: diff,
+          intent: 'Informational',
+          snippetType: 'Featured Snippet',
+          leader: domain,
+          source: 'Template',
+          aio_risk: aioScore,
+          entity_id: `entity_faq_c${compIndex}_${keywords.length + 1}`,
+          moat_type: moat_type,
+          moatBreaker: moatBreaker,
+          clash: clash,
+          tip: generateTip(question, clash, aioScore, moat_type, moatBreaker),
+          x: 8 + (compIndex * 0.6),
+          y: 30 + (compIndex * 0.3)
+        });
+        faqIdx++;
+      }
+    }
+
+    console.log(`   ✅ ForensicFAQ ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => k.source !== 'Template').length} from real data)`);
+    return keywords.slice(0, 4);
+  }
+  window.generateForensicFAQKWs = generateForensicFAQKWs;
+
+</script>

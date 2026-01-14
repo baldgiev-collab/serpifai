@@ -1,0 +1,170 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     DATA_Forensic_Engine.html - v1.0
+     Forensic Estimation & Economic Moat Detection Engine
+     
+     FUNCTIONS:
+     - generateForensicEstimates: Intelligent estimates when API data is unavailable
+     - detectEconomicMoats: Infers competitor defensive advantages from signals
+     
+     DEPENDENCIES: None (standalone utility functions)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * FORENSIC ESTIMATION ENGINE - v1.0
+   * Provides intelligent estimates when API data is unavailable
+   * Uses PageRank, domain patterns, and industry heuristics for inference
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  function generateForensicEstimates(domain, pageRank, seoScore, performance) {
+    // Domain pattern analysis
+    const domainParts = (domain || '').split('.');
+    const tld = domainParts[domainParts.length - 1] || 'com';
+    const isCommercial = ['com', 'co', 'io', 'shop', 'store'].includes(tld);
+    const isEdu = ['edu', 'ac', 'school'].includes(tld);
+    const isGov = ['gov', 'mil', 'government'].includes(tld);
+
+    // Authority tier based on PageRank
+    const pr = pageRank || 0;
+    const authorityMultiplier = pr >= 7 ? 3.5 : pr >= 5 ? 2.5 : pr >= 3 ? 1.8 : pr >= 1 ? 1.2 : 1.0;
+
+    // SEO maturity affects content structure estimates
+    const seoMaturity = (seoScore || 60) / 100;
+
+    // Forensic Internal Link Estimation
+    // High-authority sites have more structured internal linking
+    const baseInternalLinks = 20; // Fixed base - real data comes from scraping
+    const internalLinkEstimate = Math.round(baseInternalLinks * authorityMultiplier * seoMaturity);
+
+    // Forensic External Link Estimation
+    // Commercial sites link less externally, edu/gov link more
+    const baseExternalLinks = isCommercial ? 3 : isEdu ? 12 : isGov ? 8 : 5;
+    const externalLinkEstimate = Math.round(baseExternalLinks * authorityMultiplier); // No random - use base
+
+    // Forensic Word Count Estimation
+    // Based on SEO best practices: ~1500-2500 for ranking content
+    const baseWordCount = 1000; // Fixed base - real data comes from scraping
+    const wordCountEstimate = Math.round(baseWordCount * authorityMultiplier * (0.8 + seoMaturity * 0.4));
+
+    // Forensic Topical Authority Estimation
+    const topicalAuthorityEstimate = Math.min(100, Math.round(
+      (pr * 8) + (seoScore || 60) * 0.3 + (performance || 50) * 0.15
+    ));
+
+    // Forensic Content Depth Estimation
+    const contentDepthEstimate = Math.min(100, Math.round(
+      40 + (pr * 5) + (seoScore || 60) * 0.2 // No random - use deterministic formula
+    ));
+
+    // Confidence scores based on available data
+    const hasPageRank = pr > 0;
+    const hasSEO = (seoScore || 0) > 0;
+    const hasPerformance = (performance || 0) > 0;
+    const confidenceLevel = (hasPageRank ? 35 : 0) + (hasSEO ? 35 : 0) + (hasPerformance ? 30 : 15);
+    const confidenceLabel = confidenceLevel >= 80 ? 'High' : confidenceLevel >= 50 ? 'Medium' : 'Low';
+    const factCheckColor = confidenceLevel >= 95 ? '#22c55e' : confidenceLevel >= 80 ? '#f59e0b' : '#ef4444';
+    const factCheckLabel = confidenceLevel >= 95 ? 'Green (Technical)' : confidenceLevel >= 80 ? 'Amber (Forensic)' : 'Red (Predictive)';
+
+    return {
+      internalLinks: internalLinkEstimate,
+      externalLinks: externalLinkEstimate,
+      wordCount: wordCountEstimate,
+      topicalAuthority: topicalAuthorityEstimate,
+      contentDepth: contentDepthEstimate,
+      confidence: {
+        level: confidenceLevel,
+        label: confidenceLabel,
+        factCheckColor: factCheckColor,
+        factCheckLabel: factCheckLabel
+      },
+      source: 'Forensic Estimation',
+      isForensic: true
+    };
+  }
+  window.generateForensicEstimates = generateForensicEstimates;
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ECONOMIC MOAT DETECTION ENGINE - v1.0
+   * Infers competitor defensive advantages from observable signals
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  function detectEconomicMoats(comp, metrics) {
+    const moats = [];
+    const pm = comp.processedMetrics || {};
+    const pageRank = metrics?.authority?.pageRank || pm.pageRank || 0;
+
+    // Brand Moat Detection
+    const hasBrandMoat = pageRank >= 6 || (pm.domainAuthority || 0) >= 70;
+    if (hasBrandMoat) {
+      moats.push({
+        type: 'Brand Moat',
+        strength: pageRank >= 7 ? 'Strong' : 'Medium',
+        signals: ['High PageRank', 'Established domain authority', 'Brand recognition signals'],
+        defensibility: Math.min(95, 60 + pageRank * 5),
+        icon: '🏰'
+      });
+    }
+
+    // Content Moat Detection
+    const schemaCount = metrics?.content?.schemaTypes?.length || 0;
+    const wordCount = metrics?.content?.wordCount || 0;
+    const hasContentMoat = schemaCount >= 3 || wordCount >= 2500;
+    if (hasContentMoat) {
+      moats.push({
+        type: 'Content Moat',
+        strength: schemaCount >= 5 ? 'Strong' : 'Medium',
+        signals: ['Rich structured data', 'Comprehensive content depth', 'E-E-A-T signals'],
+        defensibility: Math.min(90, 50 + schemaCount * 8 + (wordCount / 100)),
+        icon: '📚'
+      });
+    }
+
+    // Technical Moat Detection
+    const perfScore = metrics?.technical?.performance || 0;
+    const seoScore = metrics?.technical?.seo || 0;
+    const hasTechnicalMoat = perfScore >= 80 && seoScore >= 90;
+    if (hasTechnicalMoat) {
+      moats.push({
+        type: 'Technical Moat',
+        strength: perfScore >= 90 ? 'Strong' : 'Medium',
+        signals: ['Core Web Vitals excellence', 'SEO optimization', 'Mobile-first architecture'],
+        defensibility: Math.min(85, (perfScore + seoScore) / 2.2),
+        icon: '⚙️'
+      });
+    }
+
+    // Distribution Moat Detection (backlinks, referring domains)
+    const backlinks = metrics?.authority?.backlinks || pm.backlinks || 0;
+    const refDomains = metrics?.authority?.refDomains || pm.refDomains || 0;
+    const hasDistributionMoat = backlinks >= 1000 || refDomains >= 100;
+    if (hasDistributionMoat) {
+      moats.push({
+        type: 'Distribution Moat',
+        strength: refDomains >= 500 ? 'Strong' : 'Medium',
+        signals: ['Extensive backlink profile', 'Diverse referring domains', 'Link velocity momentum'],
+        defensibility: Math.min(90, 40 + Math.log10(backlinks + 1) * 15),
+        icon: '🌐'
+      });
+    }
+
+    // Calculate overall moat strength
+    const avgDefensibility = moats.length > 0
+      ? Math.round(moats.reduce((a, m) => a + m.defensibility, 0) / moats.length)
+      : 15;
+
+    return {
+      moats: moats,
+      totalMoats: moats.length,
+      overallStrength: moats.length >= 3 ? 'Fortress' : moats.length >= 2 ? 'Defended' : moats.length >= 1 ? 'Partial' : 'Vulnerable',
+      avgDefensibility: avgDefensibility,
+      vulnerabilities: moats.length === 0 ? ['No clear competitive moat', 'Susceptible to new entrants', 'Price competition risk'] : [],
+      attackVectors: moats.length < 3 ? [
+        moats.some(m => m.type === 'Content Moat') ? null : 'Content depth opportunity',
+        moats.some(m => m.type === 'Technical Moat') ? null : 'Technical excellence opportunity',
+        moats.some(m => m.type === 'Distribution Moat') ? null : 'Link building opportunity'
+      ].filter(Boolean) : []
+    };
+  }
+  window.detectEconomicMoats = detectEconomicMoats;
+</script>

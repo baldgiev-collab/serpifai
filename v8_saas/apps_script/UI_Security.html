@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"] { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus { outline: none; border-color: var(--primary); }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    
+    .score-row { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+    .score-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 700; color: white; }
+    .score-circle.a { background: var(--success); }
+    .score-circle.b { background: #66bb6a; }
+    .score-circle.c { background: var(--warning); }
+    .score-circle.d { background: #ff9800; }
+    .score-circle.f { background: var(--danger); }
+    .score-info { flex: 1; }
+    .score-value { font-size: 32px; font-weight: 600; }
+    .score-label { color: var(--muted); }
+    
+    .check-list { list-style: none; }
+    .check-item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .check-item:last-child { border-bottom: none; }
+    .check-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .check-icon.pass { background: #e6f4ea; color: var(--success); }
+    .check-icon.fail { background: #fce8e6; color: var(--danger); }
+    .check-icon.warn { background: #fef7e0; color: #e37400; }
+    .check-icon.info { background: #e8f0fe; color: var(--primary); }
+    .check-name { font-weight: 500; min-width: 180px; }
+    .check-desc { flex: 1; color: var(--muted); font-size: 13px; }
+    
+    .rec-item { padding: 14px; background: var(--bg); border-radius: 8px; margin-bottom: 10px; }
+    .rec-item:last-child { margin-bottom: 0; }
+    .rec-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .rec-priority { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; }
+    .rec-priority.high { background: #fce8e6; color: var(--danger); }
+    .rec-priority.medium { background: #fef7e0; color: #e37400; }
+    .rec-title { font-weight: 500; }
+    .rec-fix { font-size: 13px; color: var(--muted); }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .scroll-box { max-height: 350px; overflow-y: auto; }
+    
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .tab { padding: 12px 20px; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+    
+    .header-item { display: flex; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .header-item:last-child { border-bottom: none; }
+    .header-name { font-weight: 500; min-width: 200px; }
+    .header-value { color: var(--muted); word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Security Scanner</h1>
+    <p class="subtitle">Website security analysis</p>
+  </div>
+  
+  <div class="card">
+    <div class="form-group">
+      <label>Website URL</label>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="urlInput" placeholder="Enter URL to scan...">
+        <button class="btn-primary" onclick="scanSecurity()">Scan</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Scanning security...</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="card">
+      <div class="score-row">
+        <div class="score-circle" id="gradeCircle">-</div>
+        <div class="score-info">
+          <div class="score-value" id="scoreValue">--</div>
+          <div class="score-label">Security Score</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('checks')">Security Checks</button>
+      <button class="tab" onclick="showTab('headers')">Headers</button>
+      <button class="tab" onclick="showTab('recs')">Recommendations</button>
+    </div>
+    
+    <div class="card" id="checksTab">
+      <div class="scroll-box">
+        <ul class="check-list" id="checksList"></ul>
+      </div>
+    </div>
+    
+    <div class="card" id="headersTab" style="display: none;">
+      <div class="scroll-box" id="headersList"></div>
+    </div>
+    
+    <div class="card" id="recsTab" style="display: none;">
+      <div id="recsList"></div>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to scan its security</p>
+  </div>
+  
+  <script>
+    function scanSecurity() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { alert('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeSecurity({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        alert(data?.error || 'Scan failed');
+        document.getElementById('empty').style.display = 'block';
+        return;
+      }
+      
+      // Update score
+      const grade = data.grade || 'F';
+      document.getElementById('gradeCircle').textContent = grade;
+      document.getElementById('gradeCircle').className = 'score-circle ' + grade.toLowerCase();
+      document.getElementById('scoreValue').textContent = (data.score || 0) + '/100';
+      
+      renderChecks(data.checks || []);
+      renderHeaders(data.headers || []);
+      renderRecommendations(data.recommendations || []);
+      
+      document.getElementById('results').style.display = 'block';
+    }
+    
+    function renderChecks(checks) {
+      const list = document.getElementById('checksList');
+      list.innerHTML = checks.map(function(check) {
+        const icon = check.status === 'pass' ? '✓' : (check.status === 'fail' ? '✗' : (check.status === 'warn' ? '!' : 'i'));
+        return '<li class="check-item">' +
+          '<div class="check-icon ' + check.status + '">' + icon + '</div>' +
+          '<span class="check-name">' + check.name + '</span>' +
+          '<span class="check-desc">' + check.description + '</span>' +
+          '</li>';
+      }).join('');
+    }
+    
+    function renderHeaders(headers) {
+      const list = document.getElementById('headersList');
+      if (headers.length === 0) {
+        list.innerHTML = '<div class="empty">No headers available</div>';
+        return;
+      }
+      list.innerHTML = headers.map(function(h) {
+        return '<div class="header-item">' +
+          '<span class="header-name">' + h.name + '</span>' +
+          '<span class="header-value">' + h.value + '</span>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function renderRecommendations(recs) {
+      const list = document.getElementById('recsList');
+      if (recs.length === 0) {
+        list.innerHTML = '<div class="empty">No recommendations - great security!</div>';
+        return;
+      }
+      list.innerHTML = recs.map(function(rec) {
+        return '<div class="rec-item">' +
+          '<div class="rec-header">' +
+            '<span class="rec-priority ' + rec.priority + '">' + rec.priority + '</span>' +
+            '<span class="rec-title">' + rec.title + '</span>' +
+          '</div>' +
+          '<div class="rec-fix">' + rec.fix + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('checksTab').style.display = tab === 'checks' ? 'block' : 'none';
+      document.getElementById('headersTab').style.display = tab === 'headers' ? 'block' : 'none';
+      document.getElementById('recsTab').style.display = tab === 'recs' ? 'block' : 'none';
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('empty').style.display = 'block';
+      alert('Error: ' + (err.message || 'Unknown error'));
+    }
+  </script>
+</body>
+</html>

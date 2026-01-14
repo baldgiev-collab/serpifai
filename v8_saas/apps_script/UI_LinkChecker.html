@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= UI_getStyles() ?>
+  <style>
+    .checker-input {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .checker-input input {
+      flex: 1;
+    }
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .result-counts {
+      display: flex;
+      gap: 24px;
+    }
+    .result-count {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .count-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot-ok { background: var(--success); }
+    .dot-broken { background: var(--danger); }
+    .dot-redirect { background: var(--warning); }
+    .link-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid var(--gray-200);
+      gap: 12px;
+    }
+    .link-item:hover {
+      background: var(--gray-50);
+    }
+    .link-status {
+      min-width: 50px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .status-200 { background: #E6F4EA; color: #1E8E3E; }
+    .status-3xx { background: #FEF7E0; color: #F9AB00; }
+    .status-4xx { background: #FCE8E6; color: #D93025; }
+    .status-5xx { background: #FCE8E6; color: #D93025; }
+    .status-0 { background: #FCE8E6; color: #D93025; }
+    .link-url {
+      flex: 1;
+      font-size: 14px;
+      color: var(--gray-900);
+      word-break: break-all;
+    }
+    .link-type {
+      font-size: 12px;
+      padding: 4px 8px;
+      background: var(--gray-100);
+      border-radius: 4px;
+      color: var(--gray-600);
+    }
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .filter-tab {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--gray-300);
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .filter-tab:hover {
+      border-color: var(--primary);
+    }
+    .filter-tab.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .check-options {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .check-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Link Checker</h1>
+    
+    <div class="card">
+      <div class="checker-input">
+        <input type="url" id="pageUrl" class="input" placeholder="https://example.com/page">
+        <button onclick="checkLinks()" class="btn btn-primary">Check Links</button>
+      </div>
+      
+      <div class="check-options">
+        <label class="check-option">
+          <input type="checkbox" id="checkExternal" checked>
+          <span>Check external links</span>
+        </label>
+      </div>
+    </div>
+    
+    <div id="loading" style="display: none; text-align: center; padding: 40px;">
+      <div class="loading"></div>
+      <p style="margin-top: 16px; color: var(--gray-500);">Checking links...</p>
+    </div>
+    
+    <div id="results" style="display: none;">
+      <div class="results-header">
+        <div class="result-counts">
+          <div class="result-count">
+            <span class="count-dot dot-ok"></span>
+            <span><strong id="okCount">0</strong> Working</span>
+          </div>
+          <div class="result-count">
+            <span class="count-dot dot-broken"></span>
+            <span><strong id="brokenCount">0</strong> Broken</span>
+          </div>
+          <div class="result-count">
+            <span class="count-dot dot-redirect"></span>
+            <span><strong id="redirectCount">0</strong> Redirects</span>
+          </div>
+        </div>
+        <button onclick="exportLinks()" class="btn btn-secondary btn-sm">Export CSV</button>
+      </div>
+      
+      <div class="card">
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-filter="all" onclick="filterLinks('all', this)">All</button>
+          <button class="filter-tab" data-filter="working" onclick="filterLinks('working', this)">Working</button>
+          <button class="filter-tab" data-filter="broken" onclick="filterLinks('broken', this)">Broken</button>
+          <button class="filter-tab" data-filter="redirect" onclick="filterLinks('redirect', this)">Redirects</button>
+          <button class="filter-tab" data-filter="external" onclick="filterLinks('external', this)">External</button>
+        </div>
+        
+        <div id="linksList"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let checkResults = null;
+    let allLinks = [];
+    
+    function checkLinks() {
+      const url = document.getElementById('pageUrl').value;
+      if (!url) {
+        alert('Please enter a URL');
+        return;
+      }
+      
+      const checkExternal = document.getElementById('checkExternal').checked;
+      
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+      
+      google.script.run
+        .withSuccessHandler(handleResults)
+        .withFailureHandler(handleError)
+        .FT_checkPageLinks({ url: url, checkExternal: checkExternal });
+    }
+    
+    function handleResults(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data.ok) {
+        alert('Error: ' + data.error);
+        return;
+      }
+      
+      checkResults = data;
+      document.getElementById('results').style.display = 'block';
+      
+      // Update counts
+      document.getElementById('okCount').textContent = data.summary.working;
+      document.getElementById('brokenCount').textContent = data.summary.broken;
+      document.getElementById('redirectCount').textContent = data.summary.redirected;
+      
+      // Combine all links
+      allLinks = [
+        ...data.results.working.map(l => ({ ...l, category: 'working' })),
+        ...data.results.broken.map(l => ({ ...l, category: 'broken' })),
+        ...data.results.redirected.map(l => ({ ...l, category: 'redirect' })),
+        ...data.results.timeout.map(l => ({ ...l, category: 'broken', status: 0 }))
+      ];
+      
+      renderLinks(allLinks);
+    }
+    
+    function renderLinks(links) {
+      const container = document.getElementById('linksList');
+      
+      if (links.length === 0) {
+        container.innerHTML = '<div class="empty-state">No links found</div>';
+        return;
+      }
+      
+      container.innerHTML = links.map(link => {
+        const statusClass = getStatusClass(link.status);
+        const statusText = link.status || 'Error';
+        
+        return `
+          <div class="link-item" data-category="${link.category}" data-external="${link.isExternal}">
+            <div class="link-status ${statusClass}">${statusText}</div>
+            <div class="link-url">
+              <a href="${link.url}" target="_blank">${link.url}</a>
+              ${link.redirect ? `<div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">→ ${link.redirect}</div>` : ''}
+              ${link.error ? `<div style="font-size: 12px; color: var(--danger); margin-top: 4px;">${link.error}</div>` : ''}
+            </div>
+            <span class="link-type">${link.isExternal ? 'External' : 'Internal'}</span>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function getStatusClass(status) {
+      if (status >= 200 && status < 300) return 'status-200';
+      if (status >= 300 && status < 400) return 'status-3xx';
+      if (status >= 400 && status < 500) return 'status-4xx';
+      if (status >= 500) return 'status-5xx';
+      return 'status-0';
+    }
+    
+    function filterLinks(filter, btn) {
+      // Update active tab
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      
+      let filtered = allLinks;
+      
+      if (filter === 'working') {
+        filtered = allLinks.filter(l => l.category === 'working');
+      } else if (filter === 'broken') {
+        filtered = allLinks.filter(l => l.category === 'broken');
+      } else if (filter === 'redirect') {
+        filtered = allLinks.filter(l => l.category === 'redirect');
+      } else if (filter === 'external') {
+        filtered = allLinks.filter(l => l.isExternal);
+      }
+      
+      renderLinks(filtered);
+    }
+    
+    function exportLinks() {
+      if (!allLinks.length) return;
+      
+      const csv = ['URL,Status,Type,Category'];
+      allLinks.forEach(link => {
+        csv.push(`"${link.url}",${link.status || 0},${link.isExternal ? 'External' : 'Internal'},${link.category}`);
+      });
+      
+      const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'link-check-results.csv';
+      a.click();
+    }
+    
+    function handleError(error) {
+      document.getElementById('loading').style.display = 'none';
+      alert('Error: ' + error.message);
+    }
+  </script>
+</body>
+</html>

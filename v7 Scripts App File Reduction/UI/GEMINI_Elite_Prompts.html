@@ -1,0 +1,555 @@
+<!--
+  GEMINI_Elite_Prompts.html
+  ==========================
+  Category F: Elite Prompting System for Gemini AI Analysis
+  
+  Strategic Prompt Library:
+  - F1: Executive Brief Prompts (C-suite insights)
+  - F2: Competitive Moat Analysis
+  - F3: Kill Move Playbooks
+  - F4: Risk Assessment & Threat Scoring
+  - F5: Opportunity Sizing (TAM/SAM/SOM)
+  
+  Dependencies: 
+  - DB_AI_GeminiClient.gs (backend)
+  - ELITE_Intelligence modules
+  
+  Version: 1.0.0 (January 2025)
+  Part of: Elite Intelligence System Implementation
+-->
+
+<script>
+(function() {
+  'use strict';
+  
+  // ==========================================
+  // ELITE PROMPT FRAMEWORK
+  // ==========================================
+  
+  /**
+   * Elite prompt builder with dynamic context injection
+   */
+  class ElitePromptBuilder {
+    constructor() {
+      this.templates = {};
+      this.contextProviders = {};
+    }
+    
+    /**
+     * Register a prompt template
+     * @param {string} id - Template ID
+     * @param {object} template - { system, user, outputFormat }
+     */
+    registerTemplate(id, template) {
+      this.templates[id] = template;
+    }
+    
+    /**
+     * Register a context provider function
+     * @param {string} id - Provider ID
+     * @param {function} provider - Function that returns context object
+     */
+    registerContextProvider(id, provider) {
+      this.contextProviders[id] = provider;
+    }
+    
+    /**
+     * Build a prompt with context
+     * @param {string} templateId - Template ID
+     * @param {object} data - Data to inject
+     * @returns {object} { system, user, outputFormat }
+     */
+    build(templateId, data = {}) {
+      const template = this.templates[templateId];
+      if (!template) {
+        console.warn(`Template ${templateId} not found`);
+        return null;
+      }
+      
+      // Gather context from all providers
+      const context = {};
+      Object.entries(this.contextProviders).forEach(([id, provider]) => {
+        try {
+          context[id] = provider(data);
+        } catch (e) {
+          console.warn(`Context provider ${id} failed:`, e);
+        }
+      });
+      
+      // Merge data and context
+      const fullContext = { ...data, ...context };
+      
+      // Build prompt strings
+      return {
+        system: this.interpolate(template.system, fullContext),
+        user: this.interpolate(template.user, fullContext),
+        outputFormat: template.outputFormat
+      };
+    }
+    
+    /**
+     * Interpolate variables into template string
+     * @param {string} template - Template with {{variable}} placeholders
+     * @param {object} data - Data object
+     * @returns {string} Interpolated string
+     */
+    interpolate(template, data) {
+      return template.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
+        const value = path.split('.').reduce((obj, key) => obj?.[key], data);
+        return value !== undefined ? value : match;
+      });
+    }
+  }
+  
+  // Create global instance
+  const elitePrompts = new ElitePromptBuilder();
+  
+  // ==========================================
+  // F1: EXECUTIVE BRIEF PROMPTS
+  // ==========================================
+  
+  elitePrompts.registerTemplate('executive_brief', {
+    system: `You are a strategic SEO consultant presenting to C-suite executives at Fortune 500 companies.
+    
+Your analysis style:
+- Lead with business impact, not technical jargon
+- Quantify everything in revenue/market share terms
+- Use "boardroom language" - ROI, competitive advantage, market position
+- Limit technical details unless directly tied to business outcomes
+- Include risk assessment and mitigation strategies
+- Provide actionable recommendations with timeline and resource requirements
+
+Format requirements:
+- Executive Summary (2-3 sentences max)
+- Key Findings (3 bullet points, business impact focused)
+- Strategic Recommendations (prioritized by ROI)
+- Risk Assessment (with probability and impact)
+- Next Steps (specific, timebound actions)`,
+    
+    user: `Analyze this competitive landscape for {{domain}}:
+
+MARKET POSITION:
+- Domain Authority: {{authority}}/100
+- Estimated Monthly Traffic: {{traffic}}
+- Organic Keywords: {{keywords}}
+- Backlinks: {{backlinks}}
+
+TOP COMPETITORS:
+{{competitorSummary}}
+
+STRATEGIC CONTEXT:
+- Industry: {{industry}}
+- Business Model: {{businessModel}}
+- Primary Goal: {{primaryGoal}}
+
+Provide an executive brief that a CEO could present to their board. Focus on:
+1. Current competitive position (are we winning or losing?)
+2. Biggest threats to market share
+3. Highest-ROI opportunities
+4. Resource requirements for next quarter
+5. 12-month projected outcomes if recommendations are followed`,
+    
+    outputFormat: 'markdown'
+  });
+  
+  // ==========================================
+  // F2: COMPETITIVE MOAT ANALYSIS
+  // ==========================================
+  
+  elitePrompts.registerTemplate('competitive_moat', {
+    system: `You are a competitive strategy analyst specializing in digital moat identification.
+
+Economic Moat Framework:
+1. BRAND MOAT - Search demand, brand mentions, direct traffic signals
+2. CONTENT MOAT - Topical authority, content depth, freshness advantage  
+3. TECHNICAL MOAT - Site speed, Core Web Vitals, crawlability advantage
+4. BACKLINK MOAT - High-quality referring domains, authority concentration
+5. NETWORK MOAT - User-generated content, community engagement
+6. DATA MOAT - Proprietary data, unique insights
+
+For each moat type, assess:
+- Current Strength (1-10)
+- Competitor Gap (positive = advantage)
+- Sustainability (how defensible)
+- Investment Required to build/maintain`,
+    
+    user: `Analyze the competitive moats for {{domain}} vs competitors:
+
+YOUR METRICS:
+{{yourMetrics}}
+
+COMPETITOR METRICS:
+{{competitorMetrics}}
+
+CONTENT ANALYSIS:
+{{contentAnalysis}}
+
+BACKLINK PROFILE:
+{{backlinkProfile}}
+
+Identify:
+1. Which moats does {{domain}} currently have? Rate each 1-10
+2. Which moats do competitors have that we lack?
+3. Which moat is most critical for this industry?
+4. Recommended moat-building strategy (prioritized)
+5. Estimated time and resources to build each moat`,
+    
+    outputFormat: 'json'
+  });
+  
+  // ==========================================
+  // F3: KILL MOVE PLAYBOOKS
+  // ==========================================
+  
+  elitePrompts.registerTemplate('kill_moves', {
+    system: `You are an aggressive competitive strategist developing "kill moves" - specific tactical plays to capture market share from competitors.
+
+Kill Move Framework:
+- TARGET: Specific competitor weakness to exploit
+- WEAPON: Content/technical/backlink strategy to deploy
+- TIMELINE: Specific execution schedule
+- RESOURCES: Team, budget, tools required
+- SUCCESS METRICS: How to measure victory
+- RISK LEVEL: Low/Medium/High with mitigation
+
+Each kill move should be:
+1. Specific and actionable (not vague "create better content")
+2. Targeted at a measurable weakness
+3. Achievable within 30-90 days
+4. Quantified with expected impact`,
+    
+    user: `Develop tactical kill moves for {{domain}} to outrank competitors:
+
+COMPETITOR WEAKNESSES IDENTIFIED:
+{{weaknesses}}
+
+YOUR STRENGTHS:
+{{strengths}}
+
+KEYWORD GAPS:
+{{keywordGaps}}
+
+CONTENT GAPS:
+{{contentGaps}}
+
+BACKLINK OPPORTUNITIES:
+{{backlinkOpportunities}}
+
+Generate 5 kill moves with:
+1. Specific target (competitor + keyword/content area)
+2. Exact action to take (detailed playbook)
+3. Resources required (content pieces, links, time)
+4. Expected impact (traffic/rankings improvement)
+5. Risk assessment and contingency plan`,
+    
+    outputFormat: 'json'
+  });
+  
+  // ==========================================
+  // F4: RISK ASSESSMENT & THREAT SCORING
+  // ==========================================
+  
+  elitePrompts.registerTemplate('risk_assessment', {
+    system: `You are a risk analyst assessing competitive threats and SEO vulnerabilities.
+
+Risk Categories:
+1. ALGORITHM RISK - Dependency on volatile ranking factors
+2. COMPETITOR RISK - Aggressive competitors gaining ground
+3. TECHNICAL RISK - Site issues that could cause ranking drops
+4. CONTENT RISK - Thin content, E-E-A-T issues, freshness decay
+5. BACKLINK RISK - Toxic links, link velocity issues
+6. MARKET RISK - Industry changes, search behavior shifts
+7. RESOURCE RISK - Team/budget constraints
+
+For each risk:
+- Probability: 1-10 (likelihood of occurring)
+- Impact: 1-10 (severity if it occurs)
+- Risk Score: Probability × Impact
+- Mitigation: Specific action to reduce risk
+- Early Warning: Metrics to monitor`,
+    
+    user: `Conduct a comprehensive risk assessment for {{domain}}:
+
+CURRENT STATE:
+- Authority: {{authority}}
+- Traffic Trend: {{trafficTrend}}
+- Core Web Vitals: {{cwvStatus}}
+- Content Age: {{contentAge}}
+- Backlink Quality: {{backlinkQuality}}
+
+COMPETITOR MOMENTUM:
+{{competitorMomentum}}
+
+RECENT ALGORITHM UPDATES:
+{{algorithmImpact}}
+
+INDUSTRY CHANGES:
+{{industryChanges}}
+
+Provide:
+1. Top 5 risks ranked by risk score
+2. Immediate actions required (next 7 days)
+3. Quarterly risk mitigation roadmap
+4. Key metrics to monitor for early warning
+5. Contingency plans for highest-impact risks`,
+    
+    outputFormat: 'json'
+  });
+  
+  // ==========================================
+  // F5: OPPORTUNITY SIZING (TAM/SAM/SOM)
+  // ==========================================
+  
+  elitePrompts.registerTemplate('opportunity_sizing', {
+    system: `You are a market analyst sizing SEO opportunities using TAM/SAM/SOM framework.
+
+TAM (Total Addressable Market):
+- All search volume in the vertical/industry
+- Maximum possible organic traffic
+
+SAM (Serviceable Available Market):
+- Keywords you could realistically target
+- Based on content capabilities and relevance
+
+SOM (Serviceable Obtainable Market):
+- Traffic you can realistically capture in 12 months
+- Based on current authority, resources, competition
+
+For each opportunity:
+- Monthly Search Volume
+- Current Position (if ranking)
+- Realistic Target Position
+- Expected CTR at target position
+- Estimated Monthly Traffic Gain
+- Traffic Value (CPC × Traffic)`,
+    
+    user: `Size the organic search opportunity for {{domain}}:
+
+CURRENT PERFORMANCE:
+- Monthly Organic Traffic: {{currentTraffic}}
+- Keywords Ranking Top 10: {{top10Keywords}}
+- Keywords Ranking 11-50: {{top50Keywords}}
+- Average Position: {{avgPosition}}
+
+KEYWORD UNIVERSE:
+{{keywordData}}
+
+COMPETITOR BENCHMARKS:
+- Market Leader Traffic: {{leaderTraffic}}
+- Market Leader Keywords: {{leaderKeywords}}
+
+RESOURCES AVAILABLE:
+- Content Team Size: {{contentTeam}}
+- Monthly Content Budget: {{contentBudget}}
+- Link Building Budget: {{linkBudget}}
+
+Calculate:
+1. TAM: Total addressable organic traffic in this market
+2. SAM: Realistic targetable keywords and traffic
+3. SOM (6-month): What you can capture in 6 months
+4. SOM (12-month): What you can capture in 12 months
+5. Revenue impact assuming {{conversionRate}}% conversion and {{aov}} AOV`,
+    
+    outputFormat: 'json'
+  });
+  
+  // ==========================================
+  // ADDITIONAL STRATEGIC PROMPTS
+  // ==========================================
+  
+  elitePrompts.registerTemplate('content_strategy', {
+    system: `You are a content strategist developing a data-driven content roadmap.
+
+Content Strategy Framework:
+1. PILLAR CONTENT - Comprehensive guides targeting head terms
+2. CLUSTER CONTENT - Supporting articles targeting long-tail
+3. CONVERSION CONTENT - Bottom-funnel, high-intent pieces
+4. LINK BAIT - Shareable content for backlink acquisition
+5. EVERGREEN UPDATES - Refreshing existing high-value content
+
+For each content recommendation:
+- Target Keyword + Search Volume + KD
+- Content Type (guide, listicle, comparison, tool, etc.)
+- Word Count Range
+- E-E-A-T Requirements (expertise needed)
+- Internal Linking Strategy
+- Expected Traffic Contribution`,
+    
+    user: `Develop a content strategy for {{domain}} to capture {{targetKeywords}} keywords:
+
+CURRENT CONTENT AUDIT:
+{{contentAudit}}
+
+KEYWORD GAPS VS COMPETITORS:
+{{keywordGaps}}
+
+TOP PERFORMING CONTENT:
+{{topContent}}
+
+COMPETITOR CONTENT ANALYSIS:
+{{competitorContent}}
+
+RESOURCES:
+- Monthly content pieces: {{monthlyPieces}}
+- Writers available: {{writerCount}}
+- Subject matter experts: {{smeAccess}}
+
+Provide:
+1. 90-day content calendar (prioritized)
+2. Pillar-cluster architecture
+3. Content refresh schedule for existing assets
+4. Link bait ideas for this vertical
+5. Expected traffic impact at 3/6/12 months`,
+    
+    outputFormat: 'json'
+  });
+  
+  elitePrompts.registerTemplate('technical_audit', {
+    system: `You are a technical SEO expert conducting a comprehensive site audit.
+
+Technical Audit Categories:
+1. CRAWLABILITY - Indexation, robots, sitemaps
+2. PERFORMANCE - Core Web Vitals, page speed
+3. MOBILE - Responsiveness, mobile usability
+4. STRUCTURE - URL structure, internal linking
+5. SCHEMA - Structured data implementation
+6. SECURITY - HTTPS, security headers
+7. INTERNATIONALIZATION - Hreflang, geo-targeting
+
+For each issue:
+- Severity: Critical/High/Medium/Low
+- Impact: Estimated traffic/ranking impact
+- Effort: Implementation difficulty
+- Priority Score: (Severity × Impact) / Effort
+- Fix: Specific technical recommendation`,
+    
+    user: `Conduct a technical SEO audit for {{domain}}:
+
+CORE WEB VITALS:
+- LCP: {{lcp}}ms (threshold: 2500ms)
+- FID: {{fid}}ms (threshold: 100ms)  
+- CLS: {{cls}} (threshold: 0.1)
+
+PAGESPEED SCORES:
+- Performance: {{performance}}/100
+- Accessibility: {{accessibility}}/100
+- Best Practices: {{bestPractices}}/100
+- SEO: {{seoScore}}/100
+
+CRAWL DATA:
+{{crawlData}}
+
+MOBILE USABILITY:
+{{mobileData}}
+
+SCHEMA IMPLEMENTATION:
+{{schemaData}}
+
+Provide:
+1. Top 10 issues ranked by priority score
+2. Quick wins (high impact, low effort)
+3. Technical debt items to address
+4. Schema optimization opportunities
+5. Performance optimization roadmap`,
+    
+    outputFormat: 'json'
+  });
+  
+  // ==========================================
+  // CONTEXT PROVIDERS
+  // ==========================================
+  
+  elitePrompts.registerContextProvider('competitors', (data) => {
+    if (!data.competitors) return '';
+    
+    return data.competitors.map((comp, i) => {
+      return `${i + 1}. ${comp.domain}
+   - Authority: ${comp.authority || 'N/A'}
+   - Traffic: ${comp.traffic?.toLocaleString() || 'N/A'}
+   - Keywords: ${comp.keywords?.toLocaleString() || 'N/A'}`;
+    }).join('\n');
+  });
+  
+  elitePrompts.registerContextProvider('competitorSummary', (data) => {
+    if (!data.competitors) return 'No competitor data available';
+    
+    return data.competitors.slice(0, 5).map((comp, i) => {
+      return `${i + 1}. ${comp.domain}: Authority ${comp.authority || '?'}, Traffic ${(comp.traffic || 0).toLocaleString()}/mo`;
+    }).join('\n');
+  });
+  
+  // ==========================================
+  // PROMPT EXECUTION
+  // ==========================================
+  
+  /**
+   * Execute an Elite prompt with Gemini
+   * @param {string} templateId - Template ID
+   * @param {object} data - Context data
+   * @param {object} options - { stream, maxTokens }
+   * @returns {Promise<object>} Gemini response
+   */
+  async function executeElitePrompt(templateId, data, options = {}) {
+    const prompt = elitePrompts.build(templateId, data);
+    if (!prompt) {
+      throw new Error(`Failed to build prompt: ${templateId}`);
+    }
+    
+    console.log('🏆 Executing Elite Prompt:', templateId);
+    console.log('📝 System:', prompt.system.substring(0, 100) + '...');
+    console.log('📝 User:', prompt.user.substring(0, 100) + '...');
+    
+    // Use backend Gemini client
+    try {
+      const response = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          .callGeminiElite(prompt.system, prompt.user, prompt.outputFormat);
+      });
+      
+      return {
+        success: true,
+        data: response,
+        prompt: templateId
+      };
+    } catch (error) {
+      console.error('Elite prompt execution failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        prompt: templateId
+      };
+    }
+  }
+  
+  /**
+   * Get available Elite prompts
+   * @returns {array} List of template IDs and descriptions
+   */
+  function getElitePromptList() {
+    return [
+      { id: 'executive_brief', name: 'Executive Brief', description: 'C-suite presentation-ready competitive analysis' },
+      { id: 'competitive_moat', name: 'Competitive Moats', description: 'Economic moat identification and building strategy' },
+      { id: 'kill_moves', name: 'Kill Moves', description: 'Tactical playbooks to capture competitor market share' },
+      { id: 'risk_assessment', name: 'Risk Assessment', description: 'Threat scoring and mitigation planning' },
+      { id: 'opportunity_sizing', name: 'Opportunity Sizing', description: 'TAM/SAM/SOM market opportunity analysis' },
+      { id: 'content_strategy', name: 'Content Strategy', description: 'Data-driven content roadmap development' },
+      { id: 'technical_audit', name: 'Technical Audit', description: 'Comprehensive technical SEO analysis' }
+    ];
+  }
+  
+  // ==========================================
+  // EXPORT TO WINDOW
+  // ==========================================
+  
+  window.elitePrompts = elitePrompts;
+  window.ElitePromptBuilder = ElitePromptBuilder;
+  window.executeElitePrompt = executeElitePrompt;
+  window.getElitePromptList = getElitePromptList;
+  
+  console.log('✅ GEMINI_Elite_Prompts.html loaded - Category F Elite Prompting v1.0');
+  console.log('📋 Available prompts:', getElitePromptList().map(p => p.id).join(', '));
+  
+})();
+</script>

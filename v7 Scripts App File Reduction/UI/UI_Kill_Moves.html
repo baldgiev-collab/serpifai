@@ -1,0 +1,167 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<!-- UI_Kill_Moves.html - Kill Moves & Market Capture Strategy Builder               -->
+<!-- Builds Kill Moves section for strategic competitive actions                      -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Build Kill Moves section HTML
+   * @param {Array} killMoves - Array of kill move objects
+   * @returns {string} HTML string
+   */
+  function buildKillMovesHTML(killMoves) {
+    if (!killMoves || killMoves.length === 0) return '';
+
+    let html = `
+            <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(30,27,75,0.3);">
+              <h4 style="margin: 0 0 24px; font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">⚔️</span>
+                Kill Moves - Market Capture Strategies
+              </h4>
+              <div style="display: grid; gap: 16px;">
+          `;
+
+    killMoves.forEach((move, idx) => {
+      html += `
+              <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; backdrop-filter: blur(10px);">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                  <span style="font-size: 24px; font-weight: 700; opacity: 0.6;">#${idx + 1}</span>
+                  <span style="font-weight: 600; font-size: 16px;">${move.killMove || move.action || 'Strategic Move'}</span>
+                </div>
+                <div style="font-size: 13px; opacity: 0.8; margin-bottom: 8px;">Target: <strong>${move.targetCompetitor || 'Market'}</strong></div>
+                ${move.vulnerability ? `<div style="font-size: 13px; opacity: 0.8; margin-bottom: 8px;">Exploits: ${move.vulnerability}</div>` : ''}
+                ${move.expectedImpact ? `<div style="font-size: 13px; color: #a5f3fc; margin-top: 8px;"><strong>Expected Impact:</strong> ${move.expectedImpact}</div>` : ''}
+              </div>
+            `;
+    });
+
+    html += `</div></div>`;
+    return html;
+  }
+
+  /**
+   * Build Elite Category Insights Display (NEW v6 format)
+   * Works with structured categories array from Gemini 2.0
+   * @param {Array} categories - Array of 15 elite intelligence categories
+   * @param {Array} competitors - Competitor data for leaderboard
+   */
+  function buildEliteCategoryInsightsDisplay(categories, competitors) {
+    let html = '';
+
+    console.log('🎨 Building ELITE category insights display...');
+    console.log('   Categories count:', categories ? categories.length : 0);
+    console.log('   Competitors count:', competitors ? competitors.length : 0);
+
+    if (!categories || !Array.isArray(categories) || categories.length === 0) {
+      console.warn('⚠️ No categories to display');
+      return '<div style="padding: 40px; text-align: center; color: #666;">No category data available.</div>';
+    }
+
+    // Header section
+    html += `
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 32px; border-radius: 16px; margin-bottom: 24px;">
+        <h3 style="margin: 0 0 12px; font-size: 24px; font-weight: 700;">🎯 Elite Strategic Intelligence</h3>
+        <p style="margin: 0; opacity: 0.9; font-size: 14px;">Comprehensive analysis across ${categories.length} strategic dimensions</p>
+      </div>
+    `;
+
+    // Category cards grid
+    html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">`;
+
+    const categoryIcons = {
+      'Market Position': '📊',
+      'Brand Strategy': '🎨',
+      'Technical SEO': '⚙️',
+      'Content Strategy': '📝',
+      'Keyword Strategy': '🔑',
+      'Content Production': '🔧',
+      'Conversion Optimization': '🎯',
+      'User Experience': '✨',
+      'Link Building': '🔗',
+      'Local SEO': '📍',
+      'Social Media': '📱',
+      'Analytics': '📈',
+      'Technology Stack': '💻',
+      'Paid Search': '💰',
+      'Content Distribution': '📡'
+    };
+
+    const categoryColors = [
+      { bg: '#dbeafe', accent: '#3b82f6', text: '#1e40af' },
+      { bg: '#fce7f3', accent: '#ec4899', text: '#9d174d' },
+      { bg: '#fef3c7', accent: '#f59e0b', text: '#92400e' },
+      { bg: '#dcfce7', accent: '#22c55e', text: '#166534' },
+      { bg: '#e0e7ff', accent: '#6366f1', text: '#3730a3' },
+      { bg: '#cffafe', accent: '#06b6d4', text: '#155e75' },
+      { bg: '#fee2e2', accent: '#ef4444', text: '#991b1b' },
+      { bg: '#f3e8ff', accent: '#a855f7', text: '#6b21a8' }
+    ];
+
+    categories.forEach((category, idx) => {
+      const colors = categoryColors[idx % categoryColors.length];
+      const icon = categoryIcons[category.name] || '📌';
+      const name = category.name || `Category ${idx + 1}`;
+
+      html += `
+        <div style="background: ${colors.bg}; padding: 24px; border-radius: 16px; border-left: 4px solid ${colors.accent};">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <span style="font-size: 28px;">${icon}</span>
+            <h4 style="margin: 0; font-size: 16px; font-weight: 700; color: ${colors.text};">${name}</h4>
+          </div>
+      `;
+
+      // Strategic Summary
+      if (category.strategicSummary) {
+        html += `<p style="margin: 0 0 16px; font-size: 14px; line-height: 1.7; color: #374151;">${category.strategicSummary}</p>`;
+      }
+
+      // Key Findings
+      if (category.keyFindings && category.keyFindings.length > 0) {
+        html += `
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 11px; font-weight: 700; color: ${colors.text}; margin-bottom: 8px; text-transform: uppercase;">Key Findings</div>
+            <ul style="margin: 0; padding-left: 16px; font-size: 13px; color: #4b5563;">
+        `;
+        category.keyFindings.slice(0, 3).forEach(finding => {
+          html += `<li style="margin-bottom: 4px;">${finding}</li>`;
+        });
+        html += `</ul></div>`;
+      }
+
+      // Recommendations
+      if (category.actionableRecommendations && category.actionableRecommendations.length > 0) {
+        html += `
+          <div style="background: white; padding: 12px; border-radius: 10px;">
+            <div style="font-size: 11px; font-weight: 700; color: #059669; margin-bottom: 8px;">🎯 TOP ACTION</div>
+            <p style="margin: 0; font-size: 13px; color: #374151;">${category.actionableRecommendations[0]}</p>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div>`;
+    return html;
+  }
+
+  /**
+   * Format number for display (fallback if not available globally)
+   * @param {number} num - Number to format
+   * @returns {string} Formatted number
+   */
+  function formatNumberLocal(num) {
+    if (window.formatNumber) return window.formatNumber(num);
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  }
+
+  // Export functions globally
+  window.buildKillMovesHTML = buildKillMovesHTML;
+  window.buildEliteCategoryInsightsDisplay = buildEliteCategoryInsightsDisplay;
+
+})();
+</script>

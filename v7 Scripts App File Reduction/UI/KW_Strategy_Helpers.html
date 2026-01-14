@@ -1,0 +1,476 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════
+     KW_Strategy_Helpers.html - KEYWORD STRATEGY - Helper Functions
+     
+     Extracted from UI_Scripts_App.html for modularization
+     Contains: calculateAIORisk, getClusterColor, buildEntityRelationshipGraph, 
+               classifyIntentLayers, classifyKeywordIntent, mapIntentToFunnel, 
+               deriveEntityId, calculateRadarCoordinates, calculateAIORisk10Scale, 
+               generateKillerAdvantage
+     
+     Dependencies: None (standalone utilities)
+     ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+
+  /**
+   * Calculate AIO (AI Overview) Risk Factor for a keyword
+   * Likelihood of AI Overviews stealing clicks
+   */
+  function calculateAIORisk(kw, baseRisk) {
+    let risk = baseRisk;
+
+    // Informational keywords have higher AIO risk
+    if (kw.intent === 'Informational') risk += 0.2;
+    else if (kw.intent === 'Commercial') risk += 0.1;
+    else if (kw.intent === 'Transactional') risk -= 0.1;
+
+    // Question-based keywords very high AIO risk
+    const keyword = kw.keyword || '';
+    if (/^(what|how|why|when|where|who|is|can|does)/i.test(keyword)) {
+      risk += 0.25;
+    }
+
+    // Low difficulty = more likely to have AIO
+    if (kw.difficulty && kw.difficulty < 30) risk += 0.1;
+
+    // High volume = Google more likely to show AIO
+    if (kw.volume === 'High' || kw.volumeEstimate === 'High') risk += 0.1;
+
+    return Math.min(1, Math.max(0, risk));
+  }
+  window.calculateAIORisk = calculateAIORisk;
+
+  /**
+   * Get cluster color based on opportunity score
+   */
+  function getClusterColor(score) {
+    if (score >= 75) return '#22c55e'; // Green - high opportunity
+    if (score >= 50) return '#3b82f6'; // Blue - medium opportunity
+    if (score >= 25) return '#f59e0b'; // Orange - low opportunity
+    return '#ef4444'; // Red - very low
+  }
+  window.getClusterColor = getClusterColor;
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * SYSTEMIC ARCHITECT HELPER FUNCTIONS v6.1
+   * Entity Relationship Graph, Intent Layering, Radar Coordinates
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+
+  /**
+   * Build Entity Relationship Graph for Topical Moat Visualization
+   * Maps keywords to parent entities with semantic spokes
+   */
+  function buildEntityRelationshipGraph(kwData, primaryKWs, secondaryKWs, gemini) {
+    console.log('🕸️ Building Entity Relationship Graph...');
+
+    const nodes = [];
+    const edges = [];
+
+    // Extract main topic entity from Gemini analysis
+    const keywordIntelligence = gemini.keywordIntelligence || {};
+    const mainTopic = keywordIntelligence.primaryKeywords?.[0]?.keyword ||
+      kwData[0]?.domain?.split('.')[0] || 'Main_Topic';
+
+    // Center node (parent entity)
+    const centerNode = {
+      id: `entity_${mainTopic.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+      label: mainTopic,
+      type: 'parent',
+      strength: 100,
+      x: 50,
+      y: 50
+    };
+    nodes.push(centerNode);
+
+    // Add primary keyword entities as first-level spokes
+    const primaryKeywords = primaryKWs.topKeywords || keywordIntelligence.primaryKeywords || [];
+    primaryKeywords.slice(0, 6).forEach((kw, idx) => {
+      const angle = (idx / 6) * 2 * Math.PI;
+      const node = {
+        id: `entity_${(kw.keyword || kw).toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+        label: kw.keyword || kw,
+        type: 'primary',
+        strength: 80 - (idx * 5),
+        x: 50 + Math.cos(angle) * 30,
+        y: 50 + Math.sin(angle) * 30,
+        parentId: centerNode.id
+      };
+      nodes.push(node);
+      edges.push({ source: centerNode.id, target: node.id, weight: 0.9 });
+    });
+
+    // Add secondary semantic entities as second-level spokes
+    const secondaryClusters = secondaryKWs.clusters || keywordIntelligence.secondaryKeywords || [];
+    secondaryClusters.slice(0, 8).forEach((cluster, idx) => {
+      const clusterName = cluster.clusterName || cluster.keyword || cluster;
+      const angle = (idx / 8) * 2 * Math.PI + (Math.PI / 8); // Offset from primary
+      const node = {
+        id: `entity_${String(clusterName).toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+        label: clusterName,
+        type: 'secondary',
+        strength: 60 - (idx * 3),
+        x: 50 + Math.cos(angle) * 45,
+        y: 50 + Math.sin(angle) * 45,
+        parentId: centerNode.id
+      };
+      nodes.push(node);
+
+      // Connect to nearest primary node
+      const nearestPrimary = nodes.find(n => n.type === 'primary') || centerNode;
+      edges.push({ source: nearestPrimary.id, target: node.id, weight: 0.6 });
+    });
+
+    // Add competitor entities
+    kwData.slice(0, 5).forEach((comp, idx) => {
+      const angle = (idx / 5) * 2 * Math.PI;
+      const node = {
+        id: `entity_competitor_${comp.domain.split('.')[0]}`,
+        label: comp.domain,
+        type: 'competitor',
+        strength: comp.estKeywords || 50,
+        x: 50 + Math.cos(angle) * 60,
+        y: 50 + Math.sin(angle) * 60
+      };
+      nodes.push(node);
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 2025 ENTITY RELATIONSHIP PREDICATES (LLMO/GEO Focus)
+    // Map the 2025 relationship: [Entity A] --(predicate)--> [Entity B]
+    // Direct Attribution: [Perplexity Citations] --(drives)--> [High-Intent Clicks]
+    // ═══════════════════════════════════════════════════════════════════════════
+    const predicates2025 = [
+      { source: 'Perplexity_Citations', predicate: 'drives', target: 'High_Intent_Clicks', weight: 0.95 },
+      { source: 'ChatGPT_Source_Optimization', predicate: 'increases', target: 'Brand_Visibility_LLM', weight: 0.88 },
+      { source: 'RAG_Ready_Content', predicate: 'enables', target: 'AI_Citation_Eligibility', weight: 0.92 },
+      { source: 'GEO_Structured_Data', predicate: 'triggers', target: 'Generative_Engine_Inclusion', weight: 0.85 },
+      { source: 'Semantic_Triplet_Schema', predicate: 'establishes', target: 'Entity_Authority', weight: 0.90 },
+      { source: 'Topical_Cluster_Depth', predicate: 'builds', target: 'LLMO_Moat', weight: 0.87 },
+      { source: 'E-E-A-T_Signals', predicate: 'validates', target: 'AI_Trust_Score', weight: 0.93 },
+      { source: 'First_Party_Data', predicate: 'differentiates', target: 'LLM_Training_Value', weight: 0.89 }
+    ];
+
+    // Add 2025 predicate nodes and edges
+    predicates2025.forEach((pred, idx) => {
+      // Add source node if not exists
+      if (!nodes.find(n => n.id === `entity_${pred.source.toLowerCase()}`)) {
+        nodes.push({
+          id: `entity_${pred.source.toLowerCase()}`,
+          label: pred.source.replace(/_/g, ' '),
+          type: 'llmo_driver',
+          strength: Math.round(pred.weight * 100),
+          x: 20 + (idx % 4) * 20,
+          y: 80 - Math.floor(idx / 4) * 15
+        });
+      }
+      // Add target node if not exists
+      if (!nodes.find(n => n.id === `entity_${pred.target.toLowerCase()}`)) {
+        nodes.push({
+          id: `entity_${pred.target.toLowerCase()}`,
+          label: pred.target.replace(/_/g, ' '),
+          type: 'llmo_outcome',
+          strength: Math.round(pred.weight * 100),
+          x: 80 - (idx % 4) * 15,
+          y: 20 + Math.floor(idx / 4) * 20
+        });
+      }
+      // Add predicate edge
+      edges.push({
+        source: `entity_${pred.source.toLowerCase()}`,
+        target: `entity_${pred.target.toLowerCase()}`,
+        predicate: pred.predicate,
+        weight: pred.weight,
+        type: 'llmo_2025'
+      });
+    });
+
+    return {
+      centerNode: centerNode.id,
+      nodes: nodes,
+      edges: edges,
+      predicates2025: predicates2025,
+      totalEntities: nodes.length,
+      entityTypes: {
+        parent: 1,
+        primary: nodes.filter(n => n.type === 'primary').length,
+        secondary: nodes.filter(n => n.type === 'secondary').length,
+        competitor: nodes.filter(n => n.type === 'competitor').length,
+        llmo_driver: nodes.filter(n => n.type === 'llmo_driver').length,
+        llmo_outcome: nodes.filter(n => n.type === 'llmo_outcome').length
+      }
+    };
+  }
+  window.buildEntityRelationshipGraph = buildEntityRelationshipGraph;
+
+  /**
+   * Classify keywords into Intent Layers (TOFU/MOFU/BOFU)
+   * TOFU: Awareness - FAQ/Informational clusters
+   * MOFU: Consideration - "Alternative to" / "Review" semantic clusters
+   * BOFU: Decision - High-CPC Transactional "Money" terms
+   */
+  function classifyIntentLayers(primaryKWs, secondaryKWs, longTailKWs, gapAnalysis) {
+    console.log('🎯 Classifying Intent Layers (TOFU/MOFU/BOFU)...');
+
+    const tofu = []; // Top of Funnel - Awareness
+    const mofu = []; // Middle of Funnel - Consideration
+    const bofu = []; // Bottom of Funnel - Decision
+
+    // Process primary keywords - mostly BOFU (money terms)
+    (primaryKWs.topKeywords || []).forEach(kw => {
+      const keyword = kw.keyword || '';
+      const intent = kw.intent || classifyKeywordIntent(keyword);
+
+      if (intent === 'Transactional' || /buy|price|cost|discount|deal|order|purchase/i.test(keyword)) {
+        bofu.push({ ...kw, type: 'Primary', intent: 'Transactional' });
+      } else if (intent === 'Commercial' || /best|top|review|compare|vs|alternative/i.test(keyword)) {
+        mofu.push({ ...kw, type: 'Primary', intent: 'Commercial' });
+      } else {
+        tofu.push({ ...kw, type: 'Primary', intent: 'Informational' });
+      }
+    });
+
+    // Process secondary/semantic keywords - mostly MOFU
+    (secondaryKWs.clusters || []).forEach(cluster => {
+      const keywords = cluster.keywords || [];
+      keywords.forEach(kw => {
+        const keyword = typeof kw === 'string' ? kw : kw.keyword;
+        mofu.push({ keyword: keyword, type: 'Secondary', intent: 'Commercial', cluster: cluster.clusterName });
+      });
+    });
+
+    // Process long-tail keywords - can be any layer
+    (longTailKWs.quickWins || []).forEach(kw => {
+      const keyword = kw.keyword || '';
+      const intent = kw.searchIntent || classifyKeywordIntent(keyword);
+
+      if (/^(what|how|why|when|where|who|is|can|does|guide|tutorial|learn)/i.test(keyword)) {
+        tofu.push({ ...kw, type: 'Long-Tail', intent: 'Informational' });
+      } else if (/best|review|vs|alternative|compare|top \d+/i.test(keyword)) {
+        mofu.push({ ...kw, type: 'Long-Tail', intent: 'Commercial' });
+      } else if (/buy|price|cost|discount|near me|for sale/i.test(keyword)) {
+        bofu.push({ ...kw, type: 'Long-Tail', intent: 'Transactional' });
+      } else {
+        tofu.push({ ...kw, type: 'Long-Tail', intent: 'Informational' });
+      }
+    });
+
+    // Process gap keywords
+    (gapAnalysis.criticalGaps || []).forEach(gap => {
+      const keyword = gap.keyword || '';
+      const intent = classifyKeywordIntent(keyword);
+
+      if (intent === 'Transactional') {
+        bofu.push({ ...gap, type: 'Gap', intent: 'Transactional' });
+      } else if (intent === 'Commercial') {
+        mofu.push({ ...gap, type: 'Gap', intent: 'Commercial' });
+      } else {
+        tofu.push({ ...gap, type: 'Gap', intent: 'Informational' });
+      }
+    });
+
+    console.log(`   📊 TOFU: ${tofu.length}, MOFU: ${mofu.length}, BOFU: ${bofu.length}`);
+
+    return { tofu, mofu, bofu };
+  }
+  window.classifyIntentLayers = classifyIntentLayers;
+
+  /**
+   * Helper: Classify single keyword intent
+   */
+  function classifyKeywordIntent(keyword) {
+    const kw = (keyword || '').toLowerCase();
+
+    if (/buy|price|cost|discount|deal|order|purchase|for sale|near me|cheap/i.test(kw)) {
+      return 'Transactional';
+    }
+    if (/best|top|review|compare|vs|alternative|which|should i/i.test(kw)) {
+      return 'Commercial';
+    }
+    if (/^(what|how|why|when|where|who|is|can|does)/i.test(kw) || /guide|tutorial|learn|example/i.test(kw)) {
+      return 'Informational';
+    }
+    return 'Commercial'; // Default
+  }
+  window.classifyKeywordIntent = classifyKeywordIntent;
+
+  /**
+   * Map intent to funnel stage
+   */
+  function mapIntentToFunnel(intent) {
+    const intentMap = {
+      'Informational': 'TOFU',
+      'Navigational': 'TOFU',
+      'Commercial': 'MOFU',
+      'Transactional': 'BOFU'
+    };
+    return intentMap[intent] || 'MOFU';
+  }
+  window.mapIntentToFunnel = mapIntentToFunnel;
+
+  /**
+   * Derive entity_id for a keyword from the entity graph
+   */
+  function deriveEntityId(kw, entityGraph) {
+    const keyword = (kw.keyword || kw).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+    // Try to find matching entity in graph
+    const matchingNode = (entityGraph.nodes || []).find(node =>
+      node.label && node.label.toLowerCase().includes(keyword.split('_')[0])
+    );
+
+    if (matchingNode) return matchingNode.id;
+
+    // Generate new entity_id based on keyword
+    return `entity_${keyword.substring(0, 30)}`;
+  }
+  window.deriveEntityId = deriveEntityId;
+
+  /**
+   * Calculate radar coordinates for keyword positioning
+   * Returns (x, y) for Competitive Radar map visualization
+   */
+  function calculateRadarCoordinates(kw, index, layer, totalInLayer) {
+    const layerRadii = {
+      'primary': 25,
+      'tofu': 45,
+      'mofu': 35,
+      'bofu': 20,
+      'longtail': 50,
+      'gap': 40,
+      'semantic': 35
+    };
+
+    const radius = layerRadii[layer] || 30;
+    const angle = (index / Math.max(totalInLayer, 1)) * 2 * Math.PI;
+
+    // Adjust based on difficulty and volume
+    const difficultyOffset = ((kw.difficulty || 50) / 100) * 10;
+    const volumeOffset = kw.volume === 'High' ? -5 : kw.volume === 'Low' ? 5 : 0;
+
+    return {
+      x: Math.round(50 + Math.cos(angle) * (radius + difficultyOffset + volumeOffset)),
+      y: Math.round(50 + Math.sin(angle) * (radius + difficultyOffset + volumeOffset)),
+      angle: Math.round((angle * 180) / Math.PI),
+      distance: radius
+    };
+  }
+  window.calculateRadarCoordinates = calculateRadarCoordinates;
+
+  /**
+   * Calculate AIO Risk on 1-10 Scale
+   * 1 = Very Low click-theft risk, 10 = Very High click-theft risk
+   */
+  function calculateAIORisk10Scale(kw, baseRisk) {
+    let risk = baseRisk; // Already on 1-10 scale
+
+    // Intent adjustments
+    const intent = kw.intent || '';
+    if (intent === 'Informational') risk += 2;
+    else if (intent === 'Commercial') risk += 1;
+    else if (intent === 'Transactional') risk -= 1;
+
+    // Question-based keywords very high AIO risk
+    const keyword = kw.keyword || '';
+    if (/^(what|how|why|when|where|who|is|can|does)/i.test(keyword)) {
+      risk += 2;
+    }
+
+    // Definition/simple answer queries
+    if (/^(define|meaning|definition|what is)/i.test(keyword)) {
+      risk += 3;
+    }
+
+    // List queries (Google loves to show AIO for these)
+    if (/top \d+|best \d+|list of|\d+ ways|\d+ tips/i.test(keyword)) {
+      risk += 2;
+    }
+
+    // Low difficulty = more likely to have AIO
+    if (kw.difficulty && kw.difficulty < 30) risk += 1;
+    else if (kw.difficulty && kw.difficulty > 70) risk -= 1;
+
+    // High volume = Google more likely to show AIO
+    if (kw.volume === 'High' || kw.volumeEstimate === 'High') risk += 1;
+
+    return Math.min(10, Math.max(1, Math.round(risk)));
+  }
+  window.calculateAIORisk10Scale = calculateAIORisk10Scale;
+
+  /**
+   * Generate "Killer Advantage" strategic insight for a keyword
+   * Provides actionable competitive displacement strategy
+   */
+  function generateKillerAdvantage(kw, kwData) {
+    const keyword = kw.keyword || '';
+    const leader = kw.leader || kw.dominantCompetitor || '';
+    const difficulty = kw.difficulty || 50;
+    const intent = kw.intent || 'Commercial';
+
+    // Content format advantages
+    const formatAdvantages = [
+      { pattern: /calculator|tool|generator/i, advantage: 'Build interactive JS-based calculator/tool - beats static content' },
+      { pattern: /template|example|sample/i, advantage: 'Create downloadable templates with visual editor - higher engagement' },
+      { pattern: /guide|how to|tutorial/i, advantage: 'Create video + step-by-step with progress tracker - beats text-only' },
+      { pattern: /compare|vs|alternative/i, advantage: 'Build dynamic comparison table with user filters - beats static lists' },
+      { pattern: /review|rating/i, advantage: 'Add verified user reviews + video testimonials - beats generic reviews' },
+      { pattern: /price|cost|pricing/i, advantage: 'Create transparent pricing calculator with ROI projector' },
+      { pattern: /checklist|list/i, advantage: 'Build interactive checklist with save/export functionality' },
+      { pattern: /api|integration/i, advantage: 'Provide live API playground + code snippets in multiple languages' }
+    ];
+
+    for (const { pattern, advantage } of formatAdvantages) {
+      if (pattern.test(keyword)) return advantage;
+    }
+
+    // Difficulty-based strategies
+    if (difficulty < 30) {
+      return 'Quick Win: Create comprehensive 2500+ word guide with schema markup - dominate in 30 days';
+    }
+    if (difficulty > 70) {
+      return 'Long-game: Build topical cluster of 10+ supporting articles linking to pillar page';
+    }
+
+    // Intent-based strategies
+    if (intent === 'Transactional') {
+      return 'Add trust signals: verified reviews, security badges, money-back guarantee prominently displayed';
+    }
+    if (intent === 'Informational') {
+      return 'Create definitive resource with embedded tools, visuals, and expert quotes for AI citation';
+    }
+
+    // Default strategy
+    return `Outpace ${leader || 'competitors'} with richer media, faster load times, and comprehensive FAQ schema`;
+  }
+  window.generateKillerAdvantage = generateKillerAdvantage;
+
+  /**
+   * Toggle Intent Layer visibility in KW Strategy tab
+   * Used by the Intent Layering System UI (TOFU/MOFU/BOFU)
+   */
+  window.toggleIntentLayer = function toggleIntentLayer(layer) {
+    // Hide all layers
+    ['tofu', 'mofu', 'bofu'].forEach(l => {
+      const layerEl = document.getElementById('layer-' + l);
+      const btnEl = document.getElementById('btn-' + l);
+      if (layerEl) layerEl.style.display = 'none';
+      if (btnEl) {
+        btnEl.style.background = 'rgba(255,255,255,0.1)';
+        btnEl.style.color = 'rgba(255,255,255,0.7)';
+      }
+    });
+
+    // Show selected layer
+    const selectedLayer = document.getElementById('layer-' + layer);
+    const selectedBtn = document.getElementById('btn-' + layer);
+    if (selectedLayer) selectedLayer.style.display = 'block';
+    if (selectedBtn) {
+      const colors = { tofu: '#22c55e', mofu: '#3b82f6', bofu: '#f59e0b' };
+      selectedBtn.style.background = colors[layer] || '#22c55e';
+      selectedBtn.style.color = 'white';
+    }
+
+    console.log('🎯 Intent Layer toggled:', layer.toUpperCase());
+  };
+
+</script>

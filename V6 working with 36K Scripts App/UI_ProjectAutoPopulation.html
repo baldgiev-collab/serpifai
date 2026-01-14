@@ -1,0 +1,738 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE PROJECT AUTO-POPULATION - Frontend Integration
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Handles project dropdown selection and auto-fills all 81 fields
+ * Maps competitor data to 15 intelligence tabs
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROJECT DROPDOWN HANDLER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Called when user selects project from dropdown
+ */
+async function onProjectSelected(event) {
+  const projectName = event.target.value;
+  
+  if (!projectName || projectName === '') {
+    console.log('⚠️ No project selected');
+    return;
+  }
+  
+  console.log('');
+  console.log('═══════════════════════════════════════════════════════════');
+  console.log('📂 PROJECT SELECTED:', projectName);
+  console.log('═══════════════════════════════════════════════════════════');
+  
+  try {
+    // Show loading state
+    showProjectLoadingState();
+    
+    // Call backend to load project
+    console.log('[1/3] Calling backend...');
+    const result = await callBackend('loadAndPopulateProject', projectName);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to load project');
+    }
+    
+    console.log('[2/3] Populating form fields...');
+    console.log('   Fields to populate:', Object.keys(result.fields).length);
+    
+    // Populate all 81 form fields
+    populateAllFormFields(result.fields);
+    
+    console.log('[3/3] Rendering UI components...');
+    
+    // Update dashboard stats
+    updateDashboardStats(result.uiData.dashboard);
+    
+    // Populate competitor intelligence tabs (if exists)
+    if (result.competitorAnalysis && result.competitorAnalysis.success) {
+      console.log('   ✅ Rendering competitor intelligence...');
+      renderCompetitorIntelligenceFromProject(result.competitorAnalysis, result.uiData);
+    } else {
+      console.log('   ⚠️ No competitor analysis found');
+      showCompetitorEmptyState();
+    }
+    
+    hideProjectLoadingState();
+    
+    console.log('');
+    console.log('✅ PROJECT LOADED SUCCESSFULLY');
+    console.log('   Completion:', result.metadata.completionPercent + '%');
+    console.log('   Source:', result.source);
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('');
+    
+    showToast(`✅ Project loaded: ${projectName}`, 'success');
+    
+  } catch (error) {
+    console.error('❌ Load error:', error);
+    hideProjectLoadingState();
+    showToast(`❌ Failed to load project: ${error.message}`, 'error');
+  }
+}
+
+/**
+ * Populate all 81 form fields from loaded data
+ */
+function populateAllFormFields(fields) {
+  let populatedCount = 0;
+  let skippedCount = 0;
+  
+  Object.keys(fields).forEach(fieldId => {
+    const element = document.getElementById(fieldId);
+    const value = fields[fieldId];
+    
+    if (!element) {
+      skippedCount++;
+      return;
+    }
+    
+    try {
+      // Handle different input types
+      if (element.type === 'checkbox') {
+        element.checked = value === 'on' || value === true || value === 'true';
+      } else if (element.tagName === 'SELECT') {
+        element.value = value;
+      } else if (element.tagName === 'TEXTAREA') {
+        element.value = value;
+      } else {
+        element.value = value;
+      }
+      
+      populatedCount++;
+      
+      // Trigger change event for any listeners
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      
+    } catch (e) {
+      console.warn(`⚠️ Failed to populate ${fieldId}:`, e.message);
+      skippedCount++;
+    }
+  });
+  
+  console.log(`   ✅ Populated ${populatedCount} fields`);
+  if (skippedCount > 0) {
+    console.log(`   ⚠️ Skipped ${skippedCount} fields (not found in DOM)`);
+  }
+}
+
+/**
+ * Update dashboard statistics
+ */
+function updateDashboardStats(dashboardData) {
+  try {
+    // Update project name display
+    const projectNameEl = document.querySelector('.current-project-name');
+    if (projectNameEl) {
+      projectNameEl.textContent = dashboardData.projectName;
+    }
+    
+    // Update completion progress
+    const progressEl = document.querySelector('.completion-progress');
+    if (progressEl) {
+      progressEl.style.width = dashboardData.completionPercent + '%';
+      progressEl.setAttribute('aria-valuenow', dashboardData.completionPercent);
+    }
+    
+    const progressTextEl = document.querySelector('.completion-text');
+    if (progressTextEl) {
+      progressTextEl.textContent = dashboardData.completionPercent + '% Complete';
+    }
+    
+    // Update workflow stage badge
+    const stageEl = document.querySelector('.workflow-stage-badge');
+    if (stageEl) {
+      stageEl.textContent = formatWorkflowStage(dashboardData.workflowStage);
+      stageEl.className = 'workflow-stage-badge stage-' + dashboardData.workflowStage;
+    }
+    
+    // Update last updated timestamp
+    const updatedEl = document.querySelector('.last-updated');
+    if (updatedEl) {
+      updatedEl.textContent = 'Last updated: ' + formatTimestamp(dashboardData.lastUpdated);
+    }
+    
+    // Update competitor count badge
+    if (dashboardData.hasCompetitors) {
+      const compCountEl = document.querySelector('.competitor-count-badge');
+      if (compCountEl) {
+        compCountEl.textContent = dashboardData.competitorCount + ' competitors analyzed';
+        compCountEl.style.display = 'inline-block';
+      }
+    }
+    
+    console.log('   ✅ Dashboard stats updated');
+    
+  } catch (e) {
+    console.warn('⚠️ Error updating dashboard:', e.message);
+  }
+}
+
+/**
+ * Render competitor intelligence from loaded project
+ */
+function renderCompetitorIntelligenceFromProject(competitorAnalysis, uiData) {
+  try {
+    console.log('   📊 Rendering competitor intelligence...');
+    console.log('      Competitors:', competitorAnalysis.competitors.length);
+    
+    // Hide empty state
+    const emptyState = document.getElementById('comp-empty-state');
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
+    
+    // Show results container
+    const resultsContainer = document.getElementById('comp-results');
+    if (resultsContainer) {
+      resultsContainer.style.display = 'block';
+    }
+    
+    // Render competitor table
+    renderCompetitorTable(competitorAnalysis.competitors);
+    
+    // Populate 15 intelligence tabs
+    if (uiData.competitors && uiData.competitors.categories) {
+      populateIntelligenceTabs(uiData.competitors.categories);
+    }
+    
+    // Render AI insights
+    if (competitorAnalysis.competitors[0] && competitorAnalysis.competitors[0].analysis) {
+      renderAIInsights(competitorAnalysis.competitors[0].analysis);
+    }
+    
+    console.log('   ✅ Competitor intelligence rendered');
+    
+  } catch (e) {
+    console.error('❌ Error rendering competitor intelligence:', e);
+  }
+}
+
+/**
+ * Render competitor comparison table
+ */
+function renderCompetitorTable(competitors) {
+  const tableBody = document.querySelector('#comp-table tbody');
+  if (!tableBody) return;
+  
+  tableBody.innerHTML = '';
+  
+  competitors.forEach(comp => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="competitor-domain">
+        <a href="https://${comp.domain}" target="_blank">${comp.domain}</a>
+      </td>
+      <td class="text-center">
+        <span class="metric-badge badge-authority">${comp.authorityScore || 0}</span>
+      </td>
+      <td class="text-center">
+        <span class="metric-badge badge-speed">${comp.pageSpeed || 0}</span>
+      </td>
+      <td class="text-center">
+        <span class="metric-badge badge-keywords">${formatNumber(comp.rawData?.apiData?.serper?.organicKeywords || 0)}</span>
+      </td>
+      <td class="text-center">
+        <span class="metric-badge badge-traffic">${formatNumber(comp.rawData?.apiData?.serper?.estimatedTraffic || 0)}</span>
+      </td>
+      <td class="text-center">
+        <button class="btn-sm btn-view-details" onclick="viewCompetitorDetails('${comp.domain}')">
+          View Details
+        </button>
+      </td>
+    `;
+    tableBody.appendChild(row);
+  });
+  
+  console.log('      ✅ Competitor table rendered');
+}
+
+/**
+ * Populate 15 intelligence category tabs
+ */
+function populateIntelligenceTabs(categories) {
+  console.log('      📑 Populating intelligence tabs...');
+  console.log('         Categories:', categories.length);
+  
+  // Tab mapping: category name → tab ID
+  const tabMap = {
+    'Market Position Intelligence': 'market',
+    'Brand Strategy Analysis': 'brand',
+    'Technical SEO Deep Analysis': 'technical',
+    'Content Intelligence': 'content',
+    'Keyword Strategy Analysis': 'keywords',
+    'Content Systems & Production': 'production',
+    'Conversion Optimization': 'conversion',
+    'Distribution Channels Analysis': 'distribution',
+    'Audience Psychology & Engagement': 'audience',
+    'GEO & AEO Optimization': 'geo-aeo',
+    'Authority & Trust Building': 'authority',
+    'Performance & Metrics': 'performance',
+    'Competitive Gaps & Weaknesses': 'gaps',
+    'Strategic Opportunities': 'opportunities',
+    'Actionable Recommendations': 'recommendations'
+  };
+  
+  categories.forEach(category => {
+    const tabId = tabMap[category.name];
+    if (!tabId) {
+      console.warn(`      ⚠️ No tab mapping for category: ${category.name}`);
+      return;
+    }
+    
+    const tabPanel = document.querySelector(`[data-comp-panel="${tabId}"]`);
+    if (!tabPanel) {
+      console.warn(`      ⚠️ Tab panel not found: ${tabId}`);
+      return;
+    }
+    
+    // Render category content
+    tabPanel.innerHTML = buildCategoryHTML(category);
+  });
+  
+  console.log('      ✅ Intelligence tabs populated');
+}
+
+/**
+ * Build HTML for category content
+ */
+function buildCategoryHTML(category) {
+  let html = `
+    <div class="category-content">
+      <h3 class="category-title">${category.name}</h3>
+  `;
+  
+  // Render each competitor's insights
+  category.competitors.forEach(comp => {
+    html += `
+      <div class="competitor-insights">
+        <h4 class="competitor-name">
+          <span class="domain-icon">🌐</span>
+          ${comp.domain}
+          ${comp.score ? `<span class="score-badge">${comp.score}/100</span>` : ''}
+        </h4>
+    `;
+    
+    // Key Insights
+    if (comp.insights && comp.insights.length > 0) {
+      html += `
+        <div class="insights-section">
+          <h5>Key Insights</h5>
+          <ul class="insights-list">
+            ${comp.insights.map(insight => `<li>${insight}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+    
+    // Recommendations
+    if (comp.recommendations && comp.recommendations.length > 0) {
+      html += `
+        <div class="recommendations-section">
+          <h5>Recommendations</h5>
+          <ol class="recommendations-list">
+            ${comp.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+          </ol>
+        </div>
+      `;
+    }
+    
+    // Data metrics (if available)
+    if (comp.data && Object.keys(comp.data).length > 0) {
+      html += `
+        <div class="data-metrics">
+          <h5>Metrics</h5>
+          <div class="metrics-grid">
+            ${Object.entries(comp.data).map(([key, value]) => `
+              <div class="metric-item">
+                <span class="metric-label">${formatLabel(key)}</span>
+                <span class="metric-value">${formatMetricValue(value)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+    
+    html += `</div>`; // Close competitor-insights
+  });
+  
+  html += `</div>`; // Close category-content
+  
+  return html;
+}
+
+/**
+ * Render AI insights overview
+ */
+function renderAIInsights(analysis) {
+  const insightsContainer = document.getElementById('ai-insights-container');
+  if (!insightsContainer) return;
+  
+  if (analysis.categories && analysis.categories.length > 0) {
+    insightsContainer.innerHTML = buildEliteCategoryInsightsDisplay({
+      analysis: analysis
+    });
+  }
+  
+  console.log('      ✅ AI insights rendered');
+}
+
+/**
+ * Show competitor empty state
+ */
+function showCompetitorEmptyState() {
+  const emptyState = document.getElementById('comp-empty-state');
+  if (emptyState) {
+    emptyState.style.display = 'block';
+  }
+  
+  const resultsContainer = document.getElementById('comp-results');
+  if (resultsContainer) {
+    resultsContainer.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITY FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Call backend function with promise wrapper
+ */
+function callBackend(functionName, ...args) {
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(reject)
+      [functionName](...args);
+  });
+}
+
+/**
+ * Format workflow stage for display
+ */
+function formatWorkflowStage(stage) {
+  const stages = {
+    'setup': '1. Setup',
+    'strategy': '2. Strategy',
+    'keywords': '3. Keywords',
+    'architecture': '4. Architecture',
+    'calendar': '5. Calendar',
+    'generation': '6. Generation'
+  };
+  return stages[stage] || stage;
+}
+
+/**
+ * Format timestamp for display
+ */
+function formatTimestamp(isoString) {
+  if (!isoString) return 'Never';
+  
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return diffMins + ' minutes ago';
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return diffHours + ' hours ago';
+  
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return diffDays + ' days ago';
+  
+  return date.toLocaleDateString();
+}
+
+/**
+ * Format label from camelCase
+ */
+function formatLabel(key) {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
+}
+
+/**
+ * Format metric value
+ */
+function formatMetricValue(value) {
+  if (typeof value === 'number') {
+    return formatNumber(value);
+  }
+  if (typeof value === 'boolean') {
+    return value ? '✅ Yes' : '❌ No';
+  }
+  if (Array.isArray(value)) {
+    return value.length + ' items';
+  }
+  return String(value);
+}
+
+/**
+ * Show project loading state
+ */
+function showProjectLoadingState() {
+  const overlay = document.createElement('div');
+  overlay.id = 'project-loading-overlay';
+  overlay.className = 'loading-overlay';
+  overlay.innerHTML = `
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <h3>Loading Project...</h3>
+      <p>Fetching data and populating fields</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+/**
+ * Hide project loading state
+ */
+function hideProjectLoadingState() {
+  const overlay = document.getElementById('project-loading-overlay');
+  if (overlay) {
+    overlay.remove();
+  }
+}
+
+/**
+ * Initialize project dropdown
+ */
+async function initProjectDropdown() {
+  try {
+    const dropdown = document.getElementById('project-selector');
+    if (!dropdown) {
+      console.warn('⚠️ Project dropdown not found');
+      return;
+    }
+    
+    // Load project list
+    const result = await callBackend('listAllProjects');
+    
+    if (!result.success || !result.projects) {
+      console.error('❌ Failed to load projects');
+      return;
+    }
+    
+    // Populate dropdown
+    dropdown.innerHTML = '<option value="">Select a project...</option>';
+    
+    result.projects.forEach(project => {
+      const option = document.createElement('option');
+      option.value = project.name;
+      option.textContent = `${project.name} (${project.workflowStage})`;
+      dropdown.appendChild(option);
+    });
+    
+    // Add change listener
+    dropdown.addEventListener('change', onProjectSelected);
+    
+    console.log('✅ Project dropdown initialized with ' + result.projects.length + ' projects');
+    
+  } catch (error) {
+    console.error('❌ Error initializing dropdown:', error);
+  }
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initProjectDropdown);
+} else {
+  initProjectDropdown();
+}
+
+console.log('✅ Elite Project Auto-Population loaded');
+</script>
+
+<style>
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.loading-card {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  min-width: 300px;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 24px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Category content */
+.category-content {
+  padding: 24px;
+}
+
+.category-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 12px;
+}
+
+.competitor-insights {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.competitor-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.domain-icon {
+  font-size: 20px;
+}
+
+.score-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  margin-left: auto;
+}
+
+.insights-section,
+.recommendations-section,
+.data-metrics {
+  margin-bottom: 20px;
+}
+
+.insights-section h5,
+.recommendations-section h5,
+.data-metrics h5 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.insights-list,
+.recommendations-list {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.insights-list li,
+.recommendations-list li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.metric-item {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.metric-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Metric badges */
+.metric-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.badge-authority {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+}
+
+.badge-speed {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.badge-keywords {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.badge-traffic {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+/* Workflow stage badges */
+.workflow-stage-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stage-setup { background: #e0e7ff; color: #4338ca; }
+.stage-strategy { background: #ddd6fe; color: #7c3aed; }
+.stage-keywords { background: #fce7f3; color: #db2777; }
+.stage-architecture { background: #ffedd5; color: #ea580c; }
+.stage-calendar { background: #d1fae5; color: #059669; }
+.stage-generation { background: #dbeafe; color: #2563eb; }
+</style>

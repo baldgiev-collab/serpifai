@@ -1,0 +1,377 @@
+<!--
+  COMP_ActionBar.html
+  Competitor Analysis Action Bar Functions (Re-Run, Save, PDF Menu)
+  Extracted from UI_Scripts_App.html (Lines 3793-4138)
+  Phase 7 of Proxy Barrel Refactoring
+  
+  Functions exposed to window scope:
+  - rerunCompetitorAnalysis
+  - saveAllCompetitorTabs
+  - togglePDFMenu
+  - closePDFMenuOnOutsideClick
+  - downloadPDF
+  - showPDFExportModal
+  - closePDFExportModal
+  - exportCustomPDF
+-->
+<script>
+  console.log('🔧 COMP_ActionBar.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // COMPETITOR ANALYSIS ACTION BAR - Re-Run, Save, PDF Export
+  // ═══════════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Re-run competitor analysis with current parameters
+   */
+  window.rerunCompetitorAnalysis = function() {
+    console.log('🔄 Re-running competitor analysis...');
+    
+    // Get current project data
+    const projectData = window.currentProjectData || window.lastLoadedProject;
+    if (!projectData) {
+      if (typeof showToast === 'function') showToast('❌ No project data found. Please load a project first.', 'error');
+      return;
+    }
+
+    // Confirm with user
+    if (!confirm('Re-run competitor analysis? This will fetch fresh data for all competitors.')) {
+      return;
+    }
+
+    // Show loading state
+    const btn = document.getElementById('btnRerunAnalysis');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-small"></span> Running...';
+    }
+
+    // Extract parameters
+    const params = {
+      projectId: projectData.projectId || projectData.id,
+      keyword: projectData.keyword || projectData.primaryKeyword,
+      competitors: projectData.competitors || [],
+      userDomain: projectData.userDomain || projectData.domain || ''
+    };
+
+    console.log('📊 Re-running with params:', params);
+
+    // Call backend
+    google.script.run
+      .withSuccessHandler(function(result) {
+        console.log('✅ Competitor analysis complete:', result);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '🔄 Re-Run';
+        }
+        
+        if (result && result.success) {
+          if (typeof showToast === 'function') showToast('✅ Competitor analysis updated!', 'success');
+          // Reload the results
+          if (typeof displayCompetitorResults === 'function') {
+            displayCompetitorResults(result.data || result);
+          }
+        } else {
+          if (typeof showToast === 'function') showToast('⚠️ Analysis completed with warnings', 'warning');
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Competitor analysis failed:', error);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '🔄 Re-Run';
+        }
+        if (typeof showToast === 'function') showToast('❌ Analysis failed: ' + (error.message || error), 'error');
+      })
+      .runCompetitorAnalysis(params);
+  };
+
+  /**
+   * Save all competitor analysis tabs to database
+   */
+  window.saveAllCompetitorTabs = function() {
+    console.log('💾 Saving all competitor tabs...');
+    
+    // Get current analysis data
+    const analysisData = window.currentCompetitorData || window.competitorAnalysisResults;
+    const projectData = window.currentProjectData || window.lastLoadedProject;
+    
+    if (!analysisData) {
+      if (typeof showToast === 'function') showToast('❌ No competitor data to save', 'error');
+      return;
+    }
+    
+    if (!projectData || !projectData.projectId) {
+      if (typeof showToast === 'function') showToast('❌ No project ID found. Please load a project first.', 'error');
+      return;
+    }
+
+    // Show loading state
+    const btn = document.getElementById('btnSaveAnalysis');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-small"></span> Saving...';
+    }
+
+    // Prepare save data with all tabs
+    const saveData = {
+      projectId: projectData.projectId,
+      keyword: projectData.keyword || projectData.primaryKeyword,
+      competitors: analysisData.competitors || analysisData.competitorResults || [],
+      tabData: analysisData.tabData || {},
+      aiInsights: analysisData.aiInsights || analysisData.geminiAnalysis || {},
+      timestamp: new Date().toISOString(),
+      version: 'elite-v2'
+    };
+
+    console.log('💾 Saving competitor data:', saveData);
+
+    // Call backend save function
+    google.script.run
+      .withSuccessHandler(function(result) {
+        console.log('✅ Save complete:', result);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '💾 Save';
+        }
+        
+        if (result && result.success) {
+          if (typeof showToast === 'function') showToast('✅ All tabs saved successfully!', 'success');
+        } else {
+          if (typeof showToast === 'function') showToast('⚠️ Save completed with warnings', 'warning');
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Save failed:', error);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '💾 Save';
+        }
+        if (typeof showToast === 'function') showToast('❌ Save failed: ' + (error.message || error), 'error');
+      })
+      .saveCompetitorResults(saveData);
+  };
+
+  /**
+   * Toggle PDF export dropdown menu
+   */
+  window.togglePDFMenu = function(event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    const menu = document.getElementById('comp-pdf-menu');
+    if (!menu) {
+      console.error('PDF menu not found');
+      return;
+    }
+    
+    menu.classList.toggle('show');
+    
+    // Close menu when clicking outside
+    if (menu.classList.contains('show')) {
+      document.addEventListener('click', window.closePDFMenuOnOutsideClick);
+    }
+  };
+
+  /**
+   * Close PDF menu when clicking outside
+   */
+  window.closePDFMenuOnOutsideClick = function(event) {
+    const menu = document.getElementById('comp-pdf-menu');
+    const btn = document.getElementById('btnDownloadPDF');
+    
+    if (menu && !menu.contains(event.target) && btn && !btn.contains(event.target)) {
+      menu.classList.remove('show');
+      document.removeEventListener('click', window.closePDFMenuOnOutsideClick);
+    }
+  };
+
+  /**
+   * Download competitor analysis as PDF
+   * @param {string} type - 'current', 'all', 'executive', or 'custom'
+   */
+  window.downloadPDF = function(type) {
+    console.log('📄 Downloading PDF:', type);
+    
+    // Close dropdown
+    const menu = document.getElementById('comp-pdf-menu');
+    if (menu) menu.classList.remove('show');
+    
+    // Get current analysis data
+    const analysisData = window.currentCompetitorData || window.competitorAnalysisResults;
+    const projectData = window.currentProjectData || window.lastLoadedProject;
+    
+    if (!analysisData) {
+      if (typeof showToast === 'function') showToast('❌ No competitor data available for export', 'error');
+      return;
+    }
+
+    if (type === 'custom') {
+      window.showPDFExportModal();
+      return;
+    }
+
+    // Show loading toast
+    if (typeof showToast === 'function') showToast('📄 Generating PDF...', 'info');
+
+    // Determine which tabs to export
+    let tabsToExport = [];
+    const allTabs = [
+      'overviewDashboard', 'marketIntelligence', 'brandPosition', 'technicalSeo',
+      'contentIntel', 'keywordStrategy', 'contentSystems', 'conversion',
+      'distribution', 'audienceIntel', 'geoAeo', 'authority',
+      'performance', 'opportunities', 'scoringEngine'
+    ];
+
+    switch (type) {
+      case 'current':
+        const activeTab = document.querySelector('.comp-tab-btn.active');
+        if (activeTab) {
+          tabsToExport = [activeTab.getAttribute('data-comp-tab')];
+        } else {
+          tabsToExport = ['overviewDashboard'];
+        }
+        break;
+      case 'all':
+        tabsToExport = allTabs;
+        break;
+      case 'executive':
+        tabsToExport = ['overviewDashboard', 'marketIntelligence', 'brandPosition', 'opportunities', 'scoringEngine'];
+        break;
+      default:
+        tabsToExport = ['overviewDashboard'];
+    }
+
+    // Generate PDF
+    if (typeof generateCompetitorPDF === 'function') {
+      generateCompetitorPDF({
+        tabs: tabsToExport,
+        analysisData: analysisData,
+        projectData: projectData,
+        exportType: type
+      });
+    } else {
+      console.error('generateCompetitorPDF not found');
+      if (typeof showToast === 'function') showToast('❌ PDF generator not loaded', 'error');
+    }
+  };
+
+  /**
+   * Show custom PDF export modal with tab selection
+   */
+  window.showPDFExportModal = function() {
+    console.log('📄 Showing PDF export modal...');
+    
+    const allTabs = [
+      { id: 'overviewDashboard', name: 'Overview Dashboard', icon: '📊' },
+      { id: 'marketIntelligence', name: 'Market Intelligence', icon: '🎯' },
+      { id: 'brandPosition', name: 'Brand Position', icon: '🏆' },
+      { id: 'technicalSeo', name: 'Technical SEO', icon: '⚙️' },
+      { id: 'contentIntel', name: 'Content Intelligence', icon: '📝' },
+      { id: 'keywordStrategy', name: 'Keyword Strategy', icon: '🔑' },
+      { id: 'contentSystems', name: 'Content Systems', icon: '📚' },
+      { id: 'conversion', name: 'Conversion', icon: '💰' },
+      { id: 'distribution', name: 'Distribution', icon: '📡' },
+      { id: 'audienceIntel', name: 'Audience Intel', icon: '👥' },
+      { id: 'geoAeo', name: 'GEO/AEO', icon: '🌍' },
+      { id: 'authority', name: 'Authority', icon: '🔗' },
+      { id: 'performance', name: 'Performance', icon: '⚡' },
+      { id: 'opportunities', name: 'Opportunities', icon: '💎' },
+      { id: 'scoringEngine', name: 'Scoring Engine', icon: '📈' }
+    ];
+
+    const checkboxes = allTabs.map(tab => `
+      <label class="pdf-tab-checkbox">
+        <input type="checkbox" name="pdfTab" value="${tab.id}" checked>
+        <span>${tab.icon} ${tab.name}</span>
+      </label>
+    `).join('');
+
+    const modalHtml = `
+      <div id="pdfExportModal" class="modal-overlay" onclick="closePDFExportModal(event)">
+        <div class="modal-content pdf-export-modal" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3>📄 Custom PDF Export</h3>
+            <button class="modal-close" onclick="closePDFExportModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="pdf-export-desc">Select the tabs you want to include in your PDF report:</p>
+            <div class="pdf-tab-grid">
+              ${checkboxes}
+            </div>
+            <div class="pdf-export-options">
+              <label class="pdf-option">
+                <input type="checkbox" id="pdfIncludeCharts" checked>
+                <span>Include Charts & Visualizations</span>
+              </label>
+              <label class="pdf-option">
+                <input type="checkbox" id="pdfIncludeInsights" checked>
+                <span>Include AI Insights</span>
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="closePDFExportModal()">Cancel</button>
+            <button class="btn-primary" onclick="exportCustomPDF()">📄 Generate PDF</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if present
+    const existingModal = document.getElementById('pdfExportModal');
+    if (existingModal) existingModal.remove();
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+  };
+
+  /**
+   * Close PDF export modal
+   */
+  window.closePDFExportModal = function(event) {
+    if (event && event.target.id !== 'pdfExportModal') return;
+    
+    const modal = document.getElementById('pdfExportModal');
+    if (modal) modal.remove();
+  };
+
+  /**
+   * Export custom PDF with selected tabs
+   */
+  window.exportCustomPDF = function() {
+    const checkboxes = document.querySelectorAll('input[name="pdfTab"]:checked');
+    const selectedTabs = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedTabs.length === 0) {
+      if (typeof showToast === 'function') showToast('⚠️ Please select at least one tab to export', 'warning');
+      return;
+    }
+
+    const includeCharts = document.getElementById('pdfIncludeCharts')?.checked ?? true;
+    const includeInsights = document.getElementById('pdfIncludeInsights')?.checked ?? true;
+
+    window.closePDFExportModal();
+    if (typeof showToast === 'function') showToast('📄 Generating custom PDF...', 'info');
+
+    const analysisData = window.currentCompetitorData || window.competitorAnalysisResults;
+    const projectData = window.currentProjectData || window.lastLoadedProject;
+
+    if (typeof generateCompetitorPDF === 'function') {
+      generateCompetitorPDF({
+        tabs: selectedTabs,
+        analysisData: analysisData,
+        projectData: projectData,
+        exportType: 'custom',
+        includeCharts: includeCharts,
+        includeInsights: includeInsights
+      });
+    }
+  };
+
+  console.log('✅ COMP_ActionBar.html loaded');
+  console.log('   Exposed: rerunCompetitorAnalysis, saveAllCompetitorTabs');
+  console.log('   Exposed: togglePDFMenu, downloadPDF, showPDFExportModal');
+  console.log('   Exposed: closePDFExportModal, exportCustomPDF');
+</script>

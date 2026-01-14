@@ -1,0 +1,313 @@
+<script>
+/**
+ * UI Evidence Rendering - Part 2: Specialized Renders
+ * Extracted from UI_Scripts_App.html for modularization
+ * SERP, Technical, Authority, Keywords, Backlinks, Anchor Text evidence
+ */
+
+/** Render SERP evidence */
+window.renderSERPEvidence = function(serp) {
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 8px; background: ${serp.hasFeaturedSnippet ? '#dcfce7' : '#f1f5f9'}; border-radius: 8px;">
+          <div style="font-size: 16px;">${serp.hasFeaturedSnippet ? '✅' : '❌'}</div>
+          <div style="font-size: 10px; color: #6b7280;">Featured Snippet</div>
+        </div>
+        <div style="text-align: center; padding: 8px; background: ${serp.hasKnowledgePanel ? '#dcfce7' : '#f1f5f9'}; border-radius: 8px;">
+          <div style="font-size: 16px;">${serp.hasKnowledgePanel ? '✅' : '❌'}</div>
+          <div style="font-size: 10px; color: #6b7280;">Knowledge Panel</div>
+        </div>
+        <div style="text-align: center; padding: 8px; background: ${serp.hasSitelinks ? '#dcfce7' : '#f1f5f9'}; border-radius: 8px;">
+          <div style="font-size: 16px;">${serp.hasSitelinks ? '✅' : '❌'}</div>
+          <div style="font-size: 10px; color: #6b7280;">Sitelinks</div>
+        </div>
+      </div>
+      ${(serp.topPages || []).length > 0 ? `
+        <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 6px;">🥇 Top Ranking Pages</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          ${serp.topPages.slice(0, 5).map((page, i) => `
+            <div style="padding: 6px 8px; background: #f8fafc; border-radius: 4px; font-size: 11px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">#${page.position || i + 1}</span>
+                <a href="${escapeHtml(page.url)}" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 500;">${escapeHtml(page.title?.substring(0, 50) || 'Page')}</a>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">No SERP data available</div>'}
+    </div>
+  `;
+};
+
+/** Render conversion evidence */
+window.renderConversionEvidence = function(conversion) {
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 6px; background: ${conversion.hasPricing ? '#dcfce7' : '#fee2e2'}; border-radius: 6px;">
+          <div style="font-size: 14px;">${conversion.hasPricing ? '✅' : '❌'}</div>
+          <div style="font-size: 9px; color: #6b7280;">Pricing</div>
+        </div>
+        <div style="text-align: center; padding: 6px; background: ${conversion.hasTrial ? '#dcfce7' : '#fee2e2'}; border-radius: 6px;">
+          <div style="font-size: 14px;">${conversion.hasTrial ? '✅' : '❌'}</div>
+          <div style="font-size: 9px; color: #6b7280;">Free Trial</div>
+        </div>
+        <div style="text-align: center; padding: 6px; background: ${conversion.hasAnnual ? '#dcfce7' : '#fee2e2'}; border-radius: 6px;">
+          <div style="font-size: 14px;">${conversion.hasAnnual ? '✅' : '❌'}</div>
+          <div style="font-size: 9px; color: #6b7280;">Annual</div>
+        </div>
+        <div style="text-align: center; padding: 6px; background: ${conversion.hasGuarantee ? '#dcfce7' : '#fee2e2'}; border-radius: 6px;">
+          <div style="font-size: 14px;">${conversion.hasGuarantee ? '✅' : '❌'}</div>
+          <div style="font-size: 9px; color: #6b7280;">Guarantee</div>
+        </div>
+      </div>
+      ${(conversion.ctaSignals || []).length > 0 ? `
+        <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 6px;">🎯 CTAs Detected (${conversion.ctaCount})</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px;">
+          ${conversion.ctaSignals.map(cta => `<span style="background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 6px; font-size: 10px;">${escapeHtml(cta)}</span>`).join('')}
+        </div>
+      ` : ''}
+      ${(conversion.pricingSignals || []).length > 0 ? `
+        <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 6px;">💰 Pricing Signals</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+          ${conversion.pricingSignals.map(p => `<span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 6px; font-size: 10px;">${escapeHtml(p)}</span>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+};
+
+/** Render technical evidence */
+window.renderTechnicalEvidence = function(technical) {
+  const getScoreColor = (score) => score >= 90 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, ${getScoreColor(technical.performance)}15 0%, ${getScoreColor(technical.performance)}25 100%); border-radius: 8px; border: 2px solid ${getScoreColor(technical.performance)};">
+          <div style="font-size: 22px; font-weight: 800; color: ${getScoreColor(technical.performance)};">${technical.performance || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Performance</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, ${getScoreColor(technical.seo)}15 0%, ${getScoreColor(technical.seo)}25 100%); border-radius: 8px; border: 2px solid ${getScoreColor(technical.seo)};">
+          <div style="font-size: 22px; font-weight: 800; color: ${getScoreColor(technical.seo)};">${technical.seo || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">SEO</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, ${getScoreColor(technical.accessibility)}15 0%, ${getScoreColor(technical.accessibility)}25 100%); border-radius: 8px; border: 2px solid ${getScoreColor(technical.accessibility)};">
+          <div style="font-size: 22px; font-weight: 800; color: ${getScoreColor(technical.accessibility)};">${technical.accessibility || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">A11y</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, ${getScoreColor(technical.bestPractices)}15 0%, ${getScoreColor(technical.bestPractices)}25 100%); border-radius: 8px; border: 2px solid ${getScoreColor(technical.bestPractices)};">
+          <div style="font-size: 22px; font-weight: 800; color: ${getScoreColor(technical.bestPractices)};">${technical.bestPractices || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Best Practices</div>
+        </div>
+      </div>
+      <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 6px;">📊 Core Web Vitals</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+        <div style="padding: 8px; background: #f1f5f9; border-radius: 6px; text-align: center;">
+          <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${technical.lcp ? (technical.lcp / 1000).toFixed(2) + 's' : 'N/A'}</div>
+          <div style="font-size: 9px; color: #6b7280;">LCP</div>
+        </div>
+        <div style="padding: 8px; background: #f1f5f9; border-radius: 6px; text-align: center;">
+          <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${technical.fid ? technical.fid.toFixed(0) + 'ms' : 'N/A'}</div>
+          <div style="font-size: 9px; color: #6b7280;">FID</div>
+        </div>
+        <div style="padding: 8px; background: #f1f5f9; border-radius: 6px; text-align: center;">
+          <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${technical.cls !== undefined ? technical.cls.toFixed(3) : 'N/A'}</div>
+          <div style="font-size: 9px; color: #6b7280;">CLS</div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+/** Render authority evidence */
+window.renderAuthorityEvidence = function(authority) {
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 8px; color: white;">
+          <div style="font-size: 24px; font-weight: 800;">${authority.pageRank?.toFixed(1) || '0'}</div>
+          <div style="font-size: 10px; opacity: 0.9;">PageRank</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: #f1f5f9; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 800; color: #1e293b;">${authority.domainAuthority || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Domain Authority</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: #f1f5f9; border-radius: 8px;">
+          <div style="font-size: 16px; font-weight: 700; color: #1e293b;">#${authority.globalRank ? authority.globalRank.toLocaleString() : 'N/A'}</div>
+          <div style="font-size: 10px; color: #6b7280;">Global Rank</div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+        <div style="padding: 10px; background: #eff6ff; border-radius: 8px;">
+          <div style="font-size: 18px; font-weight: 700; color: #1e40af;">${authority.referringDomains?.toLocaleString() || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Est. Referring Domains</div>
+        </div>
+        <div style="padding: 10px; background: #f0fdf4; border-radius: 8px;">
+          <div style="font-size: 18px; font-weight: 700; color: #166534;">${authority.backlinks?.toLocaleString() || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Est. Backlinks</div>
+        </div>
+      </div>
+      <div style="margin-top: 10px; padding: 8px; background: #fef3c7; border-radius: 6px; font-size: 11px; color: #92400e;">
+        ℹ️ Data Source: ${authority.source || 'OpenPageRank API'}
+      </div>
+    </div>
+  `;
+};
+
+/** Render keywords evidence */
+window.renderKeywordsEvidence = function(keywords) {
+  if (!keywords) return '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">No keyword data available</div>';
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 8px; color: white;">
+          <div style="font-size: 24px; font-weight: 800;">${(keywords.estimatedKeywords || 0).toLocaleString()}</div>
+          <div style="font-size: 10px; opacity: 0.9;">Est. Keywords</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: #f1f5f9; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 800; color: #1e293b;">${(keywords.organicKeywords?.length || 0)}</div>
+          <div style="font-size: 10px; color: #6b7280;">Ranking Pages</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: #f1f5f9; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 800; color: #1e293b;">${(keywords.paaKeywords?.length || 0)}</div>
+          <div style="font-size: 10px; color: #6b7280;">PAA Questions</div>
+        </div>
+      </div>
+      ${keywords.organicKeywords?.length > 0 ? `
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 6px;">🔍 Top Ranking Pages</div>
+          <div style="max-height: 150px; overflow-y: auto; background: #f8fafc; border-radius: 6px; padding: 8px;">
+            ${keywords.organicKeywords.slice(0, 10).map((kw, i) => `
+              <div style="display: flex; align-items: center; gap: 8px; padding: 6px; ${i > 0 ? 'border-top: 1px solid #e2e8f0;' : ''}">
+                <span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; min-width: 30px; text-align: center;">#${kw.position || i+1}</span>
+                <div style="flex: 1; overflow: hidden;">
+                  <div style="font-size: 12px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(kw.keyword || kw.title || '')}</div>
+                  <a href="${escapeHtml(kw.url)}" target="_blank" style="font-size: 10px; color: #6b7280; text-decoration: none;">${escapeHtml((kw.url || '').substring(0, 50))}</a>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      ${keywords.paaKeywords?.length > 0 ? `
+        <div>
+          <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 6px;">❓ People Also Ask (${keywords.paaKeywords.length})</div>
+          <div style="max-height: 150px; overflow-y: auto; background: #f8fafc; border-radius: 6px; padding: 8px;">
+            ${keywords.paaKeywords.slice(0, 10).map((paa, i) => `
+              <div style="padding: 8px; ${i > 0 ? 'border-top: 1px solid #e2e8f0;' : ''}">
+                <div style="font-size: 12px; font-weight: 600; color: #1e293b;">Q: ${escapeHtml(paa.question || paa)}</div>
+                ${paa.answer ? `<div style="font-size: 11px; color: #6b7280; margin-top: 4px;">A: ${escapeHtml(paa.answer.substring(0, 100))}...</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      <div style="margin-top: 10px; padding: 8px; background: #fef3c7; border-radius: 6px; font-size: 11px; color: #92400e;">
+        ℹ️ Source: ${keywords.source || 'Serper API + Estimation'}
+      </div>
+    </div>
+  `;
+};
+
+/** Render backlinks evidence */
+window.renderBacklinksEvidence = function(backlinks) {
+  if (!backlinks) return '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">No backlink data available</div>';
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; color: white;">
+          <div style="font-size: 24px; font-weight: 800;">${(backlinks.estimatedBacklinks || 0).toLocaleString()}</div>
+          <div style="font-size: 10px; opacity: 0.9;">Est. Backlinks</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: #eff6ff; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 800; color: #1e40af;">${(backlinks.estimatedReferringDomains || 0).toLocaleString()}</div>
+          <div style="font-size: 10px; color: #6b7280;">Referring Domains</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: #f1f5f9; border-radius: 8px;">
+          <div style="font-size: 20px; font-weight: 800; color: #6366f1;">${(backlinks.pageRankScore || 0).toFixed(1)}</div>
+          <div style="font-size: 10px; color: #6b7280;">PageRank</div>
+        </div>
+      </div>
+      <div style="margin-top: 10px; padding: 8px; background: #fef3c7; border-radius: 6px; font-size: 11px; color: #92400e;">
+        ℹ️ ${backlinks.calculationMethod || 'PageRank-based estimation'} | Source: ${backlinks.source || 'OpenPageRank API'}
+      </div>
+    </div>
+  `;
+};
+
+/** Render anchor text evidence */
+window.renderAnchorTextEvidence = function(anchorData) {
+  if (!anchorData || !anchorData.topAnchors || anchorData.topAnchors.length === 0) {
+    return '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">No anchor text data collected</div>';
+  }
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 10px; background: #eff6ff; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 800; color: #1e40af;">${anchorData.totalAnchors || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Total Anchor Texts</div>
+        </div>
+        <div style="text-align: center; padding: 10px; background: #f0fdf4; border-radius: 8px;">
+          <div style="font-size: 24px; font-weight: 800; color: #166534;">${anchorData.uniqueAnchors || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Unique Anchors</div>
+        </div>
+      </div>
+      <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 6px;">🔤 Top Anchor Texts</div>
+      <div style="max-height: 200px; overflow-y: auto; background: #f8fafc; border-radius: 6px; padding: 8px;">
+        ${anchorData.topAnchors.slice(0, 15).map((anchor, i) => `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px; ${i > 0 ? 'border-top: 1px solid #e2e8f0;' : ''}">
+            <span style="font-size: 12px; color: #1e293b; flex: 1;">"${escapeHtml(anchor.text)}"</span>
+            <span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 600;">×${anchor.count}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+};
+
+/** Render generic evidence */
+window.renderGenericEvidence = function(domainEvidence) {
+  if (!domainEvidence || Object.keys(domainEvidence).length === 0) {
+    return '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">No detailed evidence available</div>';
+  }
+  
+  const dataSources = domainEvidence.dataSources || {};
+  const availableSources = Object.entries(dataSources).filter(([k, v]) => v === 'Available');
+  const pendingSources = Object.entries(dataSources).filter(([k, v]) => v === 'Pending');
+  
+  const summaryItems = [];
+  if (domainEvidence.content?.wordCount > 0) summaryItems.push(`📝 ${domainEvidence.content.wordCount.toLocaleString()} words`);
+  if (domainEvidence.headings?.total > 0) summaryItems.push(`📋 ${domainEvidence.headings.total} headings`);
+  if (domainEvidence.schema?.count > 0) summaryItems.push(`🏗️ ${domainEvidence.schema.count} schemas`);
+  if (domainEvidence.internalLinks?.length > 0) summaryItems.push(`🔗 ${domainEvidence.internalLinks.length} internal links`);
+  if (domainEvidence.authority?.pageRank > 0) summaryItems.push(`👑 PageRank ${domainEvidence.authority.pageRank.toFixed(1)}`);
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 8px;">📊 Data Summary</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+        ${summaryItems.map(item => `<span style="background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 8px; font-size: 11px;">${item}</span>`).join('')}
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+        <div>
+          <div style="font-size: 10px; font-weight: 600; color: #10b981; margin-bottom: 4px;">✅ Available (${availableSources.length})</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            ${availableSources.map(([source]) => `<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px; font-size: 10px;">${source}</span>`).join('')}
+          </div>
+        </div>
+        <div>
+          <div style="font-size: 10px; font-weight: 600; color: #f59e0b; margin-bottom: 4px;">⏳ Pending (${pendingSources.length})</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            ${pendingSources.map(([source]) => `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 6px; font-size: 10px;">${source}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+</script>

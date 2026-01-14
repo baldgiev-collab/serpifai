@@ -1,0 +1,506 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ELITE_Executive.html - Executive Summary & Overview Rendering
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * ELITE v4.0 - Board-Ready Executive Functions
+ * Contains: Executive summaries, efficiency analysis, overview dashboard
+ * 
+ * EXTRACTED FROM: UI_Elite_Renderer.html (Lines 3239-3800)
+ * DEPENDENCIES: ELITE_Config.html, ELITE_Helpers.html
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Render Executive Summary Banner
+ */
+function renderExecutiveSummaryBanner(analysis) {
+  const container = document.getElementById('comp-overview-metrics');
+  if (!container) return;
+
+  let summaryLines = [];
+
+  if (analysis?.executiveBrief?.threeLineSummary) {
+    summaryLines = analysis.executiveBrief.threeLineSummary;
+  } else if (analysis?.executiveBrief?.landscapeOverview) {
+    const overview = analysis.executiveBrief.landscapeOverview;
+    summaryLines = overview.split(/[.!?]+/).filter(s => s.trim()).slice(0, 3).map(s => s.trim() + '.');
+  } else {
+    summaryLines = [
+      'Comprehensive competitive analysis complete with actionable strategic insights.',
+      'Key opportunities identified across technical SEO, content authority, and market positioning.',
+      'Prioritized roadmap ready for immediate implementation.'
+    ];
+  }
+
+  const bannerHtml = `
+    <div class="executive-summary-banner animate-slide-up">
+      <div class="executive-summary-title">
+        3-Sentence Executive Summary
+      </div>
+      <div class="executive-summary-content">
+        ${summaryLines.map((line, i) => `
+          <div class="executive-summary-line">${translateToPlainEnglish(line)}</div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  container.insertAdjacentHTML('afterbegin', bannerHtml);
+}
+
+/**
+ * Extract Efficiency Data from competitorRankings
+ */
+function extractEfficiencyData(analysis) {
+  if (!analysis.competitorRankings || !Array.isArray(analysis.competitorRankings)) {
+    return null;
+  }
+
+  const efficiencyRatios = analysis.competitorRankings.map(comp => {
+    const ratio = comp.efficiencyRatio || 0;
+    let grade = 'C';
+    let interpretation = 'Average efficiency';
+
+    if (ratio >= 10) {
+      grade = 'A';
+      interpretation = 'Highly efficient - grows with minimal link building investment';
+    } else if (ratio >= 5) {
+      grade = 'B';
+      interpretation = 'Good efficiency - reasonable returns on authority building';
+    } else if (ratio >= 2) {
+      grade = 'C';
+      interpretation = 'Average efficiency - typical for competitive markets';
+    } else {
+      grade = 'D';
+      interpretation = 'Bloated profile - high links, low traffic. Opportunity to outmaneuver.';
+    }
+
+    return {
+      competitor: comp.domain,
+      trafficPerRefDomain: ratio,
+      efficiencyGrade: grade,
+      interpretation: interpretation,
+      competitiveImplication: comp.efficiencyAnalysis ||
+        (grade === 'D' ? 'Can be outmaneuvered with less capital investment' :
+          grade === 'A' ? 'Strong competitor - needs strategic differentiation' :
+            'Monitor and target weak points')
+    };
+  });
+
+  const avgRatio = efficiencyRatios.reduce((sum, r) => sum + r.trafficPerRefDomain, 0) / efficiencyRatios.length;
+  const marketInsight = avgRatio >= 7
+    ? 'Market shows high efficiency overall - focus on content quality over link building'
+    : avgRatio >= 4
+      ? 'Market has moderate efficiency - balanced strategy recommended'
+      : 'Market appears saturated with low-efficiency players - opportunity for lean, targeted approach';
+
+  return { efficiencyRatios, marketInsight };
+}
+
+/**
+ * Render Efficiency Analysis Cards
+ */
+function renderEfficiencyAnalysis(efficiencyData) {
+  if (!efficiencyData || !efficiencyData.efficiencyRatios) return '';
+
+  const ratios = efficiencyData.efficiencyRatios || [];
+
+  let html = `
+    <div class="elite-insight-card efficiency-analysis-card animate-slide-up stagger-1">
+      <div class="elite-insight-header">
+        <div class="elite-insight-header-left">
+          <div class="elite-insight-icon">⚡</div>
+          <div>
+            <h3 class="elite-insight-title">Efficiency Analysis</h3>
+            <p class="elite-insight-subtitle">Traffic per Referring Domain — Identifies "Bloated" vs Lean Competitors</p>
+          </div>
+        </div>
+        <span class="elite-insight-badge">BOARD INSIGHT</span>
+      </div>
+      <div class="elite-insight-body">
+  `;
+
+  if (efficiencyData.marketInsight) {
+    html += `
+      <div class="market-insight-callout">
+        <span class="callout-icon">💡</span>
+        <p>${translateToPlainEnglish(efficiencyData.marketInsight)}</p>
+      </div>
+    `;
+  }
+
+  html += '<div class="efficiency-grid">';
+
+  ratios.forEach((ratio, index) => {
+    const grade = ratio.efficiencyGrade || 'C';
+    const gradeClass = grade === 'A' ? 'grade-excellent' : grade === 'B' ? 'grade-good' : grade === 'C' ? 'grade-average' : 'grade-poor';
+    const efficiencyClass = ratio.trafficPerRefDomain >= 10 ? 'efficiency-high' : ratio.trafficPerRefDomain >= 5 ? 'efficiency-medium' : 'efficiency-low';
+    const barWidth = Math.min(100, (ratio.trafficPerRefDomain / 15) * 100);
+
+    html += `
+      <div class="efficiency-ratio-card animate-fade-in stagger-${index + 1}">
+        <div class="efficiency-card-header">
+          <span class="efficiency-domain">${ratio.competitor}</span>
+          <span class="efficiency-grade ${gradeClass}">${grade}</span>
+        </div>
+        <div class="efficiency-ratio-container">
+          <div class="efficiency-ratio-value">${ratio.trafficPerRefDomain?.toFixed(1) || '0.0'}</div>
+          <div class="efficiency-ratio-details">
+            <span class="efficiency-ratio-label">Traffic per Referring Domain</span>
+            <div class="efficiency-ratio-bar">
+              <div class="efficiency-ratio-fill ${efficiencyClass}" style="width: ${barWidth}%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="efficiency-interpretation">
+          <strong>What it means:</strong> ${translateToPlainEnglish(ratio.interpretation || 'Data not available')}
+        </div>
+        <div class="efficiency-implication">
+          <span class="implication-icon">🎯</span>
+          ${translateToPlainEnglish(ratio.competitiveImplication || '')}
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div></div></div>';
+  return html;
+}
+
+/**
+ * Render Overview Dashboard
+ */
+function renderOverviewDashboard(overview, intelligence, competitors) {
+  console.log('📊 Rendering overview dashboard...');
+  
+  const container = document.getElementById('comp-overview-metrics');
+  if (!container) {
+    console.warn('⚠️ comp-overview-metrics container not found');
+    return;
+  }
+
+  let html = '<div class="metrics-grid-container">';
+
+  const competitorCount = Object.keys(competitors || {}).length;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">🎯</div>
+      <div class="metric-content">
+        <div class="metric-value">${competitorCount}</div>
+        <div class="metric-label">Competitors Analyzed</div>
+        <div class="metric-badge data-badge-real">✅ real</div>
+      </div>
+    </div>
+  `;
+
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">📊</div>
+      <div class="metric-content">
+        <div class="metric-value">${overview.totalMetrics || 'N/A'}</div>
+        <div class="metric-label">Total Data Points</div>
+        <div class="metric-badge data-badge-calculated">📊 calculated</div>
+      </div>
+    </div>
+  `;
+
+  const completeness = overview.dataCompleteness || overview.dataCompl || 0;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">📈</div>
+      <div class="metric-content">
+        <div class="metric-value">${completeness}%</div>
+        <div class="metric-label">Data Completeness</div>
+        <div class="metric-badge ${completeness >= 80 ? 'data-badge-real' : 'data-badge-calculated'}">
+          ${completeness >= 80 ? '✅ excellent' : '📊 good'}
+        </div>
+      </div>
+    </div>
+  `;
+
+  const categoriesCount = Object.keys(intelligence || {}).length;
+  html += `
+    <div class="metric-card elite-card">
+      <div class="metric-icon">🏆</div>
+      <div class="metric-content">
+        <div class="metric-value">${categoriesCount}</div>
+        <div class="metric-label">Categories Analyzed</div>
+        <div class="metric-badge data-badge-real">✅ complete</div>
+      </div>
+    </div>
+  `;
+
+  html += '</div>';
+
+  // Competitor comparison cards
+  html += '<div class="competitor-comparison-section">';
+  html += '<h3 class="section-title">📊 Competitor Comparison</h3>';
+  html += '<div class="competitor-cards-grid">';
+
+  Object.keys(competitors || {}).forEach((url, index) => {
+    const comp = competitors[url];
+    const domain = comp.domain || url;
+
+    let avgScore = 0;
+    let scoreCount = 0;
+
+    Object.keys(comp.categories || {}).forEach(catKey => {
+      const cat = comp.categories[catKey];
+      Object.values(cat.metrics || {}).forEach(val => {
+        if (typeof val === 'number' && val >= 0 && val <= 100) {
+          avgScore += val;
+          scoreCount++;
+        }
+      });
+    });
+
+    avgScore = scoreCount > 0 ? Math.round(avgScore / scoreCount) : 0;
+
+    html += `
+      <div class="competitor-summary-card elite-card">
+        <div class="competitor-header">
+          <div class="competitor-rank">#${index + 1}</div>
+          <div class="competitor-info">
+            <div class="competitor-domain-title">${domain}</div>
+            <div class="competitor-url-subtitle">${url}</div>
+          </div>
+        </div>
+        <div class="competitor-score-section">
+          <div class="score-circle score-${getScoreClass(avgScore)}">
+            <span class="score-value">${avgScore}</span>
+            <span class="score-label">/100</span>
+          </div>
+          <div class="score-details">
+            <div class="score-detail">
+              <span class="detail-icon">📊</span>
+              <span class="detail-text">${Object.keys(comp.categories || {}).length} categories</span>
+            </div>
+            <div class="score-detail">
+              <span class="detail-icon">✅</span>
+              <span class="detail-text">${scoreCount} data points</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div></div>';
+  container.innerHTML = html;
+  console.log('✅ Overview dashboard rendered');
+}
+
+/**
+ * Render categories fallback when executive data is missing
+ */
+function renderCategoriesFallback(categories) {
+  let html = `
+    <div class="elite-categories-fallback" style="padding: 20px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #4285f4, #34a853); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+          <span style="font-size: 20px;">📊</span>
+        </div>
+        <div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary, #202124);">Intelligence Categories Analysis</h3>
+          <p style="margin: 4px 0 0; font-size: 13px; color: var(--text-secondary, #5f6368);">${categories.length} categories analyzed</p>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+  `;
+
+  categories.slice(0, 6).forEach((cat, idx) => {
+    const categoryName = cat.name || cat.category || `Category ${idx + 1}`;
+    const score = cat.score || cat.avgScore || 0;
+    const insights = cat.insights || cat.keyFindings || [];
+    const topInsight = Array.isArray(insights) && insights.length > 0 ? insights[0] : (typeof insights === 'string' ? insights : 'Analysis available');
+
+    html += `
+      <div style="background: var(--bg-card, #fff); border-radius: 10px; padding: 16px; border: 1px solid var(--border-light, #e0e0e0);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary, #202124);">${categoryName}</h4>
+          <span style="background: ${score >= 70 ? '#34a853' : score >= 50 ? '#fbbc04' : '#ea4335'}; color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">${score}/100</span>
+        </div>
+        <p style="margin: 0; font-size: 13px; color: var(--text-secondary, #5f6368); line-height: 1.5;">
+          ${typeof topInsight === 'string' ? topInsight.substring(0, 150) + (topInsight.length > 150 ? '...' : '') : 'See detailed analysis'}
+        </p>
+      </div>
+    `;
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+/**
+ * Render overview radar chart
+ */
+function renderOverviewRadarChart(overview, intelligence) {
+  const canvasId = 'chart-comp-overview-radar';
+  destroyChart(canvasId);
+
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.log(`⏭️ Skipping ${canvasId} - canvas not found (removed by populateOverviewTab)`);
+    return;
+  }
+  
+  // CRITICAL: Check if we have the correct data structure
+  // This function expects overview.categoryScores, not competitorData.competitors[]
+  if (!overview || !overview.categoryScores) {
+    console.log(`⏭️ Skipping ${canvasId} - missing overview.categoryScores (wrong data format)`);
+    return;
+  }
+  
+  // Skip rendering if canvas or parent is hidden (populateOverviewTab creates its own charts)
+  const parent = canvas.closest('.comp-charts-row');
+  if (parent && parent.style.display === 'none') {
+    console.log(`⏭️ Skipping ${canvasId} - parent is hidden (using populateOverviewTab charts)`);
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  const labels = [];
+  const data = [];
+
+  Object.keys(overview.categoryScores || {}).forEach(categoryKey => {
+    const category = overview.categoryScores[categoryKey];
+    if (category.average !== undefined) {
+      labels.push(category.displayName.substring(0, 20));
+      data.push(category.average);
+    }
+  });
+
+  const sortedCategories = Object.entries(overview.categoryScores || {})
+    .filter(([k, v]) => v.average !== undefined)
+    .sort((a, b) => b[1].average - a[1].average);
+
+  let insight = '';
+  if (sortedCategories.length > 0) {
+    const strongest = sortedCategories[0];
+    const weakest = sortedCategories[sortedCategories.length - 1];
+    const avgScore = overview.averageScore || Math.round(data.reduce((a, b) => a + b, 0) / data.length);
+    insight = `<strong>${strongest[1].displayName}</strong> is the strongest category (${strongest[1].average}%), while <strong>${weakest[1].displayName}</strong> presents the biggest opportunity gap (${weakest[1].average}%). Market average: ${avgScore}%.`;
+  } else {
+    insight = 'Insufficient data to analyze category performance.';
+  }
+
+  window.eliteChartInstances[canvasId] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Category Averages',
+        data: data,
+        borderColor: '#1a73e8',
+        backgroundColor: 'rgba(26, 115, 232, 0.2)',
+        borderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: { beginAtZero: true, max: 100, ticks: { stepSize: 25 } }
+      },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: '📊 Category Performance Overview', font: { size: 14, weight: 'bold' } }
+      }
+    }
+  });
+
+  insertCategoryChartInsight(canvasId, insight);
+}
+
+/**
+ * Render overview bar chart
+ */
+function renderOverviewBarChart(overview) {
+  const canvasId = 'chart-comp-overview-bar';
+  destroyChart(canvasId);
+
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.log(`⏭️ Skipping ${canvasId} - canvas not found (removed by populateOverviewTab)`);
+    return;
+  }
+  
+  // CRITICAL: Check if we have the correct data structure
+  // This function expects overview.categoryScores and overview.topPerformers
+  if (!overview || !overview.categoryScores || !overview.topPerformers) {
+    console.log(`⏭️ Skipping ${canvasId} - missing overview.categoryScores/topPerformers (wrong data format)`);
+    return;
+  }
+  
+  // Skip rendering if canvas or parent is hidden (populateOverviewTab creates its own charts)
+  const parent = canvas.closest('.comp-charts-row');
+  if (parent && parent.style.display === 'none') {
+    console.log(`⏭️ Skipping ${canvasId} - parent is hidden (using populateOverviewTab charts)`);
+    return;
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  const labels = [];
+  const data = [];
+  const colors = [];
+
+  Object.keys(overview.topPerformers || {}).forEach((categoryKey, index) => {
+    const performer = overview.topPerformers[categoryKey];
+    const category = overview.categoryScores[categoryKey];
+
+    labels.push(`${performer.domain} - ${category.displayName.substring(0, 15)}`);
+    data.push(performer.score);
+    colors.push(getColorByIndex(index));
+  });
+
+  const topPerformersList = Object.entries(overview.topPerformers || {}).slice(0, 3);
+  const topDomains = topPerformersList.map(([cat, p]) => `<strong>${p.domain}</strong> (${overview.categoryScores[cat]?.displayName}: ${p.score}%)`).join(', ');
+  const insight = topPerformersList.length > 0
+    ? `Top performers by category: ${topDomains}. Focus on categories where competitors score highest.`
+    : 'Insufficient data to identify top performers.';
+
+  window.eliteChartInstances[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Score',
+        data: data,
+        backgroundColor: colors,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: { x: { beginAtZero: true, max: 100 } },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: '🏆 Top Performers by Category', font: { size: 14, weight: 'bold' } }
+      }
+    }
+  });
+
+  insertCategoryChartInsight(canvasId, insight);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderExecutiveSummaryBanner = renderExecutiveSummaryBanner;
+window.extractEfficiencyData = extractEfficiencyData;
+window.renderEfficiencyAnalysis = renderEfficiencyAnalysis;
+window.renderOverviewDashboard = renderOverviewDashboard;
+window.renderCategoriesFallback = renderCategoriesFallback;
+window.renderOverviewRadarChart = renderOverviewRadarChart;
+window.renderOverviewBarChart = renderOverviewBarChart;
+
+console.log('✅ ELITE_Executive.html loaded');
+</script>

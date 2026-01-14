@@ -1,0 +1,522 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════
+     KW_Strategy_Payload.html - KEYWORD STRATEGY - UI Payload Generators
+     
+     Extracted from UI_Scripts_App.html for modularization
+     Contains: generateKWStrategyUIPayload, generateForensicUIPayload
+     
+     Dependencies: KW_Strategy_Helpers.html (buildEntityRelationshipGraph, classifyIntentLayers, 
+                   deriveEntityId, calculateAIORisk10Scale, calculateRadarCoordinates, mapIntentToFunnel,
+                   getClusterColor, generateKillerAdvantage), 
+                   KW_Moat_Analysis.html (buildMarketGravityMap)
+     ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+
+  /**
+   * PHASE 4 HELPER: Generate KW Strategy UI Payload
+   * Maps every keyword to ui_cluster_id and aio_risk_factor
+   */
+  function generateKWStrategyUIPayload(kwData, comparisonMatrix, primaryKWs,
+    secondaryKWs, semanticKWs, longTailKWs,
+    gapAnalysis, gemini) {
+    console.log('🎯 Generating UI Payload with AIO Risk Factors + Entity Mapping...');
+
+    const zeroClick = gemini.zeroClickSurvival || {};
+    const baseAIORisk = zeroClick.aiOverviewRisk === 'High' ? 7 :
+      zeroClick.aiOverviewRisk === 'Medium' ? 5 : 3;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ENTITY RELATIONSHIP GRAPH - Maps keywords to topical moat entities
+    // ═══════════════════════════════════════════════════════════════════════════
+    const entityGraph = buildEntityRelationshipGraph(kwData, primaryKWs, secondaryKWs, gemini);
+    console.log('   📊 Entity Graph built:', entityGraph.nodes.length, 'entities');
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INTENT LAYERING SYSTEM - TOFU/MOFU/BOFU Classification
+    // ═══════════════════════════════════════════════════════════════════════════
+    const intentLayers = classifyIntentLayers(primaryKWs, secondaryKWs, longTailKWs, gapAnalysis);
+    console.log('   🎯 Intent Layers:', intentLayers.tofu.length, 'TOFU,', intentLayers.mofu.length, 'MOFU,', intentLayers.bofu.length, 'BOFU');
+
+    const payload = {
+      // Metadata
+      _version: '6.1-SystemicArchitect',
+      _generatedAt: new Date().toISOString(),
+      _phaseStatus: {
+        phase1: 'Complete',
+        phase2: comparisonMatrix.length > 0 ? 'Skipped' : 'Activated',
+        phase3: 'Complete',
+        phase4: 'Complete'
+      },
+      _architecture: 'Systemic Architect 0.1 Percentile',
+
+      // Ingestion Status Summary
+      ingestionSummary: {
+        totalCompetitors: kwData.length,
+        totalKeywordsAnalyzed: (primaryKWs.totalPrimaryKeywords || 0) +
+          (secondaryKWs.totalSecondaryKeywords || 0) +
+          (longTailKWs.totalLongTailOpportunities || 0),
+        dataQuality: kwData.filter(k => k.hasGeminiData).length >= kwData.length / 2 ? 'High' : 'Medium',
+        entityCoverage: entityGraph.nodes.length,
+        intentLayerDistribution: {
+          tofu: intentLayers.tofu.length,
+          mofu: intentLayers.mofu.length,
+          bofu: intentLayers.bofu.length
+        }
+      },
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // ENTITY RELATIONSHIP GRAPH (Topical Moat Visualization)
+      // ═══════════════════════════════════════════════════════════════════════════
+      entityGraph: entityGraph,
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // INTENT LAYER CLUSTERS (TOFU/MOFU/BOFU Funnel Toggle)
+      // ═══════════════════════════════════════════════════════════════════════════
+      intentLayers: {
+        // TOFU: Awareness - FAQ/Informational clusters
+        tofu: intentLayers.tofu.map((kw, idx) => ({
+          ui_cluster_id: `tofu-${idx + 1}`,
+          entity_id: deriveEntityId(kw, entityGraph),
+          keyword: kw.keyword,
+          type: kw.type || 'Informational',
+          conversion_layer: 'TOFU',
+          aio_risk: calculateAIORisk10Scale(kw, baseAIORisk + 2), // TOFU has higher AIO risk
+          ui_coordinates: calculateRadarCoordinates(kw, idx, 'tofu', intentLayers.tofu.length),
+          contentFormat: 'Blog/Guide/FAQ'
+        })),
+        // MOFU: Consideration - "Alternative to" / "Review" clusters
+        mofu: intentLayers.mofu.map((kw, idx) => ({
+          ui_cluster_id: `mofu-${idx + 1}`,
+          entity_id: deriveEntityId(kw, entityGraph),
+          keyword: kw.keyword,
+          type: kw.type || 'Commercial',
+          conversion_layer: 'MOFU',
+          aio_risk: calculateAIORisk10Scale(kw, baseAIORisk),
+          ui_coordinates: calculateRadarCoordinates(kw, idx, 'mofu', intentLayers.mofu.length),
+          contentFormat: 'Comparison/Review/Case Study'
+        })),
+        // BOFU: Decision - High-CPC Transactional "Money" terms
+        bofu: intentLayers.bofu.map((kw, idx) => ({
+          ui_cluster_id: `bofu-${idx + 1}`,
+          entity_id: deriveEntityId(kw, entityGraph),
+          keyword: kw.keyword,
+          type: kw.type || 'Transactional',
+          conversion_layer: 'BOFU',
+          aio_risk: calculateAIORisk10Scale(kw, baseAIORisk - 2), // BOFU has lower AIO risk
+          ui_coordinates: calculateRadarCoordinates(kw, idx, 'bofu', intentLayers.bofu.length),
+          contentFormat: 'Landing Page/Product Page'
+        }))
+      },
+
+      // Primary Keywords with UI Cluster IDs + Entity Mapping
+      primaryKeywordClusters: (primaryKWs.topKeywords || []).map((kw, idx) => ({
+        ui_cluster_id: `primary-${idx + 1}`,
+        entity_id: deriveEntityId(kw, entityGraph),
+        keyword: kw.keyword,
+        type: 'Primary (Money Term)',
+        intent: kw.intent || 'Commercial',
+        conversion_layer: mapIntentToFunnel(kw.intent || 'Commercial'),
+        difficulty: kw.difficulty || 50,
+        volume: kw.volumeEstimate || 'Medium',
+        leader: kw.dominantCompetitor || 'Unknown',
+        gapOpportunity: kw.gapOpportunity || false,
+        aio_risk: calculateAIORisk10Scale(kw, baseAIORisk),
+        aio_risk_factor: calculateAIORisk10Scale(kw, baseAIORisk) / 10, // Legacy 0-1 scale
+        ui_coordinates: calculateRadarCoordinates(kw, idx, 'primary', (primaryKWs.topKeywords || []).length),
+        ui_badge: kw.gapOpportunity ? 'GAP' : (kw.difficulty < 40 ? 'QUICK WIN' : null),
+        killerAdvantage: generateKillerAdvantage(kw, kwData)
+      })),
+
+      // Secondary Semantic Clusters with Entity Mapping
+      semanticClusters: (secondaryKWs.clusters || []).map((cluster, idx) => ({
+        ui_cluster_id: `semantic-${idx + 1}`,
+        entity_id: `entity_${(cluster.clusterName || 'semantic').toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+        clusterName: cluster.clusterName,
+        keywords: (cluster.keywords || []).map((kw, ki) => ({
+          keyword: kw,
+          conversion_layer: 'MOFU',
+          aio_risk: Math.round(baseAIORisk * 0.8) // Base value - no random
+        })),
+        opportunityScore: cluster.opportunityScore || 50,
+        competitorStrength: cluster.competitorStrength || {},
+        conversion_layer: 'MOFU', // Semantic clusters are consideration-stage
+        aio_risk: Math.round(baseAIORisk * 0.8),
+        aio_risk_factor: (baseAIORisk * 0.8) / 10,
+        ui_coordinates: { x: 30 + (idx * 15) % 60, y: 40 + (idx * 10) % 40 },
+        ui_color: getClusterColor(cluster.opportunityScore || 50)
+      })),
+
+      // Long-Tail Quick Wins with Funnel Stage
+      longTailOpportunities: (longTailKWs.quickWins || []).map((kw, idx) => ({
+        ui_cluster_id: `longtail-${idx + 1}`,
+        entity_id: deriveEntityId(kw, entityGraph),
+        keyword: kw.keyword,
+        type: 'Long-Tail',
+        intent: kw.searchIntent || 'Informational',
+        conversion_layer: mapIntentToFunnel(kw.searchIntent || 'Informational'),
+        difficulty: kw.difficulty || 20,
+        conversionPotential: kw.conversionPotential || 'Medium',
+        contentType: kw.contentType || 'Blog Post',
+        aio_risk: calculateAIORisk10Scale(kw, baseAIORisk - 1),
+        aio_risk_factor: calculateAIORisk10Scale(kw, baseAIORisk - 1) / 10,
+        ui_coordinates: calculateRadarCoordinates(kw, idx, 'longtail', (longTailKWs.quickWins || []).length),
+        ui_priority: kw.difficulty <= 25 && kw.conversionPotential === 'High' ? 'urgent' : 'normal',
+        killerAdvantage: generateKillerAdvantage(kw, kwData)
+      })),
+
+      // Critical Gaps with Entity + Funnel Mapping
+      keywordGaps: (gapAnalysis.criticalGaps || []).map((gap, idx) => ({
+        ui_cluster_id: `gap-${idx + 1}`,
+        entity_id: deriveEntityId(gap, entityGraph),
+        keyword: gap.keyword,
+        type: 'Gap',
+        conversion_layer: mapIntentToFunnel(gap.intent || 'Commercial'),
+        priority: gap.priority || 'Medium',
+        monthlyPotential: gap.monthlyPotential || '500-1000',
+        competitorRanking: gap.competitorRanking || {},
+        contentRecommendation: gap.contentRecommendation || '',
+        aio_risk: calculateAIORisk10Scale(gap, baseAIORisk + 1),
+        aio_risk_factor: calculateAIORisk10Scale(gap, baseAIORisk + 1) / 10,
+        ui_coordinates: calculateRadarCoordinates(gap, idx, 'gap', (gapAnalysis.criticalGaps || []).length),
+        ui_action: 'Create Content',
+        killerAdvantage: generateKillerAdvantage(gap, kwData)
+      })),
+
+      // Comparison Matrix for UI Table with Full Schema
+      comparisonMatrix: comparisonMatrix.map(group => ({
+        groupId: group.groupId,
+        keywordCount: group.keywords.length,
+        killerInsight: group.killerInsight,
+        entity_id: `entity_group_${group.groupId}`,
+        keywords: group.keywords.map((kw, idx) => ({
+          ui_cluster_id: `matrix-g${group.groupId}-k${idx + 1}`,
+          entity_id: deriveEntityId(kw, entityGraph),
+          conversion_layer: mapIntentToFunnel(kw.intent),
+          aio_risk: calculateAIORisk10Scale(kw, baseAIORisk),
+          aio_risk_factor: calculateAIORisk10Scale(kw, baseAIORisk) / 10,
+          ui_coordinates: {
+            x: 20 + (group.groupId * 25) % 80,
+            y: 15 + (idx * 12) % 70
+          },
+          killerAdvantage: generateKillerAdvantage(kw, kwData),
+          ...kw
+        }))
+      })),
+
+      // AIO Risk Summary (1-10 Scale)
+      aioRiskSummary: {
+        overallRisk: zeroClick.aiOverviewRisk || 'Medium',
+        overallRiskScore: zeroClick.aiOverviewRisk === 'High' ? 8 : zeroClick.aiOverviewRisk === 'Medium' ? 5 : 3,
+        exposurePercentage: zeroClick.aiOverviewExposure || 20,
+        clickReductionEstimate: zeroClick.clickReductionEstimate || 30,
+        citationOpportunity: zeroClick.citationOpportunity || 'Medium',
+        ragReadiness: zeroClick.ragReadiness || 'Medium',
+        mitigationStrategies: (zeroClick.citationStrategies || []).slice(0, 5).map((s, i) => ({
+          ...s,
+          priority: i < 2 ? 'High' : 'Medium',
+          effort: i < 2 ? 'Low' : 'Medium'
+        }))
+      },
+
+      // Chart Data Pre-computed with Intent Layering
+      chartData: {
+        keywordDistribution: kwData.map(k => ({
+          domain: k.domain,
+          estKeywords: k.estKeywords,
+          difficulty: k.difficulty,
+          entity_id: `entity_${k.domain.split('.')[0]}`
+        })),
+        intentBreakdown: {
+          transactional: kwData.filter(k => k.primaryIntent === 'Transactional').length,
+          commercial: kwData.filter(k => k.primaryIntent === 'Commercial').length,
+          informational: kwData.filter(k => k.primaryIntent === 'Informational').length,
+          navigational: kwData.filter(k => k.primaryIntent === 'Navigational').length
+        },
+        funnelDistribution: {
+          tofu: intentLayers.tofu.length,
+          mofu: intentLayers.mofu.length,
+          bofu: intentLayers.bofu.length
+        },
+        radarCoordinates: {
+          primary: (primaryKWs.topKeywords || []).map((kw, i) => calculateRadarCoordinates(kw, i, 'primary', (primaryKWs.topKeywords || []).length)),
+          gaps: (gapAnalysis.criticalGaps || []).map((g, i) => calculateRadarCoordinates(g, i, 'gap', (gapAnalysis.criticalGaps || []).length))
+        }
+      },
+
+      // Competitive Radar Map Data
+      competitiveRadar: {
+        centerEntity: entityGraph.centerNode || 'Your_Domain',
+        spokes: entityGraph.nodes.slice(0, 8).map((node, idx) => ({
+          entity_id: node.id,
+          label: node.label,
+          strength: node.strength || 50,
+          angle: (idx / 8) * 360,
+          distance: 100 - (node.strength || 50)
+        })),
+        competitorPositions: kwData.slice(0, 5).map((c, idx) => ({
+          domain: c.domain,
+          x: 30 + Math.cos(idx * 1.25) * 40,
+          y: 30 + Math.sin(idx * 1.25) * 40,
+          strength: c.estKeywords || 50
+        }))
+      },
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // TASK 4: UI PAYLOAD - EXACT JSON SCHEMA (0.1 Percentile Format)
+      // Required fields: kw, type, intent, aio_risk (1-10), entity_id, ui_x_coord, ui_y_coord
+      // ═══════════════════════════════════════════════════════════════════════════
+      ui_payload: generateForensicUIPayload(primaryKWs, secondaryKWs, longTailKWs, gapAnalysis, baseAIORisk, entityGraph),
+
+      // Market Gravity Map (Task 1 - Fetcher Sync)
+      marketGravityMap: buildMarketGravityMap(kwData.map(k => ({
+        domain: k.domain,
+        processedMetrics: k.processedMetrics || {},
+        apiData: k.apiData || {}
+      })), gemini)
+    };
+
+    return payload;
+  }
+  window.generateKWStrategyUIPayload = generateKWStrategyUIPayload;
+
+  /**
+   * PHASE 4: UI DATA PAYLOAD (JSON Export - 90-KW Virtualized Grid Schema)
+   * JSON SCHEMA (The Source of Truth):
+   * {
+   *   "kw": "string",
+   *   "ui_cat": "money|sge|tail|llm",
+   *   "clash": 1-10,
+   *   "aio_risk": 1-10,
+   *   "x": float (Intent Velocity coordinate),
+   *   "y": float (Authority Gap coordinate),
+   *   "mass": float (Market Mass %),
+   *   "moat_type": "Brand|Content|Technical|Authority",
+   *   "tip": "Unique direct-English forensic insight mentioning the specific moat-breaker."
+   * }
+   * TYPOGRAPHY: Tab Titles (24px Bold), Headers (18px Bold), Data (11px Monospace)
+   */
+  function generateForensicUIPayload(primaryKWs, secondaryKWs, longTailKWs, gapAnalysis, baseAIORisk, entityGraph, forensicMatrix) {
+    console.log('📦 PHASE 4: Generating UI Data Payload (90-KW Virtualized Grid Schema)...');
+
+    const payload = [];
+    let idx = 0;
+
+    // Get moat data from forensic matrix if available
+    const competitorMoats = (forensicMatrix || []).reduce((acc, c) => {
+      if (c.competitor && c.moat) {
+        acc[c.competitor] = c.moat;
+      }
+      return acc;
+    }, {});
+
+    // Helper: Map type to UI Category (short format: money|sge|tail|llm)
+    const getUICategory = (type, intent) => {
+      if (type.includes('Primary') || type.includes('Money')) return 'money';
+      if (type.includes('Secondary') || type.includes('Semantic') || type.includes('SGE')) return 'sge';
+      if (type.includes('Long') || type.includes('Quick') || type.includes('Tail')) return 'tail';
+      if (type.includes('FAQ') || type.includes('Gap') || type.includes('LLM')) return 'llm';
+      return intent === 'Transactional' ? 'money' : intent === 'Informational' ? 'tail' : 'sge';
+    };
+
+    // Helper: Get display name for UI category
+    const getUICatDisplayName = (cat) => {
+      const names = { 'money': 'Money Moat', 'sge': 'SGE/AIO Survival', 'tail': 'Long-Tail Velocity', 'llm': 'LLM Citation Gaps' };
+      return names[cat] || cat;
+    };
+
+    // Helper: Calculate clash (competitive collision probability, 1-10)
+    const calculateClashScore = (kw, type) => {
+      let score = 5;
+      if (type === 'Primary' || type === 'money') score += 3;
+      if (type === 'FAQ' || type === 'llm') score += 2;
+      if (kw.difficulty > 60) score += 2;
+      if (kw.difficulty < 30) score -= 2;
+      return Math.min(10, Math.max(1, score));
+    };
+
+    // Helper: Generate tip (unique direct-English forensic insight with moat-breaker)
+    const generateTipLocal = (kw, type, moat, uiCat) => {
+      const tips = {
+        'money': `Revenue pillar with ${moat || 'Authority'} moat. Moat-Breaker: ${moat === 'Brand' ? 'Deploy comparison matrix + PR campaign' : moat === 'Technical' ? 'Match Core Web Vitals + Advanced Schema' : 'Build topical authority with 10x content hub'}.`,
+        'sge': `AI-resilient cluster. Moat-Breaker: Create interactive tool with proprietary data that AI cannot replicate.`,
+        'tail': `Quick-win (KD<30). Moat-Breaker: Publish 2500+ word definitive guide within 48 hours with video embed.`,
+        'llm': `RAG-ready citation target. Moat-Breaker: Structure content for LLM retrieval with entity-first paragraphs and semantic triplets.`
+      };
+      return tips[uiCat] || `Keyword opportunity in ${getUICatDisplayName(uiCat)} category. ${moat ? `Leader has ${moat} moat.` : ''}`;
+    };
+
+    // Helper: Generate plain_english_desc correlated to clash_score
+    const generatePlainEnglishDesc = (clash, aio, moat, uiCat) => {
+      if (clash >= 8) {
+        return `Technical Moat-Breaker required (Clash ${clash}/10). Deploy proprietary data or API-level differentiation. ${moat || 'Content'} moat is strong.`;
+      } else if (clash <= 4) {
+        return `Content Velocity opportunity (Clash ${clash}/10). Fast content production (3-5 pieces/week) can capture this ${getUICatDisplayName(uiCat) || 'keyword'}.`;
+      } else {
+        const strategy = moat === 'Brand' ? 'Bypass with comparison content' :
+          moat === 'Authority' ? 'Counter with HARO citations' :
+            moat === 'Technical' ? 'Match Core Web Vitals' :
+              'Build topical cluster depth';
+        return `Balanced opportunity (Clash ${clash}/10, AIO ${aio}/10). Strategy: ${strategy}.`;
+      }
+    };
+
+    // Helper: Generate plain_english for individual metrics
+    const generatePlainEnglish = (metric, value) => {
+      const descriptions = {
+        'clash_score': {
+          high: 'High competition - many sites are fighting for this keyword',
+          medium: 'Moderate competition - winnable with quality content',
+          low: 'Low competition - good opportunity for quick ranking'
+        },
+        'aio_risk': {
+          high: 'AI Overviews will likely steal 50%+ of clicks from this query',
+          medium: 'Some risk of AI Overview click theft, but still valuable',
+          low: 'Low AI Overview risk - users will click through to results'
+        },
+        'x': 'Horizontal position: 0=Informational intent, 100=Transactional/Commercial intent',
+        'y': 'Vertical position: 1=Stable SERPs, 10=High volatility (opportunity)'
+      };
+
+      if (metric === 'clash_score' || metric === 'aio_risk') {
+        if (value >= 7) return descriptions[metric].high;
+        if (value >= 4) return descriptions[metric].medium;
+        return descriptions[metric].low;
+      }
+      return descriptions[metric] || '';
+    };
+
+    // Map all Primary keywords (Money Moat)
+    (primaryKWs.topKeywords || []).forEach(kw => {
+      idx++;
+      const coords = calculateRadarCoordinates(kw, idx, 'primary', (primaryKWs.topKeywords || []).length);
+      const aioRisk = calculateAIORisk10Scale(kw, baseAIORisk);
+      const clashScore = calculateClashScore(kw, 'Primary');
+      const moat = kw.leader ? (competitorMoats[kw.leader]?.type || 'Authority') : 'Authority';
+      const uiCat = 'Money Moat';
+
+      payload.push({
+        kw: kw.keyword || kw,
+        ui_cat: 'money',
+        clash: clashScore,
+        aio_risk: aioRisk,
+        x: coords.x,
+        y: Math.min(10, Math.max(1, Math.round(coords.y / 10))),
+        mass: kw.massPercent || 15, // Base value - no random
+        moat_type: moat,
+        tip: generateTipLocal(kw.keyword || kw, clashScore, aioRisk, moat, kw.moatBreaker || 'Deploy 10x content hub with proprietary data')
+      });
+    });
+
+    // Map all Secondary Semantic keywords (SGE/AIO Resilience)
+    (secondaryKWs.clusters || []).forEach(cluster => {
+      (cluster.keywords || []).forEach(kw => {
+        idx++;
+        const x = 50 + (idx * 5) % 40;
+        const y = Math.min(10, Math.max(1, 4)); // Base value - no random
+        const aioRisk = Math.min(10, Math.max(1, Math.round(baseAIORisk * 0.5))); // No random
+        const clashScore = calculateClashScore({ difficulty: 45 }, 'Secondary');
+        const uiCat = 'SGE/AIO Resilience';
+
+        payload.push({
+          kw: typeof kw === 'string' ? kw : kw.keyword,
+          ui_cat: 'sge',
+          clash: clashScore,
+          aio_risk: aioRisk,
+          x: x,
+          y: y,
+          mass: 10, // Base value - no random
+          moat_type: 'Content',
+          tip: generateTipLocal(typeof kw === 'string' ? kw : kw.keyword, clashScore, aioRisk, 'Content', 'Build interactive tool with proprietary data')
+        });
+      });
+    });
+
+    // Map all Long-Tail Quick Wins (Long-Tail Velocity)
+    (longTailKWs.quickWins || []).forEach(kw => {
+      idx++;
+      const coords = calculateRadarCoordinates(kw, idx, 'longtail', (longTailKWs.quickWins || []).length);
+      const aioRisk = calculateAIORisk10Scale(kw, baseAIORisk + 1); // Moderate AIO risk
+      const clashScore = calculateClashScore({ difficulty: 25 }, 'Long-Tail');
+      const uiCat = 'Long-Tail Velocity';
+
+      payload.push({
+        kw: kw.keyword || kw,
+        ui_cat: 'tail',
+        clash: clashScore,
+        aio_risk: aioRisk,
+        x: 25 + (idx * 6) % 30,
+        y: Math.min(10, Math.max(1, 7)), // Base value - no random
+        mass: 6, // Base value - no random
+        moat_type: 'Content',
+        tip: generateTipLocal(kw.keyword || kw, clashScore, aioRisk, 'Content', 'Rapid content deployment - publish 2000+ word guide within 48 hours')
+      });
+    });
+
+    // Map all Gap Keywords (LLM Citation Gaps)
+    (gapAnalysis.criticalGaps || []).forEach(gap => {
+      idx++;
+      const coords = calculateRadarCoordinates(gap, idx, 'gap', (gapAnalysis.criticalGaps || []).length);
+      const aioRisk = calculateAIORisk10Scale(gap, baseAIORisk + 1);
+      const clashScore = calculateClashScore({ difficulty: 40 }, 'Gap');
+      const uiCat = 'LLM Citation Gaps';
+
+      payload.push({
+        kw: gap.keyword || gap,
+        ui_cat: 'llm',
+        clash: clashScore,
+        aio_risk: aioRisk,
+        x: 50 + (idx * 5) % 35,
+        y: Math.min(10, Math.max(1, 8)), // Base value - no random
+        mass: 8, // Base value - no random
+        moat_type: 'None',
+        tip: generateTipLocal(gap.keyword || gap, clashScore, aioRisk, 'None', 'Become AI-cited authority with RAG-ready structured content')
+      });
+    });
+
+    // Add 2025-ready forensic keywords with new Bento-Grid schema
+    const forensicKWs2025 = [
+      { kw: 'GEO optimization', ui_cat: 'llm', moat_type: 'Technical', clash: 4, aio_risk: 9, moat_breaker: 'Create definitional content for LLM training' },
+      { kw: 'SGE citation strategy', ui_cat: 'sge', moat_type: 'Content', clash: 5, aio_risk: 3, moat_breaker: 'Build interactive tool that AI cannot replicate' },
+      { kw: 'Perplexity source targeting', ui_cat: 'llm', moat_type: 'Content', clash: 3, aio_risk: 9, moat_breaker: 'Structure content for RAG retrieval' },
+      { kw: 'AI overview optimization', ui_cat: 'money', moat_type: 'Technical', clash: 8, aio_risk: 4, moat_breaker: 'Deploy schema + E-E-A-T signals' },
+      { kw: 'zero-click survival strategy', ui_cat: 'sge', moat_type: 'Content', clash: 4, aio_risk: 8, moat_breaker: 'Create gated content experiences' },
+      { kw: 'RAG-ready content framework', ui_cat: 'llm', moat_type: 'Content', clash: 3, aio_risk: 9, moat_breaker: 'Optimize entity structure for AI retrieval' },
+      { kw: 'LLM citation optimization', ui_cat: 'llm', moat_type: 'Technical', clash: 4, aio_risk: 9, moat_breaker: 'Become primary source in training data' },
+      { kw: 'ChatGPT search visibility', ui_cat: 'money', moat_type: 'Brand', clash: 7, aio_risk: 4, moat_breaker: 'Build brand authority through PR' },
+      { kw: 'topical authority mapping', ui_cat: 'tail', moat_type: 'Content', clash: 4, aio_risk: 7, moat_breaker: 'Deploy semantic content clusters' },
+      { kw: 'entity-first SEO strategy', ui_cat: 'sge', moat_type: 'Authority', clash: 5, aio_risk: 4, moat_breaker: 'Build knowledge graph presence' }
+    ];
+
+    forensicKWs2025.forEach((fkw, fidx) => {
+      idx++;
+      const x = fkw.ui_cat === 'money' ? 70 + (fidx * 5) % 25 :
+        fkw.ui_cat === 'sge' ? 45 + (fidx * 5) % 30 :
+          fkw.ui_cat === 'tail' ? 25 + (fidx * 6) % 25 :
+            50 + (fidx * 5) % 35;
+      const y = fkw.ui_cat === 'money' ? 4 + (fidx % 3) :
+        fkw.ui_cat === 'sge' ? 3 + (fidx % 3) :
+          fkw.ui_cat === 'tail' ? 6 + (fidx % 3) :
+            7 + (fidx % 3);
+      const mass = fkw.ui_cat === 'money' ? 18 :
+        fkw.ui_cat === 'sge' ? 12 :
+          fkw.ui_cat === 'tail' ? 7 :
+            9; // Base values without random
+
+      payload.push({
+        kw: fkw.kw,
+        ui_cat: fkw.ui_cat,
+        clash: fkw.clash,
+        aio_risk: fkw.aio_risk,
+        x: x,
+        y: y,
+        mass: mass,
+        moat_type: fkw.moat_type,
+        tip: generateTipLocal(fkw.kw, fkw.clash, fkw.aio_risk, fkw.moat_type, fkw.moat_breaker)
+      });
+    });
+
+    console.log(`   ✅ UI Payload: ${payload.length} keywords mapped with 90-KW Bento-Grid schema (ui_cat, x, y, mass, moat_breaker)`);
+    return payload;
+  }
+  window.generateForensicUIPayload = generateForensicUIPayload;
+
+</script>

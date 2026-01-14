@@ -1,0 +1,599 @@
+<!--
+  ELITE_Fetcher_Keywords.html
+  ═══════════════════════════════════════════════════════════════════════════
+  SERPIFAI Elite Keyword Intelligence v1.0
+  Advanced keyword extraction, intent mapping, and opportunity scoring
+  
+  Features:
+  - Keyword extraction from multiple sources
+  - Search intent classification (informational, commercial, transactional, navigational)
+  - SERP feature ownership detection
+  - Keyword difficulty estimation
+  - Keyword gap analysis between competitors
+  - Semantic keyword clustering
+  
+  Dependencies: ELITE_Fetcher_Core.html
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<script>
+(function() {
+  'use strict';
+  
+  console.log('🔑 ELITE_Fetcher_Keywords.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ELITE KEYWORD FETCHER CLASS
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  class EliteKeywordFetcher extends window.EliteFetcher {
+    constructor(config = {}) {
+      super(config);
+      this.moduleName = 'Keyword Intelligence';
+      this.version = '1.0.0';
+      
+      // Keyword-specific configuration
+      this.keywordConfig = {
+        maxKeywords: config.maxKeywords || 100,
+        intentCategories: ['informational', 'commercial', 'transactional', 'navigational'],
+        serpFeatures: ['featured_snippet', 'people_also_ask', 'local_pack', 'knowledge_panel', 'video', 'images', 'shopping'],
+        difficultyFactors: ['domain_authority', 'backlinks', 'content_quality', 'serp_competition'],
+        ...config
+      };
+      
+      // Intent signal patterns
+      this.intentPatterns = {
+        informational: ['what', 'how', 'why', 'when', 'who', 'guide', 'tutorial', 'learn', 'tips', 'examples', 'definition'],
+        commercial: ['best', 'top', 'review', 'compare', 'vs', 'versus', 'alternative', 'pros cons', 'rating'],
+        transactional: ['buy', 'price', 'cost', 'cheap', 'deal', 'discount', 'coupon', 'order', 'purchase', 'subscription'],
+        navigational: ['login', 'sign in', 'download', 'official', 'website', 'app', 'contact']
+      };
+      
+      console.log(`   ✅ ${this.moduleName} v${this.version} initialized`);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MAIN KEYWORD ANALYSIS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async analyzeKeywords(domain, options = {}) {
+      console.log(`🔑 Analyzing keywords for ${domain}...`);
+      
+      const normalizedDomain = this.normalizeDomain(domain);
+      
+      const fetchersConfig = [
+        { id: 'elite', fetcher: (d) => this.extractEliteKeywordData(d), required: false },
+        { id: 'serper', fetcher: (d) => this.extractSerperKeywords(d), required: false },
+        { id: 'gemini', fetcher: (d) => this.extractGeminiKeywords(d), required: false }
+      ];
+      
+      try {
+        const aggregated = await this.fetchWithFallback(normalizedDomain, fetchersConfig);
+        return this.enrichKeywordData(aggregated, normalizedDomain);
+      } catch (error) {
+        console.error(`❌ Keyword analysis failed for ${domain}:`, error);
+        return this.generateFallbackKeywords(normalizedDomain);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA SOURCE EXTRACTORS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    extractEliteKeywordData(domain) {
+      // Extract from PHP fetcher and existing competitor data
+      const competitors = window._competitorData || window.globalData?.competitors || [];
+      const compData = competitors.find(c => this.normalizeDomain(c.domain || c.url) === domain);
+      
+      if (!compData) return null;
+      
+      const synthesized = compData.synthesized || {};
+      const content = synthesized.content || {};
+      const website = synthesized.website || {};
+      
+      // Extract keywords from various sources
+      const keywords = new Set();
+      const keywordData = [];
+      
+      // From title and meta
+      const title = website.title || '';
+      const description = website.description || content.metaDescription || '';
+      const h1 = Array.isArray(website.h1) ? website.h1.join(' ') : (website.h1 || '');
+      
+      // Extract from headings
+      const headings = content.headings || website.headings || [];
+      const allText = [title, description, h1, ...headings.map(h => h.text || h)].join(' ');
+      
+      // Simple keyword extraction (phrases 2-4 words)
+      const phrases = this.extractKeywordPhrases(allText);
+      phrases.forEach(phrase => {
+        if (!keywords.has(phrase.toLowerCase())) {
+          keywords.add(phrase.toLowerCase());
+          keywordData.push({
+            keyword: phrase,
+            source: 'content',
+            position: null,
+            volume: null,
+            intent: this.classifyIntent(phrase)
+          });
+        }
+      });
+      
+      // From processedMetrics if available
+      const topKeywords = compData.processedMetrics?.topKeywords || [];
+      topKeywords.forEach(kw => {
+        const keyword = typeof kw === 'string' ? kw : kw.keyword;
+        if (keyword && !keywords.has(keyword.toLowerCase())) {
+          keywords.add(keyword.toLowerCase());
+          keywordData.push({
+            keyword,
+            source: 'metrics',
+            position: kw.position || null,
+            volume: kw.volume || null,
+            intent: this.classifyIntent(keyword)
+          });
+        }
+      });
+      
+      return {
+        keywords: keywordData.slice(0, this.keywordConfig.maxKeywords),
+        totalKeywords: keywordData.length,
+        primaryKeyword: keywordData[0]?.keyword || null,
+        _source: 'elite',
+        _timestamp: Date.now()
+      };
+    }
+    
+    extractSerperKeywords(domain) {
+      // Extract from Serper SERP data
+      const serperData = window._serperCache?.[domain] || 
+        window.globalData?.competitors?.find(c => 
+          this.normalizeDomain(c.domain || c.url) === domain
+        )?.stages?.serper?.data;
+      
+      if (!serperData) return null;
+      
+      const keywords = [];
+      
+      // From organic results
+      const organic = serperData.organic || [];
+      organic.forEach((result, idx) => {
+        if (result.title) {
+          const extracted = this.extractKeywordPhrases(result.title);
+          extracted.slice(0, 3).forEach(kw => {
+            keywords.push({
+              keyword: kw,
+              source: 'serp',
+              position: idx + 1,
+              volume: this.estimateVolume(kw),
+              intent: this.classifyIntent(kw)
+            });
+          });
+        }
+      });
+      
+      // From People Also Ask
+      const paa = serperData.peopleAlsoAsk || [];
+      paa.forEach(question => {
+        const q = question.question || question;
+        if (q) {
+          keywords.push({
+            keyword: q,
+            source: 'paa',
+            position: null,
+            volume: this.estimateVolume(q),
+            intent: 'informational',
+            isPAA: true
+          });
+        }
+      });
+      
+      // From Related Searches
+      const related = serperData.relatedSearches || [];
+      related.forEach(rs => {
+        const query = rs.query || rs;
+        if (query) {
+          keywords.push({
+            keyword: query,
+            source: 'related',
+            position: null,
+            volume: this.estimateVolume(query),
+            intent: this.classifyIntent(query)
+          });
+        }
+      });
+      
+      return {
+        keywords: keywords.slice(0, this.keywordConfig.maxKeywords),
+        totalKeywords: keywords.length,
+        serpFeatures: this.detectSerpFeatures(serperData),
+        _source: 'serper',
+        _timestamp: Date.now()
+      };
+    }
+    
+    extractGeminiKeywords(domain) {
+      // Extract from Gemini analysis
+      const geminiData = window._geminiCache?.[domain] ||
+        window.globalData?.geminiAnalysis;
+      
+      if (!geminiData) return null;
+      
+      const keywords = [];
+      
+      // From target keywords
+      const targetKws = geminiData.targetKeywords || geminiData.keywords || [];
+      targetKws.forEach(kw => {
+        const keyword = typeof kw === 'string' ? kw : kw.keyword;
+        if (keyword) {
+          keywords.push({
+            keyword,
+            source: 'gemini',
+            position: null,
+            volume: this.estimateVolume(keyword),
+            intent: this.classifyIntent(keyword),
+            isAIGenerated: true
+          });
+        }
+      });
+      
+      return {
+        keywords: keywords.slice(0, this.keywordConfig.maxKeywords),
+        totalKeywords: keywords.length,
+        _source: 'gemini',
+        _timestamp: Date.now()
+      };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // KEYWORD PROCESSING
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    extractKeywordPhrases(text) {
+      if (!text) return [];
+      
+      // Clean and normalize
+      const cleaned = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      const words = cleaned.split(' ').filter(w => w.length > 2);
+      const phrases = [];
+      const stopWords = new Set(['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'has', 'have', 'been', 'will', 'your', 'from', 'they', 'this', 'that', 'with']);
+      
+      // Single important words
+      words.forEach(word => {
+        if (word.length > 4 && !stopWords.has(word)) {
+          phrases.push(word);
+        }
+      });
+      
+      // 2-word phrases
+      for (let i = 0; i < words.length - 1; i++) {
+        if (!stopWords.has(words[i]) || !stopWords.has(words[i + 1])) {
+          phrases.push(`${words[i]} ${words[i + 1]}`);
+        }
+      }
+      
+      // 3-word phrases
+      for (let i = 0; i < words.length - 2; i++) {
+        const phrase = `${words[i]} ${words[i + 1]} ${words[i + 2]}`;
+        if (phrase.length >= 10 && phrase.length <= 50) {
+          phrases.push(phrase);
+        }
+      }
+      
+      return [...new Set(phrases)].slice(0, 30);
+    }
+    
+    classifyIntent(keyword) {
+      if (!keyword) return 'informational';
+      const kw = keyword.toLowerCase();
+      
+      for (const [intent, patterns] of Object.entries(this.intentPatterns)) {
+        for (const pattern of patterns) {
+          if (kw.includes(pattern)) {
+            return intent;
+          }
+        }
+      }
+      
+      // Default classification by keyword structure
+      if (kw.includes('?') || kw.startsWith('how') || kw.startsWith('what')) {
+        return 'informational';
+      }
+      if (kw.split(' ').length <= 2) {
+        return 'navigational';
+      }
+      
+      return 'informational';
+    }
+    
+    estimateVolume(keyword) {
+      // IMPORTANT: This is only used when NO real Serper volume data is available
+      // Returns 0 to indicate estimation is not reliable
+      // Real volume should come from Serper API or be explicitly marked as estimate
+      if (!keyword) return 0;
+      
+      // Instead of generating fake volumes, return 0 and mark as needing real data
+      console.log(`[Elite Keywords] estimateVolume called for "${keyword}" - real data preferred`);
+      return 0;  // Signals UI to show "N/A" or fetch real data
+    }
+    
+    detectSerpFeatures(serperData) {
+      const features = [];
+      
+      if (serperData.featuredSnippet || serperData.answerBox) {
+        features.push({ type: 'featured_snippet', icon: '⭐' });
+      }
+      if (serperData.peopleAlsoAsk?.length > 0) {
+        features.push({ type: 'people_also_ask', icon: '❓', count: serperData.peopleAlsoAsk.length });
+      }
+      if (serperData.localPack?.length > 0) {
+        features.push({ type: 'local_pack', icon: '📍' });
+      }
+      if (serperData.knowledgeGraph) {
+        features.push({ type: 'knowledge_panel', icon: '📚' });
+      }
+      if (serperData.videos?.length > 0) {
+        features.push({ type: 'video', icon: '🎥', count: serperData.videos.length });
+      }
+      if (serperData.images?.length > 0) {
+        features.push({ type: 'images', icon: '🖼️' });
+      }
+      if (serperData.shopping?.length > 0) {
+        features.push({ type: 'shopping', icon: '🛒' });
+      }
+      
+      return features;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA ENRICHMENT
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    enrichKeywordData(data, domain) {
+      const keywords = data.keywords || [];
+      
+      // Calculate intent distribution
+      const intentDistribution = this.calculateIntentDistribution(keywords);
+      
+      // Calculate difficulty scores
+      const keywordsWithDifficulty = keywords.map(kw => ({
+        ...kw,
+        difficulty: this.estimateDifficulty(kw, data)
+      }));
+      
+      // Cluster by topic
+      const clusters = this.clusterKeywords(keywordsWithDifficulty);
+      
+      // Calculate opportunity scores
+      const opportunities = this.calculateOpportunities(keywordsWithDifficulty);
+      
+      return {
+        ...data,
+        keywords: keywordsWithDifficulty,
+        intentDistribution,
+        clusters,
+        opportunities,
+        summary: {
+          totalKeywords: keywordsWithDifficulty.length,
+          avgDifficulty: Math.round(
+            keywordsWithDifficulty.reduce((a, b) => a + (b.difficulty?.score || 50), 0) / 
+            Math.max(keywordsWithDifficulty.length, 1)
+          ),
+          topIntent: Object.entries(intentDistribution)
+            .sort((a, b) => b[1].count - a[1].count)[0]?.[0] || 'informational',
+          serpFeatureCount: (data.serpFeatures || []).length
+        }
+      };
+    }
+    
+    calculateIntentDistribution(keywords) {
+      const distribution = {
+        informational: { count: 0, percentage: 0, keywords: [] },
+        commercial: { count: 0, percentage: 0, keywords: [] },
+        transactional: { count: 0, percentage: 0, keywords: [] },
+        navigational: { count: 0, percentage: 0, keywords: [] }
+      };
+      
+      keywords.forEach(kw => {
+        const intent = kw.intent || 'informational';
+        if (distribution[intent]) {
+          distribution[intent].count++;
+          if (distribution[intent].keywords.length < 5) {
+            distribution[intent].keywords.push(kw.keyword);
+          }
+        }
+      });
+      
+      const total = keywords.length || 1;
+      Object.keys(distribution).forEach(intent => {
+        distribution[intent].percentage = Math.round((distribution[intent].count / total) * 100);
+      });
+      
+      return distribution;
+    }
+    
+    estimateDifficulty(keyword, data) {
+      let score = 50; // Base difficulty
+      
+      // Adjust based on keyword characteristics
+      const wordCount = (keyword.keyword || '').split(' ').length;
+      if (wordCount === 1) score += 20; // Single words are harder
+      else if (wordCount >= 4) score -= 15; // Long-tail is easier
+      
+      // Adjust based on intent
+      if (keyword.intent === 'transactional') score += 10;
+      else if (keyword.intent === 'informational') score -= 5;
+      
+      // Adjust based on SERP features
+      const features = data.serpFeatures || [];
+      if (features.some(f => f.type === 'featured_snippet')) score += 10;
+      if (features.some(f => f.type === 'shopping')) score += 15;
+      
+      score = Math.max(0, Math.min(100, score));
+      
+      return {
+        score,
+        tier: this.getDifficultyTier(score),
+        factors: [
+          wordCount === 1 ? 'High competition (head term)' : null,
+          keyword.intent === 'transactional' ? 'Commercial intent' : null,
+          features.length > 3 ? 'SERP feature competition' : null
+        ].filter(Boolean)
+      };
+    }
+    
+    getDifficultyTier(score) {
+      if (score >= 80) return { label: 'Very Hard', color: '#ef4444', icon: '🔴' };
+      if (score >= 60) return { label: 'Hard', color: '#f97316', icon: '🟠' };
+      if (score >= 40) return { label: 'Medium', color: '#f59e0b', icon: '🟡' };
+      if (score >= 20) return { label: 'Easy', color: '#84cc16', icon: '🟢' };
+      return { label: 'Very Easy', color: '#22c55e', icon: '✅' };
+    }
+    
+    clusterKeywords(keywords) {
+      // Simple topic clustering based on common words
+      const clusters = {};
+      
+      keywords.forEach(kw => {
+        const words = (kw.keyword || '').toLowerCase().split(' ');
+        const mainWord = words.find(w => w.length > 4) || words[0];
+        
+        if (!clusters[mainWord]) {
+          clusters[mainWord] = {
+            topic: mainWord,
+            keywords: [],
+            avgDifficulty: 0,
+            totalVolume: 0
+          };
+        }
+        
+        clusters[mainWord].keywords.push(kw);
+        clusters[mainWord].totalVolume += kw.volume || 0;
+      });
+      
+      // Calculate averages and sort
+      Object.values(clusters).forEach(cluster => {
+        cluster.avgDifficulty = Math.round(
+          cluster.keywords.reduce((a, b) => a + (b.difficulty?.score || 50), 0) / cluster.keywords.length
+        );
+      });
+      
+      return Object.values(clusters)
+        .filter(c => c.keywords.length >= 2)
+        .sort((a, b) => b.keywords.length - a.keywords.length)
+        .slice(0, 10);
+    }
+    
+    calculateOpportunities(keywords) {
+      // Find keywords with high volume but low difficulty
+      return keywords
+        .filter(kw => kw.volume && kw.difficulty)
+        .map(kw => ({
+          ...kw,
+          opportunityScore: Math.round(
+            ((kw.volume || 0) / 100) * (100 - (kw.difficulty?.score || 50))
+          )
+        }))
+        .sort((a, b) => b.opportunityScore - a.opportunityScore)
+        .slice(0, 20);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // KEYWORD GAP ANALYSIS
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    async analyzeKeywordGap(yourDomain, competitors) {
+      console.log(`🔍 Analyzing keyword gap: ${yourDomain} vs ${competitors.length} competitors`);
+      
+      const yourData = await this.analyzeKeywords(yourDomain);
+      const yourKeywords = new Set((yourData.keywords || []).map(k => k.keyword?.toLowerCase()));
+      
+      const competitorData = await Promise.all(
+        competitors.map(c => this.analyzeKeywords(c))
+      );
+      
+      const gapOpportunities = [];
+      
+      competitorData.forEach((data, index) => {
+        (data.keywords || []).forEach(kw => {
+          const kwLower = kw.keyword?.toLowerCase();
+          if (kwLower && !yourKeywords.has(kwLower)) {
+            const existing = gapOpportunities.find(g => g.keyword === kwLower);
+            if (existing) {
+              existing.competitorCount++;
+              existing.competitors.push(competitors[index]);
+            } else {
+              gapOpportunities.push({
+                keyword: kwLower,
+                displayKeyword: kw.keyword,
+                competitorCount: 1,
+                competitors: [competitors[index]],
+                volume: kw.volume || 0,
+                difficulty: kw.difficulty?.score || 50,
+                intent: kw.intent
+              });
+            }
+          }
+        });
+      });
+      
+      // Sort by opportunity (more competitors using it + higher volume = higher priority)
+      gapOpportunities.sort((a, b) => {
+        const scoreA = a.competitorCount * 100 + (a.volume || 0) / 10;
+        const scoreB = b.competitorCount * 100 + (b.volume || 0) / 10;
+        return scoreB - scoreA;
+      });
+      
+      return {
+        yourKeywordCount: yourKeywords.size,
+        gapOpportunities: gapOpportunities.slice(0, 50),
+        summary: {
+          totalGaps: gapOpportunities.length,
+          highPriorityGaps: gapOpportunities.filter(g => g.competitorCount >= 2).length,
+          avgGapDifficulty: Math.round(
+            gapOpportunities.reduce((a, b) => a + b.difficulty, 0) / Math.max(gapOpportunities.length, 1)
+          )
+        }
+      };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FALLBACK - RETURNS EMPTY (No fake data per Lead Architect mandate)
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    generateFallbackKeywords(domain) {
+      console.log(`   ⚠️ No real keyword data available for ${domain} - returning empty`);
+      console.log(`   💡 Real data requires: Serper API key configured in Settings`);
+      
+      // REMOVED: Hardcoded fallback keywords
+      // Return empty array to show "No data available" state in UI
+      return {
+        keywords: [],
+        totalKeywords: 0,
+        _isEstimate: false,
+        _isEmpty: true,
+        _confidence: 0,
+        _source: 'none',
+        _message: 'No keyword data - configure Serper API for real data',
+        _timestamp: Date.now()
+      };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GLOBAL EXPORT
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  window.EliteKeywordFetcher = EliteKeywordFetcher;
+  window.eliteKeywordFetcher = new EliteKeywordFetcher();
+  
+  console.log('✅ ELITE_Fetcher_Keywords.html loaded');
+  console.log('   Exported: window.EliteKeywordFetcher (class)');
+  console.log('   Exported: window.eliteKeywordFetcher (instance)');
+
+})();
+</script>

@@ -1,0 +1,842 @@
+<!--
+================================================================================
+UI_Forensic_Grid.html - 450-KW Forensic Keyword Grid System
+================================================================================
+Extracted from UI_Scripts_App.html
+
+Contains:
+- filterKWModule: 4-Tab module filter for 90-KW Forensic Matrix
+- showSkeletonLoading: Skeleton loading placeholders
+- streamKeywordsToGrid: Stream keywords with fade-in animation
+- buildForensicReservoir: Build reservoir from forensic matrix
+- calculateRealClashScore: Calculate clash score based on keyword properties
+- load450KWReservoir: Load reservoir with priority order (Fetcher → Local)
+- startKeywordStreaming: Start streaming keywords from fetcher
+- stopKeywordStreaming: Stop keyword streaming
+- streamNewKeywords: Stream new keywords with animation
+- appendKeywordToGrid: Append single keyword to grid
+- updateStreamingProgress: Update streaming progress indicator
+- renderForensicGrid: Render full 450-KW grid from reservoir
+- updateFilterCounts: Update filter button counts
+- getIntentColor: Get color for intent type
+- showAllKeywords: Show modal with all keywords for category
+
+Dependencies:
+- google.script.run for FT_GetUIData, FT_GetLatestBatch
+
+Window Exports:
+- window.filterKWModule
+- window.showSkeletonLoading
+- window.streamKeywordsToGrid
+- window.forensicKeywordReservoir
+- window.forensicMatrix
+- window._streamingState
+- window.load450KWReservoir
+- window.startKeywordStreaming
+- window.stopKeywordStreaming
+- window.streamNewKeywords
+- window.appendKeywordToGrid
+- window.updateStreamingProgress
+- window.renderForensicGrid
+- window.updateFilterCounts
+- window.showAllKeywords
+================================================================================
+-->
+<script>
+  /**
+   * 4-Tab Module Filter for 90-KW Forensic Matrix
+   * Filters keyword grid by category: all, money, sge, tail, llm
+   * Used by the Phase 3 Forensic Matrix section
+   */
+  window.filterKWModule = function (category) {
+    const filterContainer = document.getElementById('kw-module-filters');
+    const moduleCards = document.querySelectorAll('[data-module-type]');
+    const gridContainer = document.getElementById('forensic-kw-grid');
+
+    if (!filterContainer) {
+      console.warn('⚠️ Filter container not found');
+      return;
+    }
+
+    // Update button active states
+    const buttons = filterContainer.querySelectorAll('button');
+    buttons.forEach(btn => {
+      const btnFilter = btn.getAttribute('data-filter');
+      const isActive = btnFilter === category;
+
+      if (isActive) {
+        btn.style.background = '#22c55e';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+        btn.style.fontWeight = '700';
+      } else {
+        // Reset to category-specific inactive style
+        const colors = {
+          'all': { bg: 'rgba(34,197,94,0.2)', border: 'rgba(34,197,94,0.4)', text: '#86efac' },
+          'money': { bg: 'rgba(34,197,94,0.2)', border: 'rgba(34,197,94,0.4)', text: '#86efac' },
+          'sge': { bg: 'rgba(59,130,246,0.2)', border: 'rgba(59,130,246,0.4)', text: '#93c5fd' },
+          'tail': { bg: 'rgba(245,158,11,0.2)', border: 'rgba(245,158,11,0.4)', text: '#fcd34d' },
+          'llm': { bg: 'rgba(139,92,246,0.2)', border: 'rgba(139,92,246,0.4)', text: '#c4b5fd' }
+        };
+        const style = colors[btnFilter] || colors.all;
+        btn.style.background = style.bg;
+        btn.style.color = style.text;
+        btn.style.border = '1px solid ' + style.border;
+        btn.style.fontWeight = '600';
+      }
+    });
+
+    // Filter module cards visibility
+    moduleCards.forEach(card => {
+      const moduleType = card.getAttribute('data-module-type');
+      if (category === 'all' || moduleType === category) {
+        card.style.display = 'block';
+        card.style.opacity = '1';
+      } else {
+        card.style.display = 'none';
+        card.style.opacity = '0';
+      }
+    });
+
+    // If we have a keyword grid, filter individual keyword rows
+    if (gridContainer) {
+      const kwRows = gridContainer.querySelectorAll('[data-kw-category]');
+      kwRows.forEach(row => {
+        const kwCat = row.getAttribute('data-kw-category');
+        if (category === 'all' || kwCat === category) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    console.log('🎯 KW Module Filter applied:', category.toUpperCase(),
+      category === 'all' ? '(showing all 90)' :
+        '(showing ' + (category === 'money' || category === 'llm' ? '15' : '30') + ')');
+  };
+
+  /**
+   * Generate Skeleton Loading Placeholders for 90-KW Grid
+   * Shows animated placeholders while data streams in
+   */
+  window.showSkeletonLoading = function (containerId, rowCount = 10) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.warn('⚠️ Skeleton container not found:', containerId);
+      return;
+    }
+
+    let skeletonHtml = '';
+    for (let i = 0; i < rowCount; i++) {
+      skeletonHtml += `
+            <div class="skeleton-row" data-skeleton-id="${i}">
+              <div class="skeleton-cell keyword"></div>
+              <div class="skeleton-cell score"></div>
+              <div class="skeleton-cell score"></div>
+              <div class="skeleton-cell category"></div>
+              <div class="skeleton-cell tip"></div>
+            </div>
+          `;
+    }
+
+    container.innerHTML = skeletonHtml;
+    console.log('💀 Skeleton loading displayed:', rowCount, 'rows');
+  };
+
+  /**
+   * Stream Keywords into Grid with Fade-In Animation
+   * Replaces skeleton rows as MySQL confirms saves
+   * @param {Array} keywords - Array of keyword objects
+   * @param {string} containerId - Target container ID
+   * @param {number} delayMs - Delay between each row (default 50ms)
+   */
+  window.streamKeywordsToGrid = function (keywords, containerId, delayMs = 50) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.warn('⚠️ Stream container not found:', containerId);
+      return;
+    }
+
+    // Color mapping for categories
+    const catColors = {
+      money: { bg: '#22c55e', text: '#86efac', border: 'rgba(34,197,94,0.4)' },
+      sge: { bg: '#3b82f6', text: '#93c5fd', border: 'rgba(59,130,246,0.4)' },
+      tail: { bg: '#f59e0b', text: '#fcd34d', border: 'rgba(245,158,11,0.4)' },
+      llm: { bg: '#8b5cf6', text: '#c4b5fd', border: 'rgba(139,92,246,0.4)' }
+    };
+
+    // Clear skeleton placeholders
+    container.innerHTML = '';
+
+    // Stream each keyword with delay
+    keywords.forEach((kw, idx) => {
+      setTimeout(() => {
+        const cat = kw.ui_cat || 'money';
+        const colors = catColors[cat] || catColors.money;
+        const isEven = idx % 2 === 0;
+
+        const rowHtml = `
+              <div class="kw-row-stream sync-confirmed" 
+                   data-kw-category="${cat}"
+                   style="padding: 10px 12px; 
+                          background: ${isEven ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)'}; 
+                          border-radius: 6px; 
+                          border-left: 3px solid ${colors.bg};
+                          display: flex; 
+                          justify-content: space-between; 
+                          align-items: center;
+                          margin-bottom: 4px;
+                          animation-delay: ${idx * 0.02}s;">
+                <span style="font-family: 'Monaco', 'Consolas', monospace; font-size: 11px; color: white; flex: 1;">
+                  ${(kw.kw || '').substring(0, 35)}${(kw.kw || '').length > 35 ? '...' : ''}
+                </span>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; 
+                               background: ${kw.clash >= 7 ? '#ef444444' : '#22c55e44'}; 
+                               color: ${kw.clash >= 7 ? '#fca5a5' : '#86efac'}; font-family: monospace;">
+                    C${kw.clash || 5}
+                  </span>
+                  <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; 
+                               background: ${kw.aio_risk >= 7 ? '#f59e0b44' : '#22c55e44'}; 
+                               color: ${kw.aio_risk >= 7 ? '#fcd34d' : '#86efac'}; font-family: monospace;">
+                    A${kw.aio_risk || 5}
+                  </span>
+                  <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; 
+                               background: rgba(255,255,255,0.1); color: ${colors.text};">
+                    ${cat.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            `;
+
+        container.insertAdjacentHTML('beforeend', rowHtml);
+
+        // Log progress at intervals
+        if ((idx + 1) % 10 === 0 || idx === keywords.length - 1) {
+          console.log(`📊 Streamed ${idx + 1}/${keywords.length} keywords`);
+        }
+      }, idx * delayMs);
+    });
+
+    console.log('🌊 Streaming', keywords.length, 'keywords with', delayMs + 'ms delay');
+  };
+
+  /**
+   * ---------------------------------------------------------------------------
+   * COMPLETE 450-KW RESERVOIR RENDERER
+   * Loads all keywords from FT_GetUIData() and populates the 90-KW Bento-Grid
+   * ---------------------------------------------------------------------------
+   */
+
+  // Global storage for fetched keywords
+  window.forensicKeywordReservoir = null;
+  window.forensicMatrix = null;
+
+  /**
+   * Build reservoir format from forensic matrix for grid rendering
+   * Transforms the per-competitor structure into flattened module arrays
+   */
+  function buildForensicReservoir(matrix) {
+    if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
+      return { modules: { money: [], sge: [], tail: [], llm: [] }, stats: { total: 0, byModule: {} } };
+    }
+
+    const reservoir = {
+      modules: { money: [], sge: [], tail: [], llm: [] },
+      stats: { total: 0, byModule: { money: 0, sge: 0, tail: 0, llm: 0 } }
+    };
+
+    // Flatten all competitor keywords into module arrays
+    matrix.forEach(comp => {
+      // Money Moat keywords
+      (comp.moneyMoat || []).forEach(kw => {
+        reservoir.modules.money.push({
+          kw: kw.keyword || kw.kw || kw,
+          clash: calculateRealClashScore(kw, 'money'),
+          aio_risk: kw.aio_risk || kw.aioRisk || 4,
+          tip: kw.tip || kw.killerAdvantage || `Money term from ${comp.competitor || 'competitor'}`,
+          meta: {
+            competitor: comp.competitor || comp.domain || 'Unknown',
+            volume: kw.volume || kw.estimatedVolume || 0,  // Real data only - no random samples
+            difficulty: kw.difficulty || kw.kd || 0,  // Real data only
+            intent: kw.intent || 'commercial'
+          }
+        });
+      });
+
+      // SGE Resilience keywords
+      (comp.sgeResilience || []).forEach(kw => {
+        reservoir.modules.sge.push({
+          kw: kw.keyword || kw.kw || kw,
+          clash: calculateRealClashScore(kw, 'sge'),
+          aio_risk: kw.aio_risk || kw.aioRisk || 3,
+          tip: kw.tip || kw.killerAdvantage || `SGE-resilient term from ${comp.competitor || 'competitor'}`,
+          meta: {
+            competitor: comp.competitor || comp.domain || 'Unknown',
+            volume: kw.volume || kw.estimatedVolume || 0,  // Real data only
+            difficulty: kw.difficulty || kw.kd || 0,  // Real data only
+            intent: kw.intent || 'informational'
+          }
+        });
+      });
+
+      // Long-Tail Velocity keywords
+      (comp.longTailVelocity || []).forEach(kw => {
+        reservoir.modules.tail.push({
+          kw: kw.keyword || kw.kw || kw,
+          clash: calculateRealClashScore(kw, 'tail'),
+          aio_risk: kw.aio_risk || kw.aioRisk || 6,
+          tip: kw.tip || kw.killerAdvantage || `Long-tail opportunity from ${comp.competitor || 'competitor'}`,
+          meta: {
+            competitor: comp.competitor || comp.domain || 'Unknown',
+            volume: kw.volume || kw.estimatedVolume || 0,  // Real data only
+            difficulty: kw.difficulty || kw.kd || 0,  // Real data only
+            intent: kw.intent || 'informational'
+          }
+        });
+      });
+
+      // LLM Citation Gap keywords
+      (comp.llmCitationGaps || []).forEach(kw => {
+        reservoir.modules.llm.push({
+          kw: kw.keyword || kw.kw || kw,
+          clash: calculateRealClashScore(kw, 'llm'),
+          aio_risk: kw.aio_risk || kw.aioRisk || 8,
+          tip: kw.tip || kw.killerAdvantage || `LLM citation gap from ${comp.competitor || 'competitor'}`,
+          meta: {
+            competitor: comp.competitor || comp.domain || 'Unknown',
+            volume: kw.volume || kw.estimatedVolume || 0,  // Real data only
+            difficulty: kw.difficulty || kw.kd || 0,  // Real data only
+            intent: kw.intent || 'commercial'
+          }
+        });
+      });
+    });
+
+    // Update stats
+    reservoir.stats.byModule.money = reservoir.modules.money.length;
+    reservoir.stats.byModule.sge = reservoir.modules.sge.length;
+    reservoir.stats.byModule.tail = reservoir.modules.tail.length;
+    reservoir.stats.byModule.llm = reservoir.modules.llm.length;
+    reservoir.stats.total = reservoir.modules.money.length + reservoir.modules.sge.length +
+      reservoir.modules.tail.length + reservoir.modules.llm.length;
+
+    return reservoir;
+  }
+  window.buildForensicReservoir = buildForensicReservoir;
+
+  /**
+   * Calculate REAL clash score based on keyword properties
+   * Formula: Base by module type + difficulty factor + competition signals
+   * Returns 1-10 scale
+   */
+  function calculateRealClashScore(kw, moduleType) {
+    // Base score by module type
+    const baseScores = {
+      money: 7,   // High-competition money terms
+      sge: 4,     // Lower competition for AI-resilient
+      tail: 3,    // Long-tail = lower competition
+      llm: 6      // Medium competition for LLM terms
+    };
+
+    let score = baseScores[moduleType] || 5;
+
+    // Adjust by difficulty (0-100 scale)
+    const difficulty = kw.difficulty || kw.kd || 50;
+    if (difficulty >= 70) score += 2;
+    else if (difficulty >= 50) score += 1;
+    else if (difficulty < 30) score -= 1;
+
+    // Adjust by volume (higher volume = more competition)
+    const volume = kw.volume || kw.estimatedVolume || 1000;
+    if (volume >= 10000) score += 1;
+    else if (volume < 500) score -= 1;
+
+    // Adjust by moat type if available
+    if (kw.moat_type === 'Brand') score += 1;
+    else if (kw.moat_type === 'Authority') score += 0.5;
+
+    // Clamp to 1-10
+    return Math.max(1, Math.min(10, Math.round(score)));
+  }
+  window.calculateRealClashScore = calculateRealClashScore;
+
+  // Streaming state
+  window._streamingState = {
+    lastIndex: 0,
+    isStreaming: false,
+    intervalId: null
+  };
+
+  /**
+   * Load 450-KW Reservoir with PRIORITY ORDER:
+   * 1. PRIMARY: FT_GetUIData (from FT_Fetcher with real API data)
+   * 2. FALLBACK: Local forensicMatrix (from populateKeywordStrategyTab)
+   * 3. STREAMING: If fetcher is processing, poll for new batches
+   */
+  window.load450KWReservoir = function () {
+    console.log('📦 Loading 450-KW Forensic Reservoir...');
+    console.log('   🔄 Strategy: Fetcher (PRIMARY) → Local Matrix (FALLBACK)');
+
+    // Show skeleton loading in all 4 module grids
+    ['money-kw-grid', 'sge-kw-grid', 'tail-kw-grid', 'llm-kw-grid'].forEach(id => {
+      const container = document.getElementById(id);
+      if (container) window.showSkeletonLoading(id, 8);
+    });
+
+    // PRIMARY: Try FT_GetUIData from fetcher (uses real Serper/OpenPageRank/Gemini data)
+    console.log('   🎯 Attempting PRIMARY source: FT_GetUIData...');
+
+    google.script.run
+      .withSuccessHandler(function (result) {
+        // Check if fetcher returned valid data
+        if (!result.error && result.reservoir && result.reservoir.stats?.total > 0) {
+          console.log('✅ PRIMARY source success! Fetcher reservoir:', result.reservoir.stats.total, 'keywords');
+          window.forensicKeywordReservoir = result.reservoir;
+          window.renderForensicGrid(result.reservoir);
+          window.updateFilterCounts(result.reservoir.stats);
+
+          // If still processing, start streaming for new batches
+          if (!result.isComplete && result.status === 'PROCESSING') {
+            console.log('   🌊 Fetcher still processing, starting stream...');
+            window.startKeywordStreaming(result.reservoir.stats.total);
+          }
+          return;
+        }
+
+        // Fetcher not ready - check if we can use fallback
+        console.log('⚠️ PRIMARY source not ready:', result.error || 'No data');
+        console.log('   🔄 Trying FALLBACK: Local forensicMatrix...');
+
+        // FALLBACK: Use local forensicMatrix from populateKeywordStrategyTab
+        if (window.forensicKeywordReservoir && window.forensicKeywordReservoir.stats?.total > 0) {
+          console.log('✅ FALLBACK success! Local reservoir:', window.forensicKeywordReservoir.stats.total, 'keywords');
+          window.renderForensicGrid(window.forensicKeywordReservoir);
+          window.updateFilterCounts(window.forensicKeywordReservoir.stats);
+          return;
+        }
+
+        // Build from forensicMatrix if available
+        if (window.forensicMatrix && Array.isArray(window.forensicMatrix) && window.forensicMatrix.length > 0) {
+          console.log('   🔨 Building reservoir from local forensicMatrix...');
+          const reservoir = buildForensicReservoir(window.forensicMatrix);
+          window.forensicKeywordReservoir = reservoir;
+          console.log('✅ FALLBACK built:', reservoir.stats.total, 'keywords');
+          window.renderForensicGrid(reservoir);
+          window.updateFilterCounts(reservoir.stats);
+          return;
+        }
+
+        // No data available - show empty state
+        console.warn('⚠️ No keyword data available from either source');
+        window.renderEmptyState('Run competitor analysis to generate keywords');
+      })
+      .withFailureHandler(function (err) {
+        console.error('❌ FT_GetUIData failed:', err);
+        console.log('   🔄 Falling back to local forensicMatrix...');
+
+        // Try local fallback on error
+        if (window.forensicKeywordReservoir && window.forensicKeywordReservoir.stats?.total > 0) {
+          window.renderForensicGrid(window.forensicKeywordReservoir);
+          window.updateFilterCounts(window.forensicKeywordReservoir.stats);
+        } else if (window.forensicMatrix && window.forensicMatrix.length > 0) {
+          const reservoir = buildForensicReservoir(window.forensicMatrix);
+          window.forensicKeywordReservoir = reservoir;
+          window.renderForensicGrid(reservoir);
+          window.updateFilterCounts(reservoir.stats);
+        } else {
+          window.renderEmptyState('Run competitor analysis to generate keywords');
+        }
+      })
+      .FT_GetUIData();
+  };
+
+  /**
+   * Start streaming keywords from fetcher as batches complete
+   * Polls FT_GetLatestBatch every 5 seconds for new keywords
+   */
+  window.startKeywordStreaming = function (startIndex) {
+    if (window._streamingState.isStreaming) {
+      console.log('⚠️ Already streaming keywords');
+      return;
+    }
+
+    window._streamingState.isStreaming = true;
+    window._streamingState.lastIndex = startIndex || 0;
+
+    console.log('🌊 Starting keyword streaming from index:', startIndex);
+
+    // Poll every 5 seconds for new batches
+    window._streamingState.intervalId = setInterval(() => {
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (result.keywords && result.keywords.length > 0) {
+            console.log(`   📥 Streaming ${result.keywords.length} new keywords...`);
+
+            // Add new keywords to reservoir with fade-in animation
+            window.streamNewKeywords(result.keywords);
+            window._streamingState.lastIndex = result.currentIndex;
+
+            // Update progress indicator
+            window.updateStreamingProgress(result.percentage, result.status);
+          }
+
+          // Stop streaming when complete
+          if (!result.hasMore || result.status === 'COMPLETED') {
+            console.log('✅ Streaming complete!');
+            window.stopKeywordStreaming();
+          }
+        })
+        .withFailureHandler(function (err) {
+          console.error('❌ Streaming error:', err);
+          window.stopKeywordStreaming();
+        })
+        .FT_GetLatestBatch(window._streamingState.lastIndex);
+    }, 5000); // 5 second interval
+  };
+
+  /**
+   * Stop keyword streaming
+   */
+  window.stopKeywordStreaming = function () {
+    if (window._streamingState.intervalId) {
+      clearInterval(window._streamingState.intervalId);
+      window._streamingState.intervalId = null;
+    }
+    window._streamingState.isStreaming = false;
+    console.log('⏹️ Keyword streaming stopped');
+  };
+
+  /**
+   * Stream new keywords into the grid with fade-in animation
+   */
+  window.streamNewKeywords = function (keywords) {
+    if (!keywords || keywords.length === 0) return;
+
+    // Add to reservoir
+    if (!window.forensicKeywordReservoir) {
+      window.forensicKeywordReservoir = { modules: { money: [], sge: [], tail: [], llm: [] }, stats: { total: 0, byModule: {} } };
+    }
+
+    keywords.forEach((kw, idx) => {
+      const cat = kw.ui_cat || 'money';
+      if (window.forensicKeywordReservoir.modules[cat]) {
+        window.forensicKeywordReservoir.modules[cat].push({
+          kw: kw.kw,
+          clash: kw.clash || 5,
+          aio_risk: kw.aio_risk || 5,
+          tip: kw.tip || '',
+          meta: kw.meta || {}
+        });
+      }
+
+      // Append to grid with animation delay
+      setTimeout(() => {
+        window.appendKeywordToGrid(kw, cat);
+      }, idx * 50); // Stagger animation
+    });
+
+    // Update stats
+    window.forensicKeywordReservoir.stats.total += keywords.length;
+    window.updateFilterCounts(window.forensicKeywordReservoir.stats);
+  };
+
+  /**
+   * Append a single keyword to the appropriate grid with animation
+   */
+  window.appendKeywordToGrid = function (kw, category) {
+    const gridIds = { money: 'money-kw-grid', sge: 'sge-kw-grid', tail: 'tail-kw-grid', llm: 'llm-kw-grid' };
+    const colors = { money: '#22c55e', sge: '#3b82f6', tail: '#f59e0b', llm: '#8b5cf6' };
+
+    const container = document.getElementById(gridIds[category]);
+    if (!container) return;
+
+    // Remove skeleton if present
+    const skeleton = container.querySelector('.skeleton-loading');
+    if (skeleton) skeleton.remove();
+
+    const idx = container.children.length;
+    const isEven = idx % 2 === 0;
+    const clashColor = kw.clash >= 7 ? { bg: '#ef444444', text: '#fca5a5' } : { bg: '#22c55e44', text: '#86efac' };
+    const aioColor = kw.aio_risk >= 7 ? { bg: '#f59e0b44', text: '#fcd34d' } : { bg: '#22c55e44', text: '#86efac' };
+
+    const rowHtml = `
+          <div class="kw-row-stream" 
+               data-kw-category="${category}"
+               title="${kw.tip || ''}"
+               style="padding: 8px 10px; 
+                      background: ${isEven ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)'}; 
+                      border-radius: 6px; 
+                      border-left: 3px solid ${colors[category]};
+                      display: flex; 
+                      justify-content: space-between; 
+                      align-items: center;
+                      margin-bottom: 3px;
+                      opacity: 0;
+                      animation: fadeInKW 0.3s ease forwards;">
+            <div style="flex: 1; min-width: 0;">
+              <span style="font-family: 'Monaco', 'Consolas', monospace; font-size: 10px; color: white; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${kw.kw || 'Unknown Keyword'}
+              </span>
+              <span style="font-size: 8px; color: rgba(255,255,255,0.5); display: block; margin-top: 2px;">
+                ${kw.meta?.competitor || ''} • Vol: ${(kw.meta?.volume || 0).toLocaleString()} • KD: ${kw.meta?.difficulty || 'N/A'}
+              </span>
+            </div>
+            <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
+              <span style="font-size: 8px; padding: 2px 5px; border-radius: 3px; background: ${clashColor.bg}; color: ${clashColor.text};">C${kw.clash || 5}</span>
+              <span style="font-size: 8px; padding: 2px 5px; border-radius: 3px; background: ${aioColor.bg}; color: ${aioColor.text};">A${kw.aio_risk || 5}</span>
+            </div>
+          </div>
+        `;
+
+    container.insertAdjacentHTML('beforeend', rowHtml);
+  };
+
+  /**
+   * Update streaming progress indicator
+   */
+  window.updateStreamingProgress = function (percentage, status) {
+    const progressEl = document.getElementById('streaming-progress');
+    if (progressEl) {
+      progressEl.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 100px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px;">
+                <div style="width: ${percentage}%; height: 100%; background: #22c55e; border-radius: 2px; transition: width 0.3s;"></div>
+              </div>
+              <span style="font-size: 10px; color: rgba(255,255,255,0.7);">${percentage}% - ${status}</span>
+            </div>
+          `;
+    }
+  };
+
+  /**
+   * Render the full 450-KW grid from reservoir data
+   */
+  window.renderForensicGrid = function (reservoir) {
+    if (!reservoir || !reservoir.modules) {
+      console.warn('⚠️ No reservoir data to render');
+      return;
+    }
+
+    const modules = reservoir.modules;
+    const catConfig = {
+      money: { gridId: 'money-kw-grid', color: '#22c55e', icon: '💰', label: 'Money Moat' },
+      sge: { gridId: 'sge-kw-grid', color: '#3b82f6', icon: '🛡️', label: 'SGE/AIO' },
+      tail: { gridId: 'tail-kw-grid', color: '#f59e0b', icon: '🦎', label: 'Long-Tail' },
+      llm: { gridId: 'llm-kw-grid', color: '#8b5cf6', icon: '🤖', label: 'LLM Gaps' }
+    };
+
+    // Render each module
+    Object.keys(catConfig).forEach(cat => {
+      const config = catConfig[cat];
+      const keywords = modules[cat] || [];
+      const container = document.getElementById(config.gridId);
+
+      if (!container) {
+        console.warn('⚠️ Grid container not found:', config.gridId);
+        return;
+      }
+
+      // Clear container
+      container.innerHTML = '';
+
+      // Render each keyword with zebra striping and streaming animation
+      keywords.forEach((kw, idx) => {
+        const isEven = idx % 2 === 0;
+        const clashColor = kw.clash >= 7 ? { bg: '#ef444444', text: '#fca5a5' } : { bg: '#22c55e44', text: '#86efac' };
+        const aioColor = kw.aio_risk >= 7 ? { bg: '#f59e0b44', text: '#fcd34d' } : { bg: '#22c55e44', text: '#86efac' };
+
+        const rowHtml = `
+              <div class="kw-row-stream sync-confirmed" 
+                   data-kw-category="${cat}"
+                   data-kw-index="${idx}"
+                   title="${kw.tip || ''}"
+                   style="padding: 8px 10px; 
+                          background: ${isEven ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)'}; 
+                          border-radius: 6px; 
+                          border-left: 3px solid ${config.color};
+                          display: flex; 
+                          justify-content: space-between; 
+                          align-items: center;
+                          margin-bottom: 3px;
+                          cursor: pointer;
+                          transition: background 0.2s;
+                          animation-delay: ${idx * 0.015}s;">
+                <div style="flex: 1; min-width: 0;">
+                  <span style="font-family: 'Monaco', 'Consolas', monospace; font-size: 10px; color: white; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${kw.kw || 'Unknown Keyword'}
+                  </span>
+                  <span style="font-size: 8px; color: rgba(255,255,255,0.5); display: block; margin-top: 2px;">
+                    ${kw.meta?.competitor || ''} • Vol: ${(kw.meta?.volume || 0).toLocaleString()} • KD: ${kw.meta?.difficulty || 'N/A'}
+                  </span>
+                </div>
+                <div style="display: flex; gap: 4px; align-items: center; flex-shrink: 0;">
+                  <span style="font-size: 8px; padding: 2px 5px; border-radius: 3px; 
+                               background: ${clashColor.bg}; color: ${clashColor.text}; font-family: monospace;"
+                        title="Clash Score: ${kw.clash}/10 - Competition intensity">
+                    C${kw.clash || 5}
+                  </span>
+                  <span style="font-size: 8px; padding: 2px 5px; border-radius: 3px; 
+                               background: ${aioColor.bg}; color: ${aioColor.text}; font-family: monospace;"
+                        title="AIO Risk: ${kw.aio_risk}/10 - AI Overview click-theft probability">
+                    A${kw.aio_risk || 5}
+                  </span>
+                  <span style="font-size: 8px; padding: 2px 5px; border-radius: 3px; 
+                               background: rgba(255,255,255,0.1); color: ${getIntentColor(kw.meta?.intent)}; font-family: monospace;"
+                        title="Intent: ${kw.meta?.intent || 'commercial'}">
+                    ${(kw.meta?.intent || 'COM').substring(0, 3).toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            `;
+
+        container.insertAdjacentHTML('beforeend', rowHtml);
+      });
+
+      // Add "show more" link if more keywords available
+      if (keywords.length > 0) {
+        const showMoreHtml = `
+              <div style="text-align: center; padding: 8px; margin-top: 8px;">
+                <button onclick="window.showAllKeywords('${cat}')" 
+                        style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
+                               color: rgba(255,255,255,0.7); padding: 6px 16px; border-radius: 6px; 
+                               font-size: 10px; cursor: pointer; transition: all 0.2s;">
+                  View all ${keywords.length} ${config.label} keywords →
+                </button>
+              </div>
+            `;
+        container.insertAdjacentHTML('beforeend', showMoreHtml);
+      }
+
+      console.log(`   ✅ Rendered ${keywords.length} ${cat} keywords`);
+    });
+
+    // Update total count display
+    const totalEl = document.getElementById('total-kw-count');
+    if (totalEl) {
+      totalEl.textContent = reservoir.stats?.total || 0;
+    }
+
+    console.log('📊 Forensic Grid rendering complete:', reservoir.stats?.total, 'total keywords');
+  };
+
+  /**
+   * Update filter button counts from stats
+   */
+  window.updateFilterCounts = function (stats) {
+    if (!stats) return;
+
+    const buttons = document.querySelectorAll('#kw-module-filters button');
+    buttons.forEach(btn => {
+      const filter = btn.getAttribute('data-filter');
+      const count = filter === 'all'
+        ? stats.total
+        : stats.byModule?.[filter] || 0;
+
+      // Update button text with actual count
+      const icons = { all: '🎯', money: '💰', sge: '🛡️', tail: '🦎', llm: '🤖' };
+      const labels = { all: 'All', money: 'Money Moat', sge: 'SGE/AIO', tail: 'Long-Tail', llm: 'LLM Gaps' };
+      btn.innerHTML = `${icons[filter] || '📊'} ${labels[filter] || filter} (${count})`;
+    });
+
+    // Update module count badges in the bento grid
+    const countElements = {
+      'money-kw-count': stats.byModule?.money || 0,
+      'sge-kw-count': stats.byModule?.sge || 0,
+      'tail-kw-count': stats.byModule?.tail || 0,
+      'llm-kw-count': stats.byModule?.llm || 0
+    };
+
+    Object.entries(countElements).forEach(([id, count]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = `${count} KWs`;
+      }
+    });
+
+    console.log('📊 Filter counts updated:', stats);
+  };
+
+  /**
+   * Get color for intent type
+   */
+  function getIntentColor(intent) {
+    const colors = {
+      'transactional': '#22c55e',
+      'commercial': '#3b82f6',
+      'informational': '#f59e0b',
+      'navigational': '#8b5cf6'
+    };
+    return colors[intent?.toLowerCase()] || '#93c5fd';
+  }
+  window.getIntentColor = getIntentColor;
+
+  /**
+   * Show modal with all keywords for a category
+   */
+  window.showAllKeywords = function (category) {
+    if (!window.forensicKeywordReservoir) {
+      console.warn('⚠️ Reservoir not loaded');
+      return;
+    }
+
+    const keywords = window.forensicKeywordReservoir.modules?.[category] || [];
+    console.log('📋 Showing all', keywords.length, category, 'keywords');
+
+    // Create modal (simplified - you could enhance this)
+    const modal = document.createElement('div');
+    modal.id = 'kw-modal-overlay';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;';
+
+    const catColors = { money: '#22c55e', sge: '#3b82f6', tail: '#f59e0b', llm: '#8b5cf6' };
+
+    modal.innerHTML = `
+          <div style="background: #1e293b; border-radius: 16px; max-width: 900px; width: 100%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+              <h3 style="margin: 0; color: ${catColors[category]}; font-size: 18px;">
+                ${category === 'money' ? '💰' : category === 'sge' ? '🛡️' : category === 'tail' ? '🦎' : '🤖'} 
+                All ${category.toUpperCase()} Keywords (${keywords.length})
+              </h3>
+              <button onclick="document.getElementById('kw-modal-overlay').remove()" 
+                      style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+            </div>
+            <div style="padding: 20px; overflow-y: auto; flex: 1;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'Monaco', 'Consolas', monospace;">
+                <thead style="position: sticky; top: 0; background: #0f172a;">
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
+                    <th style="text-align: left; padding: 10px; color: #93c5fd;">Keyword</th>
+                    <th style="text-align: center; padding: 10px; color: #93c5fd;">Competitor</th>
+                    <th style="text-align: center; padding: 10px; color: #f59e0b;">Clash</th>
+                    <th style="text-align: center; padding: 10px; color: #ef4444;">AIO</th>
+                    <th style="text-align: center; padding: 10px; color: #93c5fd;">Volume</th>
+                    <th style="text-align: center; padding: 10px; color: #93c5fd;">KD</th>
+                    <th style="text-align: center; padding: 10px; color: #93c5fd;">Intent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${keywords.map((kw, idx) => `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); background: ${idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'};">
+                      <td style="padding: 10px; color: white;" title="${kw.tip || ''}">${kw.kw}</td>
+                      <td style="padding: 10px; text-align: center; color: rgba(255,255,255,0.7);">${kw.meta?.competitor || '-'}</td>
+                      <td style="padding: 10px; text-align: center;"><span style="padding: 2px 6px; border-radius: 4px; background: ${kw.clash >= 7 ? '#ef444444' : '#22c55e44'}; color: ${kw.clash >= 7 ? '#fca5a5' : '#86efac'};">${kw.clash || 5}</span></td>
+                      <td style="padding: 10px; text-align: center;"><span style="padding: 2px 6px; border-radius: 4px; background: ${kw.aio_risk >= 7 ? '#f59e0b44' : '#22c55e44'}; color: ${kw.aio_risk >= 7 ? '#fcd34d' : '#86efac'};">${kw.aio_risk || 5}</span></td>
+                      <td style="padding: 10px; text-align: center; color: rgba(255,255,255,0.7);">${(kw.meta?.volume || 0).toLocaleString()}</td>
+                      <td style="padding: 10px; text-align: center; color: rgba(255,255,255,0.7);">${kw.meta?.difficulty || 'N/A'}</td>
+                      <td style="padding: 10px; text-align: center; color: ${getIntentColor(kw.meta?.intent)};">${kw.meta?.intent || 'commercial'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+    document.body.appendChild(modal);
+
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  };
+</script>

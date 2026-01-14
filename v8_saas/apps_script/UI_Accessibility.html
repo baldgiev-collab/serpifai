@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"] { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus { outline: none; border-color: var(--primary); }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    
+    .score-section { text-align: center; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; margin-bottom: 20px; }
+    .score-value { font-size: 64px; font-weight: 700; }
+    .score-label { font-size: 16px; opacity: 0.9; margin-top: 8px; }
+    
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .summary-item { padding: 16px; border-radius: 8px; text-align: center; }
+    .summary-item.critical { background: #fce8e6; }
+    .summary-item.serious { background: #fef7e0; }
+    .summary-item.moderate { background: #e8f0fe; }
+    .summary-item.minor { background: #e6f4ea; }
+    .summary-value { font-size: 28px; font-weight: 600; }
+    .summary-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .tab { padding: 12px 20px; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+    
+    .issue-list { list-style: none; }
+    .issue-item { padding: 16px; border-bottom: 1px solid var(--border); }
+    .issue-item:last-child { border-bottom: none; }
+    .issue-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .issue-severity { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; }
+    .issue-severity.critical { background: #fce8e6; color: var(--danger); }
+    .issue-severity.serious { background: #fef7e0; color: #e37400; }
+    .issue-severity.moderate { background: #e8f0fe; color: var(--primary); }
+    .issue-severity.minor { background: #e6f4ea; color: var(--success); }
+    .issue-test { font-weight: 500; }
+    .issue-wcag { font-size: 11px; color: var(--muted); margin-left: auto; }
+    .issue-desc { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+    .issue-fix { font-size: 13px; background: var(--bg); padding: 10px; border-radius: 6px; }
+    .issue-fix::before { content: '💡 '; }
+    
+    .passed-item { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .passed-item:last-child { border-bottom: none; }
+    .passed-icon { width: 24px; height: 24px; border-radius: 50%; background: #e6f4ea; color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .passed-test { font-weight: 500; }
+    .passed-desc { font-size: 13px; color: var(--muted); }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .scroll-box { max-height: 400px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Accessibility Checker</h1>
+    <p class="subtitle">WCAG accessibility analysis</p>
+  </div>
+  
+  <div class="card">
+    <div class="form-group">
+      <label>Page URL</label>
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="urlInput" placeholder="Enter URL to check...">
+        <button class="btn-primary" onclick="checkAccessibility()">Check</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+    <p>Checking accessibility...</p>
+  </div>
+  
+  <div id="results" style="display: none;">
+    <div class="score-section">
+      <div class="score-value" id="score">--</div>
+      <div class="score-label">Accessibility Score</div>
+    </div>
+    
+    <div class="summary-grid">
+      <div class="summary-item critical">
+        <div class="summary-value" id="criticalCount">0</div>
+        <div class="summary-label">Critical</div>
+      </div>
+      <div class="summary-item serious">
+        <div class="summary-value" id="seriousCount">0</div>
+        <div class="summary-label">Serious</div>
+      </div>
+      <div class="summary-item moderate">
+        <div class="summary-value" id="moderateCount">0</div>
+        <div class="summary-label">Moderate</div>
+      </div>
+      <div class="summary-item minor">
+        <div class="summary-value" id="minorCount">0</div>
+        <div class="summary-label">Minor</div>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('issues')">Issues</button>
+      <button class="tab" onclick="showTab('passed')">Passed</button>
+    </div>
+    
+    <div class="card" id="issuesTab">
+      <div class="scroll-box">
+        <ul class="issue-list" id="issuesList"></ul>
+      </div>
+    </div>
+    
+    <div class="card" id="passedTab" style="display: none;">
+      <div class="scroll-box" id="passedList"></div>
+    </div>
+  </div>
+  
+  <div id="empty" class="empty">
+    <p>Enter a URL to check its accessibility</p>
+  </div>
+  
+  <script>
+    function checkAccessibility() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { alert('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeAccessibility({ url: url });
+    }
+    
+    function handleResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        alert(data?.error || 'Check failed');
+        document.getElementById('empty').style.display = 'block';
+        return;
+      }
+      
+      document.getElementById('score').textContent = data.score || 0;
+      document.getElementById('criticalCount').textContent = data.summary?.critical || 0;
+      document.getElementById('seriousCount').textContent = data.summary?.serious || 0;
+      document.getElementById('moderateCount').textContent = data.summary?.moderate || 0;
+      document.getElementById('minorCount').textContent = data.summary?.minor || 0;
+      
+      renderIssues(data.issues || []);
+      renderPassed(data.passed || []);
+      
+      document.getElementById('results').style.display = 'block';
+    }
+    
+    function renderIssues(issues) {
+      const list = document.getElementById('issuesList');
+      
+      if (issues.length === 0) {
+        list.innerHTML = '<li class="empty">No accessibility issues found!</li>';
+        return;
+      }
+      
+      list.innerHTML = issues.map(function(issue) {
+        return '<li class="issue-item">' +
+          '<div class="issue-header">' +
+            '<span class="issue-severity ' + issue.severity + '">' + issue.severity + '</span>' +
+            '<span class="issue-test">' + issue.test + '</span>' +
+            (issue.wcag ? '<span class="issue-wcag">WCAG ' + issue.wcag + '</span>' : '') +
+          '</div>' +
+          '<div class="issue-desc">' + issue.description + '</div>' +
+          (issue.fix ? '<div class="issue-fix">' + issue.fix + '</div>' : '') +
+          '</li>';
+      }).join('');
+    }
+    
+    function renderPassed(passed) {
+      const list = document.getElementById('passedList');
+      
+      if (passed.length === 0) {
+        list.innerHTML = '<div class="empty">No passed tests</div>';
+        return;
+      }
+      
+      list.innerHTML = passed.map(function(item) {
+        return '<div class="passed-item">' +
+          '<span class="passed-icon">✓</span>' +
+          '<div>' +
+            '<div class="passed-test">' + item.test + '</div>' +
+            '<div class="passed-desc">' + item.description + '</div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+    }
+    
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('issuesTab').style.display = tab === 'issues' ? 'block' : 'none';
+      document.getElementById('passedTab').style.display = tab === 'passed' ? 'block' : 'none';
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('empty').style.display = 'block';
+      alert('Error: ' + (err.message || 'Unknown error'));
+    }
+  </script>
+</body>
+</html>

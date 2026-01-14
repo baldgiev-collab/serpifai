@@ -1,0 +1,754 @@
+<!--
+  ELITE_Components_Shared.html
+  ============================
+  Consolidated shared components for Elite Intelligence System
+  
+  Components Included:
+  - C1: Data Source Badges (renderDataSourceBadge)
+  - C2: Confidence Indicators (renderConfidenceIndicator)
+  - C3: Comparison Highlighting (renderComparisonIndicator)
+  - C4: Elite Metric Cards (renderEliteMetricCard)
+  - C5: Loading States (renderEliteLoadingState)
+  
+  Dependencies: UI_Elite_Styles.html (for CSS variables)
+  
+  Version: 1.0.0 (January 2025)
+  Part of: Elite Intelligence System Implementation
+-->
+
+<style>
+  /* ========================================
+     C1: DATA SOURCE BADGES
+     ======================================== */
+  .elite-data-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  
+  .elite-data-badge.elite-source { background: linear-gradient(135deg, #8b5cf6, #a78bfa); color: white; }
+  .elite-data-badge.php-source { background: linear-gradient(135deg, #3b82f6, #60a5fa); color: white; }
+  .elite-data-badge.serper-source { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
+  .elite-data-badge.pagerank-source { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; }
+  .elite-data-badge.pagespeed-source { background: linear-gradient(135deg, #ef4444, #f87171); color: white; }
+  .elite-data-badge.gemini-source { background: linear-gradient(135deg, #6366f1, #818cf8); color: white; }
+  .elite-data-badge.cached-source { background: linear-gradient(135deg, #64748b, #94a3b8); color: white; }
+  .elite-data-badge.estimated-source { background: linear-gradient(135deg, #ec4899, #f472b6); color: white; }
+  
+  .elite-data-badge-icon { font-size: 12px; }
+  
+  /* ========================================
+     C2: CONFIDENCE INDICATORS
+     ======================================== */
+  .elite-confidence {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+  
+  .elite-confidence-bar {
+    width: 60px;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .elite-confidence-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  
+  .elite-confidence-fill.low { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .elite-confidence-fill.medium { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .elite-confidence-fill.high { background: linear-gradient(90deg, #10b981, #34d399); }
+  .elite-confidence-fill.elite { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+  
+  .elite-confidence-value {
+    font-weight: 600;
+    min-width: 32px;
+  }
+  
+  .elite-confidence-value.low { color: #ef4444; }
+  .elite-confidence-value.medium { color: #f59e0b; }
+  .elite-confidence-value.high { color: #10b981; }
+  .elite-confidence-value.elite { color: #8b5cf6; }
+  
+  .elite-confidence-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 100;
+    margin-bottom: 8px;
+  }
+  
+  .elite-confidence:hover .elite-confidence-tooltip {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  /* ========================================
+     C3: COMPARISON INDICATORS
+     ======================================== */
+  .elite-comparison {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .elite-comparison-arrow {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  
+  .elite-comparison.positive { color: #10b981; }
+  .elite-comparison.negative { color: #ef4444; }
+  .elite-comparison.neutral { color: #64748b; }
+  
+  .elite-comparison-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  
+  .elite-comparison-badge.winning {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #15803d;
+    border: 1px solid #86efac;
+  }
+  
+  .elite-comparison-badge.losing {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+  }
+  
+  .elite-comparison-badge.tied {
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    color: #475569;
+    border: 1px solid #cbd5e1;
+  }
+  
+  /* ========================================
+     C4: ELITE METRIC CARDS
+     ======================================== */
+  .elite-metric-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  
+  .elite-metric-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+  
+  .elite-metric-card.clickable {
+    cursor: pointer;
+  }
+  
+  .elite-metric-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  
+  .elite-metric-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+  }
+  
+  .elite-metric-card-icon {
+    font-size: 18px;
+  }
+  
+  .elite-metric-card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.2;
+  }
+  
+  .elite-metric-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+  }
+  
+  .elite-metric-card-trend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .elite-metric-card-trend.up { color: #10b981; }
+  .elite-metric-card-trend.down { color: #ef4444; }
+  .elite-metric-card-trend.stable { color: #64748b; }
+  
+  /* ========================================
+     C5: LOADING STATES
+     ======================================== */
+  .elite-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: eliteSpinner 0.8s linear infinite;
+  }
+  
+  @keyframes eliteSpinner {
+    to { transform: rotate(360deg); }
+  }
+  
+  .elite-loading-skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: eliteSkeleton 1.5s ease-in-out infinite;
+    border-radius: 8px;
+  }
+  
+  @keyframes eliteSkeleton {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  
+  .elite-loading-pulse {
+    animation: elitePulse 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes elitePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .elite-loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    gap: 16px;
+  }
+  
+  .elite-loading-text {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+  }
+  
+  .elite-loading-branded {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .elite-loading-logo {
+    font-size: 24px;
+    animation: elitePulse 1.5s ease-in-out infinite;
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+  
+  // ==========================================
+  // C1: DATA SOURCE BADGES
+  // ==========================================
+  
+  const DATA_SOURCES = {
+    elite: { icon: '🏆', label: 'Elite Intelligence', class: 'elite-source' },
+    php: { icon: '⚡', label: 'PHP Backend', class: 'php-source' },
+    serper: { icon: '🔍', label: 'Serper API', class: 'serper-source' },
+    openPageRank: { icon: '📊', label: 'OpenPageRank', class: 'pagerank-source' },
+    pageSpeed: { icon: '🚀', label: 'PageSpeed', class: 'pagespeed-source' },
+    gemini: { icon: '🤖', label: 'Gemini AI', class: 'gemini-source' },
+    cached: { icon: '💾', label: 'Cached', class: 'cached-source' },
+    estimated: { icon: '📈', label: 'Estimated', class: 'estimated-source' }
+  };
+  
+  /**
+   * Render data source attribution badge
+   * @param {string} source - Source key (elite, php, serper, etc.)
+   * @param {object} options - { showLabel: boolean, size: 'sm'|'md'|'lg' }
+   * @returns {string} HTML string
+   */
+  function renderDataSourceBadge(source, options = {}) {
+    const config = DATA_SOURCES[source] || DATA_SOURCES.estimated;
+    const showLabel = options.showLabel !== false;
+    const size = options.size || 'md';
+    
+    const sizeStyles = {
+      sm: 'font-size: 9px; padding: 1px 6px;',
+      md: 'font-size: 10px; padding: 2px 8px;',
+      lg: 'font-size: 11px; padding: 3px 10px;'
+    };
+    
+    return `
+      <span class="elite-data-badge ${config.class}" style="${sizeStyles[size]}" title="Data from: ${config.label}">
+        <span class="elite-data-badge-icon">${config.icon}</span>
+        ${showLabel ? `<span>${config.label}</span>` : ''}
+      </span>
+    `;
+  }
+  
+  /**
+   * Render data source priority chain
+   * @param {array} sources - Array of source keys in priority order
+   * @param {string} activeSource - Currently used source
+   * @returns {string} HTML string
+   */
+  function renderDataSourceChain(sources, activeSource) {
+    return `
+      <div class="elite-source-chain" style="display: flex; gap: 4px; align-items: center;">
+        ${sources.map((src, i) => {
+          const isActive = src === activeSource;
+          const opacity = isActive ? '1' : '0.4';
+          return `
+            <span style="opacity: ${opacity}; ${isActive ? 'transform: scale(1.1);' : ''}"
+                  title="${isActive ? 'Active Source' : 'Fallback Source'}">
+              ${renderDataSourceBadge(src, { showLabel: false, size: 'sm' })}
+            </span>
+            ${i < sources.length - 1 ? '<span style="color: #cbd5e1;">→</span>' : ''}
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // C2: CONFIDENCE INDICATORS
+  // ==========================================
+  
+  /**
+   * Get confidence level classification
+   * @param {number} score - 0-100 confidence score
+   * @returns {string} Level: low, medium, high, elite
+   */
+  function getConfidenceLevel(score) {
+    if (score >= 90) return 'elite';
+    if (score >= 75) return 'high';
+    if (score >= 50) return 'medium';
+    return 'low';
+  }
+  
+  /**
+   * Render confidence indicator with bar and value
+   * @param {number} score - 0-100 confidence score
+   * @param {object} options - { showBar, showValue, showTooltip, methodology }
+   * @returns {string} HTML string
+   */
+  function renderConfidenceIndicator(score, options = {}) {
+    const level = getConfidenceLevel(score);
+    const showBar = options.showBar !== false;
+    const showValue = options.showValue !== false;
+    const showTooltip = options.showTooltip === true;
+    const methodology = options.methodology || 'Based on data quality and source reliability';
+    
+    return `
+      <div class="elite-confidence" style="position: relative;">
+        ${showBar ? `
+          <div class="elite-confidence-bar">
+            <div class="elite-confidence-fill ${level}" style="width: ${score}%;"></div>
+          </div>
+        ` : ''}
+        ${showValue ? `
+          <span class="elite-confidence-value ${level}">${score}%</span>
+        ` : ''}
+        ${showTooltip ? `
+          <div class="elite-confidence-tooltip">
+            <strong>Confidence: ${score}%</strong><br>
+            ${methodology}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  /**
+   * Render compact confidence badge
+   * @param {number} score - 0-100 confidence score
+   * @returns {string} HTML string
+   */
+  function renderConfidenceBadge(score) {
+    const level = getConfidenceLevel(score);
+    const labels = {
+      elite: '🏆 Elite',
+      high: '✅ High',
+      medium: '⚠️ Medium',
+      low: '❌ Low'
+    };
+    
+    return `
+      <span class="elite-confidence-badge elite-confidence-value ${level}" 
+            style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; 
+                   border-radius: 12px; font-size: 10px; background: currentColor; 
+                   background-opacity: 0.1; -webkit-background-clip: initial;">
+        ${labels[level]} (${score}%)
+      </span>
+    `;
+  }
+  
+  // ==========================================
+  // C3: COMPARISON INDICATORS
+  // ==========================================
+  
+  /**
+   * Render comparison between two values
+   * @param {number} projectValue - Your value
+   * @param {number} competitorValue - Competitor value
+   * @param {object} options - { metric, format, higherIsBetter, showPercentage }
+   * @returns {string} HTML string
+   */
+  function renderComparisonIndicator(projectValue, competitorValue, options = {}) {
+    const higherIsBetter = options.higherIsBetter !== false;
+    const showPercentage = options.showPercentage !== false;
+    const format = options.format || 'number';
+    
+    const diff = projectValue - competitorValue;
+    const percentDiff = competitorValue !== 0 ? ((diff / competitorValue) * 100).toFixed(1) : 0;
+    
+    let status, arrow, statusClass;
+    
+    if (diff > 0) {
+      status = higherIsBetter ? 'winning' : 'losing';
+      arrow = '↑';
+      statusClass = higherIsBetter ? 'positive' : 'negative';
+    } else if (diff < 0) {
+      status = higherIsBetter ? 'losing' : 'winning';
+      arrow = '↓';
+      statusClass = higherIsBetter ? 'negative' : 'positive';
+    } else {
+      status = 'tied';
+      arrow = '→';
+      statusClass = 'neutral';
+    }
+    
+    return `
+      <span class="elite-comparison ${statusClass}">
+        <span class="elite-comparison-arrow">${arrow}</span>
+        ${showPercentage ? `<span>${Math.abs(percentDiff)}%</span>` : ''}
+      </span>
+    `;
+  }
+  
+  /**
+   * Render comparison badge with detailed info
+   * @param {number} projectValue - Your value
+   * @param {number} competitorValue - Competitor value  
+   * @param {object} options - Same as renderComparisonIndicator plus { label }
+   * @returns {string} HTML string
+   */
+  function renderComparisonBadge(projectValue, competitorValue, options = {}) {
+    const higherIsBetter = options.higherIsBetter !== false;
+    const diff = projectValue - competitorValue;
+    const percentDiff = competitorValue !== 0 ? ((diff / competitorValue) * 100).toFixed(1) : 0;
+    
+    let status, label, icon;
+    
+    if (diff > 0) {
+      status = higherIsBetter ? 'winning' : 'losing';
+      label = higherIsBetter ? 'Ahead' : 'Behind';
+      icon = higherIsBetter ? '🟢' : '🔴';
+    } else if (diff < 0) {
+      status = higherIsBetter ? 'losing' : 'winning';
+      label = higherIsBetter ? 'Behind' : 'Ahead';
+      icon = higherIsBetter ? '🔴' : '🟢';
+    } else {
+      status = 'tied';
+      label = 'Tied';
+      icon = '🟡';
+    }
+    
+    return `
+      <span class="elite-comparison-badge ${status}">
+        ${icon} ${label} by ${Math.abs(percentDiff)}%
+      </span>
+    `;
+  }
+  
+  /**
+   * Render gap analysis between project and competitor
+   * @param {number} projectValue - Your value
+   * @param {number} competitorValue - Competitor value
+   * @param {object} options - { metric, targetMultiplier }
+   * @returns {string} HTML string
+   */
+  function renderGapAnalysis(projectValue, competitorValue, options = {}) {
+    const metric = options.metric || 'value';
+    const targetMultiplier = options.targetMultiplier || 1.2;
+    
+    const gap = competitorValue - projectValue;
+    const targetGap = (competitorValue * targetMultiplier) - projectValue;
+    const progress = targetGap > 0 ? ((1 - (gap / targetGap)) * 100).toFixed(0) : 100;
+    
+    return `
+      <div class="elite-gap-analysis" style="padding: 12px; background: #f8fafc; border-radius: 12px; margin-top: 8px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span style="font-size: 12px; color: #64748b;">Gap to Competitor</span>
+          <span style="font-size: 12px; font-weight: 600; color: ${gap > 0 ? '#ef4444' : '#10b981'};">
+            ${gap > 0 ? '+' : ''}${gap.toLocaleString()} ${metric}
+          </span>
+        </div>
+        <div style="height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+          <div style="width: ${Math.max(0, Math.min(100, progress))}%; height: 100%; 
+                      background: linear-gradient(90deg, #8b5cf6, #a78bfa); border-radius: 4px;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+          <span style="font-size: 10px; color: #94a3b8;">You: ${projectValue.toLocaleString()}</span>
+          <span style="font-size: 10px; color: #94a3b8;">Target: ${(competitorValue * targetMultiplier).toLocaleString()}</span>
+        </div>
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // C4: ELITE METRIC CARDS
+  // ==========================================
+  
+  /**
+   * Render Elite metric card with full features
+   * @param {object} config - Card configuration
+   * @returns {string} HTML string
+   */
+  function renderEliteMetricCard(config) {
+    const {
+      title = 'Metric',
+      icon = '📊',
+      value = 0,
+      format = 'number',
+      source = null,
+      confidence = null,
+      trend = null,
+      comparison = null,
+      onClick = null,
+      className = ''
+    } = config;
+    
+    // Format value
+    let formattedValue = value;
+    if (format === 'number') {
+      formattedValue = typeof value === 'number' ? value.toLocaleString() : value;
+    } else if (format === 'percentage') {
+      formattedValue = `${value}%`;
+    } else if (format === 'currency') {
+      formattedValue = `$${typeof value === 'number' ? value.toLocaleString() : value}`;
+    } else if (format === 'compact') {
+      formattedValue = formatCompactNumber(value);
+    }
+    
+    // Build trend HTML
+    let trendHtml = '';
+    if (trend) {
+      const trendClass = trend.direction === 'up' ? 'up' : trend.direction === 'down' ? 'down' : 'stable';
+      const trendArrow = trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→';
+      trendHtml = `
+        <div class="elite-metric-card-trend ${trendClass}">
+          ${trendArrow} ${trend.value}${trend.suffix || '%'}
+        </div>
+      `;
+    }
+    
+    const clickable = onClick ? 'clickable' : '';
+    const onClickAttr = onClick ? `onclick="${onClick}"` : '';
+    
+    return `
+      <div class="elite-metric-card ${clickable} ${className}" ${onClickAttr}>
+        <div class="elite-metric-card-header">
+          <div class="elite-metric-card-title">
+            <span class="elite-metric-card-icon">${icon}</span>
+            <span>${title}</span>
+          </div>
+          ${source ? renderDataSourceBadge(source, { showLabel: false, size: 'sm' }) : ''}
+        </div>
+        
+        <div class="elite-metric-card-value">${formattedValue}</div>
+        
+        ${(trend || confidence || comparison) ? `
+          <div class="elite-metric-card-footer">
+            ${trendHtml}
+            ${confidence !== null ? renderConfidenceIndicator(confidence, { showBar: true, showValue: true }) : ''}
+            ${comparison ? renderComparisonIndicator(comparison.project, comparison.competitor, comparison.options || {}) : ''}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  /**
+   * Format number in compact form (1.2K, 3.4M, etc.)
+   * @param {number} num - Number to format
+   * @returns {string} Formatted string
+   */
+  function formatCompactNumber(num) {
+    if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  }
+  
+  /**
+   * Render a row of metric cards
+   * @param {array} cards - Array of card configs
+   * @param {object} options - { columns: 2|3|4 }
+   * @returns {string} HTML string
+   */
+  function renderEliteMetricCardRow(cards, options = {}) {
+    const columns = options.columns || 3;
+    const gridCols = {
+      2: 'repeat(2, 1fr)',
+      3: 'repeat(3, 1fr)',
+      4: 'repeat(4, 1fr)'
+    };
+    
+    return `
+      <div class="elite-metric-card-row" style="display: grid; grid-template-columns: ${gridCols[columns]}; gap: 16px;">
+        ${cards.map(card => renderEliteMetricCard(card)).join('')}
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // C5: LOADING STATES
+  // ==========================================
+  
+  /**
+   * Render Elite loading state
+   * @param {string} type - 'spinner' | 'skeleton' | 'pulse' | 'branded'
+   * @param {object} options - { text, width, height }
+   * @returns {string} HTML string
+   */
+  function renderEliteLoadingState(type = 'spinner', options = {}) {
+    const text = options.text || 'Loading Elite Intelligence...';
+    const width = options.width || '100%';
+    const height = options.height || '20px';
+    
+    switch (type) {
+      case 'skeleton':
+        return `
+          <div class="elite-loading-skeleton" style="width: ${width}; height: ${height};"></div>
+        `;
+        
+      case 'pulse':
+        return `
+          <div class="elite-loading-pulse" style="width: ${width}; height: ${height}; background: #f1f5f9; border-radius: 8px;"></div>
+        `;
+        
+      case 'branded':
+        return `
+          <div class="elite-loading-container">
+            <div class="elite-loading-branded">
+              <span class="elite-loading-logo">🏆</span>
+              <div class="elite-loading-spinner"></div>
+            </div>
+            <div class="elite-loading-text">${text}</div>
+          </div>
+        `;
+        
+      case 'spinner':
+      default:
+        return `
+          <div class="elite-loading-container">
+            <div class="elite-loading-spinner"></div>
+            ${text ? `<div class="elite-loading-text">${text}</div>` : ''}
+          </div>
+        `;
+    }
+  }
+  
+  /**
+   * Render skeleton card placeholder
+   * @param {number} count - Number of skeleton cards
+   * @returns {string} HTML string
+   */
+  function renderEliteSkeletonCards(count = 3) {
+    const cards = [];
+    for (let i = 0; i < count; i++) {
+      cards.push(`
+        <div class="elite-metric-card">
+          <div class="elite-loading-skeleton" style="width: 60%; height: 14px; margin-bottom: 12px;"></div>
+          <div class="elite-loading-skeleton" style="width: 40%; height: 32px; margin-bottom: 12px;"></div>
+          <div class="elite-loading-skeleton" style="width: 80%; height: 10px;"></div>
+        </div>
+      `);
+    }
+    
+    return `
+      <div style="display: grid; grid-template-columns: repeat(${count}, 1fr); gap: 16px;">
+        ${cards.join('')}
+      </div>
+    `;
+  }
+  
+  // ==========================================
+  // EXPORT TO WINDOW
+  // ==========================================
+  
+  // C1: Data Source Badges
+  window.renderDataSourceBadge = renderDataSourceBadge;
+  window.renderDataSourceChain = renderDataSourceChain;
+  
+  // C2: Confidence Indicators
+  window.renderConfidenceIndicator = renderConfidenceIndicator;
+  window.renderConfidenceBadge = renderConfidenceBadge;
+  window.getConfidenceLevel = getConfidenceLevel;
+  
+  // C3: Comparison Indicators
+  window.renderComparisonIndicator = renderComparisonIndicator;
+  window.renderComparisonBadge = renderComparisonBadge;
+  window.renderGapAnalysis = renderGapAnalysis;
+  
+  // C4: Elite Metric Cards
+  window.renderEliteMetricCard = renderEliteMetricCard;
+  window.renderEliteMetricCardRow = renderEliteMetricCardRow;
+  window.formatCompactNumber = formatCompactNumber;
+  
+  // C5: Loading States
+  window.renderEliteLoadingState = renderEliteLoadingState;
+  window.renderEliteSkeletonCards = renderEliteSkeletonCards;
+  
+  console.log('✅ ELITE_Components_Shared.html loaded - Shared Components v1.0 (C1-C5 Complete)');
+  
+})();
+</script>

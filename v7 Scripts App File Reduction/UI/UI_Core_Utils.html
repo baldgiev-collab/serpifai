@@ -1,0 +1,275 @@
+<!--
+  UI_Core_Utils.html
+  Core UI Utilities & Theme Management
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.setActiveTab() - Tab navigation
+  - window.switchTheme() - Theme switching
+  - window.showToast() - Toast notifications
+  - window.showLoadingIndicator() - Loading state
+  - window.hideLoadingIndicator() - Hide loading
+  - window.initWorkflowMenuCollapse() - Sidebar menu
+  - window.showStageInSidebar() - Stage visibility
+  - window.updateStageStatus() - Status badges
+  
+  Dependencies:
+  - DOM elements must be loaded first
+-->
+<script>
+  console.log('🎨 UI_Core_Utils.html loading...');
+
+  /**
+   * Set the active tab in the main navigation
+   * @param {string} name - Tab name (workflow, results, overview, etc.)
+   */
+  window.setActiveTab = function(name) {
+    console.log('🔄 setActiveTab called with:', name);
+
+    const tabs = document.querySelectorAll('.tab');
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const breadcrumb = document.getElementById('topBreadcrumb');
+    const projectSelect = document.getElementById('projectSelect');
+
+    if (tabs.length === 0) {
+      console.error('❌ setActiveTab: tabs array is EMPTY! Re-querying DOM...');
+      document.querySelectorAll('.tab').forEach(t => {
+        if (t.id === 'tab-' + name) {
+          t.classList.add('active');
+          t.style.display = 'block';
+          t.style.opacity = '1';
+        } else {
+          t.classList.remove('active');
+        }
+      });
+      return;
+    }
+
+    tabs.forEach(t => {
+      if (t.id === 'tab-' + name) {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
+
+    navBtns.forEach(btn => {
+      if (btn.getAttribute('data-tab') === name) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    const activeProject = projectSelect?.value || 'No project selected';
+    const label = {
+      overview: 'Overview',
+      workflow: '5‑Stage Workflow',
+      results: 'Workflow Results',
+      qa: 'QA · SEO · E‑E‑A‑T',
+      competitors: 'Competitor Intelligence',
+      scoring: 'Scoring',
+      settings: 'Settings'
+    }[name] || 'Overview';
+
+    if (breadcrumb) {
+      breadcrumb.textContent = label + ' · ' + activeProject;
+    }
+
+    // Auto-hide Project Manager on results tab for maximum viewport height
+    const projectCard = document.getElementById('projectCard');
+    if (projectCard) {
+      projectCard.style.display = name === 'results' ? 'none' : 'block';
+    }
+  };
+
+  /**
+   * Switch the application theme
+   * @param {string} theme - Theme name (light, dark, etc.)
+   */
+  window.switchTheme = function(theme) {
+    document.body.setAttribute('data-theme', theme);
+
+    const themeBtns = document.querySelectorAll('.btn-theme');
+    themeBtns.forEach(d => {
+      d.classList.toggle('active', d.getAttribute('data-theme-target') === theme);
+    });
+  };
+
+  /**
+   * Show a toast notification
+   * @param {string} msg - Message to display
+   */
+  window.showToast = function(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translateX(-50%) translateY(12px)';
+      setTimeout(() => t.remove(), 2200);
+    }, 2000);
+  };
+
+  /**
+   * Show loading indicator when loading a project
+   * @param {string} projectName - Name of project being loaded
+   */
+  window.showLoadingIndicator = function(projectName) {
+    const indicator = document.getElementById('projectLoadingIndicator');
+    const nameEl = document.getElementById('loadingProjectName');
+    if (indicator && nameEl) {
+      nameEl.textContent = projectName || '';
+      indicator.classList.add('visible');
+    }
+  };
+
+  /**
+   * Hide the loading indicator
+   */
+  window.hideLoadingIndicator = function() {
+    const indicator = document.getElementById('projectLoadingIndicator');
+    if (indicator) {
+      indicator.classList.remove('visible');
+    }
+  };
+
+  /**
+   * Initialize collapsible workflow menu in sidebar
+   */
+  window.initWorkflowMenuCollapse = function() {
+    const toggleBtn = document.getElementById('workflowMenuToggle');
+    const submenu = document.getElementById('resultsSubmenu');
+    const icon = document.getElementById('workflowMenuIcon');
+
+    if (!toggleBtn || !submenu || !icon) return;
+
+    // Load saved state from localStorage
+    const isExpanded = localStorage.getItem('workflowMenuExpanded') === 'true';
+    submenu.style.display = isExpanded ? 'flex' : 'none';
+    icon.textContent = isExpanded ? '▲' : '▼';
+
+    // Toggle on click
+    toggleBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const isCurrentlyVisible = submenu.style.display === 'flex';
+
+      if (isCurrentlyVisible) {
+        submenu.style.display = 'none';
+        icon.textContent = '▼';
+        localStorage.setItem('workflowMenuExpanded', 'false');
+      } else {
+        submenu.style.display = 'flex';
+        icon.textContent = '▲';
+        localStorage.setItem('workflowMenuExpanded', 'true');
+        window.setActiveTab?.('workflow');
+      }
+    });
+  };
+
+  /**
+   * Show a stage button in sidebar after completion
+   * @param {number} stageNum - Stage number (1-5)
+   */
+  window.showStageInSidebar = function(stageNum) {
+    const stageBtn = document.querySelector(`.nav-subbtn[data-stage="${stageNum}"]`);
+    if (stageBtn) {
+      stageBtn.style.display = 'flex';
+      stageBtn.setAttribute('data-completed', 'true');
+
+      // Auto-expand submenu
+      const submenu = document.getElementById('resultsSubmenu');
+      const icon = document.getElementById('workflowMenuIcon');
+      if (submenu && icon) {
+        submenu.style.display = 'flex';
+        icon.textContent = '▲';
+        localStorage.setItem('workflowMenuExpanded', 'true');
+      }
+    }
+  };
+
+  /**
+   * Update stage status badge in sidebar
+   * @param {number} stageNum - Stage number (1-5)
+   * @param {string} status - Status (completed, running, error)
+   */
+  window.updateStageStatus = function(stageNum, status) {
+    const stageBtn = document.querySelector(`.nav-subbtn[data-stage="${stageNum}"]`);
+    if (stageBtn) {
+      stageBtn.classList.remove('completed', 'running', 'error');
+      stageBtn.classList.add(status);
+
+      // Update badge icon
+      const badge = stageBtn.querySelector('.stage-badge');
+      if (badge) {
+        badge.textContent = status === 'completed' ? '✓' : status === 'running' ? '⏳' : '⚠️';
+      }
+    }
+  };
+
+  /**
+   * View chart in fullscreen modal
+   * @param {string} canvasId - Canvas element ID
+   */
+  window.viewChartFullscreen = function(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'chart-fullscreen-modal';
+    modal.innerHTML = `
+      <div class="chart-fullscreen-container">
+        <button class="chart-fullscreen-close" onclick="this.closest('.chart-fullscreen-modal').remove()">✕</button>
+        <canvas id="${canvasId}-fullscreen"></canvas>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Clone chart to fullscreen canvas
+    const fullCanvas = modal.querySelector(`#${canvasId}-fullscreen`);
+    const chartInstance = window.canvasToInstanceMap?.get(canvasId);
+
+    if (chartInstance) {
+      new Chart(fullCanvas.getContext('2d'), chartInstance.config);
+    }
+
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) modal.remove();
+    });
+  };
+
+  /**
+   * Download chart as PNG
+   * @param {string} canvasId - Canvas element ID
+   */
+  window.downloadChart = function(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+      window.showToast?.('Chart not found');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.download = `${canvasId}-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    window.showToast?.('Chart downloaded!');
+  };
+
+  /**
+   * Show chart information popup
+   * @param {string} canvasId - Canvas element ID
+   * @param {string} title - Chart title
+   */
+  window.showChartInfo = function(canvasId, title) {
+    const chartInstance = window.canvasToInstanceMap?.get(canvasId);
+    const dataPoints = chartInstance?.data?.datasets?.[0]?.data?.length || 0;
+
+    window.showToast?.(`${title}: ${dataPoints} data points`);
+  };
+
+  console.log('✅ UI_Core_Utils.html loaded');
+</script>

@@ -1,0 +1,827 @@
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════════
+// COMP_PDF_Generator.html
+// PDF Generation for Competitor Analysis Reports
+// Extracted from UI_Scripts_App.html - Phase 8 Refactoring
+// ═══════════════════════════════════════════════════════════════════════════════════
+// Functions: generateCompetitorPDF, loadPDFLibraries, generateVisualPDF,
+//            generateCompressedFallbackPDF, showPDFProgress, hidePDFProgress,
+//            getTabPDFContent, formatNumber
+// Dependencies: jsPDF (loaded dynamically), html2canvas (loaded dynamically)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate and download competitor analysis PDF
+ * Uses jsPDF and html2canvas to capture the actual UI with charts and styling
+ */
+window.generateCompetitorPDF = function(config) {
+  console.log('📄 Generating Visual PDF with config:', config);
+
+  // Check if libraries are loaded
+  if (typeof jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+    loadPDFLibraries().then(() => {
+      generateVisualPDF(config);
+    }).catch(err => {
+      console.error('Failed to load PDF libraries:', err);
+      showToast('❌ Failed to load PDF library. Please try again.', 'error');
+    });
+  } else {
+    generateVisualPDF(config);
+  }
+};
+
+/**
+ * Load jsPDF and html2canvas libraries dynamically
+ */
+window.loadPDFLibraries = function() {
+  return new Promise((resolve, reject) => {
+    if ((window.jspdf || window.jsPDF) && window.html2canvas) {
+      resolve();
+      return;
+    }
+
+    const jspdfScript = document.createElement('script');
+    jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    jspdfScript.onload = () => {
+      console.log('✅ jsPDF loaded');
+      
+      const html2canvasScript = document.createElement('script');
+      html2canvasScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      html2canvasScript.onload = () => {
+        console.log('✅ html2canvas loaded');
+        resolve();
+      };
+      html2canvasScript.onerror = reject;
+      document.head.appendChild(html2canvasScript);
+    };
+    jspdfScript.onerror = reject;
+    document.head.appendChild(jspdfScript);
+  });
+};
+
+/**
+ * Generate Visual PDF by capturing actual UI elements
+ * OPTIMIZED: Uses JPEG compression and lower scale to prevent memory issues
+ */
+window.generateVisualPDF = async function(config) {
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  
+  const projectData = config.projectData || {};
+  const tabs = config.tabs || [];
+  
+  // PDF dimensions
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 8; // Reduced margin for more content space
+  const contentWidth = pageWidth - (margin * 2);
+  
+  // IMPROVED: Higher quality settings for better readability
+  const imageQuality = 0.85; // Increased JPEG quality for sharper text
+  const captureScale = 2.0;  // Increased scale for better resolution
+  const imageFormat = 'JPEG';
+  
+  // Tab ID to panel selector mapping
+  const tabPanelMap = {
+    'overviewDashboard': 'overview',
+    'overview': 'overview',
+    'marketIntelligence': 'market',
+    'market': 'market',
+    'brandPosition': 'brand',
+    'brand': 'brand',
+    'technicalSeo': 'technical',
+    'technical': 'technical',
+    'contentIntel': 'content',
+    'content': 'content',
+    'keywordStrategy': 'keywords',
+    'keywords': 'keywords',
+    'contentSystems': 'systems',
+    'systems': 'systems',
+    'conversion': 'conversion',
+    'distribution': 'distribution',
+    'audienceIntel': 'audience',
+    'audience': 'audience',
+    'geoAeo': 'geo',
+    'geo': 'geo',
+    'authority': 'authority',
+    'performance': 'performance',
+    'opportunities': 'opportunity',
+    'opportunity': 'opportunity',
+    'scoringEngine': 'scoring',
+    'scoring': 'scoring'
+  };
+  
+  // Tab names for headers
+  const tabNames = {
+    'overview': '📊 Overview Dashboard',
+    'market': '🎯 Market Intelligence',
+    'brand': '🏆 Brand Position',
+    'technical': '⚙️ Technical SEO',
+    'content': '📝 Content Intelligence',
+    'keywords': '🔑 Keyword Strategy',
+    'systems': '📚 Content Systems',
+    'conversion': '💰 Conversion',
+    'distribution': '📡 Distribution',
+    'audience': '👥 Audience Intelligence',
+    'geo': '🌍 GEO/AEO',
+    'authority': '🔗 Authority',
+    'performance': '⚡ Performance',
+    'opportunity': '💎 Opportunities',
+    'scoring': '📈 Scoring Engine'
+  };
+
+  // Show progress overlay
+  showPDFProgress(0, tabs.length);
+
+  let pageNumber = 0;
+  let capturedTabs = 0;
+  
+  // Store captured images temporarily to manage memory
+  const capturedImages = [];
+  
+  for (let i = 0; i < tabs.length; i++) {
+    const tabId = tabs[i];
+    const panelId = tabPanelMap[tabId] || tabId;
+    
+    console.log(`📄 Capturing tab ${i + 1}/${tabs.length}: ${panelId}`);
+    showPDFProgress(i + 1, tabs.length, tabNames[panelId] || panelId);
+    
+    // Find the panel element
+    const panel = document.querySelector(`[data-comp-panel="${panelId}"]`) ||
+                  document.getElementById(`panel-${panelId}`);
+    
+    if (!panel) {
+      console.warn(`⚠️ Panel not found for tab: ${panelId}`);
+      continue;
+    }
+    
+    // Make sure panel is visible for capture
+    const originalDisplay = panel.style.display;
+    const originalVisibility = panel.style.visibility;
+    const originalPosition = panel.style.position;
+    const originalLeft = panel.style.left;
+    
+    panel.style.display = 'block';
+    panel.style.visibility = 'visible';
+    
+    // Wait a moment for any charts to render
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    try {
+      // IMPROVED: Capture with higher quality and proper dimensions
+      const maxCaptureWidth = 1600; // Increased for better quality
+      const actualWidth = Math.min(panel.scrollWidth, maxCaptureWidth);
+      
+      const canvas = await html2canvas(panel, {
+        scale: captureScale,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: actualWidth,
+        windowWidth: actualWidth,
+        // Allow taller content for multi-page capture
+        height: Math.min(panel.scrollHeight, 6000),
+        windowHeight: Math.min(panel.scrollHeight, 6000),
+        // Better rendering
+        imageTimeout: 10000,
+        removeContainer: true,
+        // Improve text rendering
+        letterRendering: true
+      });
+      
+      // OPTIMIZED: Convert to JPEG with compression
+      const imgData = canvas.toDataURL('image/jpeg', imageQuality);
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Store for later processing
+      capturedImages.push({
+        panelId,
+        imgData,
+        imgWidth,
+        imgHeight,
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height
+      });
+      
+      capturedTabs++;
+      
+      // Clean up canvas to free memory
+      canvas.width = 0;
+      canvas.height = 0;
+      
+    } catch (error) {
+      console.error(`❌ Error capturing tab ${panelId}:`, error);
+    }
+    
+    // Restore original visibility
+    panel.style.display = originalDisplay;
+    panel.style.visibility = originalVisibility;
+    panel.style.position = originalPosition;
+    panel.style.left = originalLeft;
+    
+    // Small delay between captures to prevent memory buildup
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  
+  // Now add all captured images to PDF
+  showPDFProgress(tabs.length, tabs.length, 'Building PDF document...');
+  
+  try {
+    for (let i = 0; i < capturedImages.length; i++) {
+      const { panelId, imgData, imgWidth, imgHeight } = capturedImages[i];
+      
+      // Add new page for each tab (except first)
+      if (pageNumber > 0) {
+        doc.addPage();
+      }
+      
+      // Add header for this tab
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, pageWidth, 18, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(tabNames[panelId] || panelId, margin, 12);
+      doc.setFontSize(9);
+      doc.text(`Page ${pageNumber + 1}`, pageWidth - margin - 15, 12);
+      
+      let yPosition = 22;
+      
+      // IMPROVED: Fill the page properly with multi-page support
+      const maxContentHeight = pageHeight - yPosition - 10;
+      
+      if (imgHeight <= maxContentHeight) {
+        // Fits on one page - use full width
+        doc.addImage(imgData, imageFormat, margin, yPosition, imgWidth, imgHeight);
+      } else {
+        // Content is too tall - split across multiple pages
+        // Calculate how many pages we need
+        const pagesNeeded = Math.ceil(imgHeight / maxContentHeight);
+        
+        // For very tall content, use smart scaling to reduce page count
+        if (pagesNeeded > 3) {
+          // Scale to fit in 2-3 pages maximum for readability
+          const targetPages = 2;
+          const targetHeight = maxContentHeight * targetPages;
+          const scaleFactor = targetHeight / imgHeight;
+          const scaledWidth = imgWidth * scaleFactor;
+          const scaledHeight = imgHeight * scaleFactor;
+          
+          // Page 1 - First portion
+          const heightPerPage = maxContentHeight;
+          const sourceHeightPerPage = heightPerPage / scaleFactor;
+          
+          // Create a temporary canvas to slice the image
+          const tempImg = new Image();
+          tempImg.src = imgData;
+          
+          // Just scale to fit the full width on one page for now
+          // This ensures content is readable and fills the page
+          const fitScaleFactor = Math.min(1, maxContentHeight / imgHeight);
+          const fitWidth = contentWidth; // Use full content width
+          const fitHeight = imgHeight * (contentWidth / imgWidth);
+          
+          if (fitHeight <= maxContentHeight) {
+            // Can fit with full width scaling
+            doc.addImage(imgData, imageFormat, margin, yPosition, fitWidth, fitHeight);
+          } else {
+            // Must reduce - but fill width first, then scale proportionally
+            const finalScale = maxContentHeight / fitHeight;
+            const finalWidth = fitWidth * finalScale;
+            const finalHeight = fitHeight * finalScale;
+            // Left-align instead of center for better readability
+            doc.addImage(imgData, imageFormat, margin, yPosition, finalWidth, finalHeight);
+          }
+        } else {
+          // 2-3 pages - we can split the image across pages
+          // For simplicity, scale to fit one page with full width
+          const scaleFactor = maxContentHeight / imgHeight;
+          const scaledWidth = contentWidth; // Always use full width
+          const scaledHeight = (imgHeight * contentWidth) / imgWidth;
+          
+          if (scaledHeight <= maxContentHeight) {
+            doc.addImage(imgData, imageFormat, margin, yPosition, scaledWidth, scaledHeight);
+          } else {
+            // Final fallback - fit to page maintaining aspect ratio
+            const aspectRatio = imgWidth / imgHeight;
+            let finalWidth = contentWidth;
+            let finalHeight = finalWidth / aspectRatio;
+            
+            if (finalHeight > maxContentHeight) {
+              finalHeight = maxContentHeight;
+              finalWidth = finalHeight * aspectRatio;
+            }
+            
+            doc.addImage(imgData, imageFormat, margin, yPosition, finalWidth, finalHeight);
+          }
+        }
+      }
+      
+      pageNumber++;
+    }
+    
+    // Store TOC data before clearing images (we need panelId for TOC)
+    const tocData = capturedImages.map(img => ({ panelId: img.panelId }));
+    
+    // Clear captured images to free memory
+    capturedImages.length = 0;
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // COVER PAGE with Clickable Table of Contents
+    // ═══════════════════════════════════════════════════════════════════
+    doc.insertPage(1);
+    doc.setPage(1);
+    
+    // Cover page design - gradient-like effect
+    doc.setFillColor(30, 58, 95); // Dark blue header
+    doc.rect(0, 0, pageWidth, 80, 'F');
+    
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(32);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Competitor Analysis', pageWidth / 2, 35, { align: 'center' });
+    doc.setFontSize(24);
+    doc.text('Intelligence Report', pageWidth / 2, 50, { align: 'center' });
+    
+    // Branding
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('SERPIFAI', pageWidth / 2, 70, { align: 'center' });
+    
+    // White content area
+    const keyword = projectData.keyword || projectData.primaryKeyword || 'Competitive Intelligence';
+    const competitors = config.analysisData?.competitors || [];
+    
+    // Project summary box
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, 90, contentWidth, 45, 3, 3, 'F');
+    
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Report Summary', margin + 5, 100);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Target Keyword: ${keyword}`, margin + 5, 112);
+    doc.text(`Competitors Analyzed: ${competitors.length}`, margin + 5, 122);
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    })}`, margin + 5, 132);
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // CLICKABLE TABLE OF CONTENTS
+    // ═══════════════════════════════════════════════════════════════════
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('📋 Table of Contents', margin, 155);
+    
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.5);
+    doc.line(margin, 158, margin + 60, 158);
+    
+    // Build TOC with clickable internal links
+    let tocY = 168;
+    const tocLineHeight = 12;
+    
+    tocData.forEach((item, idx) => {
+      const targetPage = idx + 2; // +2 because cover is page 1
+      const tabLabel = tabNames[item.panelId] || item.panelId;
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      
+      // Clickable link text
+      doc.setTextColor(59, 130, 246);
+      doc.textWithLink(tabLabel, margin + 5, tocY, { pageNumber: targetPage });
+      
+      // Page number on right
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Page ${idx + 1}`, pageWidth - margin - 15, tocY);
+      
+      // Dotted line between
+      const textWidth = doc.getTextWidth(tabLabel);
+      const dotsStartX = margin + 5 + textWidth + 5;
+      const dotsEndX = pageWidth - margin - 25;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineDashPattern([1, 2], 0);
+      doc.line(dotsStartX, tocY - 1, dotsEndX, tocY - 1);
+      doc.setLineDashPattern([], 0); // Reset dash
+      
+      tocY += tocLineHeight;
+      
+      // Add page break for TOC if needed
+      if (tocY > pageHeight - 40 && idx < tocData.length - 1) {
+        doc.addPage();
+        tocY = 30;
+        doc.setTextColor(30, 41, 59);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('📋 Table of Contents (continued)', margin, 20);
+      }
+    });
+    
+    // Footer on cover
+    doc.setPage(1);
+    doc.setTextColor(128, 128, 128);
+    doc.setFontSize(9);
+    doc.text('Confidential - Generated by SERPIFAI Elite Intelligence Platform', pageWidth / 2, pageHeight - 15, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(59, 130, 246);
+    doc.text('Click any section above to jump directly to that page', pageWidth / 2, pageHeight - 8, { align: 'center' });
+    
+    // Add footers to all content pages
+    const newTotalPages = doc.internal.getNumberOfPages();
+    for (let i = 2; i <= newTotalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Page ${i - 1} of ${newTotalPages - 1}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+      doc.text('Generated by SERPIFAI', margin, pageHeight - 8);
+      doc.text(new Date().toLocaleDateString(), pageWidth - margin - 25, pageHeight - 8);
+    }
+    
+    // Hide progress overlay
+    hidePDFProgress();
+    
+    // Save the PDF
+    const filename = `SERPIFAI-Competitor-Analysis-${keyword.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.pdf`;
+    doc.save(filename);
+    
+    showToast('✅ Visual PDF exported successfully!', 'success');
+    console.log('✅ PDF saved:', filename);
+    
+  } catch (pdfError) {
+    console.error('❌ PDF generation failed:', pdfError);
+    hidePDFProgress();
+    
+    // Fallback: Try with even lower quality
+    if (pdfError.message && pdfError.message.includes('string length')) {
+      showToast('⚠️ PDF too large. Generating compressed version...', 'warning');
+      setTimeout(() => {
+        generateCompressedFallbackPDF(config);
+      }, 500);
+    } else {
+      showToast('❌ PDF generation failed. Please try with fewer tabs.', 'error');
+    }
+  }
+};
+
+/**
+ * Fallback: Generate a more compressed PDF if the main one fails
+ */
+window.generateCompressedFallbackPDF = async function(config) {
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  
+  const projectData = config.projectData || {};
+  const tabs = config.tabs || [];
+  
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 10;
+  const contentWidth = pageWidth - (margin * 2);
+  
+  // Medium quality for fallback - balance between size and readability
+  const imageQuality = 0.6;
+  const captureScale = 1.5;
+  
+  const tabPanelMap = {
+    'overview': 'overview', 'market': 'market', 'brand': 'brand',
+    'technical': 'technical', 'content': 'content', 'keywords': 'keywords',
+    'systems': 'systems', 'conversion': 'conversion', 'distribution': 'distribution',
+    'audience': 'audience', 'geo': 'geo', 'authority': 'authority',
+    'performance': 'performance', 'opportunity': 'opportunity', 'scoring': 'scoring'
+  };
+  
+  const tabNames = {
+    'overview': 'Overview', 'market': 'Market', 'brand': 'Brand',
+    'technical': 'Technical', 'content': 'Content', 'keywords': 'Keywords',
+    'systems': 'Systems', 'conversion': 'Conversion', 'distribution': 'Distribution',
+    'audience': 'Audience', 'geo': 'GEO/AEO', 'authority': 'Authority',
+    'performance': 'Performance', 'opportunity': 'Opportunities', 'scoring': 'Scoring'
+  };
+  
+  showPDFProgress(0, tabs.length, 'Generating compressed PDF...');
+  
+  let pageNumber = 0;
+  
+  for (let i = 0; i < tabs.length; i++) {
+    const tabId = tabs[i];
+    const panelId = tabPanelMap[tabId] || tabId;
+    
+    showPDFProgress(i + 1, tabs.length, `Compressing ${tabNames[panelId] || panelId}...`);
+    
+    const panel = document.querySelector(`[data-comp-panel="${panelId}"]`);
+    if (!panel) continue;
+    
+    const originalDisplay = panel.style.display;
+    panel.style.display = 'block';
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    try {
+      const canvas = await html2canvas(panel, {
+        scale: captureScale,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: Math.min(panel.scrollWidth, 800),
+        height: Math.min(panel.scrollHeight, 1500)
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', imageQuality);
+      const imgWidth = contentWidth;
+      const imgHeight = Math.min((canvas.height * imgWidth) / canvas.width, pageHeight - 40);
+      
+      if (pageNumber > 0) doc.addPage();
+      
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, pageWidth, 15, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.text(tabNames[panelId] || panelId, margin, 10);
+      
+      doc.addImage(imgData, 'JPEG', margin, 20, imgWidth, imgHeight);
+      
+      pageNumber++;
+      canvas.width = 0;
+      canvas.height = 0;
+      
+    } catch (e) {
+      console.warn(`Skipping tab ${panelId}:`, e);
+    }
+    
+    panel.style.display = originalDisplay;
+  }
+  
+  hidePDFProgress();
+  
+  const keyword = projectData.keyword || 'Report';
+  const filename = `SERPIFAI-Compressed-${keyword.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.pdf`;
+  doc.save(filename);
+  
+  showToast('✅ Compressed PDF exported!', 'success');
+};
+
+/**
+ * Show PDF generation progress overlay
+ */
+window.showPDFProgress = function(current, total, currentTab = '') {
+  let overlay = document.getElementById('pdf-progress-overlay');
+  
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pdf-progress-overlay';
+    overlay.innerHTML = `
+      <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); 
+                  display: flex; align-items: center; justify-content: center; z-index: 99999;">
+        <div style="background: white; border-radius: 16px; padding: 32px 48px; text-align: center; 
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px;">
+          <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
+          <h3 style="margin: 0 0 8px; font-size: 20px; color: #1e293b;">Generating PDF...</h3>
+          <p id="pdf-progress-text" style="margin: 0 0 16px; color: #64748b; font-size: 14px;">
+            Capturing tab ${current} of ${total}
+          </p>
+          <p id="pdf-progress-tab" style="margin: 0 0 16px; color: #3b82f6; font-size: 12px; font-weight: 600;">
+            ${currentTab}
+          </p>
+          <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+            <div id="pdf-progress-bar" style="background: linear-gradient(90deg, #3b82f6, #8b5cf6); 
+                 height: 100%; width: ${(current / total) * 100}%; transition: width 0.3s;"></div>
+          </div>
+          <p style="margin: 12px 0 0; color: #94a3b8; font-size: 11px;">
+            Please wait while we capture all charts and tables...
+          </p>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  } else {
+    document.getElementById('pdf-progress-text').textContent = `Capturing tab ${current} of ${total}`;
+    document.getElementById('pdf-progress-tab').textContent = currentTab;
+    document.getElementById('pdf-progress-bar').style.width = `${(current / total) * 100}%`;
+  }
+};
+
+/**
+ * Hide PDF generation progress overlay
+ */
+window.hidePDFProgress = function() {
+  const overlay = document.getElementById('pdf-progress-overlay');
+  if (overlay) {
+    overlay.remove();
+  }
+};
+
+/**
+ * Get content for a specific tab to include in PDF (fallback text version)
+ */
+window.getTabPDFContent = function(tabId, analysisData, projectData) {
+  const competitors = analysisData.competitors || analysisData.competitorResults || [];
+  const aiInsights = analysisData.aiInsights || analysisData.geminiAnalysis || {};
+  
+  let content = '';
+
+  switch (tabId) {
+    case 'overviewDashboard':
+      content = `Executive Summary\n\n`;
+      content += `Total Competitors Analyzed: ${competitors.length}\n`;
+      content += `Primary Keyword: ${projectData.keyword || 'N/A'}\n\n`;
+      content += `Top Competitors:\n`;
+      competitors.slice(0, 5).forEach((c, i) => {
+        content += `${i + 1}. ${c.domain} - Score: ${c.processedMetrics?.overallScore || 'N/A'}\n`;
+      });
+      if (aiInsights.executiveSummary) {
+        content += `\nAI Insights:\n${aiInsights.executiveSummary}\n`;
+      }
+      break;
+
+    case 'marketIntelligence':
+      content = `Market Intelligence Analysis\n\n`;
+      content += `Market Overview:\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Traffic: ${c.apiData?.semrush?.organic_traffic || 'N/A'}\n`;
+        content += `   - Keywords: ${c.apiData?.semrush?.organic_keywords || 'N/A'}\n`;
+        content += `   - Authority: ${c.apiData?.openPageRank?.page_rank_decimal || 'N/A'}\n`;
+      });
+      break;
+
+    case 'brandPosition':
+      content = `Brand Position Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Brand Strength: ${c.processedMetrics?.brandScore || 'N/A'}\n`;
+        content += `   - Visibility: ${c.processedMetrics?.visibilityScore || 'N/A'}\n`;
+        content += `   - Trust Score: ${c.processedMetrics?.trustScore || 'N/A'}\n`;
+      });
+      break;
+
+    case 'technicalSeo':
+      content = `Technical SEO Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        const ps = c.apiData?.pageSpeed?.scores || {};
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Performance: ${ps.performance || 'N/A'}\n`;
+        content += `   - SEO Score: ${ps.seo || 'N/A'}\n`;
+        content += `   - Accessibility: ${ps.accessibility || 'N/A'}\n`;
+        content += `   - Best Practices: ${ps.bestPractices || 'N/A'}\n`;
+      });
+      break;
+
+    case 'contentIntel':
+      content = `Content Intelligence Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        const web = c.synthesized?.website || {};
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Word Count: ${web.wordCount || 'N/A'}\n`;
+        content += `   - Reading Level: ${web.readingLevel || 'N/A'}\n`;
+        content += `   - Content Score: ${c.processedMetrics?.contentScore || 'N/A'}\n`;
+      });
+      break;
+
+    case 'keywordStrategy':
+      content = `Keyword Strategy Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Organic Keywords: ${c.apiData?.semrush?.organic_keywords || 'N/A'}\n`;
+        content += `   - Keyword Overlap: ${c.processedMetrics?.keywordOverlap || 'N/A'}%\n`;
+      });
+      break;
+
+    case 'contentSystems':
+      content = `Content Systems Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        const schema = c.synthesized?.website?.schemaTypes || [];
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Schema Types: ${schema.length > 0 ? schema.join(', ') : 'None detected'}\n`;
+        content += `   - Content Structure: ${c.processedMetrics?.contentStructure || 'N/A'}\n`;
+      });
+      break;
+
+    case 'conversion':
+      content = `Conversion Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - CTA Strength: ${c.processedMetrics?.ctaStrength || 'N/A'}\n`;
+        content += `   - Conversion Score: ${c.processedMetrics?.conversionScore || 'N/A'}\n`;
+      });
+      break;
+
+    case 'distribution':
+      content = `Distribution Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Backlinks: ${c.apiData?.semrush?.backlinks || 'N/A'}\n`;
+        content += `   - Referring Domains: ${c.apiData?.semrush?.referring_domains || 'N/A'}\n`;
+      });
+      break;
+
+    case 'audienceIntel':
+      content = `Audience Intelligence Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Target Audience: ${c.processedMetrics?.targetAudience || 'General'}\n`;
+        content += `   - Engagement: ${c.processedMetrics?.engagement || 'N/A'}\n`;
+      });
+      break;
+
+    case 'geoAeo':
+      content = `GEO/AEO Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        const paa = c.apiData?.serper?.peopleAlsoAsk || [];
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Answer Authority: ${c.processedMetrics?.answerAuthority || 'N/A'}\n`;
+        content += `   - PAA Count: ${paa.length}\n`;
+        content += `   - Schema Types: ${(c.synthesized?.website?.schemaTypes || []).length}\n`;
+      });
+      break;
+
+    case 'authority':
+      content = `Authority Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Page Rank: ${c.apiData?.openPageRank?.page_rank_decimal || 'N/A'}\n`;
+        content += `   - Authority Score: ${c.processedMetrics?.authorityScore || 'N/A'}\n`;
+        content += `   - Topical Relevance: ${c.processedMetrics?.topicalRelevance || 'N/A'}\n`;
+      });
+      break;
+
+    case 'performance':
+      content = `Performance Analysis\n\n`;
+      competitors.forEach((c, i) => {
+        const ps = c.apiData?.pageSpeed?.scores || {};
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Performance Score: ${ps.performance || 'N/A'}\n`;
+        content += `   - Load Time: ${c.apiData?.pageSpeed?.loadTime || 'N/A'}ms\n`;
+      });
+      break;
+
+    case 'opportunities':
+      content = `Strategic Opportunities\n\n`;
+      competitors.forEach((c, i) => {
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Opportunity Score: ${c.processedMetrics?.opportunityScore || 'N/A'}\n`;
+        content += `   - Moat Strength: ${c.processedMetrics?.moatStrength || 'N/A'}\n`;
+      });
+      if (aiInsights.opportunities) {
+        content += `\nAI Recommendations:\n${aiInsights.opportunities}\n`;
+      }
+      break;
+
+    case 'scoringEngine':
+      content = `Competitor Scoring Engine\n\n`;
+      content += `Comprehensive Scoring Summary:\n\n`;
+      competitors.forEach((c, i) => {
+        const pm = c.processedMetrics || {};
+        content += `${i + 1}. ${c.domain}\n`;
+        content += `   - Overall Score: ${pm.overallScore || pm.competitorScore || 'N/A'}\n`;
+        content += `   - Technical: ${pm.technicalScore || 'N/A'}\n`;
+        content += `   - Authority: ${pm.authorityScore || 'N/A'}\n`;
+        content += `   - Content: ${pm.contentScore || 'N/A'}\n`;
+        content += `   - Brand: ${pm.brandScore || 'N/A'}\n`;
+        content += `   - Visibility: ${pm.visibilityScore || 'N/A'}\n\n`;
+      });
+      break;
+
+    default:
+      content = `No content available for this tab.\n`;
+  }
+
+  return content;
+};
+
+/**
+ * Format large numbers with K/M suffixes (Ahrefs-style)
+ */
+window.formatNumber = function(num) {
+  // Handle non-numeric values
+  if (num === 'N/A' || num === null || num === undefined || num === '') {
+    return 'N/A';
+  }
+
+  // Convert to number if string
+  const value = typeof num === 'string' ? parseFloat(num) : num;
+
+  // Check if valid number
+  if (isNaN(value)) {
+    return 'N/A';
+  }
+
+  // Format large numbers
+  if (value >= 1000000) {
+    return (value / 1000000).toFixed(1) + 'M';
+  } else if (value >= 1000) {
+    return (value / 1000).toFixed(1) + 'K';
+  }
+  return value.toString();
+};
+
+console.log('✅ COMP_PDF_Generator.html loaded - PDF generation functions available');
+</script>

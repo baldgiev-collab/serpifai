@@ -1,0 +1,813 @@
+<script>
+/**
+ * UI_Chart_Fullscreen.html
+ * Chart download, fullscreen view, and image fallback functions
+ * Extracted from UI_Scripts_App.html for modularization
+ */
+
+// ====================================================================
+// COMPETITOR BUTTON BINDING DISABLED
+// ====================================================================
+// NOTE: Button is now handled by UI_Elite_Integration.html
+// which is included in UI_Dashboard.html
+// That system uses runEliteCompetitorAnalysis() - more reliable
+// Keeping this function for backward compatibility / manual testing only
+// ====================================================================
+
+// Wire up the Analyze Competitors button - DISABLED (see UI_Elite_Integration.html)
+/*
+document.addEventListener('DOMContentLoaded', function() {
+  const analyzeBtn = document.getElementById('btnAnalyzeCompetitors');
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', initiateCompetitorAnalysis);
+  }
+});
+*/
+
+// ============================================
+// ELITE CHART INTERACTION FUNCTIONS
+// ============================================
+
+/**
+ * Download chart as high-resolution PNG
+ */
+window.downloadChart = function (canvasId) {
+  console.log('📥 Downloading chart:', canvasId);
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.error('❌ Canvas not found:', canvasId);
+    showToast('⚠️ Chart not found');
+    return;
+  }
+
+  try {
+    // Get Chart.js instance using the GLOBAL mapping
+    const instanceKey = window.canvasToInstanceMap[canvasId];
+    const chartInstance = instanceKey ? window.chartInstances[instanceKey] : null;
+
+    console.log('📊 Chart instance:', instanceKey, chartInstance);
+
+    // Create temporary high-res canvas
+    const tempCanvas = document.createElement('canvas');
+    const scale = 3; // 3x resolution for print quality
+    tempCanvas.width = canvas.width * scale;
+    tempCanvas.height = canvas.height * scale;
+    const ctx = tempCanvas.getContext('2d');
+
+    // Scale context for high DPI
+    ctx.scale(scale, scale);
+
+    // Fill white background (for transparency)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw original canvas
+    ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height);
+
+    // Convert to blob and download
+    tempCanvas.toBlob(function (blob) {
+      if (!blob) {
+        console.error('Failed to create blob');
+        showToast('❌ Failed to create image');
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      // Clean filename
+      const chartName = canvasId.replace('chart-', '').replace(/-/g, '_');
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.download = `serpifai_chart_${chartName}_${timestamp}.png`;
+
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Success toast
+      showToast('✅ Chart downloaded in high resolution');
+    }, 'image/png', 1.0); // Maximum quality
+
+  } catch (error) {
+    console.error('Download error:', error);
+    showToast('❌ Download failed: ' + error.message);
+  }
+};
+
+/**
+ * Show image-based fullscreen as fallback
+ */
+function showImageFullscreen(canvas, canvasId) {
+  console.log('🖼️ Using image fallback for:', canvasId);
+  try {
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const chartTitle = canvasId.replace('chart-', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10000;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(8px);
+          animation: fadeIn 0.3s ease;
+        `;
+
+    modal.innerHTML = `
+          <div style="width: 95%; max-width: 1600px; height: 90vh; background: white; border-radius: 24px; padding: 48px; position: relative; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column;">
+            <button onclick="this.closest('[style*=fixed]').remove()" style="position: absolute; top: 20px; right: 20px; width: 48px; height: 48px; border: none; background: linear-gradient(135deg,#ef4444,#dc2626); color: white; font-size: 24px; border-radius: 14px; cursor: pointer; font-weight: 700;">✕</button>
+            <h2 style="margin: 0 0 24px; font-size: 28px; font-weight: 800; color: #111827;">${chartTitle}</h2>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+              <img src="${imgData}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);">
+            </div>
+            <div style="margin-top: 16px; text-align: center; color: #6b7280; font-size: 14px;">Static image view • Chart instance not available</div>
+          </div>
+        `;
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+
+    showToast('🖼️ Image view (chart instance unavailable)');
+  } catch (err) {
+    console.error('❌ Image fallback failed:', err);
+    showToast('❌ Could not display chart');
+  }
+}
+
+/**
+ * View chart in fullscreen - ENHANCED VERSION WITH FALLBACKS
+ */
+window.viewChartFullscreen = function (canvasId) {
+  console.log('🔍 Opening fullscreen for:', canvasId);
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) {
+    console.error('❌ Canvas not found:', canvasId);
+    showToast('⚠️ Chart not found');
+    return;
+  }
+
+  console.log('✅ Canvas element found:', canvas);
+
+  // ENHANCED: Multi-method chart instance retrieval with better logging
+  let chartInstance = null;
+
+  // Method 1: Try canvas mapping
+  const instanceKey = window.canvasToInstanceMap ? window.canvasToInstanceMap[canvasId] : null;
+  console.log('🔎 Method 1 - Mapping key:', instanceKey);
+  if (instanceKey && window.chartInstances && window.chartInstances[instanceKey]) {
+    chartInstance = window.chartInstances[instanceKey];
+    console.log('✅ Found via mapping:', instanceKey);
+  }
+
+  // Method 2: Try Chart.js getChart() if available
+  if (!chartInstance && typeof Chart !== 'undefined' && Chart.getChart) {
+    console.log('🔎 Method 2 - Trying Chart.getChart()');
+    try {
+      chartInstance = Chart.getChart(canvas);
+      if (chartInstance) {
+        console.log('✅ Found via Chart.getChart()');
+      } else {
+        console.log('⚠️ Chart.getChart() returned null');
+      }
+    } catch (e) {
+      console.warn('⚠️ Chart.getChart() error:', e);
+    }
+  }
+
+  // Method 3: Try canvas.chart property (Chart.js internal)
+  if (!chartInstance && canvas.chart) {
+    console.log('🔎 Method 3 - Found via canvas.chart');
+    chartInstance = canvas.chart;
+    console.log('✅ Found via canvas.chart');
+  }
+
+  // Method 4: Search all chartInstances for matching canvas
+  if (!chartInstance && window.chartInstances) {
+    console.log('🔎 Method 4 - Searching all chart instances');
+    for (const key of Object.keys(window.chartInstances)) {
+      const inst = window.chartInstances[key];
+      if (inst && inst.canvas && inst.canvas.id === canvasId) {
+        chartInstance = inst;
+        console.log('✅ Found via instance search:', key);
+        break;
+      }
+    }
+  }
+
+  console.log('📊 Final chart instance for fullscreen:', chartInstance ? 'FOUND' : 'NOT FOUND', chartInstance);
+
+  if (!chartInstance) {
+    console.error('❌ No chart instance found after all methods');
+    // Show image fallback instead of failing
+    showImageFullscreen(canvas, canvasId);
+    return;
+  }
+
+  // Create NATIVE FULLSCREEN container (not a modal)
+  const fullscreenContainer = document.createElement('div');
+  fullscreenContainer.id = 'chart-fullscreen-container';
+  fullscreenContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 999999;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        animation: fadeIn 0.2s ease;
+      `;
+
+  // Close button - top right, always visible
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'fullscreen-close-btn';
+  closeBtn.style.cssText = `
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 44px;
+        height: 44px;
+        border: 2px solid white;
+        background: rgba(239, 68, 68, 0.95);
+        color: white;
+        font-size: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        z-index: 99999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        pointer-events: auto;
+      `;
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Exit Fullscreen (ESC)';
+  closeBtn.onmouseover = function () {
+    this.style.background = '#dc2626';
+    this.style.transform = 'scale(1.1) rotate(90deg)';
+  };
+  closeBtn.onmouseout = function () {
+    this.style.background = 'rgba(239, 68, 68, 0.95)';
+    this.style.transform = 'scale(1) rotate(0deg)';
+  };
+  closeBtn.onclick = function () {
+    console.log('🔴 Close button clicked');
+
+    // Remove container FIRST (before exiting fullscreen)
+    const container = document.getElementById('chart-fullscreen-container');
+    console.log('📦 Container found:', !!container, container);
+
+    if (container) {
+      try {
+        // Multiple removal methods to ensure it works
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+          console.log('✅ Container removed via parentNode.removeChild');
+        } else {
+          container.remove();
+          console.log('✅ Container removed via .remove()');
+        }
+
+        // Verify removal
+        const stillExists = document.getElementById('chart-fullscreen-container');
+        console.log('📦 Container still exists after removal:', !!stillExists);
+      } catch (removeErr) {
+        console.error('❌ Error removing container:', removeErr);
+      }
+    } else {
+      console.warn('⚠️ Container not found in DOM');
+    }
+
+    // THEN exit fullscreen
+    try {
+      if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement) {
+        console.log('🔄 Exiting fullscreen mode');
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        }
+        console.log('✅ Fullscreen exit called');
+      } else {
+        console.log('ℹ️ Not in fullscreen mode');
+      }
+    } catch (e) {
+      console.error('❌ Fullscreen exit error:', e);
+    }
+
+    // Clean up event listeners
+    document.removeEventListener('keydown', escHandler);
+    document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
+    document.removeEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+    document.removeEventListener('mozfullscreenchange', fullscreenChangeHandler);
+    console.log('✅ Event listeners removed');
+  };
+
+  // ESC key to exit
+  const escHandler = function (e) {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      console.log('⌨️ ESC key pressed');
+      e.preventDefault();
+      closeBtn.click();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+
+  // Also exit fullscreen on fullscreenchange event
+  const fullscreenChangeHandler = function () {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement) {
+      const container = document.getElementById('chart-fullscreen-container');
+      if (container) {
+        container.remove();
+        console.log('✅ Exited fullscreen mode - container removed');
+      }
+      document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
+      document.removeEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+      document.removeEventListener('mozfullscreenchange', fullscreenChangeHandler);
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+  document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+  document.addEventListener('mozfullscreenchange', fullscreenChangeHandler);
+
+  // Chart container - fills full viewport
+  const chartContainer = document.createElement('div');
+  chartContainer.style.cssText = `
+        width: 100%;
+        height: calc(100vh - 80px);
+        position: relative;
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+
+  // Create a wrapper div that will hold the canvas - FIXED SIZE
+  const canvasWrapper = document.createElement('div');
+  canvasWrapper.style.cssText = `
+        width: calc(100vw - 80px);
+        height: calc(100vh - 120px);
+        position: relative;
+      `;
+
+  // Create new canvas for fullscreen with EXPLICIT dimensions
+  const fullscreenCanvas = document.createElement('canvas');
+  fullscreenCanvas.id = canvasId + '-fullscreen';
+  // CRITICAL: Set explicit pixel dimensions, not percentages
+  fullscreenCanvas.style.cssText = `
+        display: block !important;
+        background: #ffffff;
+        opacity: 1 !important;
+        visibility: visible !important;
+        position: relative;
+        z-index: 1;
+        border: 2px solid #e5e7eb;
+      `;
+
+  // Get chart title from the original chart
+  const chartTitle = chartInstance?.options?.plugins?.title?.text ||
+    canvasId.replace('chart-', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+  // CRITICAL: Build DOM hierarchy BEFORE measuring
+  canvasWrapper.appendChild(fullscreenCanvas);
+  chartContainer.appendChild(canvasWrapper);
+  fullscreenContainer.appendChild(chartContainer);
+
+  // Simple title overlay at bottom
+  const titleOverlay = document.createElement('div');
+  titleOverlay.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 10px 24px;
+        border-radius: 20px;
+        font-size: 16px;
+        font-weight: 700;
+        z-index: 1000000;
+        backdrop-filter: blur(10px);
+      `;
+  titleOverlay.textContent = `📊 ${chartTitle}`;
+
+  // Data table container (hidden by default)
+  const dataTableContainer = document.createElement('div');
+  dataTableContainer.id = 'dataTableContainer';
+  dataTableContainer.style.cssText = `
+        display: none;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 16px;
+        border-radius: 12px;
+        border: 2px solid #e5e7eb;
+        background: #f9fafb;
+      `;
+
+  fullscreenContainer.appendChild(closeBtn);
+  fullscreenContainer.appendChild(titleOverlay);
+  fullscreenContainer.appendChild(chartContainer);
+  fullscreenContainer.appendChild(dataTableContainer);
+  document.body.appendChild(fullscreenContainer);
+
+  // Request native fullscreen API
+  setTimeout(() => {
+    if (fullscreenContainer.requestFullscreen) {
+      fullscreenContainer.requestFullscreen().catch(err => console.log('Fullscreen request failed:', err));
+    } else if (fullscreenContainer.webkitRequestFullscreen) {
+      fullscreenContainer.webkitRequestFullscreen();
+    } else if (fullscreenContainer.mozRequestFullScreen) {
+      fullscreenContainer.mozRequestFullScreen();
+    }
+  }, 100);
+
+  // Clone and re-render the chart
+  if (chartInstance) {
+    // Wait for DOM to be ready
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        try {
+          console.log('📋 Cloning chart config for fullscreen...');
+          console.log('Original type:', chartInstance.config.type);
+          console.log('Original data:', chartInstance.data);
+
+          // WAIT for layout to complete, then measure
+          const wrapperWidth = canvasWrapper.offsetWidth || window.innerWidth - 80;
+          const wrapperHeight = canvasWrapper.offsetHeight || window.innerHeight - 120;
+          console.log('Container dimensions:', wrapperWidth, 'x', wrapperHeight);
+
+          // Set EXPLICIT canvas dimensions in pixels
+          fullscreenCanvas.width = wrapperWidth;
+          fullscreenCanvas.height = wrapperHeight;
+          fullscreenCanvas.style.width = wrapperWidth + 'px';
+          fullscreenCanvas.style.height = wrapperHeight + 'px';
+          console.log('✅ Canvas dimensions set to:', fullscreenCanvas.width, 'x', fullscreenCanvas.height);
+
+          // Deep clone the configuration
+          const chartType = chartInstance.config.type;
+          const chartData = JSON.parse(JSON.stringify(chartInstance.data));
+
+          // DEBUG: Log chart data to diagnose blank chart
+          console.log('🔍 Chart data inspection:');
+          console.log('  - Type:', chartType);
+          console.log('  - Labels:', chartData.labels);
+          console.log('  - Datasets count:', chartData.datasets?.length || 0);
+          if (chartData.datasets && chartData.datasets.length > 0) {
+            chartData.datasets.forEach((ds, idx) => {
+              console.log(`  - Dataset ${idx}:`, {
+                label: ds.label,
+                dataLength: ds.data?.length || 0,
+                dataValues: ds.data,
+                backgroundColor: ds.backgroundColor,
+                borderColor: ds.borderColor,
+                hasData: ds.data && ds.data.some(v => v !== null && v !== undefined && v !== 0)
+              });
+            });
+
+            // CRITICAL FIX: If colors are missing or white, add visible colors
+            const defaultColors = [
+              'rgba(59, 130, 246, 0.8)',  // Blue
+              'rgba(16, 185, 129, 0.8)',  // Green
+              'rgba(245, 158, 11, 0.8)',  // Orange
+              'rgba(239, 68, 68, 0.8)',   // Red
+              'rgba(168, 85, 247, 0.8)',  // Purple
+              'rgba(236, 72, 153, 0.8)'   // Pink
+            ];
+            const defaultBorderColors = [
+              'rgb(59, 130, 246)',
+              'rgb(16, 185, 129)',
+              'rgb(245, 158, 11)',
+              'rgb(239, 68, 68)',
+              'rgb(168, 85, 247)',
+              'rgb(236, 72, 153)'
+            ];
+
+            chartData.datasets.forEach((ds, idx) => {
+              // Ensure every dataset has visible colors
+              if (!ds.backgroundColor || ds.backgroundColor === '#ffffff' || ds.backgroundColor === 'white') {
+                ds.backgroundColor = defaultColors[idx % defaultColors.length];
+                console.log(`  ✅ Fixed backgroundColor for dataset ${idx}:`, ds.backgroundColor);
+              }
+              if (!ds.borderColor || ds.borderColor === '#ffffff' || ds.borderColor === 'white') {
+                ds.borderColor = defaultBorderColors[idx % defaultBorderColors.length];
+                console.log(`  ✅ Fixed borderColor for dataset ${idx}:`, ds.borderColor);
+              }
+              // Ensure border width is visible
+              if (!ds.borderWidth) {
+                ds.borderWidth = 2;
+              }
+            });
+          }
+
+          // Clone options carefully - some properties can't be serialized
+          let chartOptions = {};
+          try {
+            chartOptions = JSON.parse(JSON.stringify(chartInstance.options));
+          } catch (optErr) {
+            console.warn('Could not clone options, using defaults:', optErr);
+            chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: true, position: 'bottom' },
+                title: { display: true, text: 'Fullscreen View', font: { size: 24 } }
+              }
+            };
+          }
+
+          // Enhance options for fullscreen - CRITICAL settings
+          chartOptions.responsive = false; // DISABLE responsive - we set explicit size
+          chartOptions.maintainAspectRatio = false; // Allow full height usage
+          chartOptions.animation = { duration: 0 }; // Disable animation for immediate render
+          chartOptions.devicePixelRatio = window.devicePixelRatio || 1; // Sharp rendering
+
+          // CRITICAL: Remove onClick handlers to prevent "this._fn is not a function" error
+          if (chartOptions.onClick) {
+            delete chartOptions.onClick;
+          }
+          if (chartOptions.plugins?.legend?.onClick) {
+            delete chartOptions.plugins.legend.onClick;
+          }
+          if (chartOptions.plugins?.legend?.labels?.onClick) {
+            delete chartOptions.plugins.legend.labels.onClick;
+          }
+          if (chartOptions.onHover) {
+            delete chartOptions.onHover;
+          }
+          if (chartOptions.onResize) {
+            delete chartOptions.onResize;
+          }
+
+          // Recreate legend onClick properly if needed
+          if (chartOptions.plugins && chartOptions.plugins.legend) {
+            chartOptions.plugins.legend.onClick = function (e, legendItem, legend) {
+              const index = legendItem.datasetIndex;
+              const chart = legend.chart;
+              const meta = chart.getDatasetMeta(index);
+              meta.hidden = !meta.hidden;
+              chart.update();
+            };
+          }
+
+          // Remove title since we have our own header
+          if (!chartOptions.plugins) chartOptions.plugins = {};
+          chartOptions.plugins.title = { display: false };
+
+          // Enhance legend
+          if (!chartOptions.plugins.legend) chartOptions.plugins.legend = {};
+          chartOptions.plugins.legend.display = true;
+          chartOptions.plugins.legend.position = 'bottom';
+          if (!chartOptions.plugins.legend.labels) chartOptions.plugins.legend.labels = {};
+          chartOptions.plugins.legend.labels.font = { size: 14, weight: '600' };
+          chartOptions.plugins.legend.labels.padding = 16;
+          chartOptions.plugins.legend.labels.usePointStyle = true;
+
+          // Enhance tooltip with MORE INTERACTIVITY
+          if (!chartOptions.plugins.tooltip) chartOptions.plugins.tooltip = {};
+          chartOptions.plugins.tooltip.enabled = true;
+          chartOptions.plugins.tooltip.backgroundColor = 'rgba(17, 24, 39, 0.95)';
+          chartOptions.plugins.tooltip.titleFont = { size: 16, weight: '700' };
+          chartOptions.plugins.tooltip.bodyFont = { size: 14 };
+          chartOptions.plugins.tooltip.padding = 16;
+          chartOptions.plugins.tooltip.cornerRadius = 12;
+          chartOptions.plugins.tooltip.displayColors = true;
+          chartOptions.plugins.tooltip.mode = 'index';
+          chartOptions.plugins.tooltip.intersect = false;
+
+          // Enhance scales for bar/line charts
+          if (chartOptions.scales) {
+            if (chartOptions.scales.x) {
+              chartOptions.scales.x.ticks = chartOptions.scales.x.ticks || {};
+              chartOptions.scales.x.ticks.font = { size: 13, weight: '500' };
+            }
+            if (chartOptions.scales.y) {
+              chartOptions.scales.y.ticks = chartOptions.scales.y.ticks || {};
+              chartOptions.scales.y.ticks.font = { size: 13, weight: '500' };
+            }
+          }
+
+          const config = {
+            type: chartType,
+            data: chartData,
+            options: chartOptions
+          };
+
+          console.log('📊 Creating fullscreen chart with config:', config.type);
+          console.log('👁️ Canvas visibility:', window.getComputedStyle(fullscreenCanvas).visibility);
+          console.log('📦 Canvas display:', window.getComputedStyle(fullscreenCanvas).display);
+          console.log('🔗 Canvas position in DOM:', fullscreenCanvas.parentElement ? 'attached' : 'detached');
+
+          // CRITICAL: Fill canvas with white background BEFORE creating chart
+          const ctx = fullscreenCanvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
+          console.log('✅ Canvas filled with white background');
+
+          // CRITICAL: Destroy any existing chart on this canvas
+          const existingChart = Chart.getChart(fullscreenCanvas);
+          if (existingChart) {
+            console.log('🗑️ Destroying existing chart on canvas');
+            existingChart.destroy();
+          }
+
+          const fullscreenChart = new Chart(fullscreenCanvas, config);
+          console.log('📊 Chart created with ID:', fullscreenChart.id);
+
+          // CRITICAL FIX: Chart.js may have reset dimensions - restore them immediately
+          if (fullscreenCanvas.width === 0 || fullscreenCanvas.height === 0) {
+            console.warn('⚠️ Chart.js reset canvas to 0x0 - restoring dimensions');
+            fullscreenCanvas.width = wrapperWidth;
+            fullscreenCanvas.height = wrapperHeight;
+            fullscreenCanvas.style.width = wrapperWidth + 'px';
+            fullscreenCanvas.style.height = wrapperHeight + 'px';
+            fullscreenChart.resize(wrapperWidth, wrapperHeight);
+            fullscreenChart.update('none');
+          }
+
+          console.log('📐 Chart canvas dimensions after creation:', fullscreenChart.canvas.width, 'x', fullscreenChart.canvas.height);
+          console.log('📐 Chart canvas style after creation:', fullscreenChart.canvas.style.width, 'x', fullscreenChart.canvas.style.height);
+
+          // Store reference for control buttons
+          window.activeFullscreenChart = fullscreenChart;
+
+          console.log('✅ Fullscreen chart rendered successfully:', fullscreenChart);
+          console.log('🎨 Chart canvas:', fullscreenChart.canvas);
+          console.log('📏 Chart width x height:', fullscreenChart.width, 'x', fullscreenChart.height);
+          console.log('📐 Canvas computed dimensions:', fullscreenCanvas.offsetWidth, 'x', fullscreenCanvas.offsetHeight);
+          console.log('👁️ Canvas opacity:', window.getComputedStyle(fullscreenCanvas).opacity);
+          console.log('📊 Canvas z-index:', window.getComputedStyle(fullscreenCanvas).zIndex);
+
+          // Verify chart has content by checking if canvas has data
+          const ctxCheck = fullscreenCanvas.getContext('2d');
+          const imageData = ctxCheck.getImageData(fullscreenCanvas.width / 2, fullscreenCanvas.height / 2, 1, 1);
+          const hasContent = imageData.data[3] > 0;
+          console.log('✅ Canvas has visible content:', hasContent);
+
+          // FORCE CHART UPDATE AND RENDER
+          setTimeout(() => {
+            fullscreenChart.resize();
+            fullscreenChart.update('none');
+            console.log('🔄 Chart force updated');
+
+            setTimeout(() => {
+              const ctxRecheck = fullscreenCanvas.getContext('2d');
+              const imageData2 = ctxRecheck.getImageData(fullscreenCanvas.width / 2, fullscreenCanvas.height / 2, 1, 1);
+              const hasContent2 = imageData2.data[3] > 0;
+              console.log('✅ Canvas has visible content after update:', hasContent2);
+              if (!hasContent2) {
+                console.error('⚠️ Chart still has no visible content - possible data issue');
+              }
+            }, 100);
+          }, 100);
+
+          // Add click interaction AFTER chart creation
+          fullscreenCanvas.onclick = function (evt) {
+            const points = fullscreenChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+            if (points.length) {
+              const firstPoint = points[0];
+              const label = fullscreenChart.data.labels[firstPoint.index];
+              const value = fullscreenChart.data.datasets[firstPoint.datasetIndex].data[firstPoint.index];
+              const datasetLabel = fullscreenChart.data.datasets[firstPoint.datasetIndex].label || 'Data';
+
+              const popup = document.createElement('div');
+              popup.style.cssText = `
+                    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    background: white; padding: 24px; border-radius: 16px;
+                    box-shadow: 0 12px 48px rgba(0,0,0,0.3); z-index: 10002;
+                    min-width: 300px; animation: slideUp 0.3s ease;
+                  `;
+              popup.innerHTML = `
+                    <h3 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #111827;">${label}</h3>
+                    <div style="margin-bottom: 8px; font-size: 32px; font-weight: 800; color: #3b82f6;">${typeof value === 'number' ? value.toFixed(1) : value}</div>
+                    <div style="font-size: 14px; color: #6b7280; margin-bottom: 16px;">Dataset: ${datasetLabel}</div>
+                    <button onclick="this.parentElement.remove()" style="width: 100%; padding: 10px; background: linear-gradient(135deg,#3b82f6,#8b5cf6); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Close</button>
+                  `;
+              document.body.appendChild(popup);
+              setTimeout(() => popup.remove(), 5000);
+            }
+          };
+
+          // Add data table toggle functionality
+          const toggleBtn = document.getElementById('toggleDataTable');
+          if (toggleBtn) {
+            toggleBtn.onclick = function () {
+              const tableContainer = document.getElementById('dataTableContainer');
+              if (tableContainer.style.display === 'none' || !tableContainer.style.display) {
+                const labels = chartData.labels || [];
+                const datasets = chartData.datasets || [];
+
+                let tableHTML = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+                tableHTML += '<thead><tr style="background: #e5e7eb;"><th style="padding: 10px; text-align: left; font-weight: 700; border-bottom: 2px solid #d1d5db;">Label</th>';
+
+                datasets.forEach(ds => {
+                  tableHTML += `<th style="padding: 10px; text-align: right; font-weight: 700; border-bottom: 2px solid #d1d5db;">${ds.label || 'Data'}</th>`;
+                });
+                tableHTML += '</tr></thead><tbody>';
+
+                labels.forEach((label, i) => {
+                  tableHTML += `<tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 10px; font-weight: 600;">${label}</td>`;
+                  datasets.forEach(ds => {
+                    const value = ds.data[i];
+                    const displayValue = typeof value === 'number' ? value.toFixed(1) : (typeof value === 'object' && value !== null ? JSON.stringify(value) : value);
+                    tableHTML += `<td style="padding: 10px; text-align: right;">${displayValue}</td>`;
+                  });
+                  tableHTML += '</tr>';
+                });
+
+                tableHTML += '</tbody></table>';
+                tableContainer.innerHTML = tableHTML;
+                tableContainer.style.display = 'block';
+                this.textContent = '📋 Hide Data Table';
+                this.style.background = '#ef4444';
+              } else {
+                tableContainer.style.display = 'none';
+                this.textContent = '📋 Show Data Table';
+                this.style.background = '#f59e0b';
+              }
+            };
+          }
+
+          // Add reset chart button functionality
+          const btnReset = document.getElementById('btnResetChart');
+          if (btnReset) {
+            btnReset.onclick = function () {
+              try {
+                fullscreenChart.destroy();
+                setTimeout(() => {
+                  const newChart = new Chart(fullscreenCanvas, config);
+                  window.activeFullscreenChart = newChart;
+                  showToast('🔄 Chart reset');
+                }, 100);
+              } catch (e) {
+                console.error('Reset error:', e);
+                showToast('❌ Reset failed');
+              }
+            };
+          }
+
+          // Add animate button functionality
+          const btnAnimate = document.getElementById('btnAnimateChart');
+          if (btnAnimate) {
+            btnAnimate.onclick = function () {
+              fullscreenChart.update('active');
+              showToast('✨ Chart re-animated');
+            };
+          }
+
+          // Add download button functionality
+          const btnDownload = document.getElementById('btnDownloadChart');
+          if (btnDownload) {
+            btnDownload.onclick = function () {
+              const link = document.createElement('a');
+              const chartName = canvasId.replace('chart-', '').replace(/-/g, '_');
+              const timestamp = new Date().toISOString().split('T')[0];
+              link.download = `chart_${chartName}_${timestamp}.png`;
+              link.href = fullscreenCanvas.toDataURL('image/png', 1.0);
+              link.click();
+              showToast('📥 Chart downloaded');
+            };
+          }
+
+          // Force a resize to ensure proper rendering
+          setTimeout(() => {
+            fullscreenChart.resize();
+            console.log('📐 Chart resized - Final dimensions:', fullscreenChart.width, 'x', fullscreenChart.height);
+          }, 50);
+
+          showToast('🔍 Fullscreen view active - Click data points for details!');
+        } catch (err) {
+          console.error('❌ Error rendering fullscreen chart:', err);
+          const imgData = canvas.toDataURL('image/png', 1.0);
+          chartContainer.innerHTML = `<img src="${imgData}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+          showToast('🖼️ Fullscreen view (static image)');
+        }
+      }, 150);
+    });
+  } else {
+    // No chart instance - use canvas image as fallback
+    console.warn('⚠️ No chart instance - using image fallback');
+    try {
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      chartContainer.innerHTML = `<img src="${imgData}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;">`;
+      showToast('🖼️ Fullscreen view (image mode)');
+    } catch (err) {
+      console.error('❌ Error creating image fallback:', err);
+      chartContainer.innerHTML = '<p style="color:#6b7280;text-align:center;font-size:18px;">Unable to display chart in fullscreen</p>';
+      showToast('⚠️ Could not load fullscreen chart');
+    }
+  }
+};
+
+// Export to window
+window.showImageFullscreen = showImageFullscreen;
+</script>

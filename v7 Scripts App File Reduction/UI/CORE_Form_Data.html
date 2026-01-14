@@ -1,0 +1,285 @@
+<!--
+  CORE_Form_Data.html
+  Form Data Collection, Filling & Auto-Save System
+  Part of Elite Modular Architecture - Phase 11
+  
+  Provides:
+  - window.FIELD_IDS - Array of all 81 form field IDs
+  - window.collectFormData() - Collect all form data
+  - window.fillFormData() - Fill form with data
+  - window.recalcScores() - Recalculate completion scores
+  - window.debounceAutoSave() - Debounced auto-save
+  - window.autoSaveProject() - Save project data
+  - window.initAutoSave() - Initialize auto-save listeners
+  
+  Dependencies:
+  - CORE_Project_Manager.html (for saveProject backend call)
+  - UI_Core_Utils.html (for showToast)
+-->
+<script>
+  console.log('📋 CORE_Form_Data.html loading...');
+
+  /**
+   * All 81 form field IDs across 5 stages
+   * This array defines all tracked input fields
+   */
+  window.FIELD_IDS = [
+    // Stage 1: Market Research & Strategy (17 fields)
+    'brandIdeology', 'brandArchetype', 'quarterlyObjective', 'brandName',
+    'coreTopic', 'targetAudience', 'audiencePains', 'audienceDesired',
+    'keyCompetitors', 'offerMatrix', 'primaryOfferName', 'primaryOfferPrice',
+    'upsellOffer', 'upsellPrice', 'uvp', 'primaryChannels', 'northStarKpis', 'brandLexicon',
+
+    // Stage 2: Keyword Discovery (10 fields)
+    'coreStrategicQuestion', 'thesis', 'antithesis', 'keyMarketData', 'categoryDefinition',
+    'coreMarketProblem', 'futureVision', 'primaryKeyword', 'secondaryKeywords', 'keywordsEntities',
+
+    // Stage 3: Clustering & Architecture (10 fields)
+    'assetTitle', 'foundationalPillars', 'campaignNarrative', 'pillarContext',
+    'parentPillarUrl', 'childSpokeUrls', 'internalLinkingStrategy',
+    'funnelStage', 'timeframePlan', 'contentType',
+
+    // Stage 4: Content Calendar (3 fields)
+    'calendarHorizon', 'postsPerWeek', 'visualHooks',
+
+    // Stage 5: Content Generation & E-E-A-T (36 fields)
+    'contentFormat', 'contentSubcategory', 'persuasionFramework', 'uniqueMechanism',
+    'readabilityDirectives', 'platformContext', 'forbiddenTerms', 'aiPersonaContext',
+    'schemaArticle', 'schemaFaq', 'authorBio', 'primarySource1', 'primarySource2',
+    'expertQuote1', 'expertQuote2', 'proprietaryData', 'caseStudy1', 'caseStudy2', 'caseStudy3',
+    'trustAnchors', 'socialProof', 'testimonial1', 'testimonial2', 'leadMagnetName',
+    'bundle1Name', 'bundle1Value', 'bundle2Name', 'bundle2Value',
+    'bundle3Name', 'bundle3Value', 'bundle4Name', 'bundle4Value',
+
+    // Legacy/QA fields (kept for compatibility)
+    'compMarketIntelligence', 'compBrandPositioning', 'compTechnicalSeo', 'compOrganicContent',
+    'compKeywordEntity', 'compContentOps', 'compConversion', 'compDistribution',
+    'compAudiencePsych', 'compGeoAeo', 'compAuthority', 'compPerformance',
+    'compOpportunity', 'compScoringEngine', 'compExecDeliverables'
+  ];
+
+  // Auto-save debounce timer
+  let autoSaveTimeout = null;
+
+  /**
+   * Debounced auto-save - waits 1 second after last input
+   */
+  window.debounceAutoSave = function() {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+      window.autoSaveProject?.();
+    }, 1000);
+  };
+
+  /**
+   * Auto-save project to Google Sheets
+   * Uses collectFormData() to include competitor analysis data
+   */
+  window.autoSaveProject = function() {
+    const projectSelect = document.getElementById('projectSelect');
+    const saveStatus = document.getElementById('saveStatus');
+    const projectName = projectSelect?.value;
+
+    if (!projectName || projectName === '') {
+      console.log('ℹ️ Auto-save skipped: no project selected');
+      return;
+    }
+
+    if (typeof google === 'undefined' || !google.script?.run) {
+      console.log('ℹ️ Auto-save skipped: local preview mode');
+      return;
+    }
+
+    // Show saving indicator
+    if (saveStatus) {
+      saveStatus.textContent = '💾 Saving...';
+      saveStatus.style.opacity = '1';
+    }
+
+    const formData = window.collectFormData?.() || {};
+
+    console.log('💾 Auto-saving project:', projectName);
+    console.log('   Form fields:', Object.keys(formData).filter(k => !k.startsWith('_') && k !== 'competitorAnalysis').length);
+    console.log('   Has competitor data:', !!formData.competitorAnalysis);
+
+    google.script.run
+      .withSuccessHandler(function() {
+        if (saveStatus) {
+          const now = new Date().toLocaleTimeString();
+          saveStatus.textContent = `✓ Saved at ${now}`;
+          saveStatus.style.opacity = '1';
+          setTimeout(() => {
+            saveStatus.style.opacity = '0.6';
+          }, 2000);
+        }
+        console.log('✅ Auto-save complete');
+      })
+      .withFailureHandler(function(error) {
+        if (saveStatus) {
+          saveStatus.textContent = '⚠️ Save failed';
+          saveStatus.style.opacity = '1';
+        }
+        console.error('Auto-save error:', error);
+      })
+      .saveProject(projectName, formData);
+  };
+
+  /**
+   * Initialize auto-save listeners on all form fields
+   */
+  window.initAutoSave = function() {
+    window.FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', window.debounceAutoSave);
+        el.addEventListener('change', window.debounceAutoSave);
+      }
+    });
+    console.log('✅ Auto-save listeners initialized');
+  };
+
+  /**
+   * Collect all form data including competitor analysis
+   * @returns {Object} Complete form data object
+   */
+  window.collectFormData = function() {
+    const data = {};
+
+    // Collect all 81 input fields from 5 stages
+    window.FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        data[id] = el.value;
+      }
+    });
+
+    // Add competitor analysis data if available
+    if (typeof window.competitorIntelligenceData !== 'undefined' && window.competitorIntelligenceData) {
+      data.competitorAnalysis = window.competitorIntelligenceData;
+      console.log('✅ Including competitor analysis data in save');
+      console.log('   Competitors:', window.competitorIntelligenceData.competitors?.length || 0);
+    }
+
+    // Add QA data if available (future feature)
+    if (typeof window.qaData !== 'undefined' && window.qaData) {
+      data.qaData = window.qaData;
+    }
+
+    // Add metadata
+    data._metadata = {
+      savedAt: new Date().toISOString(),
+      version: 'v7.0.0',
+      totalFields: window.FIELD_IDS.length,
+      completedFields: window.FIELD_IDS.filter(id => {
+        const el = document.getElementById(id);
+        return el && el.value && el.value.trim().length > 0;
+      }).length,
+      hasCompetitorData: !!window.competitorIntelligenceData,
+      hasQAData: !!window.qaData
+    };
+
+    return data;
+  };
+
+  /**
+   * Fill form fields with data
+   * @param {Object} data - Data object with field values
+   */
+  window.fillFormData = function(data) {
+    console.log('📝 fillFormData called');
+
+    // DIAGNOSTIC: Track fill frequency
+    if (!window._fillFormDataCalls) window._fillFormDataCalls = [];
+    window._fillFormDataCalls.push(Date.now());
+
+    // Check if being called too frequently
+    const recentCalls = window._fillFormDataCalls.filter(t => Date.now() - t < 1000);
+    if (recentCalls.length > 1) {
+      console.warn('⚠️ WARNING: fillFormData called ' + recentCalls.length + ' times in last second!');
+    }
+
+    // Clear all fields first
+    let clearedCount = 0;
+    window.FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = '';
+        clearedCount++;
+      }
+    });
+    console.log('   Cleared ' + clearedCount + ' fields');
+
+    // Fill input fields with saved data
+    let filledCount = 0;
+    window.FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && Object.prototype.hasOwnProperty.call(data, id)) {
+        el.value = data[id];
+        filledCount++;
+      }
+    });
+    console.log('   Filled ' + filledCount + ' fields with data');
+
+    // Restore competitor analysis data if available
+    if (data.competitorAnalysis) {
+      window.competitorIntelligenceData = data.competitorAnalysis;
+      console.log('✅ Restored competitor analysis data');
+
+      // Re-render competitor intelligence UI if on that tab
+      if (typeof window.renderCompetitorIntelligence === 'function') {
+        try {
+          const resultsDiv = document.getElementById('comp-results');
+          const emptyState = document.getElementById('comp-empty-state');
+          if (resultsDiv && emptyState) {
+            emptyState.style.display = 'none';
+            resultsDiv.style.display = 'block';
+            window.renderCompetitorIntelligence(data.competitorAnalysis);
+          }
+        } catch (e) {
+          console.warn('Could not render competitor data:', e);
+        }
+      }
+    }
+
+    // Restore QA data if available
+    if (data.qaData) {
+      window.qaData = data.qaData;
+      console.log('✅ Restored QA data');
+    }
+
+    console.log('✅ fillFormData complete');
+    window.recalcScores?.();
+  };
+
+  /**
+   * Recalculate completion scores based on filled fields
+   */
+  window.recalcScores = function() {
+    const overviewScore = document.getElementById('overviewScore');
+    const metricWorkflow = document.getElementById('metricWorkflow');
+    const metricEEAT = document.getElementById('metricEEAT');
+    const metricStrategyDepth = document.getElementById('metricStrategyDepth');
+    const scoreSeoDepth = document.getElementById('scoreSeoDepth');
+    const scoreEEAT = document.getElementById('scoreEEAT');
+    const scoreGEO = document.getElementById('scoreGEO');
+
+    // Count non-empty fields as progress
+    let filled = 0;
+    window.FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value && String(el.value).trim().length > 0) filled++;
+    });
+
+    const completion = Math.round((filled / window.FIELD_IDS.length) * 100);
+
+    if (overviewScore) overviewScore.textContent = completion;
+    if (metricWorkflow) metricWorkflow.textContent = Math.round((filled / 40) * 5 * 10) / 10 + ' / 5 stages';
+    if (metricEEAT) metricEEAT.textContent = (70 + Math.round(completion / 5)) + '/100';
+    if (metricStrategyDepth) metricStrategyDepth.textContent = (60 + Math.round(completion / 3)) + '/100';
+    if (scoreSeoDepth) scoreSeoDepth.style.width = Math.min(100, 40 + completion / 2) + '%';
+    if (scoreEEAT) scoreEEAT.style.width = Math.min(100, 50 + completion / 3) + '%';
+    if (scoreGEO) scoreGEO.style.width = Math.min(100, 30 + completion / 4) + '%';
+  };
+
+  console.log('✅ CORE_Form_Data.html loaded');
+</script>

@@ -1,0 +1,498 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  UI_Elite_Charts_Authority.html
+  Authority, Performance & Scoring Chart Renderers
+  
+  PURPOSE: Chart.js visualizations for authority analysis, performance
+           tracking, opportunity gaps, and comprehensive scoring
+  
+  DEPENDENCIES: 
+    - UI_Elite_Charts_Utils.html (formatDecimal, safeGet, getCompetitorColors)
+    - UI_Elite_Charts_Core.html (extractDomains, extractMetric)
+  
+  PROVIDES: 9 authority/scoring chart rendering functions
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTHORITY & GROWTH CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Render authority growth chart
+ * Shows domain authority vs momentum across competitors
+ */
+function renderAuthorityGrowthChart(data) {
+  const ctx = document.getElementById('chart-comp-authority-growth');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['authority-growth']) {
+    window.competitorCharts['authority-growth'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['authority-growth'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [
+        {
+          label: 'Domain Authority',
+          data: extractMetric(competitors, 'processedMetrics.domainAuthority'),
+          backgroundColor: 'rgba(59, 130, 246, 0.7)'
+        },
+        {
+          label: 'Authority Momentum',
+          data: extractMetric(competitors, 'processedMetrics.authorityMomentum'),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority & Growth Momentum'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+/**
+ * Render influencers/authority network bubble chart
+ * Shows authority vs relevance with backlink size
+ */
+function renderInfluencersChart(data) {
+  const ctx = document.getElementById('chart-comp-influencers');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const analysis = data.geminiAnalysis || data.analysis || {};
+  
+  // Create bubble data based on competitor authority and backlinks
+  const bubbleData = competitors.slice(0, 4).map((comp, idx) => {
+    const auth = safeGet(comp, 'processedMetrics.authorityScore', 50);
+    const backlinks = safeGet(comp, 'processedMetrics.estimatedBacklinks', 10000);
+    const refDomains = safeGet(comp, 'processedMetrics.estimatedRefDomains', 1000);
+    
+    return {
+      x: Math.min(95, Math.max(20, auth)), // Authority as X (Reach)
+      y: Math.min(95, Math.max(20, 30 + Math.log10(refDomains) * 15)), // RefDomains as Y (Relevance)
+      r: Math.min(25, Math.max(8, 8 + Math.log10(backlinks) * 2)) // Backlinks as size
+    };
+  });
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['influencers']) {
+    window.competitorCharts['influencers'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['influencers'] = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        label: 'Authority Network Map',
+        data: bubbleData.length > 0 ? bubbleData : [{ x: 50, y: 50, r: 10 }],
+        backgroundColor: 'rgba(236, 72, 153, 0.6)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority Network Map'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const comp = competitors[context.dataIndex];
+              if (comp) {
+                return [
+                  comp.domain,
+                  'Authority: ' + formatDecimal(context.raw.x, 0),
+                  'Relevance: ' + formatDecimal(context.raw.y, 0)
+                ];
+              }
+              return 'Authority: ' + formatDecimal(context.raw.x, 0);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Authority Score' }, max: 100, min: 0 },
+        y: { title: { display: true, text: 'Relevance Index' }, max: 100, min: 0 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERFORMANCE & PREDICTIVE CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Render performance quality line chart
+ * Shows performance scores across competitors
+ */
+function renderPerformanceQualityChart(data) {
+  const ctx = document.getElementById('chart-comp-performance-quality');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['performance-quality']) {
+    window.competitorCharts['performance-quality'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['performance-quality'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Performance Score',
+        data: extractMetric(competitors, 'processedMetrics.performanceScore'),
+        borderColor: 'rgba(34, 197, 94, 0.8)',
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Performance Quality Benchmark'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+/**
+ * Render predictive trend line chart
+ * Shows projected authority growth over time
+ */
+function renderPredictiveChart(data) {
+  const ctx = document.getElementById('chart-comp-predictive');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['predictive']) {
+    window.competitorCharts['predictive'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Simulated predictive trend - requires historical tracking for real predictions
+  const baseMomentum = (comp) => comp.processedMetrics?.authorityMomentum || 
+           comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 0;
+  
+  window.competitorCharts['predictive'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Current', '+30 days', '+60 days', '+90 days'],
+      datasets: competitors.slice(0, 3).map((comp, idx) => {
+        const baseValue = baseMomentum(comp);
+        return {
+          label: comp.domain,
+          data: [
+            baseValue,
+            baseValue, // Stable baseline - real predictions require ML model
+            baseValue,
+            baseValue
+          ],
+          borderColor: getCompetitorColors(3)[idx],
+          fill: false
+        };
+      })
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority Growth Prediction (Requires Historical Data)'
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OPPORTUNITY & MOAT CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Render opportunities gap chart
+ * Shows competitor average vs target scores
+ */
+function renderOpportunitiesChart(data) {
+  const ctx = document.getElementById('chart-comp-opportunities');
+  if (!ctx) return;
+  
+  const gaps = data.aggregatedInsights?.competitiveGaps || [];
+  
+  if (gaps.length === 0) {
+    gaps.push({ category: 'No gaps identified', competitorAverage: 75 });
+  }
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['opportunities']) {
+    window.competitorCharts['opportunities'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['opportunities'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: gaps.map(g => g.category.replace(/Score/g, '')),
+      datasets: [{
+        label: 'Competitor Average',
+        data: gaps.map(g => g.competitorAverage || 50),
+        backgroundColor: 'rgba(239, 68, 68, 0.7)'
+      }, {
+        label: 'Target Score',
+        data: gaps.map(() => 85),
+        backgroundColor: 'rgba(34, 197, 94, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Strategic Opportunity Gaps'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+/**
+ * Render competitive moat radar chart
+ * Shows current vs target position across moat dimensions
+ */
+function renderMoatChart(data) {
+  const ctx = document.getElementById('chart-comp-moat');
+  if (!ctx) return;
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['moat']) {
+    window.competitorCharts['moat'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['moat'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Technical Excellence', 'Content Depth', 'Brand Authority', 'Distribution', 'Innovation'],
+      datasets: [{
+        label: 'Current Position',
+        data: [65, 70, 60, 55, 50],
+        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+        borderColor: 'rgba(239, 68, 68, 0.8)',
+        borderWidth: 2
+      }, {
+        label: 'Target Position',
+        data: [85, 90, 80, 75, 80],
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        borderColor: 'rgba(34, 197, 94, 0.8)',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Competitive Moat Development'
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPREHENSIVE SCORING CHARTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Render comprehensive scoring radar chart
+ * Shows all key metrics across all competitors
+ */
+function renderScoringComprehensiveChart(data) {
+  const ctx = document.getElementById('chart-comp-scoring-comprehensive');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['scoring-comprehensive']) {
+    window.competitorCharts['scoring-comprehensive'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['scoring-comprehensive'] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['SEO Depth', 'GEO Presence', 'AEO Readiness', 'Entity Trust', 'Authority', 'Performance'],
+      datasets: competitors.map((comp, idx) => ({
+        label: comp.domain,
+        data: [
+          comp.processedMetrics?.seoDepthIndex || 
+          comp.categories?.contentIntelligence?.metrics?.seoDepthIndex || 0,
+          comp.processedMetrics?.geoPresenceScore || 
+          comp.categories?.geoIntelligence?.metrics?.geoPresenceScore || 0,
+          comp.processedMetrics?.aeoReadinessScore || 
+          comp.categories?.aeoOptimization?.metrics?.aeoReadinessScore || 0,
+          comp.processedMetrics?.entityTrustScore || 
+          comp.categories?.authorityInfluence?.metrics?.entityTrustScore || 0,
+          comp.processedMetrics?.authorityMomentum || 
+          comp.categories?.authorityInfluence?.metrics?.authorityMomentum || 0,
+          comp.processedMetrics?.performanceScore || 
+          comp.categories?.pageSpeed?.metrics?.performanceScore || 0
+        ],
+        backgroundColor: getCompetitorColors(competitors.length)[idx].replace('0.8', '0.1'),
+        borderColor: getCompetitorColors(competitors.length)[idx],
+        borderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: { beginAtZero: true, max: 100 }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Comprehensive Scoring Radar'
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Render momentum bar chart
+ * Shows authority momentum across competitors
+ */
+function renderMomentumChart(data) {
+  const ctx = document.getElementById('chart-comp-momentum');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['momentum']) {
+    window.competitorCharts['momentum'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['momentum'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Authority Momentum',
+        data: extractMetric(competitors, 'processedMetrics.authorityMomentum'),
+        backgroundColor: competitors.map((c, idx) => getCompetitorColors(competitors.length)[idx])
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Authority Momentum Score'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+/**
+ * Render trust score bar chart
+ * Shows entity trust scores across competitors
+ */
+function renderTrustChart(data) {
+  const ctx = document.getElementById('chart-comp-trust');
+  if (!ctx) return;
+  
+  const competitors = data.competitors || [];
+  const domains = extractDomains(competitors);
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts && window.competitorCharts['trust']) {
+    window.competitorCharts['trust'].destroy();
+  }
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  window.competitorCharts['trust'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: domains,
+      datasets: [{
+        label: 'Entity Trust Score',
+        data: extractMetric(competitors, 'processedMetrics.entityTrustScore'),
+        backgroundColor: 'rgba(168, 85, 247, 0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Entity Trust & Authority'
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.renderAuthorityGrowthChart = renderAuthorityGrowthChart;
+window.renderInfluencersChart = renderInfluencersChart;
+window.renderPerformanceQualityChart = renderPerformanceQualityChart;
+window.renderPredictiveChart = renderPredictiveChart;
+window.renderOpportunitiesChart = renderOpportunitiesChart;
+window.renderMoatChart = renderMoatChart;
+window.renderScoringComprehensiveChart = renderScoringComprehensiveChart;
+window.renderMomentumChart = renderMomentumChart;
+window.renderTrustChart = renderTrustChart;
+</script>

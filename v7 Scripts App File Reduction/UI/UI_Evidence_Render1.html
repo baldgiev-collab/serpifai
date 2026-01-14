@@ -1,0 +1,225 @@
+<script>
+/**
+ * UI Evidence Rendering - Part 1: Main Modal & Basic Renders
+ * Extracted from UI_Scripts_App.html for modularization
+ * Shows enhanced modal with structured evidence proof for each metric
+ */
+
+/**
+ * Show enhanced modal with structured evidence
+ * @param {string} metricKey - The metric identifier
+ * @param {string} metricLabel - Display name
+ * @param {Array} competitorValues - Basic value data
+ */
+window.showEnhancedMetricModal = function(metricKey, metricLabel, competitorValues) {
+  const modal = document.getElementById('metric-detail-modal');
+  if (modal) modal.remove();
+  
+  const newModal = document.createElement('div');
+  newModal.id = 'metric-detail-modal';
+  newModal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease;';
+  
+  const evidence = window._competitorEvidence || {};
+  
+  const sortedCompetitors = [...competitorValues].sort((a, b) => {
+    const valA = typeof a.value === 'number' ? a.value : parseFloat(a.value) || 0;
+    const valB = typeof b.value === 'number' ? b.value : parseFloat(b.value) || 0;
+    return valB - valA;
+  });
+  
+  let enhancedContent = '';
+  
+  sortedCompetitors.forEach((item, idx) => {
+    const domainEvidence = evidence[item.domain] || {};
+    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+    
+    let proofContent = '';
+    
+    if (metricKey === 'internalLinks' || metricKey === 'internalLinkCount') {
+      proofContent = window.renderLinkListEvidence(domainEvidence.internalLinks || [], 'Internal Links');
+    } else if (metricKey === 'externalLinks' || metricKey === 'externalLinkCount') {
+      proofContent = window.renderLinkListEvidence(domainEvidence.externalLinks || [], 'External Links');
+    } else if (metricKey.includes('eeat') || metricKey.includes('EEAT')) {
+      proofContent = window.renderEEATEvidence(domainEvidence.eeat || {});
+    } else if (metricKey.includes('schema')) {
+      proofContent = window.renderSchemaEvidence(domainEvidence.schema || {});
+    } else if (metricKey.includes('heading') || metricKey === 'h1' || metricKey === 'h2') {
+      proofContent = window.renderHeadingEvidence(domainEvidence.headings || {});
+    } else if (metricKey.includes('serp') || metricKey.includes('topPage') || metricKey.includes('featured') || metricKey.includes('knowledge') || metricKey.includes('sitelinks')) {
+      proofContent = window.renderSERPEvidence(domainEvidence.serp || {});
+    } else if (metricKey.includes('pricing') || metricKey.includes('cta') || metricKey.includes('conversion')) {
+      proofContent = window.renderConversionEvidence(domainEvidence.conversion || {});
+    } else if (metricKey.includes('technical') || metricKey.includes('performance') || metricKey.includes('cwv')) {
+      proofContent = window.renderTechnicalEvidence(domainEvidence.technical || {});
+    } else if (metricKey.includes('authority') || metricKey.includes('pageRank') || metricKey.includes('domainAuthority')) {
+      proofContent = window.renderAuthorityEvidence(domainEvidence.authority || {});
+    } else if (metricKey.includes('keyword') || metricKey.includes('organic') || metricKey.includes('paa') || metricKey.includes('relatedSearch')) {
+      proofContent = window.renderKeywordsEvidence(domainEvidence.keywords || {});
+    } else if (metricKey.includes('backlink') || metricKey.includes('referringDomain')) {
+      proofContent = window.renderBacklinksEvidence(domainEvidence.backlinksEvidence || {});
+    } else if (metricKey.includes('anchor')) {
+      proofContent = window.renderAnchorTextEvidence(domainEvidence.anchorText || {});
+    } else {
+      proofContent = window.renderGenericEvidence(domainEvidence);
+    }
+    
+    enhancedContent += `
+      <div style="background: ${idx < 3 ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' : '#f8fafc'}; border-radius: 12px; padding: 16px; margin-bottom: 12px; border-left: 4px solid ${idx === 0 ? '#10b981' : idx === 1 ? '#3b82f6' : idx === 2 ? '#f59e0b' : '#9ca3af'};">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">${medal}</span>
+            <span style="font-size: 15px; font-weight: 700; color: #1e293b;">${escapeHtml(item.domain)}</span>
+            <span style="background: ${getSourceColor(item.source || 'Data Layer').bg}; color: ${getSourceColor(item.source || 'Data Layer').text}; padding: 2px 8px; border-radius: 8px; font-size: 10px;">${item.source || 'Data Layer'}</span>
+          </div>
+          <div style="font-size: 24px; font-weight: 800; color: ${idx === 0 ? '#10b981' : '#64748b'};">${escapeHtml(String(item.value))}</div>
+        </div>
+        ${proofContent}
+      </div>
+    `;
+  });
+  
+  newModal.innerHTML = `
+    <div style="background: white; border-radius: 16px; width: 95%; max-width: 1000px; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 20px 24px; color: white; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h2 style="margin: 0; font-size: 20px; font-weight: 600;">📊 ${escapeHtml(metricLabel)} - Evidence & Proof</h2>
+          <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.85;">${sortedCompetitors.length} competitors ranked by score • Highest first</p>
+        </div>
+        <button onclick="closeMetricDetailModal()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px;">&times;</button>
+      </div>
+      <div style="padding: 20px; max-height: calc(90vh - 80px); overflow-y: auto;">
+        ${enhancedContent}
+      </div>
+    </div>
+  `;
+  
+  newModal.addEventListener('click', e => { if (e.target === newModal) closeMetricDetailModal(); });
+  document.body.appendChild(newModal);
+};
+
+/** Render link list evidence */
+window.renderLinkListEvidence = function(links, title) {
+  if (!links || links.length === 0) return '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">No links collected</div>';
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px; max-height: 200px; overflow-y: auto;">
+      <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase;">📋 ${title} (${links.length} total)</div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        ${links.slice(0, 20).map((link, i) => `
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 8px; background: #f1f5f9; border-radius: 4px;">
+            <span style="color: #6b7280; min-width: 20px;">${i + 1}.</span>
+            <a href="${escapeHtml(link.url)}" target="_blank" style="color: #2563eb; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">${escapeHtml(link.url.substring(0, 60))}</a>
+            ${link.anchor ? `<span style="color: #9ca3af; font-size: 10px;">[${escapeHtml(link.anchor.substring(0, 20))}]</span>` : ''}
+          </div>
+        `).join('')}
+        ${links.length > 20 ? `<div style="color: #6b7280; font-size: 11px; padding: 4px;">...and ${links.length - 20} more links</div>` : ''}
+      </div>
+    </div>
+  `;
+};
+
+/** Render E-E-A-T evidence breakdown */
+window.renderEEATEvidence = function(eeat) {
+  if (!eeat || !eeat.overall) return '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">E-E-A-T signals not analyzed</div>';
+  
+  const renderSignalList = (signals, label, icon) => signals.length > 0 ? `
+    <div style="margin-bottom: 8px;">
+      <div style="font-size: 11px; font-weight: 600; color: #64748b;">${icon} ${label}</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+        ${signals.map(s => `<span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 8px; font-size: 10px;">${escapeHtml(s)}</span>`).join('')}
+      </div>
+    </div>
+  ` : '';
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;">
+        <div style="text-align: center; padding: 8px; background: #f0fdf4; border-radius: 8px;">
+          <div style="font-size: 18px; font-weight: 700; color: #166534;">${eeat.experience?.score || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Experience</div>
+        </div>
+        <div style="text-align: center; padding: 8px; background: #eff6ff; border-radius: 8px;">
+          <div style="font-size: 18px; font-weight: 700; color: #1e40af;">${eeat.expertise?.score || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Expertise</div>
+        </div>
+        <div style="text-align: center; padding: 8px; background: #fef3c7; border-radius: 8px;">
+          <div style="font-size: 18px; font-weight: 700; color: #92400e;">${eeat.authoritativeness?.score || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Authority</div>
+        </div>
+        <div style="text-align: center; padding: 8px; background: #fce7f3; border-radius: 8px;">
+          <div style="font-size: 18px; font-weight: 700; color: #9d174d;">${eeat.trustworthiness?.score || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Trust</div>
+        </div>
+      </div>
+      ${renderSignalList(eeat.experience?.signals || [], 'Experience Signals', '📅')}
+      ${renderSignalList(eeat.expertise?.signals || [], 'Expertise Signals', '🎓')}
+      ${renderSignalList(eeat.authoritativeness?.signals || [], 'Authority Signals', '👑')}
+      ${renderSignalList(eeat.trustworthiness?.signals || [], 'Trust Signals', '🛡️')}
+    </div>
+  `;
+};
+
+/** Render schema evidence */
+window.renderSchemaEvidence = function(schema) {
+  if (!schema || schema.count === 0) return '<div style="color: #9ca3af; font-style: italic; font-size: 12px;">No schema markup detected</div>';
+  
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px;">
+      <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 8px;">📋 Schema Types Detected (${schema.count})</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        ${(schema.types || []).map(type => `
+          <span style="background: ${type.includes('FAQ') || type.includes('HowTo') ? '#dcfce7' : '#e0e7ff'}; color: ${type.includes('FAQ') || type.includes('HowTo') ? '#166534' : '#3730a3'}; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 500;">
+            ${type.includes('FAQ') ? '❓' : type.includes('Organization') ? '🏢' : type.includes('Article') ? '📰' : type.includes('Product') ? '🛒' : '📋'} ${escapeHtml(type)}
+          </span>
+        `).join('')}
+      </div>
+      <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 11px;">
+        <div style="padding: 6px; background: ${schema.hasFAQPage ? '#dcfce7' : '#fee2e2'}; border-radius: 6px; text-align: center;">
+          ${schema.hasFAQPage ? '✅' : '❌'} FAQPage
+        </div>
+        <div style="padding: 6px; background: ${schema.hasHowTo ? '#dcfce7' : '#fee2e2'}; border-radius: 6px; text-align: center;">
+          ${schema.hasHowTo ? '✅' : '❌'} HowTo
+        </div>
+        <div style="padding: 6px; background: ${schema.hasOrganization ? '#dcfce7' : '#fee2e2'}; border-radius: 6px; text-align: center;">
+          ${schema.hasOrganization ? '✅' : '❌'} Organization
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+/** Render heading evidence */
+window.renderHeadingEvidence = function(headings) {
+  return `
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-top: 8px; max-height: 250px; overflow-y: auto;">
+      <div style="margin-bottom: 10px;">
+        <div style="font-size: 11px; font-weight: 600; color: #64748b;">📌 H1 Heading</div>
+        <div style="font-size: 13px; color: #1e293b; padding: 8px; background: #f1f5f9; border-radius: 6px; margin-top: 4px;">${escapeHtml(headings.h1 || 'Not found')}</div>
+      </div>
+      ${(headings.h2 || []).length > 0 ? `
+        <div style="margin-bottom: 10px;">
+          <div style="font-size: 11px; font-weight: 600; color: #64748b;">📋 H2 Headings (${headings.h2.length})</div>
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+            ${headings.h2.slice(0, 10).map((h, i) => `
+              <div style="font-size: 12px; color: #374151; padding: 6px 8px; background: #f8fafc; border-radius: 4px; border-left: 3px solid #3b82f6;">
+                ${i + 1}. ${escapeHtml(h)}
+              </div>
+            `).join('')}
+            ${headings.h2.length > 10 ? `<div style="color: #6b7280; font-size: 11px;">...and ${headings.h2.length - 10} more H2s</div>` : ''}
+          </div>
+        </div>
+      ` : ''}
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <div style="flex: 1; padding: 8px; background: #eff6ff; border-radius: 6px; text-align: center;">
+          <div style="font-size: 16px; font-weight: 700; color: #1e40af;">${headings.total || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Total Headings</div>
+        </div>
+        <div style="flex: 1; padding: 8px; background: #fef3c7; border-radius: 6px; text-align: center;">
+          <div style="font-size: 16px; font-weight: 700; color: #92400e;">${headings.questionH2s || 0}</div>
+          <div style="font-size: 10px; color: #6b7280;">Question H2s</div>
+        </div>
+      </div>
+    </div>
+  `;
+};
+</script>

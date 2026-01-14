@@ -1,0 +1,234 @@
+<!-- 
+  ═══════════════════════════════════════════════════════════════════════════════
+  📊 ELITE COMPETITOR INTELLIGENCE RENDERER - MODULAR VERSION
+  Board-Ready Design for $100M+ SaaS Organizations
+  
+  This is the main entry point that includes all modular components:
+  - ELITE_Config.html     - Design system tokens, colors, helpers
+  - ELITE_Helpers.html    - Deduplicated utility functions
+  - ELITE_Styles.html     - CSS injection system
+  - ELITE_Executive.html  - Executive summary & overview
+  - ELITE_Strategic.html  - Kill moves, JTBD, moat, roadmap
+  - ELITE_Forensics.html  - Deep dive forensics, tooltips, breakdowns
+  - ELITE_TabRenderers.html - All 15 tab-specific renderers
+  - ELITE_Proof.html      - Expandable proof panels, comparison tables
+  - ELITE_SERP.html       - SERP features, backlinks, content gaps
+  ═══════════════════════════════════════════════════════════════════════════════
+-->
+
+<!-- Include all modular components -->
+<?!= include('ELITE_Config') ?>
+<?!= include('ELITE_Helpers') ?>
+<?!= include('ELITE_Styles') ?>
+<?!= include('ELITE_Executive') ?>
+<?!= include('ELITE_Strategic') ?>
+<?!= include('ELITE_Forensics') ?>
+<?!= include('ELITE_TabRenderers') ?>
+<?!= include('ELITE_Proof') ?>
+<?!= include('ELITE_SERP') ?>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * MAIN ENTRY POINT - ELITE COMPETITOR DASHBOARD
+ * Orchestrates all modular components
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+
+// Store chart instances globally
+window.eliteChartInstances = window.eliteChartInstances || {};
+
+/**
+ * Main render function for Elite Competitor Dashboard
+ * This is the primary entry point called by the application
+ */
+function renderEliteCompetitorDashboard(data, containerId, options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.error('❌ Elite Dashboard container not found:', containerId);
+    return;
+  }
+
+  console.log('🚀 Rendering Elite Competitor Dashboard...');
+  
+  // Inject Elite styles if not already injected
+  if (typeof injectEliteStyles === 'function') {
+    injectEliteStyles();
+  }
+
+  // Clear existing content
+  container.innerHTML = '';
+  
+  // Create main dashboard structure
+  const dashboardWrapper = document.createElement('div');
+  dashboardWrapper.className = 'elite-competitor-dashboard';
+  dashboardWrapper.id = 'elite-dashboard-wrapper';
+  
+  // Build dashboard HTML
+  let html = `
+    <div class="elite-dashboard-header" style="margin-bottom: 32px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 900; color: #0f172a; letter-spacing: -0.02em;">
+            📊 Competitive Intelligence Dashboard
+          </h1>
+          <p style="margin: 8px 0 0; color: #64748b; font-size: 14px;">
+            Board-ready analysis powered by real data + AI insights
+          </p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <span style="padding: 8px 16px; background: linear-gradient(135deg, #059669, #10b981); color: white; border-radius: 20px; font-size: 11px; font-weight: 700;">
+            ELITE v4.0
+          </span>
+          <span style="padding: 8px 16px; background: #f1f5f9; color: #475569; border-radius: 20px; font-size: 11px; font-weight: 600;">
+            ${new Date().toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add Executive Summary if data available
+  if (data.executiveSummary || data.efficiency) {
+    html += `<div id="elite-executive-section"></div>`;
+  }
+  
+  // Add Strategic sections container
+  html += `<div id="elite-strategic-section"></div>`;
+  
+  // Add Tab content container
+  html += `<div id="elite-tab-content"></div>`;
+  
+  // Add Forensics container
+  html += `<div id="elite-forensics-section"></div>`;
+  
+  // Add data source footer
+  html += `
+    <div class="elite-footer" style="margin-top: 40px; padding: 20px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 16px; text-align: center;">
+      <div style="font-size: 11px; color: #64748b;">
+        <span>📡 Data Source: ${data.dataSource || 'Real Data + Forensic Analysis'}</span>
+        <span style="margin: 0 16px;">|</span>
+        <span>Generated: ${data.generatedAt || new Date().toISOString()}</span>
+        <span style="margin: 0 16px;">|</span>
+        <span>Confidence: ${data.confidence || 'High'}</span>
+      </div>
+    </div>
+  `;
+  
+  dashboardWrapper.innerHTML = html;
+  container.appendChild(dashboardWrapper);
+  
+  // Render sub-components
+  renderDashboardComponents(data, options);
+  
+  console.log('✅ Elite Competitor Dashboard rendered successfully');
+}
+
+/**
+ * Render all dashboard components
+ */
+function renderDashboardComponents(data, options) {
+  // Render Executive Summary
+  if (typeof renderExecutiveSummaryBanner === 'function' && data.executiveSummary) {
+    const execContainer = document.getElementById('elite-executive-section');
+    if (execContainer) {
+      execContainer.innerHTML = renderExecutiveSummaryBanner(data.executiveSummary);
+    }
+  }
+  
+  // Render Efficiency Analysis
+  if (typeof renderEfficiencyAnalysis === 'function' && data.efficiency) {
+    const execContainer = document.getElementById('elite-executive-section');
+    if (execContainer) {
+      execContainer.innerHTML += renderEfficiencyAnalysis(data.efficiency);
+    }
+  }
+  
+  // Render Strategic sections (Kill Moves, Opportunities, etc.)
+  const strategicContainer = document.getElementById('elite-strategic-section');
+  if (strategicContainer) {
+    let strategicHtml = '';
+    
+    if (typeof renderEliteKillMoves === 'function' && data.killMoves) {
+      strategicHtml += renderEliteKillMoves(data.killMoves);
+    }
+    
+    if (typeof renderEliteOpportunities === 'function' && data.opportunities) {
+      strategicHtml += renderEliteOpportunities(data.opportunities);
+    }
+    
+    if (typeof renderCompetitiveRoadmap === 'function' && data.roadmap) {
+      strategicHtml += renderCompetitiveRoadmap(data.roadmap);
+    }
+    
+    strategicContainer.innerHTML = strategicHtml;
+  }
+  
+  // Render Forensics if available
+  if (typeof renderDeepDiveForensics === 'function' && data.forensics) {
+    renderDeepDiveForensics(data.forensics, 'elite-forensics-section');
+  }
+}
+
+/**
+ * Render a specific Elite tab
+ */
+function renderEliteTab(tabId, data, containerId) {
+  const tabRenderers = {
+    'overview': renderOverviewDashboardElite,
+    'market': renderMarketIntelligenceElite,
+    'brand': renderBrandPositionElite,
+    'technical': renderTechnicalSeoElite,
+    'content': renderContentIntelElite,
+    'keywords': renderKeywordStrategyElite,
+    'authority': renderAuthorityElite,
+    'performance': renderPerformanceElite,
+    'opportunities': renderOpportunitiesElite
+  };
+  
+  const renderer = tabRenderers[tabId];
+  if (renderer && typeof renderer === 'function') {
+    renderer(data, containerId);
+  } else {
+    console.warn(`⚠️ No Elite renderer found for tab: ${tabId}`);
+  }
+}
+
+/**
+ * Render Gemini Insights section
+ */
+function renderEliteGeminiInsights(data, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || !data) return;
+  
+  // Use the strategic insight renderer
+  if (typeof renderSectionStrategicInsight === 'function') {
+    container.innerHTML = renderSectionStrategicInsight(data, 'AI Analysis');
+  }
+}
+
+/**
+ * Cleanup function to destroy all chart instances
+ */
+function cleanupEliteCharts() {
+  if (window.eliteChartInstances) {
+    Object.keys(window.eliteChartInstances).forEach(key => {
+      if (window.eliteChartInstances[key] && typeof window.eliteChartInstances[key].destroy === 'function') {
+        window.eliteChartInstances[key].destroy();
+      }
+    });
+    window.eliteChartInstances = {};
+  }
+  console.log('🧹 Elite charts cleaned up');
+}
+
+// Export functions to global scope
+window.renderEliteCompetitorDashboard = renderEliteCompetitorDashboard;
+window.renderEliteTab = renderEliteTab;
+window.renderEliteGeminiInsights = renderEliteGeminiInsights;
+window.cleanupEliteCharts = cleanupEliteCharts;
+
+console.log('✅ ELITE Competitor Renderer v4.0 (Modular) loaded');
+console.log('📦 Modules: Config, Helpers, Styles, Executive, Strategic, Forensics, TabRenderers, Proof, SERP');
+
+</script>

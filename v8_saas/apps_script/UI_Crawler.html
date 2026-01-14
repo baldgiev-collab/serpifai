@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= UI_getStyles() ?>
+  <style>
+    .url-input-group {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .url-input {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 15px;
+    }
+    .crawl-progress {
+      padding: 16px;
+      background: var(--gray-100);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+    }
+    .progress-text {
+      font-size: 14px;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+    }
+    .page-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .page-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .page-item:hover {
+      background: var(--gray-50);
+    }
+    .page-status {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .status-ok { background: #E6F4EA; color: #1E8E3E; }
+    .status-redirect { background: #FEF7E0; color: #F9AB00; }
+    .status-error { background: #FCE8E6; color: #D93025; }
+    .page-info { flex: 1; min-width: 0; }
+    .page-url {
+      font-size: 14px;
+      color: var(--primary);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .page-title {
+      font-size: 13px;
+      color: var(--gray-700);
+      margin-top: 4px;
+    }
+    .page-meta {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+    .issue-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--danger);
+      color: white;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .summary-item {
+      text-align: center;
+      padding: 16px;
+      background: white;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+    }
+    .summary-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    .summary-label {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Site Crawler</h1>
+    
+    <div class="card">
+      <div class="url-input-group">
+        <input type="url" id="crawlUrl" class="input url-input" placeholder="https://example.com">
+        <select id="maxPages" class="select" style="width: 120px;">
+          <option value="10">10 pages</option>
+          <option value="20" selected>20 pages</option>
+          <option value="30">30 pages</option>
+          <option value="50">50 pages</option>
+        </select>
+        <button onclick="startCrawl()" class="btn btn-primary">Start Crawl</button>
+      </div>
+      
+      <div id="crawlProgress" class="crawl-progress" style="display: none;">
+        <div class="progress-text">Crawling... <span id="crawlStatus">0 pages found</span></div>
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-bar-fill" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="results" style="display: none;">
+      <div id="summary" class="summary-grid"></div>
+      
+      <div class="card">
+        <div class="card-header">
+          <h3>Crawled Pages</h3>
+          <button onclick="exportResults()" class="btn btn-secondary btn-sm">Export</button>
+        </div>
+        <div id="pageList" class="page-list"></div>
+      </div>
+      
+      <div id="issuesCard" class="card" style="display: none;">
+        <h3>Issues Found</h3>
+        <ul id="issuesList" style="padding-left: 20px; margin-top: 12px;"></ul>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let crawlResults = null;
+    
+    function startCrawl() {
+      const url = document.getElementById('crawlUrl').value;
+      if (!url) {
+        alert('Please enter a URL');
+        return;
+      }
+      
+      const maxPages = parseInt(document.getElementById('maxPages').value);
+      
+      document.getElementById('crawlProgress').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('progressFill').style.width = '10%';
+      document.getElementById('crawlStatus').textContent = 'Starting...';
+      
+      google.script.run
+        .withSuccessHandler(handleCrawlResults)
+        .withFailureHandler(handleError)
+        .FT_crawlWebsite({ url: url, maxPages: maxPages, depth: 2 });
+    }
+    
+    function handleCrawlResults(data) {
+      document.getElementById('crawlProgress').style.display = 'none';
+      
+      if (!data.ok) {
+        alert('Error: ' + data.error);
+        return;
+      }
+      
+      crawlResults = data;
+      document.getElementById('results').style.display = 'block';
+      
+      // Render summary
+      const summary = data.summary || {};
+      document.getElementById('summary').innerHTML = `
+        <div class="summary-item">
+          <div class="summary-value">${data.pagesFound}</div>
+          <div class="summary-label">Pages Crawled</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value">${summary.avgLoadTime || 0}ms</div>
+          <div class="summary-label">Avg Load Time</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value">${summary.missingTitle || 0}</div>
+          <div class="summary-label">Missing Title</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value">${summary.missingMeta || 0}</div>
+          <div class="summary-label">Missing Meta</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value">${summary.missingH1 || 0}</div>
+          <div class="summary-label">Missing H1</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value">${summary.shortContent || 0}</div>
+          <div class="summary-label">Thin Content</div>
+        </div>
+      `;
+      
+      // Render pages
+      const pageList = document.getElementById('pageList');
+      pageList.innerHTML = data.pages.map(page => {
+        const statusClass = page.status === 200 ? 'status-ok' : 
+                           page.status >= 300 && page.status < 400 ? 'status-redirect' : 'status-error';
+        
+        const issues = [];
+        if (!page.title) issues.push('No Title');
+        if (!page.metaDescription) issues.push('No Meta');
+        if (!page.h1) issues.push('No H1');
+        if (page.wordCount < 300) issues.push('Thin');
+        
+        return `
+          <div class="page-item">
+            <div class="page-status ${statusClass}">${page.status}</div>
+            <div class="page-info">
+              <a href="${page.url}" target="_blank" class="page-url">${page.url}</a>
+              ${issues.map(i => `<span class="issue-tag">${i}</span>`).join('')}
+              <div class="page-title">${page.title || '(No title)'}</div>
+              <div class="page-meta">
+                <span>${page.wordCount} words</span>
+                <span>${page.imageCount} images</span>
+                <span>${page.loadTime}ms</span>
+                <span>${page.internalLinks?.length || 0} internal links</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Render issues
+      if (summary.issues && summary.issues.length > 0) {
+        document.getElementById('issuesCard').style.display = 'block';
+        document.getElementById('issuesList').innerHTML = summary.issues.map(issue => 
+          `<li style="margin-bottom: 8px;">${issue}</li>`
+        ).join('');
+      }
+    }
+    
+    function exportResults() {
+      if (!crawlResults) return;
+      
+      const csv = ['URL,Status,Title,Words,Images,Load Time,Issues'];
+      crawlResults.pages.forEach(p => {
+        const issues = [];
+        if (!p.title) issues.push('No Title');
+        if (!p.metaDescription) issues.push('No Meta');
+        if (!p.h1) issues.push('No H1');
+        csv.push(`"${p.url}",${p.status},"${(p.title || '').replace(/"/g, '""')}",${p.wordCount},${p.imageCount},${p.loadTime},"${issues.join('; ')}"`);
+      });
+      
+      const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'crawl-results.csv';
+      a.click();
+    }
+    
+    function handleError(error) {
+      document.getElementById('crawlProgress').style.display = 'none';
+      alert('Error: ' + error.message);
+    }
+  </script>
+</body>
+</html>

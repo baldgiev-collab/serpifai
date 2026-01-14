@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Topic Clusters</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    h3 { font-size: 16px; margin-bottom: 10px; }
+    
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
+    .form-textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--text-secondary); cursor: not-allowed; }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    
+    .results { display: none; }
+    .results.active { display: block; }
+    
+    .cluster-map {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .pillar-group {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .pillar-header {
+      padding: 15px 20px;
+      background: rgba(35, 134, 54, 0.1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .pillar-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .pillar-info { flex: 1; }
+    .pillar-title { font-weight: 600; font-size: 16px; }
+    .pillar-meta { font-size: 12px; color: var(--text-secondary); }
+    .pillar-volume {
+      text-align: right;
+      font-size: 13px;
+    }
+    .pillar-volume-value { font-size: 18px; font-weight: bold; color: var(--info); }
+    
+    .cluster-list {
+      padding: 15px 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    
+    .cluster-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      transition: all 0.2s;
+    }
+    .cluster-item:hover { border-color: var(--accent); }
+    
+    .cluster-keyword { font-weight: 500; margin-bottom: 5px; }
+    .cluster-stats { font-size: 12px; color: var(--text-secondary); display: flex; gap: 10px; }
+    
+    .intent-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    .intent-informational { background: rgba(88, 166, 255, 0.2); color: var(--info); }
+    .intent-transactional { background: rgba(35, 134, 54, 0.2); color: var(--success); }
+    .intent-navigational { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+    .intent-commercial { background: rgba(163, 113, 247, 0.2); color: #a371f7; }
+    
+    .suggestions {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(88, 166, 255, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+    .suggestions h3 { color: var(--info); margin-bottom: 10px; }
+    .suggestion-list { list-style: none; }
+    .suggestion-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    
+    .loading { text-align: center; padding: 40px; display: none; }
+    .loading.active { display: block; }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗂️ Topic Clusters</h1>
+    <div id="message" class="message"></div>
+    
+    <div class="section">
+      <div class="form-group">
+        <label class="form-label">Main Topic / Niche</label>
+        <input type="text" class="form-input" id="mainTopic" placeholder="e.g., Digital Marketing">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Seed Keywords (one per line)</label>
+        <textarea class="form-textarea" id="seedKeywords" placeholder="SEO optimization&#10;content marketing&#10;social media strategy"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="generateClusters()" id="generateBtn">🗂️ Generate Clusters</button>
+    </div>
+    
+    <div class="loading" id="loading"><p>🔄 Generating topic clusters...</p></div>
+    
+    <div class="results" id="results">
+      <div class="cluster-map" id="clusterMap"></div>
+      
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+  </div>
+
+  <script>
+    function generateClusters() {
+      const topic = document.getElementById('mainTopic').value.trim();
+      const seeds = document.getElementById('seedKeywords').value.trim().split('\n').filter(s => s.trim());
+      
+      if (!topic) { showMessage('Enter a main topic', 'error'); return; }
+      
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('results').classList.remove('active');
+      document.getElementById('generateBtn').disabled = true;
+      
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(e => {
+          document.getElementById('loading').classList.remove('active');
+          document.getElementById('generateBtn').disabled = false;
+          showMessage(e.message, 'error');
+        })
+        .AI_generateTopicClusters({ topic: topic, seeds: seeds });
+    }
+    
+    function displayResults(result) {
+      document.getElementById('loading').classList.remove('active');
+      document.getElementById('generateBtn').disabled = false;
+      
+      if (!result.ok) { showMessage(result.error, 'error'); return; }
+      
+      document.getElementById('results').classList.add('active');
+      
+      const pillars = result.pillars || [];
+      const icons = ['📚', '🎯', '💡', '🔧', '📊', '🚀'];
+      
+      document.getElementById('clusterMap').innerHTML = pillars.map((pillar, i) => {
+        const clusters = pillar.clusters || [];
+        return `
+          <div class="pillar-group">
+            <div class="pillar-header">
+              <div class="pillar-icon">${icons[i % icons.length]}</div>
+              <div class="pillar-info">
+                <div class="pillar-title">${pillar.title}</div>
+                <div class="pillar-meta">${clusters.length} supporting topics</div>
+              </div>
+              <div class="pillar-volume">
+                <div class="pillar-volume-value">${formatNumber(pillar.totalVolume || 0)}</div>
+                <div>monthly searches</div>
+              </div>
+            </div>
+            <div class="cluster-list">
+              ${clusters.map(c => `
+                <div class="cluster-item">
+                  <div class="cluster-keyword">${c.keyword}</div>
+                  <div class="cluster-stats">
+                    <span>Vol: ${formatNumber(c.volume || 0)}</span>
+                    <span class="intent-badge intent-${c.intent || 'informational'}">${c.intent || 'info'}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      // Suggestions
+      const suggestions = result.suggestions || [];
+      if (suggestions.length > 0) {
+        document.getElementById('suggestions').innerHTML = `
+          <h3>💡 Content Suggestions</h3>
+          <ul class="suggestion-list">
+            ${suggestions.map(s => `<li class="suggestion-item">${s}</li>`).join('')}
+          </ul>
+        `;
+      }
+    }
+    
+    function formatNumber(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return n.toString();
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+    }
+  </script>
+</body>
+</html>

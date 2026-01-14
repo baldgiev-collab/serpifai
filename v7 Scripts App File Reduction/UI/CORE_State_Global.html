@@ -1,0 +1,371 @@
+<!--
+  CORE_State_Global.html
+  Core Variables, DOM References, and State Management Functions
+  Extracted from UI_Scripts_App.html IIFE content
+  Phase 2 of Proxy Barrel Refactoring
+  
+  NOTE: All functions and variables are attached to window scope
+  to maintain accessibility for 150+ external dependencies.
+-->
+<script>
+  console.log('🔧 CORE_State_Global.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FIELD IDS - Form field identifiers for data collection
+  // ═══════════════════════════════════════════════════════════════════════════
+  window.FIELD_IDS = [
+    'targetKeyword', 'targetAudience', 'keyCompetitors', 'urlToOptimize',
+    'primaryGoal', 'secondaryGoals', 'brandVoice', 'contentType',
+    'contentLength', 'currentRanking', 'targetRanking', 'monthlySearchVolume',
+    'keywordDifficulty', 'existingContent', 'topPerformingContent',
+    'contentGaps', 'audiencePainPoints', 'audienceQuestions', 'buyerJourney',
+    'uniqueSellingPoints', 'brandStory', 'socialProof', 'authorCredentials',
+    'industryExpertise', 'trustSignals', 'geographicFocus', 'seasonalFactors',
+    'industryTrends', 'contentFormat', 'multimediaAssets', 'internalLinks',
+    'externalSources', 'callToAction', 'conversionGoals', 'trackingMetrics',
+    'stage1Result', 'stage2Result', 'stage3Result', 'stage4Result', 'stage5Result'
+  ];
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CORE STATE MANAGEMENT FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Set the active tab in the UI
+   * @param {string} name - Tab name to activate
+   */
+  window.setActiveTab = function(name) {
+    const tabs = Array.from(document.querySelectorAll('.tab'));
+    const navBtns = Array.from(document.querySelectorAll('.nav-btn'));
+    const breadcrumb = document.getElementById('breadcrumb');
+    
+    tabs.forEach(function(tab) {
+      tab.classList.toggle('active', tab.id === 'tab-' + name);
+    });
+    navBtns.forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    if (breadcrumb) {
+      breadcrumb.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    console.log('📑 Tab switched to:', name);
+  };
+
+  /**
+   * Switch UI theme (dark/light)
+   * @param {string} theme - Theme name
+   */
+  window.switchTheme = function(theme) {
+    document.body.classList.remove('theme-dark', 'theme-light');
+    document.body.classList.add('theme-' + theme);
+    localStorage.setItem('serpifai-theme', theme);
+    console.log('🎨 Theme switched to:', theme);
+  };
+
+  /**
+   * Show toast notification
+   * @param {string} msg - Message to display
+   * @param {string} type - Toast type (success, error, info, warning)
+   */
+  window.showToast = function(msg, type) {
+    type = type || 'info';
+    
+    // Remove existing toast
+    var existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.className = 'toast-notification toast-' + type;
+    
+    var bgColor = '#3b82f6'; // default info
+    if (type === 'error') bgColor = '#ef4444';
+    else if (type === 'success') bgColor = '#22c55e';
+    else if (type === 'warning') bgColor = '#f59e0b';
+    
+    toast.style.cssText = 
+      'position: fixed; bottom: 20px; right: 20px; padding: 16px 24px; ' +
+      'background: ' + bgColor + '; color: white; border-radius: 8px; ' +
+      'box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; ' +
+      'animation: slideIn 0.3s ease; font-weight: 500;';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+
+    setTimeout(function() {
+      toast.style.animation = 'slideOut 0.3s ease';
+      setTimeout(function() { toast.remove(); }, 300);
+    }, 4000);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOADING INDICATOR FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Show loading indicator overlay
+   * @param {string} projectName - Optional project name for context
+   */
+  window.showLoadingIndicator = function(projectName) {
+    var overlay = document.getElementById('loading-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'loading-overlay';
+      overlay.style.cssText = 
+        'position: fixed; top: 0; left: 0; right: 0; bottom: 0; ' +
+        'background: rgba(0,0,0,0.5); display: flex; align-items: center; ' +
+        'justify-content: center; z-index: 9999;';
+      overlay.innerHTML = 
+        '<div style="background: white; padding: 32px 48px; border-radius: 12px; ' +
+        'text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">' +
+        '<div style="width: 48px; height: 48px; border: 4px solid #e5e7eb; ' +
+        'border-top-color: #3b82f6; border-radius: 50%; ' +
+        'animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>' +
+        '<p style="margin: 0; font-size: 16px; color: #374151;">Loading' + 
+        (projectName ? ' ' + projectName : '') + '...</p></div>';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+  };
+
+  /**
+   * Hide loading indicator overlay
+   */
+  window.hideLoadingIndicator = function() {
+    var overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COLLAPSIBLE WORKFLOW MENU
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Initialize collapsible workflow menu sections
+   */
+  window.initWorkflowMenuCollapse = function() {
+    var headers = document.querySelectorAll('.workflow-section-header');
+    headers.forEach(function(header) {
+      header.addEventListener('click', function() {
+        var content = this.nextElementSibling;
+        var icon = this.querySelector('.collapse-icon');
+        if (content && content.classList.contains('workflow-section-content')) {
+          content.classList.toggle('collapsed');
+          if (icon) {
+            icon.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+          }
+        }
+      });
+    });
+    console.log('📂 Workflow menu collapse initialized');
+  };
+
+  /**
+   * Show stage in sidebar after completion
+   * @param {number} stageNum - Stage number (1-5)
+   */
+  window.showStageInSidebar = function(stageNum) {
+    var stageItem = document.querySelector('.stage-item[data-stage="' + stageNum + '"]');
+    if (stageItem) {
+      stageItem.classList.add('completed');
+      stageItem.style.display = 'block';
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AUTO-SAVE SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  window._autoSaveTimeout = null;
+
+  /**
+   * Debounce auto-save to prevent excessive saves
+   */
+  window.debounceAutoSave = function() {
+    if (window._autoSaveTimeout) {
+      clearTimeout(window._autoSaveTimeout);
+    }
+    window._autoSaveTimeout = setTimeout(function() {
+      window.autoSaveProject();
+    }, 2000); // 2 second debounce
+  };
+
+  /**
+   * Auto-save project to Google Sheets
+   */
+  window.autoSaveProject = function() {
+    var projectSelect = document.getElementById('projectSelect');
+    var saveStatus = document.getElementById('saveStatus');
+    
+    if (!projectSelect || !projectSelect.value) {
+      console.log('⚠️ No project selected, skipping auto-save');
+      return;
+    }
+
+    var projectName = projectSelect.value;
+    var formData = window.collectFormData();
+
+    if (saveStatus) {
+      saveStatus.textContent = 'Saving...';
+      saveStatus.style.color = '#f59e0b';
+    }
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (saveStatus) {
+          saveStatus.textContent = 'Saved ✓';
+          saveStatus.style.color = '#22c55e';
+          setTimeout(function() {
+            saveStatus.textContent = '';
+          }, 3000);
+        }
+        console.log('💾 Auto-save successful:', projectName);
+      })
+      .withFailureHandler(function(error) {
+        if (saveStatus) {
+          saveStatus.textContent = 'Save failed';
+          saveStatus.style.color = '#ef4444';
+        }
+        console.error('❌ Auto-save failed:', error);
+      })
+      .saveProject(projectName, formData);
+  };
+
+  /**
+   * Initialize auto-save listeners on form fields
+   */
+  window.initAutoSave = function() {
+    window.FIELD_IDS.forEach(function(id) {
+      var field = document.getElementById(id);
+      if (field) {
+        field.addEventListener('input', window.debounceAutoSave);
+        field.addEventListener('change', window.debounceAutoSave);
+      }
+    });
+    console.log('💾 Auto-save system initialized');
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FORM DATA COLLECTION & POPULATION
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Collect all form data including competitor analysis
+   * @returns {Object} Form data object
+   */
+  window.collectFormData = function() {
+    var data = {};
+    
+    // Collect standard form fields
+    window.FIELD_IDS.forEach(function(id) {
+      var field = document.getElementById(id);
+      if (field) {
+        data[id] = field.value || '';
+      }
+    });
+
+    // Include competitor intelligence data if available
+    if (window.competitorIntelligenceData) {
+      data.competitorIntelligence = window.competitorIntelligenceData;
+    }
+
+    // Include stage results
+    for (var i = 1; i <= 5; i++) {
+      var stageResult = document.getElementById('stage' + i + 'Result');
+      if (stageResult && stageResult.value) {
+        data['stage' + i + 'Result'] = stageResult.value;
+      }
+    }
+
+    return data;
+  };
+
+  /**
+   * Fill form fields with loaded data
+   * @param {Object} data - Project data object
+   */
+  window.fillFormData = function(data) {
+    if (!data) return;
+    
+    console.log('📝 Filling form with data:', Object.keys(data).length, 'fields');
+
+    window.FIELD_IDS.forEach(function(id) {
+      var field = document.getElementById(id);
+      if (field && data[id] !== undefined) {
+        field.value = data[id];
+      }
+    });
+
+    // Restore competitor intelligence if present
+    if (data.competitorIntelligence) {
+      window.competitorIntelligenceData = data.competitorIntelligence;
+      console.log('🔄 Restored competitor intelligence data');
+    }
+
+    // Trigger score recalculation
+    window.recalcScores();
+    
+    // Signal completion for diagnostics
+    if (window.fillFormDataEnd) {
+      window.fillFormDataEnd();
+    }
+  };
+
+  /**
+   * Recalculate project scores based on form data
+   */
+  window.recalcScores = function() {
+    var overviewScore = document.getElementById('overviewScore');
+    var metricWorkflow = document.getElementById('metricWorkflow');
+    var metricEEAT = document.getElementById('metricEEAT');
+    var metricStrategyDepth = document.getElementById('metricStrategyDepth');
+    
+    // Calculate completion score
+    var filledCount = 0;
+    var totalFields = window.FIELD_IDS.length;
+    
+    window.FIELD_IDS.forEach(function(id) {
+      var field = document.getElementById(id);
+      if (field && field.value && field.value.trim() !== '') {
+        filledCount++;
+      }
+    });
+    
+    var completionPercent = Math.round((filledCount / totalFields) * 100);
+    
+    if (overviewScore) {
+      overviewScore.textContent = completionPercent + '%';
+    }
+    if (metricWorkflow) {
+      metricWorkflow.textContent = Math.round(completionPercent * 0.4) + '%';
+    }
+    if (metricEEAT) {
+      metricEEAT.textContent = Math.round(completionPercent * 0.3) + '%';
+    }
+    if (metricStrategyDepth) {
+      metricStrategyDepth.textContent = Math.round(completionPercent * 0.3) + '%';
+    }
+    
+    console.log('📊 Scores recalculated:', completionPercent + '%');
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DIAGNOSTIC HOOKS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Track fillFormData calls for diagnostics
+  window._fillFormDataCalls = [];
+  window.fillFormDataEnd = function() {
+    window._fillFormDataCalls.push({
+      timestamp: new Date().toISOString(),
+      fieldCount: window.FIELD_IDS.length
+    });
+  };
+
+  console.log('✅ CORE_State_Global.html loaded successfully');
+  console.log('   Exposed to window: FIELD_IDS, setActiveTab, switchTheme, showToast');
+  console.log('   Exposed to window: showLoadingIndicator, hideLoadingIndicator');
+  console.log('   Exposed to window: initWorkflowMenuCollapse, showStageInSidebar');
+  console.log('   Exposed to window: debounceAutoSave, autoSaveProject, initAutoSave');
+  console.log('   Exposed to window: collectFormData, fillFormData, recalcScores');
+</script>

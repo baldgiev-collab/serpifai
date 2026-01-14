@@ -1,0 +1,492 @@
+<script>
+  /**
+   * ============================================================================
+   * UI_Tab_ContentIntel_Charts.html
+   * ============================================================================
+   * Extracted from UI_Scripts_App.html for modular architecture
+   * 
+   * Contains:
+   * - renderContentIntelligenceCharts() - Chart rendering for Content Intelligence tab
+   * - renderEliteContentStrategy() - Elite v9.0 Content Strategy renderer
+   * 
+   * Dependencies:
+   * - Chart.js library
+   * - window.competitorCharts object
+   * ============================================================================
+   */
+
+  /**
+   * Render Content Intelligence Charts with real data
+   */
+  function renderContentIntelligenceCharts(competitors) {
+    console.log('📊 Rendering Content Intelligence Charts for', competitors.length, 'competitors');
+
+    // Check if Chart.js is available
+    if (typeof Chart === 'undefined') {
+      console.error('❌ Chart.js is not loaded! Cannot render Content Intelligence charts.');
+      return;
+    }
+    console.log('✅ Chart.js is available (version:', Chart.version, ')');
+
+    if (!window.competitorCharts) window.competitorCharts = {};
+
+    // Bar Chart - Word Count
+    const depthCtx = document.getElementById('chart-content-depth');
+    console.log('   chart-content-depth canvas:', depthCtx ? 'FOUND' : 'NOT FOUND');
+    if (depthCtx) {
+      try {
+        if (window.competitorCharts['content-depth']) window.competitorCharts['content-depth'].destroy();
+
+        const wordCountData = competitors.slice(0, 6).map(c => c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0);
+        console.log('   Word Count data:', wordCountData);
+
+        window.competitorCharts['content-depth'] = new Chart(depthCtx, {
+          type: 'bar',
+          data: {
+            labels: competitors.slice(0, 6).map(c => c.domain.split('.')[0]),
+            datasets: [{
+              label: 'Word Count',
+              data: wordCountData,
+              backgroundColor: 'rgba(59, 130, 246, 0.7)',
+              borderColor: '#3b82f6',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1200, easing: 'easeOutQuart' },
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { display: false } }
+          }
+        });
+        console.log('   ✅ chart-content-depth created successfully');
+      } catch (e) {
+        console.error('   ❌ Error creating chart-content-depth:', e.message);
+      }
+    }
+
+    // Radar Chart - Content Quality
+    const radarCtx = document.getElementById('chart-content-radar');
+    console.log('   chart-content-radar canvas:', radarCtx ? 'FOUND' : 'NOT FOUND');
+    if (radarCtx) {
+      try {
+        if (window.competitorCharts['content-radar']) window.competitorCharts['content-radar'].destroy();
+
+        const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
+        window.competitorCharts['content-radar'] = new Chart(radarCtx, {
+          type: 'radar',
+          data: {
+            labels: ['Word Count', 'Schema Types', 'SERP Pages', 'Title Length', 'Description'],
+            datasets: competitors.slice(0, 4).map((comp, i) => {
+              const wc = comp.synthesized?.website?.wordCount || 0;
+              const schema = (comp.synthesized?.website?.schemaTypes || []).length;
+              const serp = (comp.apiData?.serper?.organic || []).length;
+              const title = (comp.synthesized?.website?.title || '').length;
+              const desc = (comp.synthesized?.website?.description || '').length;
+              return {
+                label: comp.domain,
+                data: [
+                  Math.min(100, wc / 50), // Normalize to 0-100
+                  schema * 20,
+                  serp * 10,
+                  Math.min(100, title * 1.5),
+                  Math.min(100, desc / 1.6)
+                ],
+                backgroundColor: colors[i] + '20',
+                borderColor: colors[i],
+                borderWidth: 2
+              };
+            })
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1500, easing: 'easeOutElastic' },
+            scales: { r: { beginAtZero: true, max: 100 } },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+          }
+        });
+        console.log('   ✅ chart-content-radar created successfully');
+      } catch (e) {
+        console.error('   ❌ Error creating chart-content-radar:', e.message);
+      }
+    }
+
+    // NEW: SERP Visibility Chart
+    const serpCtx = document.getElementById('chart-serp-visibility');
+    console.log('   chart-serp-visibility canvas:', serpCtx ? 'FOUND' : 'NOT FOUND');
+    if (serpCtx) {
+      try {
+        if (window.competitorCharts['serp-visibility']) window.competitorCharts['serp-visibility'].destroy();
+
+        const serpData = competitors.slice(0, 6).map(c => {
+          return c.synthesized?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0;
+        });
+
+        window.competitorCharts['serp-visibility'] = new Chart(serpCtx, {
+          type: 'bar',
+          data: {
+            labels: competitors.slice(0, 6).map(c => c.domain.split('.')[0]),
+            datasets: [{
+              label: 'SERP Results',
+              data: serpData,
+              backgroundColor: serpData.map(v => v >= 8 ? 'rgba(34, 197, 94, 0.7)' : v >= 4 ? 'rgba(59, 130, 246, 0.7)' : 'rgba(249, 115, 22, 0.7)'),
+              borderColor: serpData.map(v => v >= 8 ? '#22c55e' : v >= 4 ? '#3b82f6' : '#f97316'),
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            animation: { duration: 1000, easing: 'easeOutQuart' },
+            scales: { x: { beginAtZero: true, max: 12 } },
+            plugins: { legend: { display: false } }
+          }
+        });
+        console.log('   ✅ chart-serp-visibility created successfully');
+      } catch (e) {
+        console.error('   ❌ Error creating chart-serp-visibility:', e.message);
+      }
+    }
+
+    // NEW: Content Investment Score Chart
+    const investCtx = document.getElementById('chart-content-investment');
+    console.log('   chart-content-investment canvas:', investCtx ? 'FOUND' : 'NOT FOUND');
+    if (investCtx) {
+      try {
+        if (window.competitorCharts['content-investment']) window.competitorCharts['content-investment'].destroy();
+
+        // Calculate composite content investment score
+        const investmentScores = competitors.slice(0, 6).map(c => {
+          const wc = c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0;
+          const schema = (c.synthesized?.website?.schemaTypes || c.snapshot?.schema?.types || []).length;
+          const serp = c.synthesized?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0;
+
+          // Normalized scoring: Words (0-40) + Schema (0-30) + SERP (0-30)
+          const wordScore = Math.min(40, Math.round(wc / 75));
+          const schemaScore = Math.min(30, schema * 10);
+          const serpScore = Math.min(30, serp * 3);
+
+          return wordScore + schemaScore + serpScore;
+        });
+
+        window.competitorCharts['content-investment'] = new Chart(investCtx, {
+          type: 'doughnut',
+          data: {
+            labels: competitors.slice(0, 6).map(c => c.domain.split('.')[0]),
+            datasets: [{
+              data: investmentScores,
+              backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'],
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 1200, easing: 'easeOutQuart' },
+            plugins: {
+              legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    return context.label + ': ' + context.raw + '/100';
+                  }
+                }
+              }
+            }
+          }
+        });
+        console.log('   ✅ chart-content-investment created successfully');
+      } catch (e) {
+        console.error('   ❌ Error creating chart-content-investment:', e.message);
+      }
+    }
+
+    console.log('📊 Content Intelligence charts render complete');
+  }
+
+  /**
+   * ---------------------------------------------------------------------------
+   * ELITE CONTENT STRATEGY RENDERER v9.0
+   * Renders: PSEO Detection, Topical Coverage, Content Velocity,
+   * Direct-to-Answer Score, Vigilante Narrative Audit, Content Quality Matrix
+   * ---------------------------------------------------------------------------
+   */
+  function renderEliteContentStrategy(metricsDiv, insightsDiv, contentStrat, competitors, eliteData) {
+    console.log('🚀 Rendering Elite Content Strategy v9.0...');
+
+    const hoverInsights = eliteData?.hoverInsights?.contentStrategy || {};
+    const topicalCoverage = contentStrat.topicalCoverageScore || [];
+    const pseoDetection = contentStrat.pseoPatternDetection || [];
+    const contentVelocity = contentStrat.contentVelocity || [];
+    const directToAnswer = contentStrat.directToAnswerScore || [];
+    const vigilanteAudit = contentStrat.vigilanteNarrativeAudit || [];
+    const qualityMatrix = contentStrat.contentQualityMatrix || [];
+    const killMoves = contentStrat.killMoves || [];
+
+    let html = `
+          <!-- CONTENT STRATEGY ELITE HEADER -->
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(59,130,246,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h3 style="margin: 0 0 8px; font-size: 22px; font-weight: 700;">📊 Content Strategy Intelligence</h3>
+                <p style="margin: 0; opacity: 0.9; font-size: 13px;">Elite v9.0 • PSEO Detection • Topical Coverage • Direct-to-Answer Readiness</p>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 36px; font-weight: 800;">${topicalCoverage.length}</div>
+                <div style="font-size: 11px; opacity: 0.8;">Domains Analyzed</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- TOPICAL COVERAGE SCORE TABLE -->
+          <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px;">
+            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #202124; display: flex; align-items: center; gap: 8px;">
+              📈 Topical Coverage Score
+              <span class="info-tooltip" title="${hoverInsights.topicalCoverage || 'Measures depth and breadth of topic coverage vs competitors'}" style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #e5e7eb; font-size: 10px; font-weight: 700; color: #374151;">i</span>
+            </h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <thead>
+                <tr style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                  <th style="text-align: left; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Competitor</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Coverage %</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Topics Covered</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Depth Index</th>
+                  <th style="text-align: center; padding: 14px 12px; border-bottom: 2px solid #e2e8f0; font-weight: 700;">Gap Status</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+    topicalCoverage.slice(0, 8).forEach((item, idx) => {
+      const coverage = parseFloat(item.coveragePercent) || 0;
+      const topics = item.topicsCovered || 0;
+      const depth = item.depthIndex || 'Medium';
+      const gap = item.gapStatus || 'Opportunity';
+      const coverageColor = coverage >= 80 ? '#22c55e' : coverage >= 50 ? '#f59e0b' : '#ef4444';
+      const depthBg = depth === 'Deep' ? '#dcfce7' : depth === 'Medium' ? '#fef3c7' : '#fee2e2';
+      const depthColor = depth === 'Deep' ? '#166534' : depth === 'Medium' ? '#92400e' : '#dc2626';
+
+      html += `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 14px 12px; font-weight: 600; color: #1f2937;">${item.domain || competitors[idx]?.domain || 'Domain ' + (idx + 1)}</td>
+              <td style="text-align: center; padding: 14px 12px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <div style="width: 80px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div style="width: ${coverage}%; height: 100%; background: ${coverageColor};"></div>
+                  </div>
+                  <span style="font-weight: 700; color: ${coverageColor};">${coverage}%</span>
+                </div>
+              </td>
+              <td style="text-align: center; padding: 14px 12px; font-weight: 600;">${topics}</td>
+              <td style="text-align: center; padding: 14px 12px;">
+                <span style="padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${depthBg}; color: ${depthColor};">${depth}</span>
+              </td>
+              <td style="text-align: center; padding: 14px 12px; font-size: 11px; color: #6b7280;">${gap}</td>
+            </tr>`;
+    });
+
+    html += `
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- PSEO PATTERN DETECTION -->
+          <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px;">
+            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #202124; display: flex; align-items: center; gap: 8px;">
+              🤖 Programmatic SEO Detection
+              <span class="info-tooltip" title="${hoverInsights.pseoDetection || 'Identifies automated content generation patterns and template usage'}" style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #e5e7eb; font-size: 10px; font-weight: 700; color: #374151;">i</span>
+            </h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">`;
+
+    pseoDetection.slice(0, 6).forEach((item, idx) => {
+      const detected = item.pseoDetected === true || item.pseoDetected === 'Yes';
+      const confidence = item.confidence || 'Medium';
+      const patterns = item.patterns || [];
+
+      html += `
+            <div style="background: ${detected ? '#fef3c7' : '#f0fdf4'}; padding: 16px; border-radius: 12px; border-left: 4px solid ${detected ? '#f59e0b' : '#22c55e'};">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-weight: 700; font-size: 13px; color: #1f2937;">${item.domain || competitors[idx]?.domain || 'Domain'}</span>
+                <span style="padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: ${detected ? '#fcd34d' : '#bbf7d0'}; color: ${detected ? '#92400e' : '#166534'};">
+                  ${detected ? '⚠️ PSEO Detected' : '✅ Organic'}
+                </span>
+              </div>
+              <div style="font-size: 11px; color: #4b5563; margin-bottom: 8px;">Confidence: <strong>${confidence}</strong></div>
+              ${patterns.length > 0 ? `
+                <div style="font-size: 10px; color: #6b7280;">
+                  Patterns: ${patterns.slice(0, 3).join(', ')}
+                </div>
+              ` : ''}
+            </div>`;
+    });
+
+    html += `
+            </div>
+          </div>
+          
+          <!-- CONTENT VELOCITY & DIRECT-TO-ANSWER GRID -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 24px;">
+            <!-- Content Velocity -->
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h4 style="margin: 0 0 16px; font-size: 14px; font-weight: 700; color: #202124; display: flex; align-items: center; gap: 8px;">
+                ⚡ Content Velocity
+                <span class="info-tooltip" title="${hoverInsights.contentVelocity || 'Publishing frequency and content refresh cadence'}" style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h4>`;
+
+    contentVelocity.slice(0, 5).forEach((item, idx) => {
+      const velocity = item.velocityScore || 0;
+      const frequency = item.publishFrequency || 'Unknown';
+      const velocityColor = velocity >= 80 ? '#22c55e' : velocity >= 50 ? '#f59e0b' : '#ef4444';
+
+      html += `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="font-size: 12px; font-weight: 500; color: #374151;">${item.domain || competitors[idx]?.domain || 'Domain'}</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 10px; color: #6b7280;">${frequency}</span>
+                  <span style="font-size: 14px; font-weight: 700; color: ${velocityColor};">${velocity}</span>
+                </div>
+              </div>`;
+    });
+
+    html += `
+            </div>
+            
+            <!-- Direct-to-Answer Score -->
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h4 style="margin: 0 0 16px; font-size: 14px; font-weight: 700; color: #202124; display: flex; align-items: center; gap: 8px;">
+                🎯 Direct-to-Answer Score
+                <span class="info-tooltip" title="${hoverInsights.directToAnswer || 'AI answer engine readiness - How well content provides direct answers'}" style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h4>`;
+
+    directToAnswer.slice(0, 5).forEach((item, idx) => {
+      const score = item.dtaScore || item.score || 0;
+      const readiness = item.aiReadiness || 'Partial';
+      const scoreColor = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+
+      html += `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="font-size: 12px; font-weight: 500; color: #374151;">${item.domain || competitors[idx]?.domain || 'Domain'}</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="padding: 3px 8px; border-radius: 8px; font-size: 9px; font-weight: 600; background: ${score >= 70 ? '#dcfce7' : '#fef3c7'}; color: ${score >= 70 ? '#166534' : '#92400e'};">${readiness}</span>
+                  <span style="font-size: 14px; font-weight: 700; color: ${scoreColor};">${score}</span>
+                </div>
+              </div>`;
+    });
+
+    html += `
+            </div>
+          </div>
+          
+          <!-- CONTENT QUALITY MATRIX -->
+          <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px;">
+            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700; color: #202124; display: flex; align-items: center; gap: 8px;">
+              📊 Content Quality Matrix
+              <span class="info-tooltip" title="${hoverInsights.qualityMatrix || 'Multi-dimensional quality assessment across key content signals'}" style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #e5e7eb; font-size: 10px; font-weight: 700; color: #374151;">i</span>
+            </h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">`;
+
+    qualityMatrix.slice(0, 6).forEach((item, idx) => {
+      const overall = item.overallScore || item.qualityScore || 0;
+      const eeat = item.eeatScore || 0;
+      const freshness = item.freshnessScore || 0;
+      const depth = item.depthScore || 0;
+      const overallColor = overall >= 75 ? '#22c55e' : overall >= 50 ? '#f59e0b' : '#ef4444';
+
+      html += `
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 12px;">
+              <div style="font-weight: 700; font-size: 12px; color: #374151; margin-bottom: 12px;">${item.domain || competitors[idx]?.domain || 'Domain'}</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span style="font-size: 28px; font-weight: 800; color: ${overallColor};">${overall}</span>
+                <span style="font-size: 10px; color: #6b7280;">Overall Quality</span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <div style="flex: 1; text-align: center; padding: 8px 4px; background: white; border-radius: 6px;">
+                  <div style="font-size: 14px; font-weight: 700; color: #8b5cf6;">${eeat}</div>
+                  <div style="font-size: 8px; color: #6b7280;">E-E-A-T</div>
+                </div>
+                <div style="flex: 1; text-align: center; padding: 8px 4px; background: white; border-radius: 6px;">
+                  <div style="font-size: 14px; font-weight: 700; color: #3b82f6;">${freshness}</div>
+                  <div style="font-size: 8px; color: #6b7280;">Fresh</div>
+                </div>
+                <div style="flex: 1; text-align: center; padding: 8px 4px; background: white; border-radius: 6px;">
+                  <div style="font-size: 14px; font-weight: 700; color: #22c55e;">${depth}</div>
+                  <div style="font-size: 8px; color: #6b7280;">Depth</div>
+                </div>
+              </div>
+            </div>`;
+    });
+
+    html += `
+            </div>
+          </div>`;
+
+    // KILL MOVES SECTION
+    if (killMoves.length > 0) {
+      html += `
+          <!-- CONTENT STRATEGY KILL MOVES -->
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 24px; border-radius: 16px; border-left: 5px solid #f59e0b; margin-bottom: 24px;">
+            <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #92400e;">🎯 Content Strategy Kill Moves</h4>
+            <div style="display: grid; gap: 12px;">`;
+
+      killMoves.slice(0, 5).forEach((move, idx) => {
+        const priority = move.priority || 'Medium';
+        const priorityBg = priority === 'Critical' ? '#fee2e2' : priority === 'High' ? '#fef3c7' : '#dbeafe';
+        const priorityColor = priority === 'Critical' ? '#dc2626' : priority === 'High' ? '#d97706' : '#2563eb';
+
+        html += `
+              <div style="background: rgba(255,255,255,0.8); padding: 14px 16px; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;">
+                <span style="background: ${priorityBg}; color: ${priorityColor}; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; white-space: nowrap;">${priority}</span>
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; color: #1f2937; margin-bottom: 4px;">${move.action || move.title || 'Strategic Action'}</div>
+                  <div style="font-size: 11px; color: #4b5563; line-height: 1.4;">${move.rationale || move.description || ''}</div>
+                </div>
+              </div>`;
+      });
+
+      html += `
+            </div>
+          </div>`;
+    }
+
+    metricsDiv.innerHTML = html;
+
+    // Build insights section with vigilante narrative audit
+    let insightsHtml = `
+          <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 24px; border-radius: 16px; border-left: 5px solid #3b82f6;">
+            <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #1e40af;">🔍 Vigilante Narrative Audit</h4>
+            <p style="margin: 0 0 16px; font-size: 12px; color: #1e3a8a; line-height: 1.5;">
+              Content authenticity and narrative consistency analysis across competitor content strategies.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">`;
+
+    vigilanteAudit.slice(0, 4).forEach((item, idx) => {
+      const authenticity = item.authenticityScore || 0;
+      const consistency = item.narrativeConsistency || 'Unknown';
+
+      insightsHtml += `
+            <div style="background: rgba(255,255,255,0.6); padding: 16px; border-radius: 12px;">
+              <div style="font-weight: 600; font-size: 13px; color: #1e40af; margin-bottom: 8px;">${item.domain || competitors[idx]?.domain || 'Domain'}</div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 11px; color: #4b5563;">Authenticity:</span>
+                <span style="font-size: 13px; font-weight: 700; color: ${authenticity >= 70 ? '#22c55e' : '#f59e0b'};">${authenticity}%</span>
+              </div>
+              <div style="font-size: 10px; color: #6b7280;">Narrative: ${consistency}</div>
+            </div>`;
+    });
+
+    insightsHtml += `
+            </div>
+          </div>`;
+
+    insightsDiv.innerHTML = insightsHtml;
+    console.log('✅ Elite Content Strategy rendered successfully');
+  }
+
+  // Export to window for global access
+  window.renderContentIntelligenceCharts = renderContentIntelligenceCharts;
+  window.renderEliteContentStrategy = renderEliteContentStrategy;
+
+</script>

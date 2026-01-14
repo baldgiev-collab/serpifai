@@ -1,0 +1,308 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════════
+     KW_Forensic_Primary.html - KEYWORD FORENSIC SYSTEM - Primary & Secondary KW Generators
+     
+     Extracted from UI_Scripts_App.html for modularization
+     Contains: generateForensicPrimaryKWs, generateForensicSecondaryKWs
+     
+     Dependencies: KW_Money_Moat.html (generateTip, analyzeCompetitorMoat)
+     ═══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+
+  /**
+   * Generate 6 Primary (Money) Keywords - High Difficulty Head Terms
+   * ZERO-REPETITION: Uses globalKeywordSet to prevent duplicates
+   * Includes Moat-Breaker tactical moves
+   */
+  function generateForensicPrimaryKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    const keywords = [];
+    const kwIntel = gemini.keywordIntelligence || {};
+    const domain = comp.domain || '';
+    const moat = analyzeCompetitorMoat(comp, gemini);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0: Extract REAL keywords from competitor's keywordSignals
+    // ═══════════════════════════════════════════════════════════════════════════
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    const relatedSearches = keywordSignals.relatedSearches || comp.stages?.serper?.data?.relatedSearches || [];
+
+    console.log(`   💎 ForensicPrimary for ${domain}: Related=${relatedSearches.length}`);
+
+    // Moat-Breaker Tactics based on moat type
+    const moatBreakerTactics = {
+      'Brand': 'Use "Better Tool" positioning with feature comparison tables to hijack brand searches',
+      'Content': 'Deploy Semantic Triplet Schema and topical clusters to outrank content moats',
+      'Technical': 'Achieve Core Web Vitals perfection + Advanced Schema to neutralize technical advantage',
+      'Authority': 'Execute HARO + podcast guest strategy to build competing E-E-A-T signals'
+    };
+
+    // CLASH LOGIC: Higher if Leader has Brand/Authority moat (harder to displace)
+    // AIO LOGIC: Higher for Informational intent (AI Overviews steal clicks)
+    const calculateClashScore = (intent, moatType) => {
+      let base = 5;
+      if (moatType === 'Brand' || moatType === 'Authority') base += 3; // Harder to break
+      if (moatType === 'Content') base += 1;
+      if (intent === 'Transactional') base += 1; // Money terms = more competition
+      return Math.min(10, Math.max(1, base));
+    };
+
+    const calculateAIOScore = (intent) => {
+      // Informational = highest AIO risk (9-10), Commercial = medium (5-7), Transactional = low (3-5)
+      if (intent === 'Informational') return 8; // 8-10
+      if (intent === 'Commercial') return 5; // 5-7
+      return 3; // 3-5 for Transactional
+    };
+
+    // Generate plain_english_desc correlated to clash_score thresholds
+    const generatePlainEnglishDesc = (clash, aio, moatType, kwText) => {
+      if (clash > 8) {
+        return `HARD CLASH (${clash}/10): This keyword requires a Technical Moat-Breaker approach. Deploy API-level data differentiation, proprietary datasets, or advanced schema markup (JSON-LD + Semantic Triplets) to outrank entrenched ${moatType} moat holders. AIO risk ${aio}/10 ${aio >= 7 ? '- optimize for Perplexity/ChatGPT citation with structured FAQ schema' : ''}.`;
+      } else if (clash < 4) {
+        return `LOW CLASH (${clash}/10): Content Velocity opportunity. Rapid content production (3-5 articles/week) on this topic cluster can capture ranking quickly. ${moatType} moat is weak here. AIO risk ${aio}/10 ${aio >= 7 ? '- create definitive "Source of Truth" content for AI citation' : '- focus on SERP features + featured snippets'}.`;
+      } else {
+        return `MEDIUM CLASH (${clash}/10): Balanced approach required. ${moatType === 'Brand' ? 'Bypass brand wall with "Alternative to" + comparison content' : moatType === 'Authority' ? 'Counter E-E-A-T with HARO + expert contributor quotes' : moatType === 'Technical' ? 'Match Core Web Vitals + deploy advanced schema' : 'Build topical cluster depth with semantic interlinking'}. AIO ${aio}/10.`;
+      }
+    };
+
+    // PRIORITY 0: Extract from REAL related searches (money-focused)
+    relatedSearches.slice(0, 3).forEach((rs, rsIdx) => {
+      if (keywords.length >= 6) return;
+      const kwText = (typeof rs === 'string' ? rs : rs.query || rs).toLowerCase().trim();
+      if (!globalKeywordSet.has(kwText) && kwText.length > 4) {
+        globalKeywordSet.add(kwText);
+        const intent = 'Commercial';
+        const clashScore = calculateClashScore(intent, moat.type);
+        const aioScore = calculateAIOScore(intent);
+
+        keywords.push({
+          kw: typeof rs === 'string' ? rs : rs.query || rs,
+          ui_cat: 'money',
+          type: 'Primary',
+          category: 'Money Term',
+          volume: 'High',
+          difficulty: 0,
+          intent: intent,
+          leader: domain,
+          source: 'Serper Related',
+          aio_risk: aioScore,
+          moat_type: moat.type,
+          moatBreaker: moatBreakerTactics[moat.type],
+          clash: clashScore,
+          tip: generateTip(kwText, clashScore, aioScore, moat.type, moatBreakerTactics[moat.type]),
+          x: 82,
+          y: 68,
+          entity_id: `entity_primary_c${compIndex + 1}_${keywords.length + 1}`
+        });
+      }
+    });
+
+    // Priority 1: Extract from Gemini primary keywords (with dedup)
+    if (kwIntel.primaryKeywords?.topKeywords) {
+      kwIntel.primaryKeywords.topKeywords.slice(0, 4).forEach((kw, kwIdx) => {
+        if (keywords.length >= 6) return;
+        const kwText = (kw.keyword || kw).toLowerCase().trim();
+        if (!globalKeywordSet.has(kwText)) {
+          globalKeywordSet.add(kwText);
+          const intent = kw.intent || 'Commercial';
+          const clashScore = calculateClashScore(intent, moat.type);
+          const aioScore = calculateAIOScore(intent);
+
+          keywords.push({
+            kw: kw.keyword || kw,
+            ui_cat: 'money',
+            type: 'Primary',
+            category: 'Money Term',
+            volume: kw.volumeEstimate || 'High',
+            difficulty: kw.difficulty || 0,
+            intent: intent,
+            leader: kw.dominantCompetitor || domain,
+            source: 'Gemini AI',
+            aio_risk: aioScore,
+            moat_type: moat.type,
+            moatBreaker: moatBreakerTactics[moat.type],
+            clash: clashScore,
+            tip: generateTip(kw.keyword || kw, clashScore, aioScore, moat.type, moatBreakerTactics[moat.type]),
+            x: 80,
+            y: 65,
+            entity_id: `entity_primary_c${compIndex + 1}_${keywords.length + 1}`
+          });
+        }
+      });
+    }
+
+    // FALLBACK: Generate from templates (fill to 6)
+    if (keywords.length < 6) {
+      console.log(`   ⚠️ ForensicPrimary ${domain}: Using templates to fill ${6 - keywords.length} remaining slots`);
+      let templateIdx = compIndex * 2;
+      while (keywords.length < 6) {
+        const template = templates[(templateIdx + keywords.length) % templates.length];
+        const keyword = template.replace(/{niche}/g, niche);
+        const kwText = keyword.toLowerCase().trim();
+
+        if (!globalKeywordSet.has(kwText)) {
+          globalKeywordSet.add(kwText);
+          const clashScore = 5;
+          const aioScore = 5;
+
+          keywords.push({
+            kw: keyword,
+            ui_cat: 'money',
+            type: 'Primary',
+            category: 'Money Term',
+            volume: 'High',
+            difficulty: 0,
+            intent: 'Commercial',
+            leader: domain,
+            source: 'Template',
+            aio_risk: aioScore,
+            moat_type: moat.type,
+            moatBreaker: moatBreakerTactics[moat.type],
+            clash: clashScore,
+            tip: generateTip(keyword, clashScore, aioScore, moat.type, moatBreakerTactics[moat.type]),
+            x: 85,
+            y: 70,
+            entity_id: `entity_primary_c${compIndex + 1}_${keywords.length + 1}`
+          });
+        }
+        templateIdx++;
+        if (templateIdx > templates.length * 3) break;
+      }
+    }
+
+    console.log(`   ✅ ForensicPrimary ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => k.source !== 'Template').length} from real data)`);
+    return keywords.slice(0, 6);
+  }
+  window.generateForensicPrimaryKWs = generateForensicPrimaryKWs;
+
+  /**
+   * Generate 6 Secondary Semantic Entities - Topic-reinforcing terms
+   * ZERO-REPETITION: Uses globalKeywordSet to prevent duplicates
+   * Focus: GEO, RAG-ready content, Perplexity-citation gaps
+   */
+  function generateForensicSecondaryKWs(comp, gemini, niche, templates, globalKeywordSet, compIndex) {
+    const keywords = [];
+    const kwIntel = gemini.keywordIntelligence || {};
+    const domain = comp.domain || '';
+    const moat = analyzeCompetitorMoat(comp, gemini);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 0: Extract REAL keywords from competitor's keywordSignals
+    // PAA questions are perfect for semantic entities
+    // ═══════════════════════════════════════════════════════════════════════════
+    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    const paaQuestions = keywordSignals.peopleAlsoAsk || comp.stages?.serper?.data?.peopleAlsoAsk || [];
+
+    console.log(`   🔗 ForensicSecondary for ${domain}: PAA=${paaQuestions.length}`);
+
+    // PRIORITY 0: Extract from PAA questions (semantic entities)
+    paaQuestions.slice(0, 3).forEach(paa => {
+      if (keywords.length >= 6) return;
+      const question = (typeof paa === 'string' ? paa : paa.question || paa.title || '').toLowerCase().trim();
+      if (!globalKeywordSet.has(question) && question.length > 10) {
+        globalKeywordSet.add(question);
+        const clashScore = 5;
+        const aioScore = 7;
+
+        keywords.push({
+          kw: typeof paa === 'string' ? paa : paa.question || paa.title || '',
+          ui_cat: 'sge',
+          type: 'Secondary',
+          category: 'Semantic Entity',
+          volume: 'Medium',
+          difficulty: 0,
+          intent: 'Informational',
+          leader: domain,
+          source: 'Serper PAA',
+          aio_risk: aioScore,
+          moat_type: moat.type,
+          clash: clashScore,
+          tip: generateTip(question, clashScore, aioScore, moat.type, 'Answer with FAQ schema for AI citation'),
+          x: 32,
+          y: 42,
+          entity_id: `entity_semantic_c${compIndex + 1}_${keywords.length + 1}`
+        });
+      }
+    });
+
+    // Priority 1: Extract from Gemini semantic clusters (with dedup)
+    if (kwIntel.semanticKeywords?.entityClusters) {
+      kwIntel.semanticKeywords.entityClusters.slice(0, 3).forEach(entity => {
+        if (keywords.length >= 6) return;
+        const kwText = (entity.entity || entity.keyword || entity).toString().toLowerCase().trim();
+        if (!globalKeywordSet.has(kwText)) {
+          globalKeywordSet.add(kwText);
+          const clashScore = 5;
+          const aioScore = 6;
+
+          keywords.push({
+            kw: entity.entity || entity.keyword || entity,
+            ui_cat: 'sge',
+            type: 'Secondary',
+            category: 'Semantic Entity',
+            volume: 'Medium',
+            difficulty: 0,
+            intent: 'Commercial',
+            leader: domain,
+            relatedTerms: entity.relatedTerms || [],
+            source: 'Gemini AI',
+            aio_risk: aioScore,
+            moat_type: moat.type,
+            clash: clashScore,
+            tip: generateTip(entity.entity || entity.keyword || entity, clashScore, aioScore, moat.type, 'Build semantic cluster for topical authority'),
+            x: 30,
+            y: 40,
+            entity_id: `entity_semantic_c${compIndex + 1}_${keywords.length + 1}`
+          });
+        }
+      });
+    }
+
+    // FALLBACK: LLMO templates if still below target
+    if (keywords.length < 6) {
+      console.log(`   ⚠️ ForensicSecondary ${domain}: Using templates to fill ${6 - keywords.length} remaining slots`);
+      const llmoTemplates2025 = [
+        `how to get cited by Perplexity for ${niche}`, `${niche} ChatGPT source optimization`,
+        `GEO strategy for ${niche} 2025`, `${niche} generative engine ranking factors`,
+        `RAG-ready content for ${niche}`, `${niche} structured data for LLMs`,
+        `${niche} zero-click SERP strategy`, `featured snippet optimization ${niche}`
+      ];
+
+      let templateIdx = compIndex * 3;
+      while (keywords.length < 6) {
+        const kw = llmoTemplates2025[(templateIdx + keywords.length) % llmoTemplates2025.length];
+        const kwText = kw.toLowerCase().trim();
+
+        if (!globalKeywordSet.has(kwText)) {
+          globalKeywordSet.add(kwText);
+          const aioScore = 8;
+          const clashScore = 5;
+
+          keywords.push({
+            kw: kw,
+            ui_cat: 'llm',
+            type: 'Secondary',
+            category: 'LLMO Gap',
+            volume: 'Medium',
+            difficulty: 0,
+            intent: 'Informational',
+            leader: domain,
+            source: 'Template',
+            aio_risk: aioScore,
+            moat_type: moat.type,
+            clash: clashScore,
+            tip: generateTip(kw, clashScore, aioScore, moat.type, 'Create RAG-ready content for AI citation'),
+            x: 15,
+            y: 25,
+            entity_id: `entity_llmo_c${compIndex + 1}_${keywords.length + 1}`
+          });
+        }
+        templateIdx++;
+        if (templateIdx > llmoTemplates2025.length * 3) break;
+      }
+    }
+
+    console.log(`   ✅ ForensicSecondary ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => k.source !== 'Template').length} from real data)`);
+    return keywords.slice(0, 6);
+  }
+  window.generateForensicSecondaryKWs = generateForensicSecondaryKWs;
+
+</script>

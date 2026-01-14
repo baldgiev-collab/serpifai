@@ -1,0 +1,270 @@
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UI_Elite_Charts_Utils.html
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Elite Chart Configuration & Formatting Utilities
+ * Extracted from V6 UI_Elite_Charts.html (lines 1-206)
+ * 
+ * Contents:
+ * - ELITE_CHART_CONFIG: Global animation & interactivity settings
+ * - formatDecimal, formatLargeNumber, formatPercent, normalizePercent
+ * - formatMarketShare, safeGet, getEliteAnimation, getEliteTooltip
+ * - Chart.js global defaults initialization
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// Chart instances storage
+window.competitorCharts = window.competitorCharts || {};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ELITE CHART CONFIGURATION - Global Animation & Interactivity Settings
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ELITE_CHART_CONFIG = {
+  // Animation settings for different chart types
+  animations: {
+    default: { duration: 1200, easing: 'easeOutQuart' },
+    radar: { duration: 1500, easing: 'easeOutElastic' },
+    doughnut: { duration: 1800, easing: 'easeOutBounce', animateRotate: true, animateScale: true },
+    bar: { duration: 1000, easing: 'easeOutCubic', delay: (context) => context.dataIndex * 100 },
+    line: { duration: 2000, easing: 'easeInOutQuart' },
+    bubble: { duration: 1500, easing: 'easeOutBack' }
+  },
+  
+  // Hover effects
+  hover: {
+    mode: 'nearest',
+    intersect: true,
+    animationDuration: 200
+  },
+  
+  // Interactive tooltip configuration
+  tooltip: {
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    titleColor: '#fff',
+    bodyColor: '#e2e8f0',
+    borderColor: 'rgba(99, 102, 241, 0.5)',
+    borderWidth: 1,
+    cornerRadius: 12,
+    padding: 16,
+    displayColors: true,
+    boxPadding: 6,
+    caretSize: 8,
+    titleFont: { size: 14, weight: 'bold' },
+    bodyFont: { size: 13 },
+    animation: { duration: 300 }
+  },
+  
+  // Legend configuration
+  legend: {
+    labels: {
+      font: { size: 12, weight: '500' },
+      padding: 16,
+      usePointStyle: true,
+      pointStyleWidth: 12
+    }
+  },
+  
+  // Color palettes
+  colors: {
+    primary: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'],
+    secondary: ['#0ea5e9', '#22d3ee', '#2dd4bf', '#34d399', '#4ade80', '#a3e635'],
+    warm: ['#f59e0b', '#f97316', '#ef4444', '#dc2626', '#b91c1c', '#991b1b'],
+    gradient: ['rgba(99, 102, 241, 0.85)', 'rgba(139, 92, 246, 0.75)', 'rgba(168, 85, 247, 0.65)', 
+               'rgba(217, 70, 239, 0.55)', 'rgba(236, 72, 153, 0.45)', 'rgba(244, 63, 94, 0.35)']
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL FORMATTING UTILITIES - Consistent number display across all charts
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Format decimal numbers consistently (2 decimal places by default)
+ * @param {number|string} value - The value to format
+ * @param {number} decimals - Number of decimal places (default: 2)
+ * @returns {string} Formatted number or 'N/A'
+ */
+function formatDecimal(value, decimals = 2) {
+  if (value === null || value === undefined || value === '' || value === 'N/A') {
+    return 'N/A';
+  }
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 'N/A';
+  return num.toFixed(decimals);
+}
+
+/**
+ * Format large numbers with K/M/B suffixes (Ahrefs-style)
+ * @param {number|string} num - The number to format
+ * @returns {string} Formatted number with suffix
+ */
+function formatLargeNumber(num) {
+  if (num === 'N/A' || num === null || num === undefined || num === '') return 'N/A';
+  const value = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(value)) return 'N/A';
+  
+  if (value >= 1000000000) return (value / 1000000000).toFixed(1) + 'B';
+  if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+  if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+  return value.toFixed(0);
+}
+
+/**
+ * Format percentage values
+ * @param {number|string} value - The value to format
+ * @returns {string} Formatted percentage
+ */
+function formatPercent(value) {
+  if (value === null || value === undefined || value === '' || value === 'N/A') return 'N/A';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 'N/A';
+  return num.toFixed(1) + '%';
+}
+
+/**
+ * Normalize percentage values - handles both 0-1 (e.g., 0.912) and 0-100 (e.g., 91.2) formats
+ * @param {number|string} value - The raw percentage value
+ * @returns {number} Normalized percentage 0-100
+ */
+function normalizePercent(value) {
+  if (value === null || value === undefined || value === '' || value === 'N/A') return 0;
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 0;
+  // If value is <= 1, assume it's 0-1 format and multiply by 100
+  // If value is > 1, assume it's already in 0-100 format
+  return num <= 1 && num > 0 ? num * 100 : num;
+}
+
+/**
+ * Format market share for display - auto-detects 0-1 vs 0-100 format
+ * @param {number|string} value - The market share value
+ * @param {number} decimals - Decimal places (default: 1)
+ * @returns {string} Formatted percentage string
+ */
+function formatMarketShare(value, decimals = 1) {
+  const normalized = normalizePercent(value);
+  if (normalized === 0 && value !== 0) return 'N/A';
+  return normalized.toFixed(decimals) + '%';
+}
+
+/**
+ * Safe metric extraction with proper null handling
+ * @param {Object} obj - Object to extract from
+ * @param {string} path - Dot-notation path (e.g., 'processedMetrics.authorityScore')
+ * @param {*} defaultValue - Default value if not found
+ * @returns {*} Extracted value or default
+ */
+function safeGet(obj, path, defaultValue = 0) {
+  if (!obj || !path) return defaultValue;
+  return path.split('.').reduce((current, key) => {
+    return current && current[key] !== undefined ? current[key] : defaultValue;
+  }, obj);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CHART.JS GLOBAL DEFAULTS INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.font.family = "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif";
+  Chart.defaults.animation.duration = 1200;
+  Chart.defaults.animation.easing = 'easeOutQuart';
+  Chart.defaults.plugins.tooltip.backgroundColor = ELITE_CHART_CONFIG.tooltip.backgroundColor;
+  Chart.defaults.plugins.tooltip.titleColor = ELITE_CHART_CONFIG.tooltip.titleColor;
+  Chart.defaults.plugins.tooltip.bodyColor = ELITE_CHART_CONFIG.tooltip.bodyColor;
+  Chart.defaults.plugins.tooltip.borderColor = ELITE_CHART_CONFIG.tooltip.borderColor;
+  Chart.defaults.plugins.tooltip.borderWidth = ELITE_CHART_CONFIG.tooltip.borderWidth;
+  Chart.defaults.plugins.tooltip.cornerRadius = ELITE_CHART_CONFIG.tooltip.cornerRadius;
+  Chart.defaults.plugins.tooltip.padding = ELITE_CHART_CONFIG.tooltip.padding;
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  
+  // Add hover animation plugin
+  Chart.register({
+    id: 'eliteHoverPlugin',
+    beforeEvent(chart, args) {
+      if (args.event.type === 'mousemove') {
+        chart.canvas.style.cursor = args.inChartArea ? 'pointer' : 'default';
+      }
+    }
+  });
+  
+  console.log('✅ Elite Chart.js global configuration applied');
+  console.log('✅ Global formatting utilities loaded: formatDecimal, formatLargeNumber, formatPercent, safeGet');
+}
+
+/**
+ * Get elite animation config for a specific chart type
+ */
+function getEliteAnimation(chartType) {
+  return ELITE_CHART_CONFIG.animations[chartType] || ELITE_CHART_CONFIG.animations.default;
+}
+
+/**
+ * Get elite tooltip config with optional custom callbacks
+ */
+function getEliteTooltip(customCallbacks) {
+  return {
+    ...ELITE_CHART_CONFIG.tooltip,
+    callbacks: customCallbacks || {}
+  };
+}
+
+/**
+ * Safely create a chart, destroying any existing chart on the same canvas
+ * @param {string} chartId - Chart ID for storage in window.competitorCharts
+ * @param {string} canvasId - Canvas element ID
+ * @param {object} config - Chart.js configuration object
+ * @returns {Chart|null} The created Chart instance or null if canvas not found
+ */
+function safeCreateChart(chartId, canvasId, config) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) {
+    console.warn('⚠️ Canvas not found:', canvasId);
+    return null;
+  }
+  
+  // Ensure competitorCharts object exists
+  if (!window.competitorCharts) window.competitorCharts = {};
+  
+  // Destroy existing chart if present
+  if (window.competitorCharts[chartId]) {
+    try {
+      window.competitorCharts[chartId].destroy();
+    } catch (e) {
+      console.warn('⚠️ Could not destroy chart:', chartId, e);
+    }
+  }
+  
+  // Also check Chart.js registry for any chart using this canvas
+  const existingChart = Chart.getChart(ctx);
+  if (existingChart) {
+    try {
+      existingChart.destroy();
+    } catch (e) {
+      console.warn('⚠️ Could not destroy existing chart on canvas:', canvasId, e);
+    }
+  }
+  
+  // Create and store new chart
+  window.competitorCharts[chartId] = new Chart(ctx, config);
+  return window.competitorCharts[chartId];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WINDOW EXPORTS - Required for modular architecture cross-file access
+// ═══════════════════════════════════════════════════════════════════════════
+window.ELITE_CHART_CONFIG = ELITE_CHART_CONFIG;
+window.formatDecimal = formatDecimal;
+window.formatLargeNumber = formatLargeNumber;
+window.formatPercent = formatPercent;
+window.normalizePercent = normalizePercent;
+window.formatMarketShare = formatMarketShare;
+window.safeGet = safeGet;
+window.getEliteAnimation = getEliteAnimation;
+window.getEliteTooltip = getEliteTooltip;
+window.safeCreateChart = safeCreateChart;
+
+console.log('✅ UI_Elite_Charts_Utils.html loaded - 8 utility functions + ELITE_CHART_CONFIG');
+</script>

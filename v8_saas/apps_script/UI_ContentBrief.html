@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SerpifAI - Content Brief</title>
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --accent: #238636;
+      --accent-hover: #2ea043;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --border: #30363d;
+      --success: #238636;
+      --warning: #d29922;
+      --error: #f85149;
+      --info: #58a6ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin-bottom: 15px; }
+    h3 { font-size: 16px; margin-bottom: 10px; color: var(--text-primary); }
+    
+    .section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { outline: none; border-color: var(--accent); }
+    .form-textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+    
+    .form-row { display: flex; gap: 15px; }
+    .form-row .form-group { flex: 1; }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--text-secondary); cursor: not-allowed; }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); }
+    
+    .results { display: none; }
+    .results.active { display: block; }
+    
+    .brief-header {
+      background: rgba(35, 134, 54, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .brief-title { font-size: 20px; font-weight: bold; margin-bottom: 10px; }
+    .brief-meta { display: flex; gap: 20px; font-size: 13px; color: var(--text-secondary); }
+    .brief-meta-item { display: flex; align-items: center; gap: 5px; }
+    
+    .brief-section {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .keyword-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .keyword-tag {
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border-radius: 20px;
+      font-size: 13px;
+    }
+    .keyword-tag.primary { background: rgba(35, 134, 54, 0.2); border: 1px solid var(--success); }
+    .keyword-tag.secondary { background: rgba(88, 166, 255, 0.1); border: 1px solid var(--info); }
+    
+    .outline-list { list-style: none; margin-top: 15px; }
+    .outline-item {
+      padding: 12px 15px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .outline-h2 { font-weight: 600; }
+    .outline-h3 { padding-left: 20px; font-weight: 400; color: var(--text-secondary); }
+    
+    .competitor-list { margin-top: 15px; }
+    .competitor-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .competitor-rank {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 13px;
+    }
+    .competitor-info { flex: 1; }
+    .competitor-title { font-weight: 500; margin-bottom: 3px; }
+    .competitor-url { font-size: 12px; color: var(--text-secondary); }
+    .competitor-stats { text-align: right; font-size: 12px; color: var(--text-secondary); }
+    
+    .requirements { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; }
+    .requirement-card {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+    .requirement-value { font-size: 24px; font-weight: bold; color: var(--accent); }
+    .requirement-label { font-size: 12px; color: var(--text-secondary); margin-top: 5px; }
+    
+    .loading { text-align: center; padding: 40px; display: none; }
+    .loading.active { display: block; }
+    
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: none;
+    }
+    .message.error { display: block; background: rgba(248, 81, 73, 0.2); border: 1px solid var(--error); }
+    
+    .actions { display: flex; gap: 10px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📝 Content Brief Generator</h1>
+    <div id="message" class="message"></div>
+    
+    <div class="section" id="inputSection">
+      <div class="form-group">
+        <label class="form-label">Target Keyword</label>
+        <input type="text" class="form-input" id="targetKeyword" placeholder="e.g., how to learn python">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Content Type</label>
+          <select class="form-select" id="contentType">
+            <option value="blog">Blog Post</option>
+            <option value="guide">Complete Guide</option>
+            <option value="listicle">Listicle</option>
+            <option value="comparison">Comparison</option>
+            <option value="tutorial">Tutorial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Length</label>
+          <select class="form-select" id="targetLength">
+            <option value="1000">Short (1000 words)</option>
+            <option value="2000" selected>Medium (2000 words)</option>
+            <option value="3500">Long (3500+ words)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="generateBrief()" id="generateBtn">📝 Generate Brief</button>
+    </div>
+    
+    <div class="loading" id="loading"><p>🔄 Generating content brief...</p><p>Analyzing competitors and SERP...</p></div>
+    
+    <div class="results" id="results">
+      <div class="brief-header">
+        <div class="brief-title" id="briefTitle">Content Brief: How to Learn Python</div>
+        <div class="brief-meta">
+          <div class="brief-meta-item">📝 <span id="briefType">Blog Post</span></div>
+          <div class="brief-meta-item">📏 <span id="briefLength">2000</span> words</div>
+          <div class="brief-meta-item">📊 Difficulty: <span id="briefDifficulty">Medium</span></div>
+        </div>
+      </div>
+      
+      <div class="brief-section">
+        <h3>🎯 Target Keywords</h3>
+        <div class="keyword-list" id="keywordList"></div>
+      </div>
+      
+      <div class="brief-section">
+        <h3>📊 Content Requirements</h3>
+        <div class="requirements" id="requirements"></div>
+      </div>
+      
+      <div class="brief-section">
+        <h3>📋 Suggested Outline</h3>
+        <ul class="outline-list" id="outlineList"></ul>
+      </div>
+      
+      <div class="brief-section">
+        <h3>🔍 Top Competitors</h3>
+        <div class="competitor-list" id="competitorList"></div>
+      </div>
+      
+      <div class="actions">
+        <button class="btn btn-primary" onclick="copyBrief()">📋 Copy Brief</button>
+        <button class="btn btn-secondary" onclick="exportBrief()">📥 Export</button>
+        <button class="btn btn-secondary" onclick="newBrief()">✨ New Brief</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentBrief = null;
+    
+    function generateBrief() {
+      const keyword = document.getElementById('targetKeyword').value.trim();
+      if (!keyword) { showMessage('Enter a target keyword', 'error'); return; }
+      
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('results').classList.remove('active');
+      document.getElementById('generateBtn').disabled = true;
+      
+      const params = {
+        keyword: keyword,
+        type: document.getElementById('contentType').value,
+        length: parseInt(document.getElementById('targetLength').value)
+      };
+      
+      google.script.run
+        .withSuccessHandler(displayBrief)
+        .withFailureHandler(e => {
+          document.getElementById('loading').classList.remove('active');
+          document.getElementById('generateBtn').disabled = false;
+          showMessage(e.message, 'error');
+        })
+        .AI_generateContentBrief(params);
+    }
+    
+    function displayBrief(result) {
+      document.getElementById('loading').classList.remove('active');
+      document.getElementById('generateBtn').disabled = false;
+      
+      if (!result.ok) { showMessage(result.error, 'error'); return; }
+      
+      currentBrief = result;
+      document.getElementById('results').classList.add('active');
+      
+      document.getElementById('briefTitle').textContent = 'Content Brief: ' + result.keyword;
+      document.getElementById('briefType').textContent = result.type;
+      document.getElementById('briefLength').textContent = result.targetLength;
+      document.getElementById('briefDifficulty').textContent = result.difficulty || 'Medium';
+      
+      // Keywords
+      const keywords = result.keywords || [];
+      document.getElementById('keywordList').innerHTML = keywords.map((kw, i) => 
+        `<span class="keyword-tag ${i === 0 ? 'primary' : 'secondary'}">${kw.keyword} (${kw.volume || 0})</span>`
+      ).join('');
+      
+      // Requirements
+      const reqs = result.requirements || {};
+      document.getElementById('requirements').innerHTML = `
+        <div class="requirement-card"><div class="requirement-value">${reqs.minWords || result.targetLength}</div><div class="requirement-label">Min Words</div></div>
+        <div class="requirement-card"><div class="requirement-value">${reqs.headings || 8}</div><div class="requirement-label">Headings</div></div>
+        <div class="requirement-card"><div class="requirement-value">${reqs.images || 3}</div><div class="requirement-label">Images</div></div>
+      `;
+      
+      // Outline
+      const outline = result.outline || [];
+      document.getElementById('outlineList').innerHTML = outline.map(item => 
+        `<li class="outline-item outline-${item.level}">${item.text}</li>`
+      ).join('');
+      
+      // Competitors
+      const competitors = result.competitors || [];
+      document.getElementById('competitorList').innerHTML = competitors.slice(0, 5).map((comp, i) => `
+        <div class="competitor-item">
+          <div class="competitor-rank">${i + 1}</div>
+          <div class="competitor-info">
+            <div class="competitor-title">${comp.title}</div>
+            <div class="competitor-url">${comp.url}</div>
+          </div>
+          <div class="competitor-stats">${comp.wordCount || '-'} words</div>
+        </div>
+      `).join('');
+    }
+    
+    function copyBrief() {
+      if (!currentBrief) return;
+      const text = formatBriefAsText(currentBrief);
+      navigator.clipboard.writeText(text).then(() => showMessage('Brief copied!', 'success'));
+    }
+    
+    function formatBriefAsText(brief) {
+      let text = `CONTENT BRIEF: ${brief.keyword}\n`;
+      text += `Type: ${brief.type} | Length: ${brief.targetLength} words\n\n`;
+      text += `TARGET KEYWORDS:\n${(brief.keywords || []).map(k => '- ' + k.keyword).join('\n')}\n\n`;
+      text += `OUTLINE:\n${(brief.outline || []).map(o => (o.level === 'h2' ? '## ' : '### ') + o.text).join('\n')}\n`;
+      return text;
+    }
+    
+    function exportBrief() { copyBrief(); }
+    
+    function newBrief() {
+      document.getElementById('results').classList.remove('active');
+      document.getElementById('targetKeyword').value = '';
+      currentBrief = null;
+    }
+    
+    function showMessage(text, type) {
+      const msg = document.getElementById('message');
+      msg.textContent = text;
+      msg.className = 'message ' + type;
+      if (type === 'success') setTimeout(() => msg.className = 'message', 3000);
+    }
+  </script>
+</body>
+</html>

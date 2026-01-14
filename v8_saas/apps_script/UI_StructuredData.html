@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root {
+      --primary: #4285f4;
+      --success: #34a853;
+      --warning: #fbbc04;
+      --danger: #ea4335;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 500; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .tab { padding: 12px 20px; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+    
+    .card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .card h3 { font-size: 16px; font-weight: 500; margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    input[type="text"], select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    input:focus, select:focus { outline: none; border-color: var(--primary); }
+    
+    button { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+    
+    .schema-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .schema-type { padding: 16px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s; }
+    .schema-type:hover { border-color: var(--primary); }
+    .schema-type.selected { border-color: var(--primary); background: #e8f0fe; }
+    .schema-type .icon { font-size: 24px; margin-bottom: 8px; }
+    .schema-type .name { font-size: 14px; font-weight: 500; }
+    
+    .preview { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto; white-space: pre; max-height: 400px; overflow-y: auto; }
+    
+    .schema-list { list-style: none; }
+    .schema-item { padding: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .schema-item:last-child { border-bottom: none; }
+    .schema-badge { font-size: 12px; padding: 4px 10px; border-radius: 4px; background: #e8f0fe; color: var(--primary); }
+    
+    .rec-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .rec-item:last-child { border-bottom: none; }
+    .rec-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; background: #e8f0fe; color: var(--primary); }
+    
+    .loading { text-align: center; padding: 60px; color: var(--muted); }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .error { background: #fce8e6; border: 1px solid #f5c6cb; border-radius: 8px; padding: 16px; color: #c5221f; }
+    
+    .btn-group { display: flex; gap: 10px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Structured Data</h1>
+    <p class="subtitle">Analyze and generate schema markup</p>
+  </div>
+  
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('analyze')">Analyze Page</button>
+    <button class="tab" onclick="showTab('generate')">Generate Schema</button>
+  </div>
+  
+  <!-- Analyze Tab -->
+  <div id="analyzeTab">
+    <div class="card">
+      <div class="form-group">
+        <label>Page URL</label>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="urlInput" placeholder="Enter URL to analyze...">
+          <button class="btn-primary" onclick="analyzePage()">Analyze</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="loading" class="loading" style="display: none;">
+      <div class="spinner"></div>
+      <p>Analyzing structured data...</p>
+    </div>
+    
+    <div id="results" style="display: none;">
+      <div class="card">
+        <h3>Schema Types Found</h3>
+        <ul class="schema-list" id="schemaList"></ul>
+      </div>
+      
+      <div class="card">
+        <h3>Recommendations</h3>
+        <div id="recsList"></div>
+      </div>
+      
+      <div class="card">
+        <h3>JSON-LD Data</h3>
+        <pre class="preview" id="jsonPreview"></pre>
+      </div>
+    </div>
+    
+    <div id="empty" class="empty">
+      <p>Enter a URL to analyze its structured data</p>
+    </div>
+  </div>
+  
+  <!-- Generate Tab -->
+  <div id="generateTab" style="display: none;">
+    <div class="card">
+      <h3>Select Schema Type</h3>
+      <div class="schema-types">
+        <div class="schema-type" onclick="selectType('Article')">
+          <div class="icon">📄</div>
+          <div class="name">Article</div>
+        </div>
+        <div class="schema-type" onclick="selectType('Product')">
+          <div class="icon">🛍️</div>
+          <div class="name">Product</div>
+        </div>
+        <div class="schema-type" onclick="selectType('LocalBusiness')">
+          <div class="icon">🏪</div>
+          <div class="name">LocalBusiness</div>
+        </div>
+        <div class="schema-type" onclick="selectType('FAQPage')">
+          <div class="icon">❓</div>
+          <div class="name">FAQPage</div>
+        </div>
+        <div class="schema-type" onclick="selectType('Organization')">
+          <div class="icon">🏢</div>
+          <div class="name">Organization</div>
+        </div>
+        <div class="schema-type" onclick="selectType('BreadcrumbList')">
+          <div class="icon">🔗</div>
+          <div class="name">Breadcrumb</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card" id="formCard" style="display: none;">
+      <h3 id="formTitle">Schema Details</h3>
+      <div id="formFields"></div>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="generateSchema()">Generate</button>
+        <button class="btn-secondary" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+    
+    <div class="card" id="previewCard" style="display: none;">
+      <h3>Generated Schema</h3>
+      <pre class="preview" id="generatedSchema"></pre>
+      <div class="btn-group">
+        <button class="btn-primary" onclick="copySchema()">Copy</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="error" class="error" style="display: none;"></div>
+  
+  <script>
+    let selectedType = null;
+    let generatedCode = '';
+    
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('analyzeTab').style.display = tab === 'analyze' ? 'block' : 'none';
+      document.getElementById('generateTab').style.display = tab === 'generate' ? 'block' : 'none';
+    }
+    
+    function analyzePage() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) { showError('Please enter a URL'); return; }
+      
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(handleAnalyzeResult)
+        .withFailureHandler(handleError)
+        .FT_analyzeStructuredData({ url: url });
+    }
+    
+    function handleAnalyzeResult(data) {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (!data || !data.ok) {
+        showError(data?.error || 'Analysis failed');
+        return;
+      }
+      
+      document.getElementById('results').style.display = 'block';
+      
+      // Render schema types
+      const schemaList = document.getElementById('schemaList');
+      const types = data.types || [];
+      
+      if (types.length === 0) {
+        schemaList.innerHTML = '<li class="empty">No structured data found</li>';
+      } else {
+        schemaList.innerHTML = types.map(function(type) {
+          return '<li class="schema-item"><span class="schema-badge">' + type + '</span></li>';
+        }).join('');
+      }
+      
+      // Render recommendations
+      const recsList = document.getElementById('recsList');
+      const recs = data.recommendations || [];
+      
+      if (recs.length === 0) {
+        recsList.innerHTML = '<div class="empty">All recommended schemas are present!</div>';
+      } else {
+        recsList.innerHTML = recs.map(function(r) {
+          return '<div class="rec-item">' +
+            '<span class="rec-icon">+</span>' +
+            '<div><strong>' + r.schema + '</strong><br><span style="color: var(--muted); font-size: 13px;">' + r.reason + '</span></div>' +
+            '</div>';
+        }).join('');
+      }
+      
+      // Render JSON-LD
+      document.getElementById('jsonPreview').textContent = JSON.stringify(data.jsonLd, null, 2);
+    }
+    
+    function selectType(type) {
+      selectedType = type;
+      document.querySelectorAll('.schema-type').forEach(el => el.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+      
+      document.getElementById('formCard').style.display = 'block';
+      document.getElementById('formTitle').textContent = type + ' Details';
+      
+      // Simple form for demo
+      const fields = getFieldsForType(type);
+      document.getElementById('formFields').innerHTML = fields.map(function(f) {
+        return '<div class="form-group"><label>' + f.label + '</label><input type="text" id="field_' + f.name + '" placeholder="' + (f.placeholder || '') + '"></div>';
+      }).join('');
+    }
+    
+    function getFieldsForType(type) {
+      const allFields = {
+        Article: [{ name: 'headline', label: 'Headline' }, { name: 'description', label: 'Description' }, { name: 'author', label: 'Author' }],
+        Product: [{ name: 'name', label: 'Name' }, { name: 'description', label: 'Description' }, { name: 'price', label: 'Price' }],
+        LocalBusiness: [{ name: 'name', label: 'Business Name' }, { name: 'phone', label: 'Phone' }, { name: 'address', label: 'Address' }],
+        FAQPage: [{ name: 'q1', label: 'Question 1' }, { name: 'a1', label: 'Answer 1' }],
+        Organization: [{ name: 'name', label: 'Org Name' }, { name: 'url', label: 'URL' }, { name: 'logo', label: 'Logo URL' }],
+        BreadcrumbList: [{ name: 'item1', label: 'Item 1 (Name|URL)' }, { name: 'item2', label: 'Item 2 (Name|URL)' }]
+      };
+      return allFields[type] || [];
+    }
+    
+    function generateSchema() {
+      const fields = getFieldsForType(selectedType);
+      const data = { type: selectedType };
+      
+      fields.forEach(function(f) {
+        const el = document.getElementById('field_' + f.name);
+        if (el) data[f.name] = el.value;
+      });
+      
+      google.script.run
+        .withSuccessHandler(handleGenerateResult)
+        .withFailureHandler(handleError)
+        .FT_generateSchema(data);
+    }
+    
+    function handleGenerateResult(data) {
+      if (!data || !data.ok) {
+        showError(data?.error || 'Generation failed');
+        return;
+      }
+      
+      generatedCode = data.jsonLd;
+      document.getElementById('previewCard').style.display = 'block';
+      document.getElementById('generatedSchema').textContent = generatedCode;
+    }
+    
+    function copySchema() {
+      navigator.clipboard.writeText(generatedCode).then(() => alert('Copied!'));
+    }
+    
+    function clearForm() {
+      document.querySelectorAll('#formFields input').forEach(el => el.value = '');
+      document.getElementById('previewCard').style.display = 'none';
+    }
+    
+    function handleError(err) {
+      document.getElementById('loading').style.display = 'none';
+      showError(err.message || 'An error occurred');
+    }
+    
+    function showError(msg) {
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = msg;
+    }
+  </script>
+</body>
+</html>
