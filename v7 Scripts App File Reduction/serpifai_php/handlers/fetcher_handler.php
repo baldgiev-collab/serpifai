@@ -71,17 +71,19 @@ function fetchSingleUrl($url, $options, $licenseKey, $userId) {
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_ENCODING, ''); // Accept all encodings (gzip, deflate, br)
+        // v28.4: Explicitly specify gzip,deflate only (Brotli 'br' causes errors on some servers)
+        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate'); 
         
         // Full Chrome User-Agent string (latest Chrome on Windows 11)
         $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
         curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
         
         // Essential headers to appear as a real browser
+        // v28.4: Remove 'br' (Brotli) from Accept-Encoding to avoid libcurl errors
         $headers = [
             'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language: en-US,en;q=0.9',
-            'Accept-Encoding: gzip, deflate, br',
+            'Accept-Encoding: gzip, deflate',
             'Cache-Control: no-cache',
             'Pragma: no-cache',
             'Sec-Ch-Ua: "Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
@@ -128,13 +130,15 @@ function fetchSingleUrl($url, $options, $licenseKey, $userId) {
             curl_setopt($ch, CURLOPT_TIMEOUT, 45);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            curl_setopt($ch, CURLOPT_ENCODING, '');
+            // v28.4: Explicitly specify gzip,deflate only (no Brotli)
+            curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
             
             // Try with Googlebot (many sites whitelist this)
             curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)');
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Accept: text/html,application/xhtml+xml',
                 'Accept-Language: en-US,en;q=0.5',
+                'Accept-Encoding: gzip, deflate',
                 'Connection: keep-alive'
             ]);
             

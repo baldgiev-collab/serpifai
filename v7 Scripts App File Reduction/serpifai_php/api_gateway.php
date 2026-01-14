@@ -350,6 +350,13 @@ function executeAction($action, $payload, $user, $license) {
         return handleFetcherAction($action, $payload, $license, $user['id']);
     }
     
+    // Job management actions (v28.4: Integrate job_handler.php for Cluster architecture)
+    if (strpos($action, 'job_') === 0) {
+        require_once __DIR__ . '/job_handler.php';
+        $db = getDB();
+        return handleJobAction($action, $payload, $db);
+    }
+    
     // Real Metrics actions (NEW - for real data extraction)
     if (strpos($action, 'metrics_') === 0 || strpos($action, 'real_') === 0) {
         require_once __DIR__ . '/handlers/real_metrics_handler.php';
