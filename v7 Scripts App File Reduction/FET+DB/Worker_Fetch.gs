@@ -305,6 +305,7 @@ function buildParallelRequests(cleanDomain, fullUrl, brandName, options) {
 
 /**
  * Build a single gateway fetch request for UrlFetchApp.fetchAll
+ * v28.3: Fixed license key parameter name (was license_key, gateway expects license)
  */
 function buildGatewayFetchRequest(gatewayUrl, licenseKey, action, payload) {
   return {
@@ -313,7 +314,7 @@ function buildGatewayFetchRequest(gatewayUrl, licenseKey, action, payload) {
     contentType: 'application/json',
     payload: JSON.stringify({
       action: action,
-      license_key: licenseKey,
+      license: licenseKey,  // v28.3: Fixed - gateway expects 'license' not 'license_key'
       payload: payload
     }),
     muteHttpExceptions: true,

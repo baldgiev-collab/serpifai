@@ -199,11 +199,13 @@ class BacklinkExtractor {
    */
   _getBacklinksFromGateway(domain) {
     try {
+      // v28.3: Use license (not license_key) to match gateway expectation
+      const licenseKey = getUserLicenseKey() || BACKLINK_CONFIG.LICENSE_KEY;
       const payload = {
         action: 'get_backlinks',
         domain: domain,
         limit: BACKLINK_CONFIG.MAX_BACKLINKS,
-        license_key: BACKLINK_CONFIG.LICENSE_KEY
+        license: licenseKey  // v28.3: Fixed - gateway expects 'license' not 'license_key'
       };
       
       const response = UrlFetchApp.fetch(BACKLINK_CONFIG.PHP_GATEWAY_URL, {

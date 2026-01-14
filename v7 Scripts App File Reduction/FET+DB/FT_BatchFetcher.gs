@@ -272,10 +272,12 @@ class BatchPageFetcher {
    */
   _gatewayFetch(url, type, domain) {
     try {
+      // v28.3: Use license (not license_key) to match gateway expectation
+      const licenseKey = getUserLicenseKey() || BATCH_FETCHER_CONFIG.LICENSE_KEY;
       const payload = {
         action: 'fetch_url',
         url: url,
-        license_key: BATCH_FETCHER_CONFIG.LICENSE_KEY
+        license: licenseKey  // v28.3: Fixed - gateway expects 'license' not 'license_key'
       };
       
       const response = UrlFetchApp.fetch(BATCH_FETCHER_CONFIG.GATEWAY_URL, {
