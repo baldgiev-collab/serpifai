@@ -369,8 +369,8 @@ function FT_fetchAllCompetitorsParallel(competitors, options) {
       comp.fetchSuccess = successfulStages > 0;
       comp.successRate = `${successfulStages}/${totalStages}`;
       
-      // Synthesize using existing function
-      comp.synthesized = FT_synthesizeEliteData(stages, domain);
+      // Synthesize using existing function (v28.2: pass options for batchMode)
+      comp.synthesized = FT_synthesizeEliteData(stages, domain, options);
       
       Logger.log(`   ✅ ${domain}: ${comp.successRate} stages`);
     });

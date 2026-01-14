@@ -314,7 +314,7 @@ function FT_fetchEliteCompetitorData(domain, options) {
     // ═══════════════════════════════════════════════════════════════════════
     Logger.log(`   🔄 Synthesizing data from all sources...`);
     
-    const synthesized = FT_synthesizeEliteData(result.stages, domain);
+    const synthesized = FT_synthesizeEliteData(result.stages, domain, options);
     result.combinedData = synthesized;
     result.synthesized = synthesized;  // v23.2 FIX: UI expects .synthesized, not .combinedData
     
@@ -610,8 +610,14 @@ function FT_callOpenPageRankAPI(domain) {
  * Synthesize data from all sources into unified structure
  * ENHANCED: Oracle → PHP → Serper → Custom Search → Gemini → Defaults
  * Priority: Oracle Fetcher > PHP Fetcher > Serper > Custom Search > Defaults
+ * @param {object} stages - Raw stage data from all APIs
+ * @param {string} domain - The competitor domain
+ * @param {object} options - Optional settings (v28.2: Added for batchMode support)
  */
-function FT_synthesizeEliteData(stages, domain) {
+function FT_synthesizeEliteData(stages, domain, options) {
+  // v28.2: Default options if not provided
+  options = options || {};
+  
   const synthesized = {
     domain: domain,
     dataQuality: 'elite', // We have multiple sources
