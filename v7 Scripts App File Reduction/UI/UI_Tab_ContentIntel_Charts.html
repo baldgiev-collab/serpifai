@@ -30,14 +30,17 @@
 
     if (!window.competitorCharts) window.competitorCharts = {};
 
-    // Bar Chart - Word Count
+    // Bar Chart - Word Count - v28.7: Use helper function
     const depthCtx = document.getElementById('chart-content-depth');
     console.log('   chart-content-depth canvas:', depthCtx ? 'FOUND' : 'NOT FOUND');
     if (depthCtx) {
       try {
         if (window.competitorCharts['content-depth']) window.competitorCharts['content-depth'].destroy();
 
-        const wordCountData = competitors.slice(0, 6).map(c => c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0);
+        const wordCountData = competitors.slice(0, 6).map(c => {
+          const website = getWebsiteData(c);  // v28.7: Use helper
+          return website.wordCount || c.snapshot?.metadata?.wordCount || 0;
+        });
         console.log('   Word Count data:', wordCountData);
 
         window.competitorCharts['content-depth'] = new Chart(depthCtx, {
@@ -113,7 +116,7 @@
       }
     }
 
-    // NEW: SERP Visibility Chart
+    // NEW: SERP Visibility Chart - v28.7: Use helper function
     const serpCtx = document.getElementById('chart-serp-visibility');
     console.log('   chart-serp-visibility canvas:', serpCtx ? 'FOUND' : 'NOT FOUND');
     if (serpCtx) {
@@ -121,7 +124,8 @@
         if (window.competitorCharts['serp-visibility']) window.competitorCharts['serp-visibility'].destroy();
 
         const serpData = competitors.slice(0, 6).map(c => {
-          return c.synthesized?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0;
+          const synthData = getSynthesized(c);  // v28.7: Use helper
+          return synthData?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0;
         });
 
         window.competitorCharts['serp-visibility'] = new Chart(serpCtx, {
@@ -151,7 +155,7 @@
       }
     }
 
-    // NEW: Content Investment Score Chart
+    // NEW: Content Investment Score Chart - v28.7: Use helper function
     const investCtx = document.getElementById('chart-content-investment');
     console.log('   chart-content-investment canvas:', investCtx ? 'FOUND' : 'NOT FOUND');
     if (investCtx) {
@@ -160,9 +164,11 @@
 
         // Calculate composite content investment score
         const investmentScores = competitors.slice(0, 6).map(c => {
-          const wc = c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0;
-          const schema = (c.synthesized?.website?.schemaTypes || c.snapshot?.schema?.types || []).length;
-          const serp = c.synthesized?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0;
+          const website = getWebsiteData(c);  // v28.7: Use helper
+          const synthData = getSynthesized(c);  // v28.7: Use helper
+          const wc = website.wordCount || c.snapshot?.metadata?.wordCount || 0;
+          const schema = (website.schemaTypes || c.snapshot?.schema?.types || []).length;
+          const serp = synthData?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0;
 
           // Normalized scoring: Words (0-40) + Schema (0-30) + SERP (0-30)
           const wordScore = Math.min(40, Math.round(wc / 75));

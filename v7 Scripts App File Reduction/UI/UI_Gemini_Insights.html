@@ -90,12 +90,13 @@
       }
     }
 
-    // Final fallback: Look inside the first competitor
-    if (!categories && data.competitors?.[0]?.categories) {
+    // Final fallback: Look inside the first competitor (v28.7: ensure it's an array)
+    if (!categories && Array.isArray(data.competitors?.[0]?.categories)) {
       categories = data.competitors[0].categories;
     }
 
-    if (!categories) {
+    // v28.7: Final validation - ensure categories is actually an array
+    if (!categories || !Array.isArray(categories)) {
       console.log(`ℹ️ No legacy categories array found for ${tabName} - using Elite format instead`);
       return null;
     }

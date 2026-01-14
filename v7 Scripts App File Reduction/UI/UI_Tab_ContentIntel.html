@@ -111,20 +111,26 @@
     // DEBUG: Log first competitor's data structure
     if (competitors.length > 0) {
       const c = competitors[0];
+      
+      // v28.7 FIX: Check all possible synthesized data locations
+      const synthData = c.synthesized || c.rawData?.synthesized || c.finalData?.synthesized || {};
+      
       // Check all possible serper data locations
-      const serperData = c.stages?.serper?.data || c.apiData?.serper || c.synthesized?.seo || {};
+      const serperData = c.stages?.serper?.data || c.apiData?.serper || synthData.seo || {};
       const organicCount = serperData.organic?.length || c.keywordProfile?.organic?.length || 0;
       const paaCount = serperData.peopleAlsoAsk?.length || c.keywordProfile?.peopleAlsoAsk?.length || 0;
       const relatedCount = serperData.relatedSearches?.length || c.keywordProfile?.relatedSearches?.length || 0;
       
       console.log('🔍 DEBUG - First competitor data structure:');
       console.log('   Domain:', c.domain);
-      console.log('   synthesized:', c.synthesized ? 'EXISTS' : 'MISSING');
-      console.log('   synthesized.website:', c.synthesized?.website);
-      console.log('   synthesized.website.title:', c.synthesized?.website?.title);
-      console.log('   synthesized.website.wordCount:', c.synthesized?.website?.wordCount);
-      console.log('   synthesized.website.dataSource:', c.synthesized?.website?.dataSource);
-      console.log('   synthesized.topPages:', c.synthesized?.topPages);
+      console.log('   synthesized (direct):', c.synthesized ? 'EXISTS' : 'MISSING');
+      console.log('   rawData.synthesized:', c.rawData?.synthesized ? 'EXISTS' : 'MISSING');
+      console.log('   synthData (resolved):', synthData ? 'EXISTS' : 'MISSING');
+      console.log('   synthData.website:', synthData?.website);
+      console.log('   synthData.website.title:', synthData?.website?.title);
+      console.log('   synthData.website.wordCount:', synthData?.website?.wordCount);
+      console.log('   synthData.website.dataSource:', synthData?.website?.dataSource);
+      console.log('   synthData.topPages:', synthData?.topPages);
       console.log('   snapshot.metadata:', c.snapshot?.metadata);
       console.log('   serper.organic:', organicCount, 'results (from stages/apiData/synthesized)');
       console.log('   serper.peopleAlsoAsk:', paaCount, 'questions');
@@ -137,7 +143,9 @@
     const contentExecConfig = generateExecutiveInsightConfig('content', competitors, gemini);
     const avgWordCount = competitors.reduce((sum, c) => {
       const orgData = organizedContentMap[c.domain] || {};
-      const wc = orgData.wordCount || c.synthesized?.website?.wordCount || c.processedMetrics?.wordCount || 0;
+      // v28.7 FIX: Check all synthesized locations
+      const synthData = c.synthesized || c.rawData?.synthesized || c.finalData?.synthesized || {};
+      const wc = orgData.wordCount || synthData?.website?.wordCount || c.processedMetrics?.wordCount || 0;
       return sum + wc;
     }, 0) / (competitors.length || 1);
     
@@ -356,9 +364,9 @@
           </h4>
         `;
 
-    // Content Depth & Structure Comparison
+    // Content Depth & Structure Comparison - v28.7: Use helper function
     const contentDepthData = competitors.slice(0, 6).map(c => {
-      const website = c.synthesized?.website || {};
+      const website = getWebsiteData(c);  // v28.7: Use helper
       return {
         domain: c.domain,
         wordCount: website.wordCount || 0,
@@ -379,7 +387,7 @@
       competitors: competitors,
       geminiInsight: geminiContentInsight,
       dataExtractor: (c) => {
-        const website = c.synthesized?.website || {};
+        const website = getWebsiteData(c);  // v28.7: Use helper
         const snapshot = c.snapshot || {};
         return {
           wordCount: website.wordCount || snapshot.metadata?.wordCount || 0,
@@ -402,7 +410,7 @@
       ]
     });
 
-    // Title & Meta Comparison
+    // Title & Meta Comparison - v28.7: Use helper function
     html += renderRawDataComparisonTable({
       title: 'Title & Meta Tags Analysis',
       icon: '🏷️',
@@ -410,7 +418,7 @@
       competitors: competitors,
       geminiInsight: 'Optimal title length is 50-60 characters, meta description 150-160 characters. Include primary keyword in both for maximum click-through rate.',
       dataExtractor: (c) => {
-        const website = c.synthesized?.website || {};
+        const website = getWebsiteData(c);  // v28.7: Use helper
         const snapshot = c.snapshot || {};
         const metadata = snapshot.metadata || {};
         const title = website.title || metadata.title || '';
@@ -433,7 +441,7 @@
       ]
     });
 
-    // H1 and H2 Headings Deep Dive
+    // H1 and H2 Headings Deep Dive - v28.7: Use helper function
     html += renderRawDataComparisonTable({
       title: 'Heading Tags (H1/H2) Deep Dive',
       icon: '🔤',
@@ -441,7 +449,7 @@
       competitors: competitors,
       geminiInsight: 'H1 should contain primary keyword and match user intent. H2s should cover subtopics and questions. Question-format H2s increase PAA eligibility by 35%.',
       dataExtractor: (c) => {
-        const website = c.synthesized?.website || {};
+        const website = getWebsiteData(c);  // v28.7: Use helper
         const h1s = website.h1 || [];
         const h2s = website.h2 || [];
         return {
@@ -462,7 +470,7 @@
       ]
     });
 
-    // SERP Visibility Comparison
+    // SERP Visibility Comparison - v28.7: Use helper function
     html += renderRawDataComparisonTable({
       title: 'SERP Visibility & Top Pages',
       icon: '🔍',
@@ -471,7 +479,8 @@
       geminiInsight: 'Higher SERP visibility indicates stronger domain authority and content coverage. Analyze top-ranking pages to identify successful content patterns.',
       dataExtractor: (c) => {
         const serper = c.apiData?.serper || {};
-        const topPages = c.synthesized?.topPages || serper.organic || [];
+        const synthData = getSynthesized(c);  // v28.7: Use helper
+        const topPages = synthData?.topPages || serper.organic || [];
         return {
           serpHits: topPages.length,
           topPage1: topPages[0]?.title || 'N/A',
@@ -570,18 +579,27 @@
       renderContentIntelligenceCharts(competitors);
     }, 300);
 
-    // Build Strategic Insights - ENHANCED with more strategic value
-    const avgWordCountInsights = Math.round(competitors.reduce((sum, c) => sum + (c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0), 0) / competitors.length);
-    const withSchema = competitors.filter(c => (c.synthesized?.website?.schemaTypes || c.snapshot?.schema?.types || []).length > 0).length;
-    const avgSerpHits = Math.round(competitors.reduce((sum, c) => sum + (c.synthesized?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0), 0) / competitors.length);
+    // Build Strategic Insights - ENHANCED with more strategic value (v28.7: Use helpers)
+    const avgWordCountInsights = Math.round(competitors.reduce((sum, c) => {
+      const website = getWebsiteData(c);
+      return sum + (website.wordCount || c.snapshot?.metadata?.wordCount || 0);
+    }, 0) / competitors.length);
+    const withSchema = competitors.filter(c => {
+      const website = getWebsiteData(c);
+      return (website.schemaTypes || c.snapshot?.schema?.types || []).length > 0;
+    }).length;
+    const avgSerpHits = Math.round(competitors.reduce((sum, c) => {
+      const synthData = getSynthesized(c);
+      return sum + (synthData?.topPages?.length || (c.apiData?.serper?.organic || []).length || 0);
+    }, 0) / competitors.length);
     const leader = competitors.reduce((best, c) => {
-      const bestWC = best.synthesized?.website?.wordCount || best.snapshot?.metadata?.wordCount || 0;
-      const currWC = c.synthesized?.website?.wordCount || c.snapshot?.metadata?.wordCount || 0;
+      const bestWC = getWebsiteData(best).wordCount || best.snapshot?.metadata?.wordCount || 0;
+      const currWC = getWebsiteData(c).wordCount || c.snapshot?.metadata?.wordCount || 0;
       return currWC > bestWC ? c : best;
     }, competitors[0]);
     const schemaLeader = competitors.reduce((best, c) => {
-      const bestS = (best.synthesized?.website?.schemaTypes || best.snapshot?.schema?.types || []).length;
-      const currS = (c.synthesized?.website?.schemaTypes || c.snapshot?.schema?.types || []).length;
+      const bestS = (getWebsiteData(best).schemaTypes || best.snapshot?.schema?.types || []).length;
+      const currS = (getWebsiteData(c).schemaTypes || c.snapshot?.schema?.types || []).length;
       return currS > bestS ? c : best;
     }, competitors[0]);
 

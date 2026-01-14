@@ -580,9 +580,9 @@
       ]
     });
 
-    // Schema Markup Deep Dive
+    // Schema Markup Deep Dive - v28.7: Use helper function
     const schemaDeepData = competitors.slice(0, 6).map(c => {
-      const website = c.synthesized?.website || {};
+      const website = getWebsiteData(c);  // v28.7: Use helper
       return { domain: c.domain, schemas: website.schemaTypes || [], count: (website.schemaTypes || []).length };
     });
     const schemaLeader = schemaDeepData.reduce((best, s) => s.count > (best?.count || 0) ? s : best, null);
@@ -597,7 +597,7 @@
       competitors: competitors,
       geminiInsight: geminiSchemaDeepInsight,
       dataExtractor: (c) => {
-        const website = c.synthesized?.website || {};
+        const website = getWebsiteData(c);  // v28.7: Use helper
         const schemas = website.schemaTypes || [];
         return {
           allSchemas: schemas.length > 0 ? schemas.join(', ') : 'None detected',
@@ -682,7 +682,7 @@
     const avgSeo = formatScoreForInsights(competitors.reduce((sum, c) => sum + (c.apiData?.pageSpeed?.scores?.seo || c.processedMetrics?.seoScore || 0), 0) / competitors.length);
     const avgRAG = formatScoreForInsights(competitors.reduce((sum, c) => sum + calculateRAGReadiness(c).score, 0) / competitors.length);
     const leader = competitors.reduce((best, c) => (c.processedMetrics?.siteHealth || 0) > (best.processedMetrics?.siteHealth || 0) ? c : best, competitors[0]);
-    const noSchemaCount = competitors.filter(c => (c.synthesized?.website?.schemaTypes || []).length === 0).length;
+    const noSchemaCount = competitors.filter(c => (getWebsiteData(c).schemaTypes || []).length === 0).length;  // v28.7: Use helper
     const lowRAGCount = competitors.filter(c => calculateRAGReadiness(c).level === 'Low').length;
 
     let insightsHtml = `

@@ -386,7 +386,7 @@
             personaDepth: c.processedMetrics?.personaDepth || 50,
             emotionalResonance: c.processedMetrics?.emotionalResonance || 50,
             jtbdMatch: c.processedMetrics?.jtbdMatch || 50,
-            wordCount: c.synthesized?.website?.wordCount || 0,
+            wordCount: getWebsiteData(c).wordCount || 0,  // v28.7: Use helper
             b2bScore: c.processedMetrics?.b2bScore || 3
           }));
           renderAudienceCharts(audienceMetrics);
@@ -398,7 +398,7 @@
           const geoData = competitors.map(c => ({
             domain: c.domain,
             aiReadinessScore: c.processedMetrics?.aiReadinessScore || 50,
-            schemaCount: (c.synthesized?.website?.schemaTypes || []).length,
+            schemaCount: (getWebsiteData(c).schemaTypes || []).length,  // v28.7: Use helper
             answerAuthority: c.processedMetrics?.answerAuthority || 50,
             factualIntegrity: c.processedMetrics?.factualIntegrity || 50,
             paaCount: (c.apiData?.serper?.peopleAlsoAsk || []).length

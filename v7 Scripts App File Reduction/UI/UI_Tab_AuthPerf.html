@@ -334,7 +334,7 @@
       geminiInsight: 'Strong E-E-A-T signals include: author bios, expert credentials, citations, reviews, and transparent contact information. Sites with 5+ E-E-A-T signals rank 40% higher.',
       dataExtractor: (c, idx, realMetrics) => {
         const rm = realMetrics || {};
-        const website = c.synthesized?.website || {};
+        const website = getWebsiteData(c);  // v28.7: Use helper
         const schemas = rm.content?.schemaTypes || website.schemaTypes || [];
         const fullText = ((rm.content?.title || website.title || '') + ' ' + (rm.content?.description || website.description || '')).toLowerCase();
         const extLinks = rm.content?.externalLinks || website.externalLinks || 0;

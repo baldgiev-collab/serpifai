@@ -634,12 +634,15 @@
             competitorsArray = domains.map(function(domain) {
               const compData = analysisResult.competitors[domain];
               
+              // v28.7 FIX: Extract synthesized to top level
+              // UI components look for c.synthesized, not c.rawData.synthesized
               return {
                 domain: domain,
                 url: compData.url || 'https://' + domain,
                 fetchSuccess: compData.fetchSuccess !== false,
                 snapshot: compData.snapshot || {},
                 apiData: compData.apiData || {},
+                synthesized: compData.synthesized || compData.finalData?.synthesized || {},  // v28.7: CRITICAL
                 categories: compData.categories || {},
                 processedMetrics: compData.processedMetrics || {},
                 rawData: compData,
@@ -800,7 +803,8 @@
       const serper = apiData.serper || {};
       
       // SOURCE 2: Synthesized data (from FT_EliteCompetitorFetcher)
-      const synthesized = comp.synthesized || {};
+      // v28.7 FIX: Check multiple locations - data may be in rawData.synthesized
+      const synthesized = comp.synthesized || comp.rawData?.synthesized || comp.finalData?.synthesized || {};
       
       // SOURCE 3: Snapshot (from PHP fetcher)
       const snapshot = comp.snapshot || {};

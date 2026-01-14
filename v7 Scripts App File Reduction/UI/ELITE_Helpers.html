@@ -51,6 +51,31 @@ function escapeHtml(text) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DATA ACCESS HELPERS - v28.7
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * v28.7: Get synthesized data from competitor object
+ * Checks all possible locations where synthesized data may exist
+ * @param {Object} comp - Competitor object
+ * @returns {Object} - Synthesized data object (never null)
+ */
+function getSynthesized(comp) {
+  if (!comp) return {};
+  return comp.synthesized || comp.rawData?.synthesized || comp.finalData?.synthesized || {};
+}
+
+/**
+ * v28.7: Get website data from competitor object
+ * @param {Object} comp - Competitor object
+ * @returns {Object} - Website data object (never null)
+ */
+function getWebsiteData(comp) {
+  const synth = getSynthesized(comp);
+  return synth?.website || comp.snapshot?.metadata || {};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // FORMATTING HELPERS (DEDUPLICATED - Single Source of Truth)
 // ═══════════════════════════════════════════════════════════════════════════
 
