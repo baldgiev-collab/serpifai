@@ -152,7 +152,8 @@ function _generateDisruptabilityScoring(competitors, niche) {
       if (fullText.includes('affiliate') || fullText.includes('sponsored')) debtScore += 10;
       debtScore = Math.min(90, debtScore);
       
-      const pageRank = openPageRank.page_rank_decimal || 0;
+      // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+      const pageRank = openPageRank.pageRank ?? openPageRank.page_rank_decimal ?? 0;
       const refScore = Math.min(95, 30 + (pageRank * 10));
       
       const ctaPatterns = ['sign up', 'get started', 'try free', 'buy now', 'start now'];
@@ -456,7 +457,9 @@ function _assessExpertise(synth, profile) {
 }
 
 function _assessAuthoritativeness(comp) {
-  const pageRank = comp.apiData?.openPageRank?.page_rank_decimal || 0;
+  // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+  const opr = comp.apiData?.openPageRank || {};
+  const pageRank = opr.pageRank ?? opr.page_rank_decimal ?? 0;
   if (pageRank > 5) return 'High Authority';
   if (pageRank > 3) return 'Moderate Authority';
   return 'Building Authority';

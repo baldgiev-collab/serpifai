@@ -62,7 +62,8 @@ function _generateOpportunitiesForensic(competitors, gemini, niche) {
     const headingsProof = detailedProofs.headings;
     
     const scores = pageSpeed.scores || {};
-    const pageRank = openPR.page_rank_decimal || 0;
+    // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+    const pageRank = openPR.pageRank ?? openPR.page_rank_decimal ?? 0;
     const organic = seo.organic || c.apiData?.serper?.organic || [];
     const paa = seo.peopleAlsoAsk || c.apiData?.serper?.peopleAlsoAsk || [];
     const schemaTypes = website.schemaTypes || [];
@@ -205,9 +206,11 @@ function _generateOpportunitiesForensic(competitors, gemini, niche) {
         priority: 2,
         rawProof: {
           actualPageRank: pageRank,
-          domainRank: openPR.rank || 0,
+          // v28.6: API returns domainRank (camelCase), fallback to rank
+          domainRank: openPR.domainRank ?? openPR.rank ?? 0,
           estimatedDomainRating: pageRank > 0 ? Math.round(pageRank * 10) : 'N/A',
-          gapToCompetitors: safeCompetitors[0]?.apiData?.openPageRank?.page_rank_decimal || 0,
+          // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+          gapToCompetitors: safeCompetitors[0]?.apiData?.openPageRank?.pageRank ?? safeCompetitors[0]?.apiData?.openPageRank?.page_rank_decimal ?? 0,
           recommendation: `Build quality backlinks to increase PageRank to 5+`
         }
       });

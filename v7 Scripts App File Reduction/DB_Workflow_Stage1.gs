@@ -120,15 +120,19 @@ function loadCompetitorInsightsForWorkflow(projectData) {
       competitorDomains: competitors.map(c => c.domain).filter(Boolean),
       
       // Authority & Traffic metrics
-      authorityMetrics: competitors.map(c => ({
-        domain: c.domain,
-        authorityScore: c.processedMetrics?.authorityScore || c.apiData?.openPageRank?.rank * 10 || 0,
-        pageRank: c.processedMetrics?.pageRank || c.apiData?.openPageRank?.rank || 0,
-        estimatedTraffic: c.processedMetrics?.organicTraffic || c.processedMetrics?.estimatedTraffic || 0,
-        organicKeywords: c.processedMetrics?.organicKeywords || 0,
-        backlinks: c.processedMetrics?.backlinks || 0,
-        referringDomains: c.processedMetrics?.referringDomains || 0
-      })),
+      // v28.6: API returns pageRank/domainRank (camelCase), fallback to old names
+      authorityMetrics: competitors.map(c => {
+        const opr = c.apiData?.openPageRank || {};
+        return {
+          domain: c.domain,
+          authorityScore: c.processedMetrics?.authorityScore || (opr.pageRank ?? opr.page_rank_decimal ?? opr.rank ?? 0) * 10 || 0,
+          pageRank: c.processedMetrics?.pageRank || opr.pageRank || opr.page_rank_decimal || opr.rank || 0,
+          estimatedTraffic: c.processedMetrics?.organicTraffic || c.processedMetrics?.estimatedTraffic || 0,
+          organicKeywords: c.processedMetrics?.organicKeywords || 0,
+          backlinks: c.processedMetrics?.backlinks || 0,
+          referringDomains: c.processedMetrics?.referringDomains || 0
+        };
+      }),
       
       // ═══════════════════════════════════════════════════════════════════
       // TOP PAGES - Best performing pages per competitor

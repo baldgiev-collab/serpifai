@@ -961,9 +961,10 @@ function FT_synthesizeEliteData(stages, domain, options) {
   if (stages.openPageRank && stages.openPageRank.success && stages.openPageRank.data) {
     const opr = stages.openPageRank.data;
     
+    // v28.6: API returns pageRank/domainRank (camelCase), fallback to snake_case
     synthesized.authority = {
-      domainRank: opr.rank || 0,
-      pageRank: opr.page_rank_decimal || 0,
+      domainRank: opr.domainRank ?? opr.rank ?? 0,
+      pageRank: opr.pageRank ?? opr.page_rank_decimal ?? 0,
       backlinks: 0,
       referringDomains: 0
     };

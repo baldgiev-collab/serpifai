@@ -189,14 +189,15 @@ function _generateBrandPositionForensic(competitors, gemini, niche) {
       // ENHANCED SCORE BREAKDOWN WITH RAW DATA PROOF
       enhancedScoreBreakdown: _createEnhancedScoreBreakdown(c),
       
+      // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
       proof: {
-        pageRankRaw: openPR.page_rank_decimal || 0,
+        pageRankRaw: openPR.pageRank ?? openPR.page_rank_decimal ?? 0,
         organicCount: organic.length,
         brandMentionsCount: brandMentions,
         calculation: 'Brand Strength = (PageRank × 12) + (Brand Mentions × 5)',
-        dataSource: openPR.page_rank_decimal ? 'Real Data (OpenPageRank + SERP)' : 'Forensic Estimate',
+        dataSource: (openPR.pageRank ?? openPR.page_rank_decimal) ? 'Real Data (OpenPageRank + SERP)' : 'Forensic Estimate',
         detailed: detailedProofs,
-        confidence: openPR.page_rank_decimal ? 'high' : 'medium'
+        confidence: (openPR.pageRank ?? openPR.page_rank_decimal) ? 'high' : 'medium'
       }
     };
   });

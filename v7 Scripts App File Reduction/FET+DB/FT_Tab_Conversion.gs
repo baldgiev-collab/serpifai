@@ -294,7 +294,8 @@ function _generateConversionMonetizationForensic(competitors, gemini, niche) {
           persuasionWords: persuasionCount,
           scarcityWords: scarcityCount,
           socialProofWords: socialProofCount,
-          pageRank: openPageRank.page_rank_decimal || 0,
+          // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+          pageRank: openPageRank.pageRank ?? openPageRank.page_rank_decimal ?? 0,
           wordsFound: {
             persuasion: persuasionWords.filter(w => fullText.includes(w)),
             scarcity: scarcityWords.filter(w => fullText.includes(w)),

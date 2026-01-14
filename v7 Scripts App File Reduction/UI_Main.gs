@@ -853,12 +853,13 @@
       // ─────────────────────────────────────────────────────────────────────
       
       // PageRank (0-10 scale)
-      // Accept both page_rank_decimal (API format) and rank (simplified format)
-      const pageRankDecimal = parseFloat(openPageRank.page_rank_decimal) || parseFloat(openPageRank.rank) || synthesized.authority?.pageRank || 0;
+      // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal (snake_case)
+      const pageRankDecimal = parseFloat(openPageRank.pageRank) || parseFloat(openPageRank.page_rank_decimal) || parseFloat(openPageRank.rank) || synthesized.authority?.pageRank || 0;
       comp.processedMetrics.pageRank = pageRankDecimal;
       
       // Domain Rank (global position)
-      const domainRank = parseInt(openPageRank.rank) || synthesized.authority?.domainRank || 0;
+      // v28.6: API returns domainRank (camelCase), fallback to rank
+      const domainRank = parseInt(openPageRank.domainRank) || parseInt(openPageRank.rank) || synthesized.authority?.domainRank || 0;
       comp.processedMetrics.domainRank = domainRank;
       
       // ═══════════════════════════════════════════════════════════════════════

@@ -289,7 +289,8 @@ function _generateContentOperationsForensic(competitors, gemini, niche) {
       if (hasRegulatoryFooters) eeatScore += 5;
       if (hasPersonSchema) eeatScore += 10;
       if (hasOrgSchema) eeatScore += 5;
-      const pageRank = openPageRank.page_rank_decimal || 0;
+      // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+      const pageRank = openPageRank.pageRank ?? openPageRank.page_rank_decimal ?? 0;
       if (pageRank >= 5) eeatScore += 10;
       else if (pageRank >= 3) eeatScore += 5;
       eeatScore = Math.min(100, eeatScore);

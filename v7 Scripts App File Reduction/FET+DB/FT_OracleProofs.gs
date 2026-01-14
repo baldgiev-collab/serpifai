@@ -883,13 +883,15 @@ function FT_GenerateGeminiInsight(category, competitor, niche) {
   const apiData = competitor.apiData || {};
   
   // Extract key metrics for insight generation
-  const pageRank = apiData.openPageRank?.page_rank_decimal || MINIMUM_VALUES.pageRank;
+  // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+  const opr = apiData.openPageRank || {};
+  const pageRank = opr.pageRank ?? opr.page_rank_decimal ?? MINIMUM_VALUES.pageRank;
   const performance = apiData.pageSpeed?.scores?.performance || MINIMUM_VALUES.performance;
   const wordCount = synth.website?.wordCount || MINIMUM_VALUES.wordCount;
   const schemaCount = (synth.website?.schemaTypes || []).length;
   
   // Extract context metrics from competitor data (FIX: was using undefined 'context')
-  const backlinkCount = apiData.openPageRank?.backlinks_count || profile.backlinkCount || 0;
+  const backlinkCount = opr.backlinks_count || profile.backlinkCount || 0;
   const internalLinkCount = synth.website?.internalLinkCount || profile.internalLinkCount || 0;
   
   // Category-specific insights

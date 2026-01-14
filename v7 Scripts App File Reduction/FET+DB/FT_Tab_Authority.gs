@@ -48,8 +48,9 @@ function _generateAuthorityForensic(competitors, gemini, niche) {
     const schemaProof = detailedProofs.schema;
     const linksProof = detailedProofs.links;
     
-    const pageRank = openPR.page_rank_decimal || 0;
-    const domainRank = openPR.rank || 0;
+    // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+    const pageRank = openPR.pageRank ?? openPR.page_rank_decimal ?? 0;
+    const domainRank = openPR.domainRank ?? openPR.rank ?? 0;
     
     // Trust/Citation Flow: Real data from PageRank or show 0
     // No random fallbacks - data should come from real API
@@ -145,9 +146,10 @@ function _generateAuthorityForensic(competitors, gemini, niche) {
       pageRankRawData: {
         pageRank: pageRank,
         domainRank: domainRank,
-        pageRankDecimal: openPR.page_rank_decimal || 0,
+        // v28.6: Include both formats for compatibility
+        pageRankDecimal: openPR.pageRank ?? openPR.page_rank_decimal ?? 0,
         statusCode: openPR.status_code || 0,
-        rawApiResponse: { domain: c.domain, rank: openPR.rank, page_rank_decimal: openPR.page_rank_decimal, isDataFromApi: pageRank > 0 }
+        rawApiResponse: { domain: c.domain, rank: openPR.domainRank ?? openPR.rank, page_rank_decimal: openPR.pageRank ?? openPR.page_rank_decimal, isDataFromApi: pageRank > 0 }
       },
       
       trustFlowRawData: {
@@ -290,7 +292,8 @@ function _generatePerformanceForensic(competitors, gemini, niche) {
     const organicRaw = seo.organic || c.apiData?.serper?.organic || [];
     const organic = Array.isArray(organicRaw) ? organicRaw : [];
     const scores = pageSpeed.scores || {};
-    const pageRank = openPR.page_rank_decimal || 0;
+    // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+    const pageRank = openPR.pageRank ?? openPR.page_rank_decimal ?? 0;
     
     const visibilityScore = _calculateVisibilityScore(organic, pageRank);
     
@@ -379,7 +382,8 @@ function _generatePerformanceForensic(competitors, gemini, niche) {
       
       competitivePosition: {
         rank: idx + 1,
-        vsLeader: idx === 0 ? 'Leader' : `Gap: ${Math.round((safeCompetitors[0]?.apiData?.openPageRank?.page_rank_decimal || 3) - pageRank)} DR`,
+        // v28.6: API returns pageRank (camelCase), fallback to page_rank_decimal
+        vsLeader: idx === 0 ? 'Leader' : `Gap: ${Math.round((safeCompetitors[0]?.apiData?.openPageRank?.pageRank ?? safeCompetitors[0]?.apiData?.openPageRank?.page_rank_decimal ?? 3) - pageRank)} DR`,
         momentum: trend30d > 5 ? 'Accelerating' : trend30d < -5 ? 'Declining' : 'Stable'
       },
       
