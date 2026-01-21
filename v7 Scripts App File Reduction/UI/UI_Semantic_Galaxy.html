@@ -1,0 +1,880 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════════
+  UI_Semantic_Galaxy.html
+  FORENSIC UPGRADE v7.1 — Semantic DNA Galaxy Visualization
+  
+  PURPOSE: Interactive D3.js force-directed graph showing entity relationships,
+           topic ownership, and "Information Black Holes" where competitor coverage
+           dominates but your coverage is weak.
+  
+  TASKS IMPLEMENTED:
+    - Task 13: Semantic DNA Galaxy → D3.js Information Black Holes
+  
+  FEATURES:
+    - Force-directed graph of semantic entities
+    - Color-coded by ownership (owned/contested/blackHole/opportunity)
+    - Zoom, pan, and click-to-focus interactions
+    - Entity cluster highlighting
+    - Black Hole detection and highlighting
+    - SVG/PNG export capability
+  
+  DATE: 2026-01-18
+  ═══════════════════════════════════════════════════════════════════════════════
+-->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SEMANTIC GALAXY CONTAINER
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .semantic-galaxy-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d0d1f 100%);
+    border-radius: var(--radius-lg, 16px);
+    overflow: hidden;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    box-shadow: 
+      0 0 40px rgba(99, 102, 241, 0.15),
+      inset 0 0 80px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Stars background effect */
+  .semantic-galaxy-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.5), transparent),
+      radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.4), transparent),
+      radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 230px 80px, rgba(255,255,255,0.5), transparent),
+      radial-gradient(2px 2px at 300px 150px, rgba(255,255,255,0.2), transparent);
+    background-repeat: repeat;
+    background-size: 350px 200px;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  
+  .galaxy-svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Entity nodes */
+  .entity-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .entity-node:hover {
+    filter: brightness(1.3) drop-shadow(0 0 8px currentColor);
+  }
+  
+  .entity-node.focused {
+    filter: brightness(1.5) drop-shadow(0 0 15px currentColor);
+  }
+  
+  /* Entity labels */
+  .entity-label {
+    font-size: 10px;
+    font-weight: 500;
+    fill: #e5e7eb;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+  
+  .entity-label.large {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  /* Relationship links */
+  .entity-link {
+    stroke-opacity: 0.4;
+    transition: stroke-opacity 0.3s ease;
+  }
+  
+  .entity-link.highlighted {
+    stroke-opacity: 0.9;
+    stroke-width: 2px;
+  }
+  
+  /* Black Hole indicator */
+  .black-hole-marker {
+    animation: pulseBlackHole 2s infinite;
+  }
+  
+  @keyframes pulseBlackHole {
+    0%, 100% { 
+      stroke-opacity: 0.5;
+      stroke-width: 3px;
+    }
+    50% { 
+      stroke-opacity: 1;
+      stroke-width: 6px;
+    }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     GALAXY LEGEND & CONTROLS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .galaxy-legend {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10;
+  }
+  
+  .galaxy-legend h4 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: #e5e7eb;
+  }
+  
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  
+  .legend-dot.owned { background: #10b981; }
+  .legend-dot.contested { background: #f59e0b; }
+  .legend-dot.black-hole { background: #ef4444; }
+  .legend-dot.opportunity { background: #3b82f6; }
+  
+  /* Controls */
+  .galaxy-controls {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+  }
+  
+  .galaxy-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #e5e7eb;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .galaxy-btn:hover {
+    background: rgba(99, 102, 241, 0.4);
+    transform: scale(1.05);
+  }
+  
+  /* Tooltip */
+  .galaxy-tooltip {
+    position: absolute;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #f9fafb;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 100;
+    max-width: 250px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .galaxy-tooltip.visible {
+    opacity: 1;
+  }
+  
+  .galaxy-tooltip h5 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: #fff;
+  }
+  
+  .galaxy-tooltip .metric {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    color: #9ca3af;
+  }
+  
+  .galaxy-tooltip .metric-value {
+    font-weight: 600;
+    color: #e5e7eb;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     BLACK HOLE ALERT PANEL
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .black-hole-alert {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: none;
+    z-index: 10;
+  }
+  
+  .black-hole-alert.visible {
+    display: block;
+    animation: slideUp 0.3s ease;
+  }
+  
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .black-hole-alert h5 {
+    margin: 0 0 8px;
+    color: #ef4444;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .black-hole-alert p {
+    margin: 0;
+    color: #e5e7eb;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  
+  .black-hole-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  
+  .black-hole-tag {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+</style>
+
+<script>
+console.log('🌌 UI_Semantic_Galaxy.html V7.1 loading...');
+
+/**
+ * Semantic Galaxy Color Scale
+ */
+const GALAXY_COLORS = {
+  owned: '#10b981',       // Emerald - You dominate this topic
+  contested: '#f59e0b',   // Amber - Multiple competitors present
+  blackHole: '#ef4444',   // Red - Competitor dominates, you're absent
+  opportunity: '#3b82f6'  // Blue - Low competition, high potential
+};
+
+/**
+ * D3 Force Simulation Configuration
+ */
+const FORCE_CONFIG = {
+  charge: -300,
+  linkDistance: 100,
+  gravity: 0.1,
+  centerForce: 0.05
+};
+
+/**
+ * Initialize Semantic Galaxy Visualization
+ * @param {string} containerId - Container element ID
+ * @param {Object} data - Semantic data with entities and relationships
+ */
+window.initSemanticGalaxy = function(containerId, data) {
+  console.log('🌌 Initializing Semantic Galaxy...');
+  console.log('   Entities:', data.entities?.length || 0);
+  console.log('   Relationships:', data.relationships?.length || 0);
+  
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.error('❌ Galaxy container not found:', containerId);
+    return;
+  }
+  
+  // Clear existing content
+  container.innerHTML = '';
+  
+  // Create galaxy container
+  container.classList.add('semantic-galaxy-container');
+  
+  // Add legend
+  const legend = createGalaxyLegend();
+  container.appendChild(legend);
+  
+  // Add controls
+  const controls = createGalaxyControls();
+  container.appendChild(controls);
+  
+  // Add tooltip
+  const tooltip = document.createElement('div');
+  tooltip.className = 'galaxy-tooltip';
+  tooltip.id = 'galaxy-tooltip';
+  container.appendChild(tooltip);
+  
+  // Add black hole alert
+  const blackHoleAlert = createBlackHoleAlert(data.blackHoles || []);
+  container.appendChild(blackHoleAlert);
+  
+  // Create SVG
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  
+  const svg = d3.select(container)
+    .append('svg')
+    .attr('class', 'galaxy-svg')
+    .attr('viewBox', [0, 0, width, height]);
+  
+  // Add zoom behavior
+  const zoom = d3.zoom()
+    .scaleExtent([0.3, 4])
+    .on('zoom', (event) => {
+      g.attr('transform', event.transform);
+    });
+  
+  svg.call(zoom);
+  
+  // Create main group for zoom/pan
+  const g = svg.append('g');
+  
+  // Process data
+  const nodes = processNodes(data.entities || []);
+  const links = processLinks(data.relationships || [], nodes);
+  
+  // Create force simulation
+  const simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(FORCE_CONFIG.linkDistance))
+    .force('charge', d3.forceManyBody().strength(FORCE_CONFIG.charge))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(d => d.radius + 5));
+  
+  // Draw links
+  const link = g.append('g')
+    .attr('class', 'links')
+    .selectAll('line')
+    .data(links)
+    .join('line')
+    .attr('class', 'entity-link')
+    .attr('stroke', d => getRelationshipColor(d.type))
+    .attr('stroke-width', d => Math.sqrt(d.strength || 1));
+  
+  // Draw nodes
+  const node = g.append('g')
+    .attr('class', 'nodes')
+    .selectAll('g')
+    .data(nodes)
+    .join('g')
+    .attr('class', 'entity-node')
+    .call(drag(simulation))
+    .on('mouseover', (event, d) => showTooltip(event, d, tooltip))
+    .on('mouseout', () => hideTooltip(tooltip))
+    .on('click', (event, d) => focusEntity(d, nodes, link, simulation));
+  
+  // Add circles to nodes
+  node.append('circle')
+    .attr('r', d => d.radius)
+    .attr('fill', d => GALAXY_COLORS[d.ownership] || GALAXY_COLORS.contested)
+    .attr('stroke', '#fff')
+    .attr('stroke-width', 1.5)
+    .attr('opacity', 0.9);
+  
+  // Add black hole markers
+  node.filter(d => d.isBlackHole)
+    .append('circle')
+    .attr('r', d => d.radius + 8)
+    .attr('fill', 'none')
+    .attr('stroke', '#ef4444')
+    .attr('class', 'black-hole-marker');
+  
+  // Add labels
+  node.append('text')
+    .attr('class', d => `entity-label ${d.radius > 15 ? 'large' : ''}`)
+    .attr('dy', d => d.radius + 14)
+    .attr('text-anchor', 'middle')
+    .text(d => d.label.length > 15 ? d.label.substring(0, 15) + '...' : d.label);
+  
+  // Update positions on tick
+  simulation.on('tick', () => {
+    link
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y);
+    
+    node.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+  
+  // Store reference for controls
+  container._galaxyState = {
+    svg, g, simulation, zoom, nodes, links
+  };
+  
+  // Show black holes if any
+  if (data.blackHoles?.length > 0) {
+    blackHoleAlert.classList.add('visible');
+  }
+  
+  console.log('✅ Semantic Galaxy initialized');
+  
+  return {
+    svg,
+    simulation,
+    nodes,
+    links,
+    zoom,
+    exportSVG: () => exportGalaxyAsSVG(svg),
+    exportPNG: () => exportGalaxyAsPNG(svg, width, height)
+  };
+};
+
+/**
+ * Process entity nodes
+ */
+function processNodes(entities) {
+  return entities.map((entity, i) => ({
+    id: entity.id || `entity-${i}`,
+    label: entity.name || entity.label || entity.entity || 'Unknown',
+    ownership: classifyOwnership(entity),
+    isBlackHole: entity.isBlackHole || (entity.competitor_coverage > 0.7 && entity.your_coverage < 0.2),
+    radius: calculateNodeRadius(entity),
+    searchVolume: entity.search_volume || entity.volume || 0,
+    yourCoverage: entity.your_coverage || entity.coverage || 0,
+    competitorCoverage: entity.competitor_coverage || 0,
+    cluster: entity.cluster || entity.category || 'general',
+    raw: entity
+  }));
+}
+
+/**
+ * Process relationship links
+ */
+function processLinks(relationships, nodes) {
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  
+  return relationships
+    .filter(rel => nodeMap.has(rel.source) && nodeMap.has(rel.target))
+    .map(rel => ({
+      source: rel.source,
+      target: rel.target,
+      type: rel.type || 'related',
+      strength: rel.strength || rel.weight || 1
+    }));
+}
+
+/**
+ * Classify entity ownership
+ */
+function classifyOwnership(entity) {
+  const yourCoverage = entity.your_coverage || entity.coverage || 0;
+  const competitorCoverage = entity.competitor_coverage || 0;
+  const searchVolume = entity.search_volume || entity.volume || 0;
+  
+  // Black Hole: Competitor dominates, you're weak
+  if (competitorCoverage > 0.7 && yourCoverage < 0.2 && searchVolume > 1000) {
+    return 'blackHole';
+  }
+  
+  // Owned: You dominate
+  if (yourCoverage > 0.7) {
+    return 'owned';
+  }
+  
+  // Opportunity: Low competition, high potential
+  if (competitorCoverage < 0.3 && searchVolume > 500) {
+    return 'opportunity';
+  }
+  
+  // Contested: Competitive space
+  return 'contested';
+}
+
+/**
+ * Calculate node radius based on importance
+ */
+function calculateNodeRadius(entity) {
+  const baseRadius = 8;
+  const volume = entity.search_volume || entity.volume || 100;
+  
+  // Scale: 100 volume = 8px, 10000 volume = 20px
+  const volumeScale = Math.log10(Math.max(volume, 1)) / 4;
+  const radius = baseRadius + (volumeScale * 12);
+  
+  return Math.min(Math.max(radius, 6), 25);
+}
+
+/**
+ * Get link color by relationship type
+ */
+function getRelationshipColor(type) {
+  const colors = {
+    parent: '#6366f1',
+    child: '#8b5cf6',
+    related: '#4b5563',
+    semantic: '#06b6d4',
+    cooccurrence: '#10b981'
+  };
+  return colors[type] || colors.related;
+}
+
+/**
+ * Create drag behavior
+ */
+function drag(simulation) {
+  function dragstarted(event) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+  
+  function dragged(event) {
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+  
+  function dragended(event) {
+    if (!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+  
+  return d3.drag()
+    .on('start', dragstarted)
+    .on('drag', dragged)
+    .on('end', dragended);
+}
+
+/**
+ * Show tooltip on hover
+ */
+function showTooltip(event, d, tooltip) {
+  const ownershipLabels = {
+    owned: '🟢 You Own This Topic',
+    contested: '🟡 Contested Space',
+    blackHole: '🔴 Information Black Hole',
+    opportunity: '🔵 Untapped Opportunity'
+  };
+  
+  tooltip.innerHTML = `
+    <h5>${d.label}</h5>
+    <div class="metric">
+      <span>Status:</span>
+      <span class="metric-value">${ownershipLabels[d.ownership]}</span>
+    </div>
+    <div class="metric">
+      <span>Your Coverage:</span>
+      <span class="metric-value">${(d.yourCoverage * 100).toFixed(0)}%</span>
+    </div>
+    <div class="metric">
+      <span>Competitor Coverage:</span>
+      <span class="metric-value">${(d.competitorCoverage * 100).toFixed(0)}%</span>
+    </div>
+    <div class="metric">
+      <span>Search Volume:</span>
+      <span class="metric-value">${d.searchVolume.toLocaleString()}/mo</span>
+    </div>
+    ${d.isBlackHole ? '<div style="color: #ef4444; margin-top: 8px; font-weight: 600;">⚠️ Priority: Fill this content gap!</div>' : ''}
+  `;
+  
+  // Position tooltip
+  const containerRect = event.target.closest('.semantic-galaxy-container').getBoundingClientRect();
+  const x = event.clientX - containerRect.left + 15;
+  const y = event.clientY - containerRect.top - 10;
+  
+  tooltip.style.left = `${Math.min(x, containerRect.width - 260)}px`;
+  tooltip.style.top = `${y}px`;
+  tooltip.classList.add('visible');
+}
+
+/**
+ * Hide tooltip
+ */
+function hideTooltip(tooltip) {
+  tooltip.classList.remove('visible');
+}
+
+/**
+ * Focus on entity and its connections
+ */
+function focusEntity(d, nodes, link, simulation) {
+  // Reset all
+  d3.selectAll('.entity-node').classed('focused', false);
+  d3.selectAll('.entity-link').classed('highlighted', false);
+  
+  // Highlight clicked node
+  d3.selectAll('.entity-node')
+    .filter(n => n.id === d.id)
+    .classed('focused', true);
+  
+  // Highlight connected links
+  link
+    .classed('highlighted', l => l.source.id === d.id || l.target.id === d.id);
+  
+  console.log('🎯 Focused entity:', d.label);
+}
+
+/**
+ * Create legend element
+ */
+function createGalaxyLegend() {
+  const legend = document.createElement('div');
+  legend.className = 'galaxy-legend';
+  legend.innerHTML = `
+    <h4>Topic Ownership</h4>
+    <div class="legend-item">
+      <span class="legend-dot owned"></span>
+      <span>You Own (70%+ coverage)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot contested"></span>
+      <span>Contested (active competition)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot black-hole"></span>
+      <span>Black Hole (competitor dominates)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot opportunity"></span>
+      <span>Opportunity (low competition)</span>
+    </div>
+  `;
+  return legend;
+}
+
+/**
+ * Create controls element
+ */
+function createGalaxyControls() {
+  const controls = document.createElement('div');
+  controls.className = 'galaxy-controls';
+  controls.innerHTML = `
+    <button class="galaxy-btn" onclick="zoomGalaxy(1.5)" title="Zoom In">➕</button>
+    <button class="galaxy-btn" onclick="zoomGalaxy(0.67)" title="Zoom Out">➖</button>
+    <button class="galaxy-btn" onclick="resetGalaxyZoom()" title="Reset">🔄</button>
+    <button class="galaxy-btn" onclick="exportGalaxy('svg')" title="Export SVG">💾</button>
+    <button class="galaxy-btn" onclick="exportGalaxy('png')" title="Export PNG">🖼️</button>
+  `;
+  return controls;
+}
+
+/**
+ * Create black hole alert element
+ */
+function createBlackHoleAlert(blackHoles) {
+  const alert = document.createElement('div');
+  alert.className = 'black-hole-alert';
+  alert.id = 'black-hole-alert';
+  
+  if (blackHoles.length > 0) {
+    alert.innerHTML = `
+      <h5>⚠️ ${blackHoles.length} Information Black Holes Detected</h5>
+      <p>These topics have high competitor coverage but you're nearly absent. Priority targets for content creation:</p>
+      <div class="black-hole-list">
+        ${blackHoles.slice(0, 5).map(bh => `<span class="black-hole-tag">${bh.name || bh.label || bh}</span>`).join('')}
+        ${blackHoles.length > 5 ? `<span class="black-hole-tag">+${blackHoles.length - 5} more</span>` : ''}
+      </div>
+    `;
+  }
+  
+  return alert;
+}
+
+/**
+ * Zoom controls
+ */
+window.zoomGalaxy = function(factor) {
+  const container = document.querySelector('.semantic-galaxy-container');
+  if (!container?._galaxyState) return;
+  
+  const { svg, zoom } = container._galaxyState;
+  svg.transition().duration(300).call(zoom.scaleBy, factor);
+};
+
+window.resetGalaxyZoom = function() {
+  const container = document.querySelector('.semantic-galaxy-container');
+  if (!container?._galaxyState) return;
+  
+  const { svg, zoom } = container._galaxyState;
+  svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+};
+
+/**
+ * Export galaxy visualization
+ */
+window.exportGalaxy = function(format) {
+  const container = document.querySelector('.semantic-galaxy-container');
+  if (!container?._galaxyState) return;
+  
+  const { svg } = container._galaxyState;
+  
+  if (format === 'svg') {
+    exportGalaxyAsSVG(svg);
+  } else if (format === 'png') {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    exportGalaxyAsPNG(svg, width, height);
+  }
+};
+
+/**
+ * Export as SVG
+ */
+function exportGalaxyAsSVG(svg) {
+  const svgData = svg.node().outerHTML;
+  const blob = new Blob([svgData], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `semantic-galaxy-${new Date().toISOString().slice(0, 10)}.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  window.showToast?.('📥 Galaxy exported as SVG');
+}
+
+/**
+ * Export as PNG
+ */
+function exportGalaxyAsPNG(svg, width, height) {
+  const svgData = svg.node().outerHTML;
+  const canvas = document.createElement('canvas');
+  canvas.width = width * 2; // 2x for retina
+  canvas.height = height * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  
+  const img = new Image();
+  img.onload = function() {
+    // Draw dark background
+    ctx.fillStyle = '#0f0f23';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0);
+    
+    canvas.toBlob(function(blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `semantic-galaxy-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+  
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  
+  window.showToast?.('📥 Galaxy exported as PNG');
+}
+
+/**
+ * Detect black holes from semantic data
+ * @param {Array} entities - Entity list with coverage metrics
+ * @param {number} volumeThreshold - Minimum search volume
+ * @returns {Array} Black hole entities
+ */
+window.detectBlackHoles = function(entities, volumeThreshold = 1000) {
+  return entities.filter(entity => 
+    (entity.competitor_coverage || 0) > 0.7 &&
+    (entity.your_coverage || entity.coverage || 0) < 0.2 &&
+    (entity.search_volume || entity.volume || 0) > volumeThreshold
+  );
+};
+
+/**
+ * Generate mock data for testing
+ */
+window.generateMockGalaxyData = function() {
+  const topics = [
+    'SEO Strategy', 'Content Marketing', 'Link Building', 'Technical SEO',
+    'Keyword Research', 'On-Page SEO', 'Local SEO', 'E-commerce SEO',
+    'Voice Search', 'Core Web Vitals', 'Schema Markup', 'Site Architecture',
+    'Mobile SEO', 'International SEO', 'Video SEO', 'Image Optimization',
+    'Page Speed', 'HTTPS', 'XML Sitemap', 'Robots.txt'
+  ];
+  
+  const entities = topics.map((topic, i) => ({
+    id: `topic-${i}`,
+    name: topic,
+    your_coverage: Math.random(),
+    competitor_coverage: Math.random(),
+    search_volume: Math.floor(Math.random() * 10000) + 500,
+    cluster: ['strategy', 'technical', 'content', 'local'][i % 4]
+  }));
+  
+  const relationships = [];
+  for (let i = 0; i < entities.length; i++) {
+    const numLinks = Math.floor(Math.random() * 3) + 1;
+    for (let j = 0; j < numLinks; j++) {
+      const target = Math.floor(Math.random() * entities.length);
+      if (target !== i) {
+        relationships.push({
+          source: entities[i].id,
+          target: entities[target].id,
+          type: ['related', 'semantic', 'parent'][j % 3],
+          strength: Math.random()
+        });
+      }
+    }
+  }
+  
+  return {
+    entities,
+    relationships,
+    blackHoles: entities.filter(e => e.competitor_coverage > 0.7 && e.your_coverage < 0.2)
+  };
+};
+
+console.log('✅ UI_Semantic_Galaxy.html V7.1 loaded');
+</script>

@@ -1,0 +1,186 @@
+<!--
+  UI_Cross_Browser_Validation.html
+  CROSS-BROWSER VALIDATION UTILITY v1.0
+  
+  Verify D3.js, glassmorphism, CSS features across:
+  Chrome, Firefox, Safari, Edge
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 40: CROSS-BROWSER VALIDATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CrossBrowserValidation = {
+  
+  /**
+   * Run full browser compatibility check
+   */
+  runValidation() {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('CROSS-BROWSER VALIDATION — Feature Detection');
+    console.log('═══════════════════════════════════════════════════════════\n');
+    
+    const browser = this.detectBrowser();
+    console.log(`🌐 Detected Browser: ${browser.name} ${browser.version}\n`);
+    
+    const results = { passed: 0, failed: 0, unsupported: [] };
+    
+    // Check CSS features
+    this.checkCSSFeatures(results);
+    
+    // Check JS APIs
+    this.checkJSAPIs(results);
+    
+    // Check D3.js compatibility
+    this.checkD3Compatibility(results);
+    
+    // Check glassmorphism support
+    this.checkGlassmorphism(results);
+    
+    console.log('\n═══════════════════════════════════════════════════════════');
+    console.log(`RESULTS: ${results.passed} PASSED | ${results.failed} UNSUPPORTED`);
+    console.log('═══════════════════════════════════════════════════════════');
+    
+    if (results.unsupported.length > 0) {
+      console.log('\n⚠️ UNSUPPORTED FEATURES (may need fallback):');
+      results.unsupported.forEach(f => console.log(`  - ${f}`));
+    }
+    
+    return results;
+  },
+  
+  /**
+   * Detect browser name and version
+   */
+  detectBrowser() {
+    const ua = navigator.userAgent;
+    
+    if (ua.includes('Edg/')) {
+      return { name: 'Edge', version: ua.match(/Edg\/(\d+)/)?.[1] || 'unknown' };
+    }
+    if (ua.includes('Chrome/')) {
+      return { name: 'Chrome', version: ua.match(/Chrome\/(\d+)/)?.[1] || 'unknown' };
+    }
+    if (ua.includes('Firefox/')) {
+      return { name: 'Firefox', version: ua.match(/Firefox\/(\d+)/)?.[1] || 'unknown' };
+    }
+    if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+      return { name: 'Safari', version: ua.match(/Version\/(\d+)/)?.[1] || 'unknown' };
+    }
+    
+    return { name: 'Unknown', version: 'unknown' };
+  },
+  
+  /**
+   * Check CSS feature support
+   */
+  checkCSSFeatures(results) {
+    console.log('🎨 CSS FEATURE SUPPORT:');
+    
+    const features = [
+      { name: 'CSS Grid', test: () => CSS.supports('display', 'grid') },
+      { name: 'CSS Custom Properties', test: () => CSS.supports('--test', '1') },
+      { name: 'backdrop-filter', test: () => CSS.supports('backdrop-filter', 'blur(10px)') },
+      { name: '-webkit-backdrop-filter', test: () => CSS.supports('-webkit-backdrop-filter', 'blur(10px)') },
+      { name: 'gap (grid)', test: () => CSS.supports('gap', '1rem') },
+      { name: 'clamp()', test: () => CSS.supports('width', 'clamp(1px, 50%, 100px)') }
+    ];
+    
+    features.forEach(feature => {
+      const supported = feature.test();
+      const status = supported ? '✅' : '⚠️';
+      console.log(`  ${status} ${feature.name}: ${supported ? 'Supported' : 'Not supported'}`);
+      
+      if (supported) {
+        results.passed++;
+      } else {
+        results.failed++;
+        results.unsupported.push(feature.name);
+      }
+    });
+  },
+  
+  /**
+   * Check JavaScript API support
+   */
+  checkJSAPIs(results) {
+    console.log('\n⚙️ JAVASCRIPT API SUPPORT:');
+    
+    const apis = [
+      { name: 'IntersectionObserver', test: () => 'IntersectionObserver' in window },
+      { name: 'ResizeObserver', test: () => 'ResizeObserver' in window },
+      { name: 'Clipboard API', test: () => navigator.clipboard !== undefined },
+      { name: 'WeakMap', test: () => typeof WeakMap !== 'undefined' },
+      { name: 'requestAnimationFrame', test: () => 'requestAnimationFrame' in window }
+    ];
+    
+    apis.forEach(api => {
+      const supported = api.test();
+      const status = supported ? '✅' : '❌';
+      console.log(`  ${status} ${api.name}: ${supported ? 'Available' : 'Missing'}`);
+      
+      if (supported) {
+        results.passed++;
+      } else {
+        results.failed++;
+        results.unsupported.push(api.name);
+      }
+    });
+  },
+  
+  /**
+   * Check D3.js compatibility
+   */
+  checkD3Compatibility(results) {
+    console.log('\n📊 D3.JS COMPATIBILITY:');
+    
+    if (typeof d3 === 'undefined') {
+      console.log('  ⏭️ D3 not loaded yet');
+      return;
+    }
+    
+    const checks = [
+      { name: 'D3 Version', test: () => d3.version, value: true },
+      { name: 'D3 Selection', test: () => typeof d3.select === 'function' },
+      { name: 'D3 Force', test: () => typeof d3.forceSimulation === 'function' },
+      { name: 'D3 Zoom', test: () => typeof d3.zoom === 'function' }
+    ];
+    
+    checks.forEach(check => {
+      const supported = check.value ? check.test() : check.test();
+      const status = supported ? '✅' : '❌';
+      const display = check.value ? supported : (supported ? 'Available' : 'Missing');
+      console.log(`  ${status} ${check.name}: ${display}`);
+      
+      if (supported) results.passed++;
+      else results.failed++;
+    });
+  },
+  
+  /**
+   * Check glassmorphism support (Aurora theme)
+   */
+  checkGlassmorphism(results) {
+    console.log('\n✨ GLASSMORPHISM SUPPORT (Aurora Theme):');
+    
+    const backdrop = CSS.supports('backdrop-filter', 'blur(10px)') ||
+                     CSS.supports('-webkit-backdrop-filter', 'blur(10px)');
+    
+    const status = backdrop ? '✅' : '⚠️';
+    console.log(`  ${status} Backdrop blur: ${backdrop ? 'Full support' : 'Fallback needed'}`);
+    
+    if (!backdrop) {
+      console.log('  💡 Fallback: Use solid bg with opacity for Aurora theme');
+      results.unsupported.push('Glassmorphism (use solid bg fallback)');
+    }
+    
+    backdrop ? results.passed++ : results.failed++;
+  }
+};
+
+// Expose globally
+if (typeof window !== 'undefined') {
+  window.CrossBrowserValidation = CrossBrowserValidation;
+  console.log('💡 Run CrossBrowserValidation.runValidation() to check compatibility');
+}
+</script>

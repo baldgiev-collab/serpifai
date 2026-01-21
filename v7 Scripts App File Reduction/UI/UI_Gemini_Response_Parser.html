@@ -1,0 +1,163 @@
+<!--
+  UI_Gemini_Response_Parser.html
+  GEMINI RESPONSE PARSER v1.0
+  
+  Extract calculated metrics from Gemini JSON response
+  Target: citeabilityScore, janitorRatio, moatValuation
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 31: GEMINI RESPONSE PARSER FOR HERO METRICS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const GeminiResponseParser = {
+  
+  /**
+   * Parse full Gemini response and extract hero metrics
+   */
+  parse(response) {
+    if (!response) return this.getDefaults();
+    
+    // Handle string vs object
+    const data = typeof response === 'string' ? this.tryParseJSON(response) : response;
+    
+    return {
+      citeability: this.extractCiteability(data),
+      janitorRatio: this.extractJanitorRatio(data),
+      moatValuation: this.extractMoatValuation(data),
+      dashboardCharts: this.extractChartData(data),
+      competitors: this.extractCompetitors(data),
+      rawText: data.rawText || data.content || ''
+    };
+  },
+  
+  /**
+   * Extract Cite-ability Coefficient (0-1)
+   */
+  extractCiteability(data) {
+    // Direct field
+    if (data.citeabilityScore !== undefined) return data.citeabilityScore;
+    if (data.citeability !== undefined) return data.citeability;
+    
+    // Nested in dashboardCharts
+    if (data.dashboardCharts?.citeabilityScore !== undefined) {
+      return data.dashboardCharts.citeabilityScore;
+    }
+    
+    // Nested in metrics
+    if (data.metrics?.citeability !== undefined) {
+      return data.metrics.citeability;
+    }
+    
+    // Search in analysis sections
+    if (data.sections) {
+      for (const section of Object.values(data.sections)) {
+        if (section.citeabilityScore !== undefined) return section.citeabilityScore;
+      }
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Extract Janitor Ratio (0-100%)
+   */
+  extractJanitorRatio(data) {
+    if (data.janitorRatio !== undefined) return data.janitorRatio;
+    if (data.contentCleanupRatio !== undefined) return data.contentCleanupRatio;
+    
+    if (data.dashboardCharts?.janitorRatio !== undefined) {
+      return data.dashboardCharts.janitorRatio;
+    }
+    
+    if (data.metrics?.janitorRatio !== undefined) {
+      return data.metrics.janitorRatio;
+    }
+    
+    // Calculate from stale content if available
+    if (data.staleContent && data.totalContent) {
+      return Math.round((data.staleContent / data.totalContent) * 100);
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Extract Moat-Adjusted Valuation ($)
+   */
+  extractMoatValuation(data) {
+    if (data.moatValuation !== undefined) return data.moatValuation;
+    if (data.moatAdjustedValuation !== undefined) return data.moatAdjustedValuation;
+    if (data.assetValuation !== undefined) return data.assetValuation;
+    
+    if (data.dashboardCharts?.moatValuation !== undefined) {
+      return data.dashboardCharts.moatValuation;
+    }
+    
+    if (data.metrics?.moatValuation !== undefined) {
+      return data.metrics.moatValuation;
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Extract chart data array
+   */
+  extractChartData(data) {
+    if (Array.isArray(data.dashboardCharts)) return data.dashboardCharts;
+    if (Array.isArray(data.charts)) return data.charts;
+    if (Array.isArray(data.visualizations)) return data.visualizations;
+    
+    // Check for chart object with data arrays
+    if (data.dashboardCharts && typeof data.dashboardCharts === 'object') {
+      return data.dashboardCharts;
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Extract competitor data
+   */
+  extractCompetitors(data) {
+    if (Array.isArray(data.competitors)) return data.competitors;
+    if (Array.isArray(data.competitorAnalysis)) return data.competitorAnalysis;
+    
+    if (data.sections?.competitiveWarfare?.competitors) {
+      return data.sections.competitiveWarfare.competitors;
+    }
+    
+    return [];
+  },
+  
+  /**
+   * Safe JSON parse
+   */
+  tryParseJSON(str) {
+    try {
+      return JSON.parse(str);
+    } catch {
+      return { rawText: str };
+    }
+  },
+  
+  /**
+   * Default values when parsing fails
+   */
+  getDefaults() {
+    return {
+      citeability: null,
+      janitorRatio: null,
+      moatValuation: null,
+      dashboardCharts: null,
+      competitors: [],
+      rawText: ''
+    };
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.GeminiResponseParser = GeminiResponseParser;
+}
+</script>

@@ -103,11 +103,36 @@
             window.competitorIntelligenceData = null;
             
             // Build proper data structure for renderCompetitorIntelligence
+            // V34 FIX: Surface executiveBrief and killMoves to top level for UI access
+            const analysis = res.competitorAnalysis.analysis || res.competitorAnalysis.geminiAnalysis || {};
+            const geminiAnalysis = res.competitorAnalysis.geminiAnalysis || res.competitorAnalysis.analysis || {};
+            
+            // V34: Surface executiveBrief from multiple possible locations
+            const surfacedBrief = res.competitorAnalysis.executiveBrief ||
+                                  analysis.executiveBrief ||
+                                  geminiAnalysis.executiveBrief ||
+                                  null;
+            
+            // V34: Surface killMoves from multiple possible locations
+            const surfacedKillMoves = res.competitorAnalysis.killMoves ||
+                                      analysis.killMoves ||
+                                      geminiAnalysis.killMoves ||
+                                      [];
+            
+            if (surfacedBrief) {
+              console.log('   ✅ V34: Surfaced executiveBrief - keys:', Object.keys(surfacedBrief).join(', '));
+            } else {
+              console.log('   ⚠️ V34: No executiveBrief found to surface');
+            }
+            
             const competitorData = {
               success: true,
               competitors: res.competitorAnalysis.competitors,
-              analysis: res.competitorAnalysis.analysis || res.competitorAnalysis.geminiAnalysis || {},
-              geminiAnalysis: res.competitorAnalysis.geminiAnalysis || res.competitorAnalysis.analysis || {},
+              analysis: analysis,
+              geminiAnalysis: geminiAnalysis,
+              // V34 FIX: Surface to top level for UI_Strategic_Display.html
+              executiveBrief: surfacedBrief,
+              killMoves: surfacedKillMoves,
               eliteTabIntelligence: res.competitorAnalysis.eliteTabIntelligence || null,
               overview: res.competitorAnalysis.overview || null,
               yourDomain: res.competitorAnalysis.yourDomain || '',
@@ -131,6 +156,126 @@
                 window.renderCompetitorIntelligence(competitorData);
               }
             }
+          }
+          
+          // =========================================================================
+          // V7.9 ELITE STATE HYDRATION: Auto-fetch & render saved workflow stages
+          // Uses CHUNKED hydration to avoid HTTP 400 (50KB limit)
+          // V7.9 FIX: Skip if a stage is actively running
+          // =========================================================================
+          window.hydrateWorkflowStages = function(projectId) {
+            console.log('💎 STATE HYDRATION: Checking saved workflow stages for', projectId);
+            
+            // V7.9 FIX: Skip hydration if a stage is actively running
+            if (window.stageRunningState?.isRunning) {
+              const runningFor = Date.now() - (window.stageRunningState?.startedAt || Date.now());
+              console.log('⏳ Stage ' + window.stageRunningState?.stageNum + ' is running (' + Math.round(runningFor/1000) + 's) - skipping auto-hydration');
+              console.log('   Hydration will occur when stage completes.');
+              return;
+            }
+            
+            // Use chunked hydration to avoid HTTP 400
+            if (typeof window.hydrateStage1FromDatabase === 'function') {
+              console.log('   Using V7.9 chunked hydration...');
+              window.hydrateStage1FromDatabase(projectId);
+            } else {
+              // Fallback: Try to load Stage 1 from MySQL (may cause HTTP 400 for large data)
+              console.warn('⚠️ Chunked hydration not available, using legacy method');
+              google.script.run
+                .withSuccessHandler(function(stageResult) {
+                  if (stageResult && stageResult.success) {
+                    console.log('💎 Stage 1 hydrated from MySQL!');
+                    console.log('   📊 JSON keys:', stageResult.json ? Object.keys(stageResult.json).join(', ') : 'none');
+                    console.log('   📄 Report length:', stageResult.report?.length || 0);
+                    console.log('   ⏱️ Timestamp:', stageResult.timestamp);
+                    
+                    // Hide placeholder, show container
+                    const placeholder = document.getElementById('stage1-placeholder');
+                    const container = document.getElementById('stage1-unified-container');
+                    if (placeholder) placeholder.style.display = 'none';
+                    if (container) {
+                      container.style.display = 'block';
+                      container.classList.add('hydrated-from-sql');
+                    }
+                    
+                    // Update timestamp display
+                    const stage1Timestamp = document.getElementById('stage1-timestamp');
+                    if (stage1Timestamp && stageResult.timestamp) {
+                      const date = new Date(stageResult.timestamp);
+                      stage1Timestamp.textContent = 'Completed ' + date.toLocaleString();
+                    }
+                    
+                    // Render with fadeIn animation
+                    if (typeof window.renderUnifiedStage1Results === 'function') {
+                      console.log('   🎨 Rendering Stage 1 with fadeInUp animation...');
+                      window.renderUnifiedStage1Results(stageResult.report, stageResult.json);
+                    } else if (typeof window.displayStageResults === 'function') {
+                      window.displayStageResults(1, stageResult);
+                    }
+                    
+                    // Update stage status and unlock Stage 2
+                    window.updateStageStatus?.(1, 'completed');
+                    window.updateStageLock?.(2, false);
+                    
+                    // Store in ORACLE_STATE for tab injection
+                    window.ORACLE_STATE = window.ORACLE_STATE || {};
+                    window.ORACLE_STATE.stage1_results = stageResult;
+                    window.ORACLE_STATE.projectId = projectId;
+                    
+                    window.showToast?.('💎 Strategy restored from archive');
+                  } else {
+                    console.log('⚠️ No saved Stage 1 results for', projectId);
+                  }
+                })
+                .withFailureHandler(function(error) {
+                  console.warn('⚠️ Stage hydration failed:', error);
+                })
+                .loadWorkflowStageResults(projectId, 1);
+            }
+          };
+          
+          // Legacy support: Check if workflowStage1 is in project response
+          if (res.workflowStage1 && res.workflowStage1.success) {
+            console.log('🎯 Found saved Stage 1 results in project response!');
+            
+            // Update timestamp display
+            const stage1Timestamp = document.getElementById('stage1-timestamp');
+            if (stage1Timestamp) {
+              const date = new Date(res.workflowStage1.timestamp);
+              stage1Timestamp.textContent = 'Completed ' + date.toLocaleString();
+            }
+            
+            // Display the results using existing renderer
+            if (typeof window.displayStageResults === 'function') {
+              console.log('   ✅ Restoring Stage 1 UI...');
+              window.displayStageResults(1, res.workflowStage1);
+              
+              // Update stage status indicator
+              window.updateStageStatus?.(1, 'completed');
+              
+              // Unlock Stage 2 since Stage 1 is complete
+              window.updateStageLock?.(2, false);
+              console.log('   🔓 Stage 2 unlocked based on saved Stage 1 completion');
+            }
+            
+            // Check workflow status for additional stages
+            if (res.workflowStatus && res.workflowStatus.stages) {
+              const stages = res.workflowStatus.stages;
+              for (let i = 2; i <= 5; i++) {
+                if (stages[i] && stages[i].completed) {
+                  console.log('   ✅ Stage ' + i + ' was previously completed');
+                  window.updateStageStatus?.(i, 'completed');
+                  // Unlock next stage
+                  if (i < 5) {
+                    window.updateStageLock?.(i + 1, false);
+                  }
+                }
+              }
+            }
+          } else {
+            // V7.2: If not in response, try async hydration from MySQL
+            console.log('📡 Stage 1 not in response - attempting MySQL hydration...');
+            setTimeout(() => window.hydrateWorkflowStages?.(name), 500);
           }
         } else {
           console.warn('⚠️ Project data is empty');
@@ -312,72 +457,15 @@
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // WORKFLOW STAGE EXECUTION
+  // WORKFLOW STAGE EXECUTION - V7.6 FIX
+  // NOTE: The actual runStage implementation is in UI_Stage_Runner.html
+  // This file previously had a duplicate that caused HTTP 400 errors by
+  // passing full competitor data (~5MB) instead of minimal payload (~100 bytes)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /**
-   * Run a workflow stage
-   * @param {number} stageNum - Stage number (1-5)
-   * @param {HTMLElement} buttonEl - The button element that triggered this
-   */
-  window.runStage = function(stageNum, buttonEl) {
-    console.log('▶️ Running stage:', stageNum);
-
-    // Disable button and show loading
-    if (buttonEl) {
-      buttonEl.disabled = true;
-      buttonEl.innerHTML = '<span class="spinner"></span> Running...';
-    }
-
-    // Collect form data for context
-    const formData = window.collectFormData();
-
-    // Get selected Gemini model
-    const geminiModelSelect = document.getElementById('geminiModelSelect');
-    const selectedModel = geminiModelSelect ? geminiModelSelect.value : 'gemini-pro';
-
-    google.script.run
-      .withSuccessHandler(function(result) {
-        console.log('✅ Stage', stageNum, 'completed');
-        
-        // Re-enable button
-        if (buttonEl) {
-          buttonEl.disabled = false;
-          buttonEl.innerHTML = '▶ Run Stage ' + stageNum;
-        }
-
-        // Display results
-        window.displayStageResults(stageNum, result);
-        
-        // Update stage status
-        window.updateStageStatus(stageNum, 'completed');
-        
-        // Show stage in sidebar
-        window.showStageInSidebar(stageNum);
-        
-        // Show success toast
-        window.showToast('Stage ' + stageNum + ' completed successfully', 'success');
-        
-        // Trigger auto-save
-        window.debounceAutoSave();
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Stage', stageNum, 'failed:', error);
-        
-        // Re-enable button
-        if (buttonEl) {
-          buttonEl.disabled = false;
-          buttonEl.innerHTML = '▶ Run Stage ' + stageNum;
-        }
-
-        // Update stage status
-        window.updateStageStatus(stageNum, 'error');
-        
-        // Show error toast
-        window.showToast('Stage ' + stageNum + ' failed: ' + error, 'error');
-      })
-      .runWorkflowStage(stageNum, formData, selectedModel);
-  };
+  // V7.6: REMOVED - The runStage function is now ONLY defined in UI_Stage_Runner.html
+  // Do NOT define window.runStage here - it uses ultraMinimalPayload correctly
+  // See: UI/UI_Stage_Runner.html line 24 for the correct implementation
 
   /**
    * Display stage results in the results panel
@@ -557,15 +645,36 @@
       });
     });
 
-    // Stage panel buttons
+    // Stage panel accordion toggle
     document.querySelectorAll('.stage-panel').forEach(function(panel) {
-      panel.addEventListener('click', function() {
-        const stageNum = panel.dataset.stage;
-        if (stageNum) {
-          // Expand stage details or switch to stage tab
-          console.log('Stage panel clicked:', stageNum);
-        }
-      });
+      const header = panel.querySelector('.stage-header');
+      if (header) {
+        header.addEventListener('click', function(e) {
+          // Prevent toggle if clicking buttons inside header
+          if (e.target.closest('button') || e.target.closest('.btn-run-stage')) {
+            return;
+          }
+          e.stopPropagation();
+          
+          const stageNum = panel.dataset.stage;
+          console.log('Stage panel toggled:', stageNum);
+          
+          // Toggle this panel's open state
+          panel.classList.toggle('open');
+          
+          // Ensure body is visible when open
+          const body = panel.querySelector('.stage-body');
+          if (body) {
+            if (panel.classList.contains('open')) {
+              body.style.maxHeight = 'none';
+              body.style.overflow = 'visible';
+            } else {
+              body.style.maxHeight = '0';
+              body.style.overflow = 'hidden';
+            }
+          }
+        });
+      }
     });
 
     // Run Stage buttons
@@ -656,9 +765,116 @@
     console.log('✅ Navigation handlers wired');
   };
 
+  /**
+   * Toggle a specific stage panel open/closed
+   * @param {number} stageNumber - Stage to toggle (1-5)
+   */
+  window.toggleStage = function(stageNumber) {
+    const panel = document.querySelector('.stage-panel[data-stage="' + stageNumber + '"]');
+    if (!panel) return;
+    
+    panel.classList.toggle('open');
+    const body = panel.querySelector('.stage-body');
+    if (body) {
+      if (panel.classList.contains('open')) {
+        body.style.maxHeight = 'none';
+        body.style.overflow = 'visible';
+      } else {
+        body.style.maxHeight = '0';
+        body.style.overflow = 'hidden';
+      }
+    }
+  };
+
+  /**
+   * Update stage lock status based on workflow_log
+   * @param {number} stageNumber - Stage number
+   * @param {boolean} isLocked - Whether stage is locked
+   */
+  window.updateStageLock = function(stageNumber, isLocked) {
+    const panel = document.querySelector('.stage-panel[data-stage="' + stageNumber + '"]');
+    if (!panel) {
+      console.warn('Stage panel not found for stage:', stageNumber);
+      return;
+    }
+    
+    // Toggle locked class on panel
+    if (isLocked) {
+      panel.classList.add('locked');
+    } else {
+      panel.classList.remove('locked');
+    }
+    
+    const lockIcon = panel.querySelector('.stage-lock-icon');
+    if (lockIcon) {
+      lockIcon.style.display = isLocked ? 'inline-block' : 'none';
+    }
+    
+    // Disable/enable run button
+    const runBtn = panel.querySelector('.btn-run-stage');
+    if (runBtn) {
+      runBtn.disabled = isLocked;
+      runBtn.style.opacity = isLocked ? '0.5' : '1';
+      if (!isLocked) {
+        runBtn.removeAttribute('disabled');
+      }
+    }
+    
+    console.log(`Stage ${stageNumber} lock status: ${isLocked ? '🔒 LOCKED' : '🔓 UNLOCKED'}`);
+  };
+
+  /**
+   * Get stage completion percentage
+   * @param {number} stageNumber - Stage number
+   * @returns {number} - Percentage complete (0-100)
+   */
+  window.getStageProgress = function(stageNumber) {
+    const panel = document.querySelector('.stage-panel[data-stage="' + stageNumber + '"]');
+    if (!panel) return 0;
+    
+    const inputs = panel.querySelectorAll('input, textarea, select');
+    let filled = 0;
+    let total = 0;
+    
+    inputs.forEach(function(input) {
+      total++;
+      if (input.value && input.value.trim() !== '') {
+        filled++;
+      }
+    });
+    
+    return total > 0 ? Math.round((filled / total) * 100) : 0;
+  };
+
+  /**
+   * Update stage progress badge
+   * @param {number} stageNumber - Stage number
+   */
+  window.updateStageProgressBadge = function(stageNumber) {
+    const panel = document.querySelector('.stage-panel[data-stage="' + stageNumber + '"]');
+    if (!panel) return;
+    
+    const progress = window.getStageProgress(stageNumber);
+    let badge = panel.querySelector('.stage-progress-badge');
+    
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'stage-progress-badge';
+      badge.style.cssText = 'margin-left: 8px; padding: 2px 8px; background: #3b82f6; color: white; border-radius: 12px; font-size: 11px; font-weight: 600;';
+      const header = panel.querySelector('.stage-header h3, .stage-header .stage-title');
+      if (header) {
+        header.appendChild(badge);
+      }
+    }
+    
+    badge.textContent = progress + '%';
+    badge.style.background = progress === 100 ? '#10b981' : progress > 50 ? '#f59e0b' : '#3b82f6';
+  };
+
   console.log('✅ UI_Navigation_Project_Handlers.html loaded');
   console.log('   Exposed: refreshProjectList, loadProject, doSaveProject');
   console.log('   Exposed: doNewProject, doRenameProject, doDeleteProject');
   console.log('   Exposed: runStage, displayStageResults, updateStageStatus');
   console.log('   Exposed: loadGeminiModels, saveGeminiModel, initNavigationHandlers');
+  console.log('   Exposed: toggleStage, updateStageLock, getStageProgress, updateStageProgressBadge');
 </script>

@@ -1,0 +1,461 @@
+<script>
+// V45 - RESTORED FULL CONVERSION TAB
+console.log('[V45] UI_Tab_Conversion_V45.html LOADING...');
+window._v45_conversion_loaded = true;
+
+// ===========================================================================
+// CONVERSION & MONETIZATION TAB - Elite v9.0
+// ===========================================================================
+function populateConversionDataTab(data) {
+  console.log('📊 Populating Conversion Tab (Elite v9.0 - FUNNEL FORENSICS)...');
+
+  try {
+    var metricsDiv = document.getElementById('comp-conversion-metrics');
+
+    if (!metricsDiv) {
+      var panel = document.querySelector('[data-comp-panel="conversion"]') ||
+        document.getElementById('panel-conversionData');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside conversion panel');
+        metricsDiv = document.createElement('div'); 
+        metricsDiv.id = 'comp-conversion-metrics'; 
+        metricsDiv.className = 'comp-metrics-grid'; 
+        metricsDiv.style.width = '100%';
+        panel.insertBefore(metricsDiv, panel.firstChild);
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Conversion tab containers not found');
+      return;
+    }
+
+    var competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // Extract conversion metrics
+    var conversionData = competitors.map(function(comp) {
+      var metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { content: {} };
+      var synth = comp.synthesized || {};
+      var website = synth.website || {};
+      var schemaTypes = website.schemaTypes || (metrics.content && metrics.content.schemaTypes) || [];
+      var fullText = JSON.stringify(synth).toLowerCase();
+      var title = (metrics.content && metrics.content.title) || '';
+
+      // CTA and conversion signal detection
+      var ctaSignals = ['sign up', 'get started', 'try free', 'start now', 'buy now', 'request demo', 'book a call', 'download', 'subscribe', 'contact us'];
+      var pricingSignals = ['pricing', 'price', 'cost', 'plan', 'subscription', 'per month', '/mo', 'annually'];
+      var formSignals = ['contact', 'demo', 'quote', 'form', 'submit', 'email', 'newsletter'];
+
+      var ctaCount = ctaSignals.filter(function(s) { return fullText.includes(s); }).length;
+      var pricingCount = pricingSignals.filter(function(s) { return fullText.includes(s); }).length;
+      var formCount = formSignals.filter(function(s) { return fullText.includes(s); }).length;
+
+      // Revenue model detection
+      var revenueModel = 'Unknown';
+      var hasProduct = schemaTypes.indexOf('Product') >= 0 || fullText.includes('product');
+      var hasService = schemaTypes.indexOf('Service') >= 0 || fullText.includes('service');
+      var hasSaaS = fullText.includes('saas') || fullText.includes('software') || fullText.includes('platform');
+      var hasEcommerce = schemaTypes.indexOf('Product') >= 0 && pricingCount >= 2;
+
+      if (hasEcommerce) revenueModel = 'E-commerce';
+      else if (hasSaaS && pricingCount >= 1) revenueModel = 'SaaS';
+      else if (formCount >= 2) revenueModel = 'Lead Gen';
+      else if (hasService) revenueModel = 'Services';
+      else if (hasProduct) revenueModel = 'Product';
+      else revenueModel = 'Hybrid';
+
+      // Funnel score
+      var funnelScore = 20;
+      if (ctaCount >= 3) funnelScore += 25;
+      else if (ctaCount >= 1) funnelScore += 15;
+      if (pricingCount >= 2) funnelScore += 20;
+      else if (pricingCount >= 1) funnelScore += 10;
+      if (formCount >= 2) funnelScore += 15;
+      if (schemaTypes.indexOf('Product') >= 0 || schemaTypes.indexOf('Offer') >= 0) funnelScore += 10;
+      if (metrics.content && metrics.content.internalLinks >= 10) funnelScore += 10;
+      funnelScore = Math.min(100, funnelScore);
+
+      // Landing page persuasion
+      var landingPersuasion = 25;
+      var persuasionWords = ['best', 'trusted', 'proven', 'guaranteed', 'free', 'exclusive', 'limited', 'fast', 'easy'];
+      var persuasionCount = persuasionWords.filter(function(w) { return fullText.includes(w); }).length;
+      landingPersuasion += persuasionCount * 8;
+      if (title.length > 20 && title.length < 70) landingPersuasion += 10;
+      if (metrics.content && metrics.content.wordCount >= 1000) landingPersuasion += 15;
+      landingPersuasion = Math.min(100, landingPersuasion);
+
+      // Pricing psychology score
+      var pricingPsych = pricingCount >= 2 ? 60 : (pricingCount >= 1 ? 45 : 25);
+      if (fullText.includes('save') || fullText.includes('discount')) pricingPsych += 15;
+      if (fullText.includes('money back') || fullText.includes('guarantee')) pricingPsych += 10;
+      if (fullText.includes('annual') || fullText.includes('yearly')) pricingPsych += 10;
+      pricingPsych = Math.min(100, pricingPsych);
+
+      var hasRealData = ctaCount > 0 || pricingCount > 0 || formCount > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        funnelScore: funnelScore,
+        landingPersuasion: landingPersuasion,
+        pricingPsych: pricingPsych,
+        revenueModel: revenueModel,
+        ctaCount: ctaCount,
+        pricingCount: pricingCount,
+        formCount: formCount,
+        wordCount: metrics.content ? metrics.content.wordCount : 0,
+        schemaCount: schemaTypes.length,
+        dataSource: hasRealData ? 'PHP Fetcher' : 'Pending'
+      };
+    });
+
+    // Calculate stats
+    var modelCounts = {};
+    conversionData.forEach(function(c) {
+      modelCounts[c.revenueModel] = (modelCounts[c.revenueModel] || 0) + 1;
+    });
+    var sortedModels = Object.entries(modelCounts).sort(function(a, b) { return b[1] - a[1]; });
+    var dominantModel = sortedModels.length > 0 ? sortedModels[0][0] : 'Unknown';
+    var avgFunnel = Math.round(conversionData.reduce(function(a, b) { return a + b.funnelScore; }, 0) / conversionData.length);
+    var avgPersuasion = Math.round(conversionData.reduce(function(a, b) { return a + b.landingPersuasion; }, 0) / conversionData.length);
+    var totalCTAs = conversionData.reduce(function(a, b) { return a + b.ctaCount; }, 0);
+
+    // Executive config
+    var convExecConfig = {
+      title: 'Conversion & Revenue Executive Brief',
+      icon: '💰',
+      executiveSummary: 'Conversion analysis reveals average funnel score of ' + avgFunnel + '/100 and landing page persuasion of ' + avgPersuasion + '%. ' + totalCTAs + ' CTAs detected across ' + competitors.length + ' competitors. Dominant revenue model: ' + dominantModel + '.',
+      ceoInsight: 'Revenue optimization ' + (avgFunnel >= 70 ? 'is mature - focus on incremental improvements' : avgFunnel >= 50 ? 'shows moderate efficiency - targeted funnel optimization needed' : 'requires significant investment in conversion infrastructure') + '. Expected revenue impact: ' + (avgFunnel >= 70 ? '+5-10%' : '+15-30%') + '.',
+      cmoInsight: 'Landing page persuasion at ' + avgPersuasion + '% indicates ' + (avgPersuasion >= 70 ? 'strong messaging - A/B test for further gains' : avgPersuasion >= 50 ? 'opportunity for persuasive copy and social proof' : 'critical need for value proposition refinement') + '.',
+      ctoInsight: 'CTA implementation: ' + totalCTAs + ' detected. Recommend ' + (totalCTAs < competitors.length * 2 ? 'increasing strategic CTA placement' : 'A/B testing CTA variations for optimal conversion') + '.',
+      strategicImperative: 'Build systematic conversion optimization with ' + (avgFunnel < 60 ? 'funnel analysis and CRO program' : 'micro-conversion tracking and predictive analytics') + '.',
+      investmentPriority: avgFunnel < 50 ? 'Critical' : avgFunnel < 70 ? 'High' : 'Medium',
+      timelineToImpact: '1-3 months',
+      riskLevel: avgFunnel < 50 ? 'High' : 'Medium',
+      marketOpportunity: avgPersuasion < 60 ? 'Large' : 'Moderate',
+      roiProjection: avgFunnel < 60 ? '+25% CVR' : '+10% CVR',
+      competitiveThreats: [
+        'Competitors averaging ' + avgFunnel + '% funnel optimization',
+        dominantModel + ' revenue model is industry standard',
+        'Pricing psychology increasingly sophisticated',
+        'Multi-touch attribution changing conversion landscape'
+      ],
+      actionItems: [
+        'Audit and optimize CTA placement',
+        'A/B test landing page variations',
+        'Implement pricing psychology tactics',
+        'Add social proof and trust signals',
+        'Create multi-step conversion funnels',
+        'Track micro-conversions throughout funnel'
+      ],
+      kpis: ['Conversion Rate', 'CTA Click Rate', 'Landing Page CVR', 'Cart Abandonment', 'Trial-to-Paid', 'Revenue Per Visitor'],
+      dataProofs: ['PHP Fetcher', 'CTA Detection', 'Schema.org Analysis', 'Pricing Analysis']
+    };
+
+    // Build HTML
+    var html = '';
+    
+    // Executive Brief
+    if (typeof renderExecutiveGeminiInsight === 'function') {
+      html += renderExecutiveGeminiInsight(convExecConfig);
+    }
+    
+    html += '<h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">💰 Conversion & Monetization Analysis</h3>';
+    
+    // Header
+    html += '<div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">';
+    html += '<p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: PHP Fetcher CTA Detection, Schema.org Analysis</p>';
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg Funnel Score</div><div style="font-size: 24px; font-weight: 700;">' + avgFunnel + '/100</div></div>';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg Persuasion</div><div style="font-size: 24px; font-weight: 700;">' + avgPersuasion + '%</div></div>';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">Total CTAs Detected</div><div style="font-size: 24px; font-weight: 700;">' + totalCTAs + '</div></div>';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">Dominant Model</div><div style="font-size: 24px; font-weight: 700;">' + dominantModel + '</div></div>';
+    html += '</div></div>';
+    
+    // Table
+    html += '<div style="overflow-x: auto;"><table class="comp-table" style="margin-bottom: 30px;"><thead><tr>';
+    html += '<th>Competitor</th><th>Funnel Score</th><th>Landing Persuasion</th><th>Pricing Psychology</th><th>CTAs Detected</th><th>Revenue Model</th><th>Data Source</th>';
+    html += '</tr></thead><tbody>';
+    
+    conversionData.forEach(function(conv) {
+      html += '<tr>';
+      html += '<td><strong>' + conv.domain + '</strong></td>';
+      html += '<td><div style="display: flex; align-items: center; gap: 8px;">';
+      html += '<div style="width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">';
+      html += '<div style="width: ' + conv.funnelScore + '%; height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706);"></div></div>';
+      html += '<span style="font-size: 12px; font-weight: 600;">' + conv.funnelScore + '</span></div></td>';
+      html += '<td><span class="metric-badge ' + (conv.landingPersuasion > 70 ? 'badge-high' : 'badge-medium') + '">' + conv.landingPersuasion + '%</span></td>';
+      html += '<td><span style="color: ' + (conv.pricingPsych > 60 ? '#22c55e' : '#f59e0b') + '; font-weight: 600;">' + conv.pricingPsych + '%</span></td>';
+      html += '<td style="text-align: center; font-weight: 700;">' + conv.ctaCount + '</td>';
+      html += '<td><span style="background: #667eea20; color: #667eea; padding: 4px 10px; border-radius: 4px; font-size: 12px;">' + conv.revenueModel + '</span></td>';
+      html += '<td style="text-align: center;">' + (typeof getDataSourceBadge === 'function' ? getDataSourceBadge(conv.dataSource) : conv.dataSource) + '</td>';
+      html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    
+    // Charts
+    html += '<div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; width: 100%;">';
+    html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">';
+    html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">🎯 Funnel Architecture Comparison</h3>';
+    html += '<div style="height: 240px; width: 100%;"><canvas id="chart-conversion-funnel" style="width: 100% !important;"></canvas></div></div>';
+    html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">';
+    html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">📊 Revenue Model Distribution</h3>';
+    html += '<div style="height: 240px; width: 100%;"><canvas id="chart-conversion-models" style="width: 100% !important;"></canvas></div></div></div>';
+    
+    // Insights
+    var sorted = conversionData.slice().sort(function(a, b) { return b.funnelScore - a.funnelScore; });
+    var leader = sorted[0];
+    html += '<div style="background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #f59e0b;">';
+    html += '<h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #92400e;">💡 Conversion Intelligence Insights</h5>';
+    html += '<ul style="margin: 0; padding-left: 20px;">';
+    html += '<li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;"><strong>Conversion Leader:</strong> ' + (leader ? leader.domain : 'N/A') + ' with funnel score ' + (leader ? leader.funnelScore : 0) + '/100 (' + (leader ? leader.ctaCount : 0) + ' CTAs detected, ' + (leader ? leader.revenueModel : 'Unknown') + ' model)</li>';
+    html += '<li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;"><strong>Market Analysis:</strong> ' + dominantModel + ' is the dominant revenue model. ' + Object.keys(modelCounts).length + ' different models detected across competitors.</li>';
+    html += '<li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;"><strong>Opportunity:</strong> ' + (avgFunnel >= 70 ? 'Highly optimized funnels in market - focus on differentiation.' : 'Room for improvement with stronger CTAs and value propositions.') + '</li>';
+    html += '</ul></div>';
+    
+    // Raw Data Table
+    if (typeof renderRawDataComparisonTable === 'function') {
+      html += '<h4 style="margin: 30px 0 20px; font-size: 20px; font-weight: 800; color: #202124;">💰 Raw Conversion Data (Ahrefs/SEMrush Level)</h4>';
+      var convLeader = conversionData.reduce(function(best, c) { return c.funnelScore > (best ? best.funnelScore : 0) ? c : best; }, null);
+      var geminiConvInsight = convLeader ? convLeader.domain + ' leads conversion with ' + convLeader.funnelScore + '/100 funnel score and ' + convLeader.ctaCount + ' CTAs. Strong CTA density (3-5 per page) with clear value propositions increases conversion by 25%.' : 'Analyze CTA patterns to optimize conversion funnels.';
+      html += renderRawDataComparisonTable({
+        title: 'CTA & Funnel Analysis',
+        icon: '💰',
+        description: 'Call-to-action patterns, funnel scores, and conversion elements',
+        competitors: competitors,
+        geminiInsight: geminiConvInsight,
+        dataExtractor: function(c, idx) {
+          var conv = conversionData[idx] || {};
+          return {
+            funnelScore: conv.funnelScore || 0,
+            ctaCount: conv.ctaCount || 0,
+            formCount: conv.formCount || 0,
+            landingPersuasion: conv.landingPersuasion || 0,
+            pricingPsych: conv.pricingPsych || 0,
+            revenueModel: conv.revenueModel || 'Unknown'
+          };
+        },
+        fields: [
+          { key: 'funnelScore', label: 'Funnel Score', icon: '📊', type: 'score', compareMode: 'highest' },
+          { key: 'ctaCount', label: 'CTAs Detected', icon: '🎯', type: 'number', compareMode: 'highest' },
+          { key: 'formCount', label: 'Forms', icon: '📝', type: 'number' },
+          { key: 'landingPersuasion', label: 'Persuasion Score', icon: '💬', type: 'score', compareMode: 'highest' },
+          { key: 'pricingPsych', label: 'Pricing Psychology', icon: '💰', type: 'score', compareMode: 'highest' },
+          { key: 'revenueModel', label: 'Revenue Model', icon: '🏷️', type: 'text' }
+        ]
+      });
+    }
+    
+    // Pricing raw data table
+    if (typeof renderRawDataComparisonTable === 'function') {
+      html += renderRawDataComparisonTable({
+        title: 'Pricing & Revenue Signals',
+        icon: '🏷️',
+        description: 'Pricing page elements and monetization signals detected',
+        competitors: competitors,
+        geminiInsight: 'Clear pricing with annual discount options and money-back guarantees increase conversion. Tiered pricing (3 options) is optimal for decision-making.',
+        dataExtractor: function(c, idx) {
+          var conv = conversionData[idx] || {};
+          var synth = c.synthesized || {};
+          var fullText = JSON.stringify(synth).toLowerCase();
+          return {
+            pricingElements: conv.pricingCount || 0,
+            hasPricingPage: fullText.indexOf('pricing') >= 0 || fullText.indexOf('/pricing') >= 0,
+            hasAnnualOption: fullText.indexOf('annual') >= 0 || fullText.indexOf('yearly') >= 0,
+            hasGuarantee: fullText.indexOf('guarantee') >= 0 || fullText.indexOf('money back') >= 0,
+            hasDiscount: fullText.indexOf('discount') >= 0 || fullText.indexOf('save') >= 0,
+            hasFreeTrial: fullText.indexOf('free trial') >= 0 || fullText.indexOf('try free') >= 0
+          };
+        },
+        fields: [
+          { key: 'pricingElements', label: 'Pricing Elements', icon: '🔢', type: 'number', compareMode: 'highest' },
+          { key: 'hasPricingPage', label: 'Pricing Page', icon: '💰', type: 'boolean' },
+          { key: 'hasAnnualOption', label: 'Annual Option', icon: '📅', type: 'boolean' },
+          { key: 'hasGuarantee', label: 'Guarantee', icon: '🛡️', type: 'boolean' },
+          { key: 'hasDiscount', label: 'Discount Signals', icon: '💸', type: 'boolean' },
+          { key: 'hasFreeTrial', label: 'Free Trial', icon: '🆓', type: 'boolean' }
+        ]
+      });
+    }
+    
+    // 1% Strategy Panel
+    if (typeof renderOnePercentStrategyPanel === 'function') {
+      var gemini = data.geminiAnalysis || data.analysis || {};
+      var paaQuestions = gemini.paaQuestions || gemini.peopleAlsoAsk || [];
+      var convKeywords = gemini.keywords || gemini.targetKeywords || [];
+      var brandEntity = {
+        name: data.projectName || data.domain || 'Your Brand',
+        url: data.url || data.domain || '',
+        id: '#organization'
+      };
+      html += renderOnePercentStrategyPanel({
+        paaQuestions: paaQuestions,
+        keywords: convKeywords,
+        brandEntity: brandEntity,
+        competitors: competitors,
+        tabName: 'conversion'
+      });
+    }
+
+    metricsDiv.innerHTML = html;
+    
+    // Render charts
+    setTimeout(function() {
+      if (typeof renderConversionCharts === 'function') {
+        renderConversionCharts(conversionData);
+      }
+    }, 300);
+
+    console.log('✅ Conversion Tab populated successfully (V45)');
+
+  } catch (error) {
+    console.error('❌ CONVERSION TAB ERROR:', error);
+    var errorDiv = document.getElementById('comp-conversion-metrics') || document.querySelector('[data-comp-panel="conversion"]');
+    if (errorDiv) {
+      errorDiv.innerHTML = '<div style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; padding: 24px; margin: 16px;"><h4 style="color: #991b1b; margin: 0 0 12px;">⚠️ Conversion Tab Error</h4><p style="color: #7f1d1d; font-size: 14px; margin: 0 0 12px;">' + (error.message || error) + '</p></div>';
+    }
+  }
+}
+
+// ===========================================================================
+// DISTRIBUTION TAB
+// ===========================================================================
+function populateDistributionDataTab(data) {
+  console.log('📡 Populating Distribution Tab (Elite v9.0)...');
+
+  var metricsDiv = document.getElementById('comp-distribution-metrics');
+
+  if (!metricsDiv) {
+    var panel = document.querySelector('[data-comp-panel="distribution"]') || document.getElementById('panel-distributionData');
+    if (panel) {
+      metricsDiv = document.createElement('div');
+      metricsDiv.id = 'comp-distribution-metrics';
+      metricsDiv.className = 'comp-metrics-grid';
+      metricsDiv.style.width = '100%';
+      panel.insertBefore(metricsDiv, panel.firstChild);
+    }
+  }
+
+  if (!metricsDiv) {
+    console.warn('⚠️ Distribution tab containers not found');
+    return;
+  }
+
+  var competitors = data.competitors || [];
+
+  if (competitors.length === 0) {
+    metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+    return;
+  }
+
+  // Extract distribution metrics
+  var distData = competitors.map(function(comp) {
+    var metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { authority: {}, content: {} };
+    var stages = comp.stages || {};
+    var opr = (stages.openPageRank && stages.openPageRank.data) || (comp.apiData && comp.apiData.openPageRank) || {};
+    var serper = (comp.apiData && comp.apiData.serper) || (stages.serper && stages.serper.data) || {};
+    var synth = comp.synthesized || {};
+    var content = synth.content || {};
+
+    var pageRankDecimal = opr.page_rank_decimal || (metrics.authority && metrics.authority.pageRank) || 0;
+    var globalRank = opr.rank || (metrics.authority && metrics.authority.rank) || 0;
+    var domainAuthority = pageRankDecimal > 0 ? Math.min(100, Math.round(pageRankDecimal * 10)) : ((metrics.authority && metrics.authority.domainAuthority) || 0);
+    var externalLinks = (content.externalLinks && content.externalLinks.length) || (metrics.content && metrics.content.externalLinks) || 0;
+    var internalLinks = (content.internalLinks && content.internalLinks.length) || (metrics.content && metrics.content.internalLinks) || 0;
+    var serpResults = (serper.organic || []).length;
+    var serpVisibility = Math.min(100, serpResults * 10);
+
+    return {
+      domain: comp.domain || comp.url,
+      pageRank: pageRankDecimal,
+      globalRank: globalRank,
+      domainAuthority: domainAuthority,
+      externalLinks: externalLinks,
+      internalLinks: internalLinks,
+      serpVisibility: serpVisibility,
+      serpResults: serpResults,
+      dataSource: pageRankDecimal > 0 ? 'OpenPageRank API' : (serpResults > 0 ? 'Serper API' : 'Pending')
+    };
+  });
+
+  var avgPageRank = (distData.reduce(function(a, b) { return a + b.pageRank; }, 0) / distData.length).toFixed(1);
+  var avgDA = Math.round(distData.reduce(function(a, b) { return a + b.domainAuthority; }, 0) / distData.length);
+  var totalSerp = distData.reduce(function(a, b) { return a + b.serpResults; }, 0);
+  var totalExtLinks = distData.reduce(function(a, b) { return a + b.externalLinks; }, 0);
+
+  var html = '';
+  html += '<h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">📡 Distribution & Visibility Analysis</h3>';
+  
+  // Header
+  html += '<div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">';
+  html += '<p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: OpenPageRank API, Serper API, PHP Fetcher Links</p>';
+  html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg PageRank</div><div style="font-size: 24px; font-weight: 700;">' + avgPageRank + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg Domain Authority</div><div style="font-size: 24px; font-weight: 700;">' + avgDA + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Total SERP Results</div><div style="font-size: 24px; font-weight: 700;">' + totalSerp + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Total External Links</div><div style="font-size: 24px; font-weight: 700;">' + totalExtLinks + '</div></div>';
+  html += '</div></div>';
+  
+  // Table
+  html += '<div style="overflow-x: auto;"><table class="comp-table" style="margin-bottom: 30px;"><thead><tr>';
+  html += '<th>Competitor</th><th>PageRank</th><th>Domain Auth.</th><th>Global Rank</th><th>SERP Results</th><th>External Links</th><th>SERP Visibility</th><th>Data Source</th>';
+  html += '</tr></thead><tbody>';
+  
+  distData.forEach(function(dist) {
+    html += '<tr>';
+    html += '<td><strong>' + dist.domain + '</strong></td>';
+    html += '<td><span style="font-weight: 700; color: ' + (dist.pageRank >= 5 ? '#22c55e' : dist.pageRank >= 3 ? '#3b82f6' : '#f59e0b') + ';">' + (dist.pageRank > 0 ? dist.pageRank.toFixed(1) : 'N/A') + '</span></td>';
+    html += '<td><span class="metric-badge ' + (dist.domainAuthority > 50 ? 'badge-high' : 'badge-medium') + '">' + dist.domainAuthority + '</span></td>';
+    html += '<td>' + (dist.globalRank > 0 ? '#' + dist.globalRank.toLocaleString() : 'N/A') + '</td>';
+    html += '<td style="text-align: center;">' + (dist.serpResults > 0 ? '<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px;">' + dist.serpResults + '</span>' : '<span style="color: #9ca3af;">0</span>') + '</td>';
+    html += '<td style="text-align: center;">' + dist.externalLinks + '</td>';
+    html += '<td><div style="display: flex; align-items: center; gap: 8px;"><div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;"><div style="width: ' + dist.serpVisibility + '%; height: 100%; background: #8b5cf6;"></div></div><span style="font-size: 11px;">' + dist.serpVisibility + '%</span></div></td>';
+    html += '<td style="text-align: center;">' + (typeof getDataSourceBadge === 'function' ? getDataSourceBadge(dist.dataSource) : dist.dataSource) + '</td>';
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table></div>';
+  
+  // Charts
+  html += '<div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">';
+  html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">';
+  html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">📊 PageRank Comparison (OpenPageRank)</h3>';
+  html += '<div style="height: 240px;"><canvas id="chart-distribution-backlinks"></canvas></div></div>';
+  html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">';
+  html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">🎯 Visibility Radar</h3>';
+  html += '<div style="height: 240px;"><canvas id="chart-distribution-radar"></canvas></div></div></div>';
+  
+  // Insights
+  var sortedDist = distData.slice().sort(function(a, b) { return b.pageRank - a.pageRank; });
+  var distLeader = sortedDist[0];
+  html += '<div style="background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #8b5cf6;">';
+  html += '<h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #5b21b6;">🎯 Distribution Strategy Insights</h5>';
+  html += '<ul style="margin: 0; padding-left: 20px;">';
+  html += '<li style="margin-bottom: 8px; color: #4c1d95;"><strong>Authority Leader:</strong> ' + (distLeader ? distLeader.domain : 'N/A') + ' with PageRank ' + (distLeader && distLeader.pageRank > 0 ? distLeader.pageRank.toFixed(1) : 'N/A') + '</li>';
+  html += '<li style="margin-bottom: 8px; color: #4c1d95;"><strong>Industry Average:</strong> PageRank ' + avgPageRank + '. ' + (parseFloat(avgPageRank) >= 5 ? 'High authority landscape.' : parseFloat(avgPageRank) >= 3 ? 'Moderate authority - opportunity exists.' : 'Lower authority - quick wins possible.') + '</li>';
+  html += '<li style="margin-bottom: 8px; color: #4c1d95;"><strong>SERP Presence:</strong> ' + totalSerp + ' indexed results. ' + (totalSerp >= 50 ? 'Strong presence.' : totalSerp >= 20 ? 'Moderate coverage.' : 'Content expansion recommended.') + '</li>';
+  html += '</ul></div>';
+
+  metricsDiv.innerHTML = html;
+
+  setTimeout(function() {
+    if (typeof renderDistributionCharts === 'function') {
+      renderDistributionCharts(distData);
+    }
+  }, 300);
+
+  console.log('✅ Distribution Tab populated successfully (V45)');
+}
+
+// Window exports
+window.populateConversionDataTab = populateConversionDataTab;
+window.populateDistributionDataTab = populateDistributionDataTab;
+
+console.log('[V45] EXPORTS COMPLETE');
+console.log('[V45] populateConversionDataTab:', typeof window.populateConversionDataTab);
+</script>

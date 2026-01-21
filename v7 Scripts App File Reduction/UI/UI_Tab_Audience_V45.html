@@ -1,0 +1,409 @@
+<script>
+// V45 - RESTORED FULL AUDIENCE & GEO/AEO TABS
+console.log('[V45] UI_Tab_Audience_V45.html LOADING...');
+window._v45_audience_loaded = true;
+
+// ===========================================================================
+// AUDIENCE & PSYCHOLOGICAL INTELLIGENCE TAB - Elite v9.0
+// ===========================================================================
+function populateAudienceIntelligenceTab(data) {
+  console.log('👥 Populating Audience Tab (Elite v9.0 - BEHAVIORAL ARCHETYPES)...');
+
+  try {
+    var metricsDiv = document.getElementById('comp-audience-metrics');
+
+    if (!metricsDiv) {
+      var panel = document.querySelector('[data-comp-panel="audience"]') ||
+        document.getElementById('panel-audienceIntelligence');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside audience panel');
+        metricsDiv = document.createElement('div');
+        metricsDiv.id = 'comp-audience-metrics';
+        metricsDiv.className = 'comp-metrics-grid';
+        metricsDiv.style.width = '100%';
+        panel.insertBefore(metricsDiv, panel.firstChild);
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Audience tab containers not found');
+      return;
+    }
+
+    var competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // Extract REAL audience metrics from PHP Fetcher data
+    var audienceMetrics = competitors.map(function(comp) {
+      var metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { content: {} };
+      var synth = comp.synthesized || {};
+      var content = synth.content || {};
+      var title = (metrics.content && metrics.content.title) || '';
+      var meta = synth.metaDescription || content.metaDescription || '';
+      var fullText = (title + ' ' + meta + ' ' + JSON.stringify(synth)).toLowerCase();
+
+      // REAL audience detection from content analysis
+      var b2bSignals = ['enterprise', 'business', 'team', 'organization', 'company', 'corporate', 'b2b', 'saas', 'platform'];
+      var b2cSignals = ['personal', 'individual', 'user', 'home', 'family', 'b2c', 'consumer', 'you', 'your'];
+      var technicalSignals = ['api', 'developer', 'code', 'technical', 'integration', 'sdk', 'documentation'];
+      var marketingSignals = ['seo', 'marketing', 'growth', 'campaign', 'traffic', 'conversion', 'leads'];
+
+      var b2bScore = b2bSignals.filter(function(s) { return fullText.includes(s); }).length;
+      var b2cScore = b2cSignals.filter(function(s) { return fullText.includes(s); }).length;
+      var techScore = technicalSignals.filter(function(s) { return fullText.includes(s); }).length;
+      var marketingScore = marketingSignals.filter(function(s) { return fullText.includes(s); }).length;
+
+      // Determine target audience from REAL signals
+      var targetAudience = 'Mixed';
+      if (b2bScore > b2cScore + 1) targetAudience = 'B2B Enterprise';
+      else if (b2cScore > b2bScore + 1) targetAudience = 'B2C Consumer';
+      else if (techScore > 2) targetAudience = 'Technical Users';
+      else if (marketingScore > 2) targetAudience = 'Marketing Professionals';
+
+      // Calculate persona depth from REAL content signals
+      var personaDepth = 20;
+      var wordCount = (metrics.content && metrics.content.wordCount) || 0;
+      if (wordCount >= 2000) personaDepth += 20;
+      else if (wordCount >= 1000) personaDepth += 10;
+      if (content.headings && content.headings.length >= 5) personaDepth += 15;
+      if (metrics.content && metrics.content.schemaTypes && metrics.content.schemaTypes.length >= 2) personaDepth += 15;
+      if (title.length > 30 && title.length < 70) personaDepth += 10;
+      if (meta.length > 100) personaDepth += 10;
+      personaDepth = Math.min(100, personaDepth);
+
+      // Calculate content quality score as JTBD match proxy
+      var jtbdMatch = 30;
+      if (metrics.content && metrics.content.internalLinks >= 10) jtbdMatch += 15;
+      if (metrics.content && metrics.content.schemaTypes && metrics.content.schemaTypes.length >= 1) jtbdMatch += 15;
+      if (metrics.technical && metrics.technical.seo >= 80) jtbdMatch += 20;
+      if (wordCount >= 1500) jtbdMatch += 20;
+      jtbdMatch = Math.min(100, jtbdMatch);
+
+      // Emotional signals detection
+      var emotionalWords = ['best', 'amazing', 'powerful', 'easy', 'fast', 'free', 'trusted', 'proven', 'top'];
+      var emotionalCount = emotionalWords.filter(function(w) { return fullText.includes(w); }).length;
+      var emotionalResonance = Math.min(100, 30 + (emotionalCount * 10) + (marketingScore * 5));
+
+      var hasRealData = wordCount > 0 || title.length > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        targetAudience: targetAudience,
+        personaDepth: personaDepth,
+        jtbdMatch: jtbdMatch,
+        emotionalResonance: emotionalResonance,
+        wordCount: wordCount,
+        b2bScore: b2bScore,
+        b2cScore: b2cScore,
+        techScore: techScore,
+        marketingScore: marketingScore,
+        dataSource: hasRealData ? 'PHP Fetcher' : 'Pending'
+      };
+    });
+
+    // Detect personas from REAL data
+    var personaCounts = {
+      'Technical Users': audienceMetrics.filter(function(a) { return a.techScore >= 2; }).length,
+      'Marketing Professionals': audienceMetrics.filter(function(a) { return a.marketingScore >= 2; }).length,
+      'B2B Enterprise': audienceMetrics.filter(function(a) { return a.b2bScore >= 2; }).length,
+      'B2C Consumer': audienceMetrics.filter(function(a) { return a.b2cScore >= 2; }).length
+    };
+
+    // Calculate averages
+    var avgPersonaDepth = Math.round(audienceMetrics.reduce(function(a, b) { return a + b.personaDepth; }, 0) / audienceMetrics.length);
+    var avgJTBD = Math.round(audienceMetrics.reduce(function(a, b) { return a + b.jtbdMatch; }, 0) / audienceMetrics.length);
+    var avgEmotional = Math.round(audienceMetrics.reduce(function(a, b) { return a + b.emotionalResonance; }, 0) / audienceMetrics.length);
+    var avgWordCount = Math.round(audienceMetrics.reduce(function(a, b) { return a + b.wordCount; }, 0) / audienceMetrics.length);
+
+    // Build HTML
+    var html = '';
+    html += '<h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">👥 Audience & Psychological Intelligence</h3>';
+    
+    // Header
+    html += '<div style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">';
+    html += '<p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: PHP Fetcher Content Analysis, Meta/Title Analysis</p>';
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg Persona Depth</div><div style="font-size: 24px; font-weight: 700;">' + avgPersonaDepth + '/100</div></div>';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">JTBD Match Avg</div><div style="font-size: 24px; font-weight: 700;">' + avgJTBD + '%</div></div>';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">Emotional Resonance</div><div style="font-size: 24px; font-weight: 700;">' + avgEmotional + '%</div></div>';
+    html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg Word Count</div><div style="font-size: 24px; font-weight: 700;">' + avgWordCount.toLocaleString() + '</div></div>';
+    html += '</div></div>';
+    
+    // Table
+    html += '<div style="overflow-x: auto;"><table class="comp-table" style="margin-bottom: 30px;"><thead><tr>';
+    html += '<th>Competitor</th><th>Target Audience</th><th>Persona Depth</th><th>JTBD Match</th><th>Emotional Index</th><th>Word Count</th><th>Data Source</th>';
+    html += '</tr></thead><tbody>';
+    
+    audienceMetrics.forEach(function(aud) {
+      html += '<tr>';
+      html += '<td><strong>' + aud.domain + '</strong></td>';
+      html += '<td><span style="background: #ec489920; color: #db2777; padding: 4px 10px; border-radius: 4px; font-size: 12px;">' + aud.targetAudience + '</span></td>';
+      html += '<td><div style="display: flex; align-items: center; gap: 8px;"><div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;"><div style="width: ' + aud.personaDepth + '%; height: 100%; background: #ec4899;"></div></div><span style="font-size: 11px;">' + aud.personaDepth + '</span></div></td>';
+      html += '<td><span class="metric-badge ' + (aud.jtbdMatch > 70 ? 'badge-high' : 'badge-medium') + '">' + aud.jtbdMatch + '%</span></td>';
+      html += '<td><span style="color: ' + (aud.emotionalResonance > 70 ? '#22c55e' : '#f59e0b') + '; font-weight: 600;">' + aud.emotionalResonance + '</span></td>';
+      html += '<td>' + (aud.wordCount > 0 ? aud.wordCount.toLocaleString() : 'N/A') + '</td>';
+      html += '<td style="text-align: center;">' + (typeof getDataSourceBadge === 'function' ? getDataSourceBadge(aud.dataSource) : aud.dataSource) + '</td>';
+      html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    
+    // Charts
+    html += '<div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">';
+    html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">';
+    html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">💭 Emotional Trigger Analysis</h3>';
+    html += '<div style="height: 240px; width: 100%;"><canvas id="chart-audience-emotional" style="width: 100% !important;"></canvas></div></div>';
+    html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">';
+    html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">🎯 JTBD Coverage</h3>';
+    html += '<div style="height: 240px; width: 100%;"><canvas id="chart-audience-jtbd" style="width: 100% !important;"></canvas></div></div></div>';
+    
+    // Persona Cards
+    var personaIcons = ['👤', '📈', '💻', '🛒'];
+    var personaColors1 = ['#ec4899', '#8b5cf6', '#0ea5e9', '#22c55e'];
+    var personaColors2 = ['#db2777', '#7c3aed', '#0284c7', '#16a34a'];
+    html += '<h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700;">🎭 Detected Persona Archetypes</h4>';
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">';
+    var personaEntries = Object.entries(personaCounts);
+    for (var i = 0; i < personaEntries.length; i++) {
+      var persona = personaEntries[i][0];
+      var count = personaEntries[i][1];
+      var prevalence = audienceMetrics.length > 0 ? Math.round((count / audienceMetrics.length) * 100) : 0;
+      html += '<div style="background: linear-gradient(135deg, ' + personaColors1[i] + ' 0%, ' + personaColors2[i] + ' 100%); color: white; padding: 20px; border-radius: 12px;">';
+      html += '<div style="font-size: 24px; margin-bottom: 8px;">' + personaIcons[i] + '</div>';
+      html += '<div style="font-size: 14px; font-weight: 700;">' + persona + '</div>';
+      html += '<div style="font-size: 12px; opacity: 0.85; margin-top: 4px;">Detected: ' + count + '/' + audienceMetrics.length + ' (' + prevalence + '%)</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    
+    // Insights
+    var sorted = audienceMetrics.slice().sort(function(a, b) { return b.personaDepth - a.personaDepth; });
+    var leader = sorted[0];
+    var dominantAudience = personaEntries.sort(function(a, b) { return b[1] - a[1]; })[0];
+    html += '<div style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #ec4899;">';
+    html += '<h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #9d174d;">💡 Audience Intelligence Insights</h5>';
+    html += '<ul style="margin: 0; padding-left: 20px;">';
+    html += '<li style="margin-bottom: 8px; color: #831843; line-height: 1.5;"><strong>Content Leader:</strong> ' + (leader ? leader.domain : 'N/A') + ' with persona depth of ' + (leader ? leader.personaDepth : 0) + '/100</li>';
+    html += '<li style="margin-bottom: 8px; color: #831843; line-height: 1.5;"><strong>Primary Audience:</strong> ' + (dominantAudience ? dominantAudience[0] + ' (' + dominantAudience[1] + ' competitors target this)' : 'Mixed audiences') + '</li>';
+    html += '<li style="margin-bottom: 8px; color: #831843; line-height: 1.5;"><strong>Content Strategy:</strong> ' + (avgPersonaDepth >= 70 ? 'High persona understanding - differentiate with unique angles.' : avgPersonaDepth >= 50 ? 'Moderate persona targeting - opportunity to deepen understanding.' : 'Low persona depth - significant opportunity for audience-focused content.') + '</li>';
+    html += '</ul></div>';
+
+    metricsDiv.innerHTML = html;
+    
+    setTimeout(function() {
+      if (typeof renderAudienceCharts === 'function') {
+        renderAudienceCharts(audienceMetrics);
+      }
+    }, 300);
+
+    console.log('✅ Audience Tab populated successfully (V45)');
+
+  } catch (error) {
+    console.error('❌ AUDIENCE TAB ERROR:', error);
+    var errorDiv = document.getElementById('comp-audience-metrics') || document.querySelector('[data-comp-panel="audience"]');
+    if (errorDiv) {
+      errorDiv.innerHTML = '<div style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; padding: 24px; margin: 16px;"><h4 style="color: #991b1b; margin: 0 0 12px;">⚠️ Audience Tab Error</h4><p style="color: #7f1d1d; font-size: 14px; margin: 0;">' + (error.message || error) + '</p></div>';
+    }
+  }
+}
+
+// ===========================================================================
+// GEO + AEO INTELLIGENCE TAB - Elite v2.0
+// ===========================================================================
+function populateGeoAeoIntelligenceTab(data) {
+  console.log('🤖 Populating GEO/AEO Tab (Elite v2.0 - REAL DATA)...');
+
+  var metricsDiv = document.getElementById('comp-geo-metrics') || document.getElementById('comp-geo-aeo-metrics');
+
+  if (!metricsDiv) {
+    var panel = document.querySelector('[data-comp-panel="geo"]') || document.getElementById('panel-geoAeoIntelligence');
+    if (panel) {
+      metricsDiv = document.createElement('div');
+      metricsDiv.id = 'comp-geo-metrics';
+      metricsDiv.className = 'comp-metrics-grid';
+      metricsDiv.style.width = '100%';
+      panel.insertBefore(metricsDiv, panel.firstChild);
+    }
+  }
+
+  if (!metricsDiv) {
+    console.warn('⚠️ GEO/AEO tab containers not found');
+    return;
+  }
+
+  var competitors = data.competitors || [];
+
+  if (competitors.length === 0) {
+    metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+    return;
+  }
+
+  var allPAAQuestions = [];
+
+  // Extract REAL GEO/AEO metrics
+  var geoData = competitors.map(function(comp) {
+    var metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { content: {}, authority: {} };
+    var synth = comp.synthesized || {};
+    var website = synth.website || {};
+    var serper = (comp.apiData && comp.apiData.serper) || (comp.stages && comp.stages.serper && comp.stages.serper.data) || {};
+
+    var schemaTypes = website.schemaTypes || [];
+    var schemaCount = schemaTypes.length;
+    var paaQuestions = serper.peopleAlsoAsk || [];
+    allPAAQuestions = allPAAQuestions.concat(paaQuestions.slice(0, 3));
+
+    // Calculate AI readiness based on REAL signals
+    var aiReadinessScore = 20;
+    if (schemaTypes.indexOf('FAQPage') >= 0) aiReadinessScore += 20;
+    if (schemaTypes.indexOf('HowTo') >= 0) aiReadinessScore += 15;
+    if (schemaTypes.indexOf('Article') >= 0 || schemaTypes.indexOf('BlogPosting') >= 0) aiReadinessScore += 10;
+    if (schemaTypes.indexOf('Organization') >= 0 || schemaTypes.indexOf('LocalBusiness') >= 0) aiReadinessScore += 10;
+    if (schemaTypes.indexOf('Product') >= 0 || schemaTypes.indexOf('Review') >= 0) aiReadinessScore += 10;
+    if (schemaCount >= 3) aiReadinessScore += 15;
+    if ((metrics.content && metrics.content.wordCount) >= 2000) aiReadinessScore += 10;
+    if (paaQuestions.length > 0) aiReadinessScore += 10;
+    aiReadinessScore = Math.min(100, aiReadinessScore);
+
+    var answerAuthority = Math.min(100, schemaCount * 15 + (paaQuestions.length * 10) + ((metrics.authority && metrics.authority.pageRank) || 0) * 5);
+    var factualIntegrity = schemaCount >= 2 ? Math.min(100, 60 + schemaCount * 10) : 40;
+
+    var hasRealData = schemaCount > 0 || paaQuestions.length > 0;
+
+    return {
+      domain: comp.domain || comp.url,
+      schemaTypes: schemaTypes,
+      schemaCount: schemaCount,
+      paaCount: paaQuestions.length,
+      paaQuestions: paaQuestions,
+      aiReadinessScore: aiReadinessScore,
+      answerAuthority: answerAuthority,
+      factualIntegrity: factualIntegrity,
+      wordCount: (metrics.content && metrics.content.wordCount) || 0,
+      dataSource: hasRealData ? (schemaCount > 0 ? 'PHP Fetcher' : 'Serper API') : 'Pending'
+    };
+  });
+
+  var totalSchemas = geoData.reduce(function(a, b) { return a + b.schemaCount; }, 0);
+  var avgAIReadiness = Math.round(geoData.reduce(function(a, b) { return a + b.aiReadinessScore; }, 0) / geoData.length);
+  var avgAnswerAuth = Math.round(geoData.reduce(function(a, b) { return a + b.answerAuthority; }, 0) / geoData.length);
+
+  var html = '';
+  html += '<h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">🤖 GEO + AEO Intelligence (AI Search Optimization)</h3>';
+  
+  // Header
+  html += '<div style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">';
+  html += '<p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: Schema.org Detection, Serper PAA, PHP Fetcher</p>';
+  html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px;">';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Total Schema Types</div><div style="font-size: 24px; font-weight: 700;">' + totalSchemas + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">PAA Questions</div><div style="font-size: 24px; font-weight: 700;">' + allPAAQuestions.length + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg AI Readiness</div><div style="font-size: 24px; font-weight: 700;">' + avgAIReadiness + '%</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg Answer Auth</div><div style="font-size: 24px; font-weight: 700;">' + avgAnswerAuth + '%</div></div>';
+  html += '</div></div>';
+  
+  // Table
+  var sortedGeoData = geoData.slice().sort(function(a, b) { return b.aiReadinessScore - a.aiReadinessScore; });
+  var medals = ['🥇', '🥈', '🥉'];
+  
+  html += '<div style="overflow-x: auto;"><table class="comp-table" style="margin-bottom: 30px;"><thead><tr>';
+  html += '<th>Rank</th><th>Competitor</th><th>Schema Types</th><th>PAA Matches</th><th>AI Readiness</th><th>Answer Auth</th><th>Factual Score</th><th>Data Source</th>';
+  html += '</tr></thead><tbody>';
+  
+  sortedGeoData.forEach(function(geo, idx) {
+    var medal = idx < 3 ? medals[idx] : '#' + (idx + 1);
+    var isTop3 = idx < 3;
+    html += '<tr style="' + (isTop3 ? 'background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);' : '') + '">';
+    html += '<td style="text-align: center; font-size: 18px;">' + medal + '</td>';
+    html += '<td><strong>' + geo.domain + '</strong></td>';
+    html += '<td style="text-align: center;">' + (geo.schemaCount > 0 ? '<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px;" title="' + geo.schemaTypes.join(', ') + '">' + geo.schemaCount + ' types</span>' : '<span style="color: #9ca3af;">None</span>') + '</td>';
+    html += '<td style="text-align: center;">' + (geo.paaCount > 0 ? '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 6px;">' + geo.paaCount + '</span>' : '<span style="color: #9ca3af;">0</span>') + '</td>';
+    html += '<td><div style="display: flex; align-items: center; gap: 8px;"><div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;"><div style="width: ' + geo.aiReadinessScore + '%; height: 100%; background: #06b6d4;"></div></div><span style="font-size: 11px; font-weight: 600;">' + geo.aiReadinessScore + '%</span></div></td>';
+    html += '<td><span class="metric-badge ' + (geo.answerAuthority > 50 ? 'badge-high' : 'badge-medium') + '">' + geo.answerAuthority + '%</span></td>';
+    html += '<td><span style="color: ' + (geo.factualIntegrity > 60 ? '#22c55e' : '#f59e0b') + '; font-weight: 600;">' + geo.factualIntegrity + '%</span></td>';
+    html += '<td style="text-align: center;">' + (typeof getDataSourceBadge === 'function' ? getDataSourceBadge(geo.dataSource) : geo.dataSource) + '</td>';
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table></div>';
+  
+  // Schema types and PAA
+  html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">';
+  html += '<div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">';
+  html += '<h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">🏗️ Schema.org Types Detected</h5>';
+  html += '<div style="display: flex; flex-wrap: wrap; gap: 8px;">';
+  
+  var allSchemas = [];
+  geoData.forEach(function(g) { allSchemas = allSchemas.concat(g.schemaTypes); });
+  var uniqueSchemas = allSchemas.filter(function(s, i) { return allSchemas.indexOf(s) === i; });
+  var aiFriendlySchemas = ['FAQPage', 'HowTo', 'Article', 'BlogPosting', 'Product', 'Review'];
+  
+  if (uniqueSchemas.length === 0) {
+    html += '<span style="color: #9ca3af; font-size: 12px;">No schema types detected</span>';
+  } else {
+    uniqueSchemas.forEach(function(s) {
+      var isAIFriendly = aiFriendlySchemas.indexOf(s) >= 0;
+      html += '<span style="background: ' + (isAIFriendly ? '#dcfce7' : '#e5e7eb') + '; color: ' + (isAIFriendly ? '#166534' : '#374151') + '; padding: 6px 12px; border-radius: 8px; font-size: 12px;">' + s + (isAIFriendly ? ' ✨' : '') + '</span>';
+    });
+  }
+  
+  html += '</div></div>';
+  html += '<div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">';
+  html += '<h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">💬 People Also Ask</h5>';
+  html += '<div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">';
+  
+  if (allPAAQuestions.length > 0) {
+    allPAAQuestions.slice(0, 6).forEach(function(paa) {
+      html += '<div style="background: #f8fafc; padding: 10px 12px; border-radius: 8px; border-left: 3px solid #06b6d4; font-size: 12px;">' + (paa.question || paa) + '</div>';
+    });
+  } else {
+    html += '<span style="color: #9ca3af; font-size: 12px;">No PAA data available</span>';
+  }
+  
+  html += '</div></div></div>';
+  
+  // Charts
+  html += '<div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">';
+  html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">';
+  html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">🎯 AI Readiness Radar</h3>';
+  html += '<div style="height: 240px; width: 100%;"><canvas id="chart-geo-radar" style="width: 100% !important;"></canvas></div></div>';
+  html += '<div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">';
+  html += '<h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">📊 Schema Implementation</h3>';
+  html += '<div style="height: 240px; width: 100%;"><canvas id="chart-geo-platforms" style="width: 100% !important;"></canvas></div></div></div>';
+  
+  // Insights
+  var sorted = geoData.slice().sort(function(a, b) { return b.aiReadinessScore - a.aiReadinessScore; });
+  var leader = sorted[0];
+  var hasFAQ = geoData.some(function(g) { return g.schemaTypes.indexOf('FAQPage') >= 0; });
+  var hasHowTo = geoData.some(function(g) { return g.schemaTypes.indexOf('HowTo') >= 0; });
+  
+  html += '<div style="background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #06b6d4;">';
+  html += '<h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #0e7490;">💡 AI Search Strategy Insights</h5>';
+  html += '<ul style="margin: 0; padding-left: 20px;">';
+  html += '<li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;"><strong>AI-Ready Leader:</strong> ' + (leader ? leader.domain : 'N/A') + ' with ' + (leader ? leader.aiReadinessScore : 0) + '% readiness score</li>';
+  html += '<li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;"><strong>Schema Coverage:</strong> ' + totalSchemas + ' implementations. ' + (hasFAQ ? '✅ FAQPage detected' : '⚠️ No FAQPage schema') + '</li>';
+  html += '<li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;"><strong>Answer Engine:</strong> ' + (hasHowTo ? 'HowTo schema present' : 'Consider HowTo schema for procedural queries') + '</li>';
+  html += '<li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;"><strong>PAA Opportunity:</strong> ' + allPAAQuestions.length + ' questions found - create content answering these</li>';
+  html += '</ul></div>';
+
+  metricsDiv.innerHTML = html;
+  
+  setTimeout(function() {
+    if (typeof renderGeoAeoCharts === 'function') {
+      renderGeoAeoCharts(geoData);
+    }
+  }, 300);
+
+  console.log('✅ GEO/AEO Tab populated successfully (V45)');
+}
+
+// Window exports
+window.populateAudienceIntelligenceTab = populateAudienceIntelligenceTab;
+window.populateGeoAeoIntelligenceTab = populateGeoAeoIntelligenceTab;
+
+console.log('[V45] UI_Tab_Audience_V45 EXPORTS COMPLETE');
+console.log('[V45] populateAudienceIntelligenceTab:', typeof window.populateAudienceIntelligenceTab);
+console.log('[V45] populateGeoAeoIntelligenceTab:', typeof window.populateGeoAeoIntelligenceTab);
+</script>

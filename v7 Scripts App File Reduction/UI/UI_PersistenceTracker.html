@@ -1,0 +1,549 @@
+<!-- 
+═══════════════════════════════════════════════════════════════════════════════
+SERPIFAI PERSISTENCE TRACKER v1.0
+═══════════════════════════════════════════════════════════════════════════════
+
+Real-time MySQL persistence progress bar that displays beneath the main analysis bar.
+Shows exact status of data being saved to each MySQL table.
+
+USAGE:
+  1. Include this file in your HTML
+  2. Call PersistenceTracker.init() on page load
+  3. Call PersistenceTracker.update(status) from your analysis pipeline
+  4. Call PersistenceTracker.complete() when all data is saved
+
+VISUAL:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ 💾 Persistence: [████████████░░░░░] 4/6 Competitors Secured     │
+  │    Status: Saving Forensics to link_forensics...                │
+  └─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* PERSISTENCE TRACKER STYLES                                                  */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.persistence-tracker {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 12px 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+}
+
+.persistence-tracker.hidden {
+  display: none;
+}
+
+.persistence-tracker.saving {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+}
+
+.persistence-tracker.complete {
+  border-color: #22c55e;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.2);
+}
+
+.persistence-tracker.error {
+  border-color: #ef4444;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2);
+}
+
+/* Header Row */
+.persistence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.persistence-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.persistence-title .icon {
+  font-size: 18px;
+}
+
+.persistence-count {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.persistence-count .secured {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+/* Progress Bar Container */
+.persistence-progress-container {
+  position: relative;
+  height: 8px;
+  background: #1e293b;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.persistence-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #22c55e 100%);
+  border-radius: 4px;
+  transition: width 0.5s ease-out;
+  position: relative;
+}
+
+.persistence-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.2) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.persistence-progress-container.complete .persistence-progress-bar::after {
+  animation: none;
+}
+
+/* Status Text */
+.persistence-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.persistence-status .status-icon {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: pulse 1.5s infinite;
+}
+
+.persistence-status.complete .status-icon {
+  background: #22c55e;
+  animation: none;
+}
+
+.persistence-status.error .status-icon {
+  background: #ef4444;
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* Table Status Grid */
+.persistence-tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #334155;
+}
+
+.table-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+  padding: 6px 10px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.table-status.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.table-status.complete {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.table-status.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.table-status .table-icon {
+  font-size: 12px;
+}
+
+.table-status .table-name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.table-status .table-check {
+  font-size: 10px;
+}
+
+/* Bytes Counter */
+.persistence-bytes {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.persistence-bytes .bytes-value {
+  color: #8b5cf6;
+  font-weight: 600;
+  margin-left: 4px;
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * PERSISTENCE TRACKER MODULE
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+const PersistenceTracker = (function() {
+  
+  // State
+  let state = {
+    initialized: false,
+    visible: false,
+    totalCompetitors: 0,
+    securedCompetitors: 0,
+    currentStatus: '',
+    tables: {},
+    totalBytes: 0,
+    startTime: null
+  };
+  
+  // Table configuration
+  const TABLE_CONFIG = {
+    link_forensics: { icon: '🔗', label: 'Forensics' },
+    keyword_intelligence: { icon: '🔑', label: 'Keywords' },
+    ai_analysis: { icon: '🤖', label: 'AI Analysis' },
+    competitor_results: { icon: '📊', label: 'Results' },
+    geo_results: { icon: '🌍', label: 'Geo/AEO' },
+    job_results: { icon: '📦', label: 'Raw Data' }
+  };
+  
+  /**
+   * Initialize the tracker
+   */
+  function init(containerSelector) {
+    if (state.initialized) return;
+    
+    const container = document.querySelector(containerSelector || '#persistence-tracker-container');
+    if (!container) {
+      console.warn('[PersistenceTracker] Container not found, creating one');
+      createContainer();
+    }
+    
+    render();
+    state.initialized = true;
+    console.log('[PersistenceTracker] Initialized');
+  }
+  
+  /**
+   * Create container if not exists
+   */
+  function createContainer() {
+    const analysisBar = document.querySelector('.analysis-progress-container') || 
+                        document.querySelector('#analysis-progress') ||
+                        document.querySelector('.progress-section');
+    
+    if (analysisBar) {
+      const container = document.createElement('div');
+      container.id = 'persistence-tracker-container';
+      analysisBar.parentNode.insertBefore(container, analysisBar.nextSibling);
+    } else {
+      // Fallback - add to body
+      const container = document.createElement('div');
+      container.id = 'persistence-tracker-container';
+      document.body.appendChild(container);
+    }
+  }
+  
+  /**
+   * Render the tracker HTML
+   */
+  function render() {
+    const container = document.querySelector('#persistence-tracker-container');
+    if (!container) return;
+    
+    const progress = state.totalCompetitors > 0 
+      ? (state.securedCompetitors / state.totalCompetitors) * 100 
+      : 0;
+    
+    const isComplete = state.securedCompetitors >= state.totalCompetitors && state.totalCompetitors > 0;
+    const statusClass = isComplete ? 'complete' : (state.securedCompetitors > 0 ? 'saving' : '');
+    
+    container.innerHTML = `
+      <div class="persistence-tracker ${state.visible ? '' : 'hidden'} ${statusClass}">
+        <div class="persistence-header">
+          <div class="persistence-title">
+            <span class="icon">💾</span>
+            <span>MySQL Persistence</span>
+          </div>
+          <div class="persistence-count">
+            <span class="secured">${state.securedCompetitors}</span>/<span>${state.totalCompetitors}</span> Competitors Secured
+          </div>
+        </div>
+        
+        <div class="persistence-progress-container ${isComplete ? 'complete' : ''}">
+          <div class="persistence-progress-bar" style="width: ${progress}%"></div>
+        </div>
+        
+        <div class="persistence-status ${isComplete ? 'complete' : ''}">
+          <span class="status-icon"></span>
+          <span class="status-text">${state.currentStatus || 'Waiting for data...'}</span>
+        </div>
+        
+        <div class="persistence-tables">
+          ${renderTableStatuses()}
+        </div>
+        
+        <div class="persistence-bytes">
+          Total persisted: <span class="bytes-value">${formatBytes(state.totalBytes)}</span>
+        </div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Render individual table statuses
+   */
+  function renderTableStatuses() {
+    return Object.entries(TABLE_CONFIG).map(([tableName, config]) => {
+      const tableState = state.tables[tableName] || { status: 'pending', count: 0 };
+      const statusClass = tableState.status === 'complete' ? 'complete' : 
+                         tableState.status === 'active' ? 'active' :
+                         tableState.status === 'error' ? 'error' : '';
+      
+      const checkIcon = tableState.status === 'complete' ? '✓' :
+                       tableState.status === 'active' ? '⟳' :
+                       tableState.status === 'error' ? '✗' : '○';
+      
+      return `
+        <div class="table-status ${statusClass}">
+          <span class="table-icon">${config.icon}</span>
+          <span class="table-name">${config.label}</span>
+          <span class="table-check">${checkIcon}</span>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  /**
+   * Format bytes to human readable
+   */
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+  
+  /**
+   * Show the tracker
+   */
+  function show(totalCompetitors) {
+    state.visible = true;
+    state.totalCompetitors = totalCompetitors || 6;
+    state.securedCompetitors = 0;
+    state.currentStatus = 'Initializing persistence layer...';
+    state.tables = {};
+    state.totalBytes = 0;
+    state.startTime = Date.now();
+    
+    // Reset all tables to pending
+    Object.keys(TABLE_CONFIG).forEach(table => {
+      state.tables[table] = { status: 'pending', count: 0 };
+    });
+    
+    render();
+  }
+  
+  /**
+   * Hide the tracker
+   */
+  function hide() {
+    state.visible = false;
+    render();
+  }
+  
+  /**
+   * Update persistence status
+   * @param {Object} update - Status update object
+   *   { 
+   *     status: 'Saving to link_forensics...',
+   *     table: 'link_forensics',
+   *     tableStatus: 'active' | 'complete' | 'error',
+   *     competitorSecured: true,
+   *     bytes: 1024
+   *   }
+   */
+  function update(updateObj) {
+    if (!state.visible) return;
+    
+    if (updateObj.status) {
+      state.currentStatus = updateObj.status;
+    }
+    
+    if (updateObj.table && updateObj.tableStatus) {
+      state.tables[updateObj.table] = {
+        status: updateObj.tableStatus,
+        count: (state.tables[updateObj.table]?.count || 0) + 1
+      };
+    }
+    
+    if (updateObj.competitorSecured) {
+      state.securedCompetitors++;
+    }
+    
+    if (updateObj.bytes) {
+      state.totalBytes += updateObj.bytes;
+    }
+    
+    render();
+  }
+  
+  /**
+   * Mark table as actively saving
+   */
+  function setTableActive(tableName) {
+    update({
+      status: `Saving to ${tableName}...`,
+      table: tableName,
+      tableStatus: 'active'
+    });
+  }
+  
+  /**
+   * Mark table as complete
+   */
+  function setTableComplete(tableName, bytes) {
+    update({
+      table: tableName,
+      tableStatus: 'complete',
+      bytes: bytes || 0
+    });
+  }
+  
+  /**
+   * Mark table as error
+   */
+  function setTableError(tableName, error) {
+    update({
+      status: `Error saving to ${tableName}: ${error}`,
+      table: tableName,
+      tableStatus: 'error'
+    });
+  }
+  
+  /**
+   * Mark a competitor as fully secured
+   */
+  function competitorSecured(domain, bytes) {
+    update({
+      status: `✓ ${domain} secured to MySQL`,
+      competitorSecured: true,
+      bytes: bytes || 0
+    });
+  }
+  
+  /**
+   * Mark all persistence complete
+   */
+  function complete() {
+    const elapsed = Date.now() - state.startTime;
+    state.currentStatus = `✓ All data persisted to MySQL (${(elapsed/1000).toFixed(1)}s)`;
+    
+    // Mark all tables as complete
+    Object.keys(TABLE_CONFIG).forEach(table => {
+      if (state.tables[table]?.status !== 'error') {
+        state.tables[table] = { status: 'complete', count: state.tables[table]?.count || 0 };
+      }
+    });
+    
+    render();
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      const tracker = document.querySelector('.persistence-tracker');
+      if (tracker) {
+        tracker.style.opacity = '0';
+        tracker.style.transform = 'translateY(-10px)';
+        setTimeout(() => hide(), 300);
+      }
+    }, 5000);
+  }
+  
+  /**
+   * Get current state (for debugging)
+   */
+  function getState() {
+    return { ...state };
+  }
+  
+  // Public API
+  return {
+    init,
+    show,
+    hide,
+    update,
+    setTableActive,
+    setTableComplete,
+    setTableError,
+    competitorSecured,
+    complete,
+    getState
+  };
+  
+})();
+
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = PersistenceTracker;
+}
+</script>
+
+<!-- Container placeholder - will be auto-created if not present -->
+<div id="persistence-tracker-container"></div>

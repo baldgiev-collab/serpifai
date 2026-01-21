@@ -1,0 +1,146 @@
+<!--
+  UI_Components_Accordion.html
+  COLLAPSIBLE ACCORDION COMPONENT v1.0
+  
+  Strategic Proof Accordion for Gemini response sections
+  Default: Collapsed | Animation: 300ms | Copy button included
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 6: STRATEGIC PROOF ACCORDION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.accordion-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.accordion-item {
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Accordion Header */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.accordion-header:hover {
+  background: var(--cmd-header-bg);
+}
+
+.accordion-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 0;
+}
+
+.accordion-icon {
+  width: 20px;
+  height: 20px;
+  fill: var(--cmd-muted-text);
+  transition: transform 0.3s ease;
+}
+
+.accordion-item.is-open .accordion-icon {
+  transform: rotate(180deg);
+}
+
+/* Accordion Body */
+.accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.accordion-item.is-open .accordion-body {
+  max-height: 2000px;
+}
+
+.accordion-content {
+  padding: 0 1.25rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--cmd-body-text);
+}
+
+/* Copy Button */
+.accordion-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--cmd-border);
+  margin-top: 1rem;
+}
+
+.btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--accent-authority);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-copy:hover {
+  filter: brightness(1.1);
+}
+
+.btn-copy.copied {
+  background: var(--accent-value);
+}
+
+/* Theme: Aurora */
+[data-theme="aurora"] .accordion-item {
+  backdrop-filter: blur(var(--cmd-blur));
+}
+
+/* Theme: Neon */
+[data-theme="neon"] .accordion-item:hover {
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+}
+</style>
+
+<script>
+// Accordion Toggle Logic
+function toggleAccordion(header) {
+  const item = header.closest('.accordion-item');
+  const wasOpen = item.classList.contains('is-open');
+  
+  // Close all (optional: remove for multi-open mode)
+  // document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('is-open'));
+  
+  if (!wasOpen) item.classList.add('is-open');
+  else item.classList.remove('is-open');
+}
+
+// Copy to Clipboard
+function copyAccordionContent(btn) {
+  const content = btn.closest('.accordion-content');
+  const text = content.querySelector('.accordion-text')?.innerText || content.innerText;
+  
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    btn.innerHTML = '<span>✓ Copied</span>';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span>Copy</span>';
+    }, 1500);
+  });
+}
+</script>

@@ -390,15 +390,24 @@ function ELITE_renderGaugeCard(spec, value, comparative) {
   const rank = comparative ? comparative.rank : null;
   const gap = comparative ? comparative.gap : null;
   
+  // Zero-Trust: Generate proof icon if ZT system available
+  const metricId = spec.metricId || spec.id;
+  const proofIcon = typeof ZT_createProofIconHTML === 'function' 
+    ? ZT_createProofIconHTML(metricId) 
+    : '';
+  
   return `
-    <div class="elite-gauge-card">
+    <div class="elite-gauge-card" data-metric-id="${metricId}">
       <div class="elite-gauge-container">
         <svg viewBox="0 0 120 70" class="elite-gauge-svg">
           <path d="M15 60 A45 45 0 0 1 105 60" fill="none" stroke="#e0e0e0" stroke-width="10" stroke-linecap="round"/>
           <path d="M15 60 A45 45 0 0 1 105 60" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round"
                 stroke-dasharray="${numValue * 1.41} 141.3" class="elite-gauge-arc"/>
         </svg>
-        <div class="elite-gauge-value">${Math.round(numValue)}</div>
+        <div class="elite-gauge-value elite-metric-container">
+          ${Math.round(numValue)}
+          ${proofIcon}
+        </div>
       </div>
       <div class="elite-gauge-label">${spec.label}</div>
       ${rank ? `<div class="elite-gauge-rank">#${rank} of ${comparative.total}</div>` : ''}
@@ -411,9 +420,18 @@ function ELITE_renderMetricCard(spec, value, comparative) {
   const displayValue = typeof value === 'number' ? value.toLocaleString() : value;
   const trend = comparative ? comparative.trend : null;
   
+  // Zero-Trust: Generate proof icon if ZT system available
+  const metricId = spec.metricId || spec.id;
+  const proofIcon = typeof ZT_createProofIconHTML === 'function' 
+    ? ZT_createProofIconHTML(metricId) 
+    : '';
+  
   return `
-    <div class="elite-metric-card">
-      <div class="elite-metric-value">${displayValue}</div>
+    <div class="elite-metric-card" data-metric-id="${metricId}">
+      <div class="elite-metric-value elite-metric-container">
+        ${displayValue}
+        ${proofIcon}
+      </div>
       <div class="elite-metric-label">${spec.label}</div>
       ${trend ? `
         <div class="elite-metric-trend ${trend > 0 ? 'up' : 'down'}">
@@ -426,10 +444,19 @@ function ELITE_renderMetricCard(spec, value, comparative) {
 }
 
 function ELITE_renderHighlightCard(spec, value, comparative) {
+  // Zero-Trust: Generate proof icon if ZT system available
+  const metricId = spec.metricId || spec.id;
+  const proofIcon = typeof ZT_createProofIconHTML === 'function' 
+    ? ZT_createProofIconHTML(metricId) 
+    : '';
+  
   return `
-    <div class="elite-highlight-card">
+    <div class="elite-highlight-card" data-metric-id="${metricId}">
       <div class="elite-highlight-label">${spec.label}</div>
-      <div class="elite-highlight-value">${value || 'N/A'}</div>
+      <div class="elite-highlight-value elite-metric-container">
+        ${value || 'N/A'}
+        ${proofIcon}
+      </div>
       ${comparative?.details ? `<div class="elite-highlight-details">${comparative.details}</div>` : ''}
     </div>
   `;
@@ -438,9 +465,18 @@ function ELITE_renderHighlightCard(spec, value, comparative) {
 function ELITE_renderOpportunityCard(spec, value, comparative) {
   const opportunities = Array.isArray(value) ? value : [value];
   
+  // Zero-Trust: Generate proof icon if ZT system available
+  const metricId = spec.metricId || spec.id;
+  const proofIcon = typeof ZT_createProofIconHTML === 'function' 
+    ? ZT_createProofIconHTML(metricId) 
+    : '';
+  
   return `
-    <div class="elite-opportunity-card">
-      <div class="elite-opportunity-label">${spec.label}</div>
+    <div class="elite-opportunity-card" data-metric-id="${metricId}">
+      <div class="elite-opportunity-label elite-metric-container">
+        ${spec.label}
+        ${proofIcon}
+      </div>
       <div class="elite-opportunity-count">${opportunities.length}</div>
       <div class="elite-opportunity-list">
         ${opportunities.slice(0, 3).map(opp => `<div class="opportunity-item">• ${opp}</div>`).join('')}
@@ -457,9 +493,18 @@ function ELITE_renderGradeCard(spec, value, comparative) {
                         'F': '#ea4335' };
   const color = gradeColors[value] || '#666';
   
+  // Zero-Trust: Generate proof icon if ZT system available
+  const metricId = spec.metricId || spec.id;
+  const proofIcon = typeof ZT_createProofIconHTML === 'function' 
+    ? ZT_createProofIconHTML(metricId) 
+    : '';
+  
   return `
-    <div class="elite-grade-card" style="border-color: ${color}">
-      <div class="elite-grade-value" style="color: ${color}">${value || 'N/A'}</div>
+    <div class="elite-grade-card" style="border-color: ${color}" data-metric-id="${metricId}">
+      <div class="elite-grade-value elite-metric-container" style="color: ${color}">
+        ${value || 'N/A'}
+        ${proofIcon}
+      </div>
       <div class="elite-grade-label">${spec.label}</div>
     </div>
   `;

@@ -234,50 +234,98 @@ function unifyProjectData(rawData) {
 }
 
 /**
- * Load project from Google Sheets (tries Sheet first, falls back to MySQL)
+ * Load project from MySQL job_registry (Primary) with Sheet as last-resort fallback
+ * ═══════════════════════════════════════════════════════════════════════════════════════
+ * V7 FIX: Force MySQL/job_registry query first to ensure Elite Token Architecture alignment
+ * The Master Google Sheet is now a BACKUP, not the primary source of truth
+ * ═══════════════════════════════════════════════════════════════════════════════════════
  */
 function loadProjectDual(projectName) {
   try {
     Logger.log('📂 Loading project: ' + projectName);
+    Logger.log('   🔑 Strategy: MySQL FIRST → Sheet FALLBACK');
     
-    // Try to load from Master Sheet first
-    try {
-      Logger.log('   📊 Trying Master Google Sheet...');
-      const sheetResult = loadProjectFromMasterSheet(projectName);
-      if (sheetResult.success) {
-        Logger.log('   ✅ Found in Master Sheet');
-        return sheetResult;
-      }
-    } catch (e) {
-      Logger.log('   ⚠️  Master Sheet load failed: ' + e.toString());
-    }
+    let result = null;
     
-    // Fall back to MySQL
+    // ═══════════════════════════════════════════════════════════════════════
+    // STEP 1: Try MySQL job_registry FIRST (Primary source of truth)
+    // ═══════════════════════════════════════════════════════════════════════
     try {
-      Logger.log('   🗄️  Trying MySQL...');
+      Logger.log('   🗄️  Trying MySQL (PRIMARY)...');
       const mysqlResult = loadProjectFromDatabase(projectName);
-      if (mysqlResult.success) {
-        Logger.log('   ✅ Found in MySQL');
-        // Sync back to Master Sheet if not found there
+      if (mysqlResult && mysqlResult.success) {
+        Logger.log('   ✅ Found in MySQL job_registry');
+        result = mysqlResult;
+        
+        // Check for latest job token from job_registry
         try {
-          saveProjectToMasterSheet(projectName, mysqlResult.data);
-          Logger.log('   📊 Synced to Master Sheet');
-        } catch (syncError) {
-          Logger.log('   ⚠️  Could not sync to Master Sheet: ' + syncError.toString());
+          const jobTokenResult = recoverLatestJobTokenForProject(projectName);
+          if (jobTokenResult && jobTokenResult.success) {
+            result._recoveredJobToken = jobTokenResult.job_token;
+            Logger.log('   🔑 Recovered job token: ' + jobTokenResult.job_token);
+          }
+        } catch (tokenError) {
+          Logger.log('   ⚠️  Could not recover job token: ' + tokenError.toString());
         }
-        return mysqlResult;
       }
     } catch (e) {
       Logger.log('   ⚠️  MySQL load failed: ' + e.toString());
     }
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // STEP 2: Only use Sheet as FALLBACK if MySQL failed
+    // ═══════════════════════════════════════════════════════════════════════
+    if (!result) {
+      try {
+        Logger.log('   📊 Trying Master Google Sheet (FALLBACK)...');
+        const sheetResult = loadProjectFromMasterSheet(projectName);
+        if (sheetResult && sheetResult.success) {
+          Logger.log('   ✅ Found in Master Sheet (fallback)');
+          result = sheetResult;
+          result._loadedFromFallback = true;
+        }
+      } catch (e) {
+        Logger.log('   ⚠️  Master Sheet load failed: ' + e.toString());
+      }
+    }
+    
     // Not found anywhere
-    Logger.log('❌ Project not found in either location');
-    return {
-      name: projectName,
-      data: {},
-      error: 'Project not found'
-    };
+    if (!result) {
+      Logger.log('❌ Project not found in either location');
+      return {
+        name: projectName,
+        data: {},
+        error: 'Project not found'
+      };
+    }
+    
+    // =========================================================================
+    // WORKFLOW STATE RECOVERY: Load saved stage results for UI hydration
+    // =========================================================================
+    try {
+      Logger.log('   🔄 Checking for saved workflow stage results...');
+      
+      // Check if Stage 1 has saved results
+      if (typeof loadWorkflowStageResults === 'function') {
+        const stage1Results = loadWorkflowStageResults(projectName, 1);
+        if (stage1Results && stage1Results.success) {
+          result.workflowStage1 = stage1Results;
+          Logger.log('   ✅ Found saved Stage 1 results from: ' + stage1Results.timestamp);
+        }
+        
+        // Also get overall workflow status
+        if (typeof getWorkflowStatus === 'function') {
+          result.workflowStatus = getWorkflowStatus(projectName);
+          Logger.log('   📊 Workflow status loaded');
+        }
+      } else {
+        Logger.log('   ℹ️ Workflow stage loader not available');
+      }
+    } catch (wfError) {
+      Logger.log('   ⚠️ Could not load workflow status: ' + wfError.toString());
+    }
+    
+    return result;
     
   } catch (e) {
     Logger.log('❌ Error loading project: ' + e.toString());
@@ -286,6 +334,54 @@ function loadProjectDual(projectName) {
       data: {},
       error: e.toString()
     };
+  }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════
+ * ELITE TOKEN RECOVERY: Query job_registry for latest job token by project_id
+ * ═══════════════════════════════════════════════════════════════════════════════════════
+ * 
+ * This function queries MySQL job_registry to find the latest job token for a project.
+ * Used to recover the token when UI reloads or loses state.
+ * 
+ * @param {string} projectId - The project identifier
+ * @returns {object} { success, job_token, status, created_at } or { success: false, error }
+ */
+function recoverLatestJobTokenForProject(projectId) {
+  try {
+    Logger.log('[TOKEN_RECOVERY] Recovering latest job token for project: ' + projectId);
+    
+    // Use FT_Gateway.callGateway if available
+    if (typeof callGateway === 'function') {
+      const result = callGateway('job_recover_token', {
+        project_id: projectId
+      });
+      
+      if (result && result.success) {
+        Logger.log('[TOKEN_RECOVERY] ✅ Recovered token: ' + result.job_token);
+        return result;
+      }
+    }
+    
+    // Fallback to direct UPP call if available
+    if (typeof UPP_call === 'function') {
+      const result = UPP_call('job_recover_token', {
+        project_id: projectId
+      });
+      
+      if (result && result.success) {
+        Logger.log('[TOKEN_RECOVERY] ✅ Recovered token via UPP: ' + result.job_token);
+        return result;
+      }
+    }
+    
+    Logger.log('[TOKEN_RECOVERY] ⚠️ No gateway available for token recovery');
+    return { success: false, error: 'No gateway available' };
+    
+  } catch (e) {
+    Logger.log('[TOKEN_RECOVERY] ❌ Error: ' + e.toString());
+    return { success: false, error: e.toString() };
   }
 }
 

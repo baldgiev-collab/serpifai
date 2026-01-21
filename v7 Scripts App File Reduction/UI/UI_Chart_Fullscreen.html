@@ -608,7 +608,8 @@ window.viewChartFullscreen = function (canvasId) {
           console.log('🔗 Canvas position in DOM:', fullscreenCanvas.parentElement ? 'attached' : 'detached');
 
           // CRITICAL: Fill canvas with white background BEFORE creating chart
-          const ctx = fullscreenCanvas.getContext('2d');
+          // V7.11: Use willReadFrequently for better performance
+          const ctx = fullscreenCanvas.getContext('2d', { willReadFrequently: true });
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, fullscreenCanvas.width, fullscreenCanvas.height);
           console.log('✅ Canvas filled with white background');
@@ -620,8 +621,16 @@ window.viewChartFullscreen = function (canvasId) {
             existingChart.destroy();
           }
 
+          // V7.11 FIX: Disable animations for immediate render
+          config.options = config.options || {};
+          config.options.animation = false;
+          config.options.responsive = false; // Prevent resize loops
+          
           const fullscreenChart = new Chart(fullscreenCanvas, config);
           console.log('📊 Chart created with ID:', fullscreenChart.id);
+
+          // V7.11 FIX: Force immediate render
+          fullscreenChart.render();
 
           // CRITICAL FIX: Chart.js may have reset dimensions - restore them immediately
           if (fullscreenCanvas.width === 0 || fullscreenCanvas.height === 0) {

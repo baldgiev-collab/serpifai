@@ -11,6 +11,7 @@
 
   /**
    * Initialize competitor analysis button handler
+   * V33 FIX: Also tries to restore previous analysis from server storage
    */
   function initCompetitorAnalysis() {
     const analyzeBtn = document.getElementById('btnAnalyzeCompetitors');
@@ -21,6 +22,77 @@
     } else {
       console.warn('⚠️ Competitor analysis button not found');
     }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V33 FIX: Try to restore previous analysis from server storage
+    // This ensures data persists across page refreshes
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('🔄 V33: Checking for stored analysis to restore...');
+    
+    const projectId = typeof getCurrentProjectId === 'function' ? getCurrentProjectId() : null;
+    
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success && result.data) {
+          console.log('✅ V33: Found stored analysis from server');
+          console.log('   Competitors:', result.data.competitorCount || result.data.competitors?.length || 0);
+          console.log('   Timestamp:', result.data.timestamp || 'unknown');
+          console.log('   Has executiveBrief:', !!result.data.executiveBrief);
+          console.log('   Source:', result.source || 'scriptProperties');
+          
+          // Store in window variables for access across components
+          window.competitorIntelligenceData = result.data;
+          window._eliteTabIntelligence = result.data.eliteTabIntelligence;
+          window._organizedData = result.data.eliteTabIntelligence?.organizedData;
+          window.currentCompetitorData = result.data;
+          window._lastCompetitorData = result.data;
+          
+          // Check if we have actual competitor data to render
+          const competitors = result.data.competitors || [];
+          if (competitors.length > 0) {
+            console.log('   ✅ Restoring UI with', competitors.length, 'competitors');
+            
+            // Hide empty state, show results
+            const emptyState = document.getElementById('comp-empty-state');
+            const resultsDiv = document.getElementById('comp-results');
+            const loadingState = document.getElementById('comp-loading-state');
+            
+            if (emptyState) emptyState.style.display = 'none';
+            if (loadingState) loadingState.style.display = 'none';
+            if (resultsDiv) resultsDiv.style.display = 'block';
+            
+            // Show action bar
+            const actionBar = document.getElementById('comp-action-bar');
+            if (actionBar) actionBar.style.display = 'flex';
+            
+            // Render the competitor intelligence UI
+            if (typeof renderCompetitorIntelligence === 'function') {
+              // Small delay to ensure DOM is ready
+              setTimeout(function() {
+                renderCompetitorIntelligence(result.data);
+                console.log('✅ V33: Previous analysis rendered successfully');
+                
+                if (typeof showToast === 'function') {
+                  showToast('📊 Previous analysis restored', 'info');
+                }
+              }, 100);
+            } else {
+              console.warn('⚠️ V33: renderCompetitorIntelligence not available yet');
+            }
+          } else {
+            console.log('   ℹ️ Stored analysis has no competitors array');
+          }
+        } else {
+          console.log('ℹ️ V33: No previous analysis to restore');
+          if (result && result.message) {
+            console.log('   Message:', result.message);
+          }
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.warn('⚠️ V33: Could not check for stored analysis:', error);
+      })
+      .loadLatestAnalysis(projectId);
   }
 
   /**
@@ -52,6 +124,11 @@
           .split(/[,\n]/)
           .map(url => {
             url = url.trim();
+            
+            // v31.3 FIX: Skip empty strings BEFORE processing
+            if (!url || url.length === 0) {
+              return '';
+            }
             
             // Remove protocols
             url = url.replace(/^https?:\/\//i, '');

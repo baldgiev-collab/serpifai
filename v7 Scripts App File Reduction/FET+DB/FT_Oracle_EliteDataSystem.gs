@@ -411,6 +411,85 @@ function ORACLE_collectEliteData(domain, options) {
     // Cache the result
     ELITE_saveToCache(cacheKey, result);
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v35.0 UNIVERSAL PERSISTENCE PROVIDER - Force 100% MySQL persistence
+    // Eliminates "0 B Data Size" by routing ALL data to MySQL
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (typeof UPP_commit === 'function') {
+      Logger.log(`\n💾 [UPP] Persisting to MySQL...`);
+      
+      // 1. Persist content/scrape data to link_forensics
+      UPP_commit({
+        type: 'link_forensics',
+        domain: domain,
+        jobToken: options.jobToken,
+        competitorId: options.competitorId,
+        payload: {
+          url: result.website?.url || 'https://' + domain,
+          title: result.website?.title || '',
+          metaDescription: result.website?.description || '',
+          wordCount: result.contentQuality?.wordCount || 0,
+          headings: result.website?.headings || {},
+          links: result.website?.links || {},
+          schema: result.website?.schemaTypes || [],
+          rawHtml: result.website?.rawHtml || ''
+        }
+      });
+      
+      // 2. Persist keywords to keyword_intelligence
+      UPP_commit({
+        type: 'keyword_intelligence',
+        domain: domain,
+        jobToken: options.jobToken,
+        competitorId: options.competitorId,
+        payload: {
+          keywords: result.keywords || [],
+          rankedKeywords: result.rankedKeywords || [],
+          top10Count: result.keywords?.filter(k => k.position <= 10).length || 0,
+          top20Count: result.keywords?.filter(k => k.position <= 20).length || 0,
+          visibilityScore: result.visibility?.score || 0,
+          clusters: result.keywordClusters || []
+        }
+      });
+      
+      // 3. Persist technical/meta data to competitor_results
+      UPP_commit({
+        type: 'competitor_results',
+        domain: domain,
+        jobToken: options.jobToken,
+        competitorId: options.competitorId,
+        payload: {
+          domainAuthority: result.authority?.score || 0,
+          trafficEstimate: result.traffic?.organic || 0,
+          backlinkCount: result.backlinks?.total || 0,
+          contentScore: result.contentQuality?.score || 0,
+          technicalScore: result.technical?.score || 0,
+          loadTime: result.performance?.loadTime || 0,
+          mobileFriendly: result.technical?.mobileFriendly || false,
+          httpsEnabled: result.technical?.https || true
+        }
+      });
+      
+      // 4. Persist full result to job_results as RAW_FETCH
+      UPP_commit({
+        type: 'raw_fetch',
+        domain: domain,
+        jobToken: options.jobToken,
+        competitorId: options.competitorId,
+        payload: result
+      });
+      
+      Logger.log(`   ✅ [UPP] MySQL persistence complete`);
+      
+      // 5. Trigger Workflow Seeder check (fires when 6th competitor saved)
+      if (typeof WF_checkAndSeed === 'function' && options.jobToken) {
+        const seedResult = WF_checkAndSeed(options.jobToken, 6);
+        if (seedResult.triggered) {
+          Logger.log(`   🌱 [WF_Seeder] Workflow seeding triggered! ${seedResult.opportunitiesSeeded} opportunities`);
+        }
+      }
+    }
+    
     // Final summary
     Logger.log(`\n${'═'.repeat(70)}`);
     Logger.log(`✅ SERPIFAI ELITE INTELLIGENCE COMPLETE`);
@@ -2726,6 +2805,360 @@ function ELITE_saveToCache(key, data) {
 function ORACLE_getFromCache(key) { return ELITE_getFromCache(key); }
 function ORACLE_saveToCache(key, data) { return ELITE_saveToCache(key, data); }
 function ORACLE_calculateConfidence(result) { return ELITE_calculateConfidence(result); }
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// SECTION 10: STRATEGIC AUDIT POST-PROCESSING WORKERS
+// Run AFTER initial HTML fetch to prevent execution timeouts
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Execute Strategic Audit - Post-Processing Worker
+ * Runs after initial fetch is complete to analyze advanced patterns
+ * @param {Object} competitorData - The fetched competitor data with homepageRaw/internalPageRaw
+ * @returns {Object} Strategic audit results
+ */
+function executeStrategicAudit(competitorData) {
+  console.log('[StrategicAudit] ═══════════════════════════════════════════════════');
+  console.log('[StrategicAudit] Starting Post-Processing Strategic Audit');
+  console.log('[StrategicAudit] ═══════════════════════════════════════════════════');
+  
+  const auditResults = {
+    timestamp: new Date().toISOString(),
+    programmaticMoat: null,
+    semanticTriplets: null,
+    emotionalDebt: null,
+    evidenceMap: {}
+  };
+  
+  try {
+    // 1. Programmatic Moat Detection
+    auditResults.programmaticMoat = detectProgrammaticMoat(competitorData);
+    auditResults.evidenceMap['programmatic'] = auditResults.programmaticMoat.evidence;
+    
+    // 2. Semantic Triplets Analysis (Entity-Attribute-Value patterns)
+    auditResults.semanticTriplets = detectSemanticTriplets(competitorData);
+    auditResults.evidenceMap['semantic'] = auditResults.semanticTriplets.evidence;
+    
+    // 3. Emotional Debt Analysis (Content tone gaps)
+    auditResults.emotionalDebt = detectEmotionalDebt(competitorData);
+    auditResults.evidenceMap['emotional'] = auditResults.emotionalDebt.evidence;
+    
+    console.log('[StrategicAudit] ✅ Audit Complete:', {
+      programmatic: auditResults.programmaticMoat.is_programmatic,
+      semanticCount: auditResults.semanticTriplets.tripletCount,
+      emotionalScore: auditResults.emotionalDebt.score
+    });
+    
+  } catch (error) {
+    console.error('[StrategicAudit] Error:', error.message);
+    auditResults.error = error.message;
+  }
+  
+  return auditResults;
+}
+
+/**
+ * Detect Programmatic Moat - Compare homepage vs internal page DOM structure
+ * If DOM structure matches > 85%, the site uses programmatic/template-based generation
+ * @param {Object} competitorData - Must contain homepageRaw and internalPageRaw
+ * @returns {Object} Programmatic moat analysis
+ */
+function detectProgrammaticMoat(competitorData) {
+  const result = {
+    is_programmatic: false,
+    similarity_score: 0,
+    confidence: 0,
+    pattern_type: 'unknown',
+    evidence: {
+      sharedClasses: [],
+      sharedIds: [],
+      structuralPatterns: [],
+      templateSignatures: []
+    }
+  };
+  
+  const homepageRaw = competitorData.homepageRaw || competitorData.rawHtml || '';
+  const internalPageRaw = competitorData.internalPageRaw || competitorData.synthesized?.website?.rawHtml || '';
+  
+  if (!homepageRaw || !internalPageRaw) {
+    result.confidence = 0;
+    result.error = 'Missing raw HTML for comparison';
+    return result;
+  }
+  
+  // Extract DOM structural elements
+  const homepageStructure = extractDOMStructure(homepageRaw);
+  const internalStructure = extractDOMStructure(internalPageRaw);
+  
+  // Compare CSS classes
+  const sharedClasses = homepageStructure.classes.filter(c => internalStructure.classes.includes(c));
+  const classOverlap = sharedClasses.length / Math.max(homepageStructure.classes.length, 1);
+  
+  // Compare structural patterns (tag hierarchy)
+  const sharedPatterns = homepageStructure.patterns.filter(p => internalStructure.patterns.includes(p));
+  const patternOverlap = sharedPatterns.length / Math.max(homepageStructure.patterns.length, 1);
+  
+  // Detect template signatures (repeated CSS framework patterns)
+  const templateSignatures = detectTemplateSignatures(homepageRaw, internalPageRaw);
+  
+  // Calculate weighted similarity score
+  const similarityScore = (classOverlap * 0.4) + (patternOverlap * 0.4) + (templateSignatures.score * 0.2);
+  
+  result.similarity_score = Math.round(similarityScore * 100);
+  result.is_programmatic = similarityScore >= 0.85;
+  result.confidence = Math.min(95, Math.round(similarityScore * 100));
+  
+  // Determine pattern type
+  if (templateSignatures.framework) {
+    result.pattern_type = templateSignatures.framework;
+  } else if (result.is_programmatic) {
+    result.pattern_type = 'custom_template';
+  } else {
+    result.pattern_type = 'manual_design';
+  }
+  
+  // Store evidence
+  result.evidence.sharedClasses = sharedClasses.slice(0, 20);
+  result.evidence.sharedIds = homepageStructure.ids.filter(id => internalStructure.ids.includes(id)).slice(0, 10);
+  result.evidence.structuralPatterns = sharedPatterns.slice(0, 10);
+  result.evidence.templateSignatures = templateSignatures.signatures;
+  
+  console.log('[ProgrammaticMoat] Detection:', {
+    similarity: result.similarity_score + '%',
+    isProgrammatic: result.is_programmatic,
+    patternType: result.pattern_type,
+    sharedClasses: sharedClasses.length
+  });
+  
+  return result;
+}
+
+/**
+ * Extract DOM structure from raw HTML for comparison
+ */
+function extractDOMStructure(html) {
+  const structure = {
+    classes: [],
+    ids: [],
+    patterns: [],
+    tagCounts: {}
+  };
+  
+  if (!html) return structure;
+  
+  // Extract CSS classes
+  const classMatches = html.match(/class=["']([^"']+)["']/gi) || [];
+  classMatches.forEach(match => {
+    const classes = match.replace(/class=["']/i, '').replace(/["']$/, '').split(/\s+/);
+    structure.classes.push(...classes.filter(c => c.length > 2));
+  });
+  structure.classes = [...new Set(structure.classes)];
+  
+  // Extract IDs
+  const idMatches = html.match(/id=["']([^"']+)["']/gi) || [];
+  idMatches.forEach(match => {
+    const id = match.replace(/id=["']/i, '').replace(/["']$/, '');
+    if (id.length > 2) structure.ids.push(id);
+  });
+  structure.ids = [...new Set(structure.ids)];
+  
+  // Extract structural patterns (parent-child tag relationships)
+  const tagPattern = /<(\w+)[^>]*>\s*<(\w+)/gi;
+  let patternMatch;
+  while ((patternMatch = tagPattern.exec(html)) !== null) {
+    structure.patterns.push(`${patternMatch[1]}>${patternMatch[2]}`);
+  }
+  structure.patterns = [...new Set(structure.patterns)];
+  
+  return structure;
+}
+
+/**
+ * Detect known template/framework signatures
+ */
+function detectTemplateSignatures(html1, html2) {
+  const signatures = [];
+  let framework = null;
+  let score = 0;
+  
+  const frameworks = {
+    'next.js': ['__next', 'data-nscript', '_next/static'],
+    'gatsby': ['gatsby-', 'data-gatsby'],
+    'wordpress': ['wp-content', 'wp-includes', 'wordpress'],
+    'shopify': ['shopify-section', 'cdn.shopify.com'],
+    'webflow': ['w-', 'webflow'],
+    'squarespace': ['squarespace', 'sqs-'],
+    'wix': ['wixsite', '_wix'],
+    'hubspot': ['hs-', 'hubspot'],
+    'react': ['data-reactroot', '__REACT_'],
+    'vue': ['data-v-', 'v-bind', 'v-on'],
+    'angular': ['ng-', '_ngcontent', 'ngIf']
+  };
+  
+  for (const [fw, patterns] of Object.entries(frameworks)) {
+    let matchCount = 0;
+    patterns.forEach(pattern => {
+      if (html1.includes(pattern) && html2.includes(pattern)) {
+        matchCount++;
+        signatures.push({ framework: fw, pattern: pattern });
+      }
+    });
+    if (matchCount >= 2) {
+      framework = fw;
+      score = 0.9;
+      break;
+    } else if (matchCount === 1 && !framework) {
+      framework = fw;
+      score = 0.6;
+    }
+  }
+  
+  return { framework, score, signatures };
+}
+
+/**
+ * Detect Semantic Triplets (Entity-Attribute-Value patterns in content)
+ */
+function detectSemanticTriplets(competitorData) {
+  const result = {
+    tripletCount: 0,
+    triplets: [],
+    entityTypes: [],
+    evidence: {
+      schemaEntities: [],
+      headingPatterns: [],
+      metaEntities: []
+    }
+  };
+  
+  const synthesized = competitorData.synthesized || {};
+  const website = synthesized.website || {};
+  
+  // Extract entities from schema.org data
+  const schemaTypes = website.schemaTypes || [];
+  schemaTypes.forEach(type => {
+    result.evidence.schemaEntities.push(type);
+    result.triplets.push({
+      entity: competitorData.domain,
+      attribute: 'schema_type',
+      value: type
+    });
+  });
+  
+  // Extract from headings (H2/H3 often contain E-A-V patterns)
+  const headings = [...(website.h2 || []), ...(website.h3 || [])];
+  headings.forEach(heading => {
+    // Look for "X is Y" or "X: Y" patterns
+    const colonPattern = heading.match(/^([^:]+):\s*(.+)$/i);
+    const isPattern = heading.match(/^(.+?)\s+(?:is|are|was|were)\s+(.+)$/i);
+    
+    if (colonPattern) {
+      result.triplets.push({
+        entity: colonPattern[1].trim(),
+        attribute: 'definition',
+        value: colonPattern[2].trim()
+      });
+      result.evidence.headingPatterns.push(heading);
+    } else if (isPattern) {
+      result.triplets.push({
+        entity: isPattern[1].trim(),
+        attribute: 'is',
+        value: isPattern[2].trim()
+      });
+      result.evidence.headingPatterns.push(heading);
+    }
+  });
+  
+  result.tripletCount = result.triplets.length;
+  result.entityTypes = [...new Set(result.triplets.map(t => t.attribute))];
+  
+  return result;
+}
+
+/**
+ * Detect Emotional Debt (Content tone gaps and sentiment issues)
+ */
+function detectEmotionalDebt(competitorData) {
+  const result = {
+    score: 0,
+    level: 'low',
+    gaps: [],
+    evidence: {
+      toneIndicators: [],
+      ctaAnalysis: [],
+      sentimentFlags: []
+    }
+  };
+  
+  const synthesized = competitorData.synthesized || {};
+  const website = synthesized.website || {};
+  const rawHtml = competitorData.homepageRaw || competitorData.rawHtml || '';
+  
+  // Analyze CTAs for emotional engagement
+  const ctaPatterns = [
+    { pattern: /get started|try free|start now/gi, type: 'action', score: 1 },
+    { pattern: /learn more|read more|discover/gi, type: 'curiosity', score: 0.8 },
+    { pattern: /buy now|purchase|order/gi, type: 'urgency', score: 1.2 },
+    { pattern: /join|become|subscribe/gi, type: 'belonging', score: 0.9 },
+    { pattern: /save|discount|offer/gi, type: 'value', score: 1.1 },
+    { pattern: /exclusive|limited|only/gi, type: 'scarcity', score: 1.3 }
+  ];
+  
+  let emotionalScore = 0;
+  let ctaCount = 0;
+  
+  ctaPatterns.forEach(({ pattern, type, score }) => {
+    const matches = rawHtml.match(pattern) || [];
+    if (matches.length > 0) {
+      ctaCount += matches.length;
+      emotionalScore += matches.length * score;
+      result.evidence.ctaAnalysis.push({ type, count: matches.length });
+    }
+  });
+  
+  // Analyze for trust signals
+  const trustPatterns = [
+    { pattern: /trusted by|used by|loved by/gi, type: 'social_proof' },
+    { pattern: /guaranteed|secure|safe/gi, type: 'security' },
+    { pattern: /award|certified|recognized/gi, type: 'authority' },
+    { pattern: /testimonial|review|rating/gi, type: 'validation' }
+  ];
+  
+  let trustSignals = 0;
+  trustPatterns.forEach(({ pattern, type }) => {
+    const matches = rawHtml.match(pattern) || [];
+    if (matches.length > 0) {
+      trustSignals += matches.length;
+      result.evidence.toneIndicators.push({ type, present: true });
+    } else {
+      result.evidence.sentimentFlags.push({ type, missing: true });
+    }
+  });
+  
+  // Calculate emotional debt score (higher = more debt = less emotional engagement)
+  const idealScore = 10;
+  const normalizedCTA = Math.min(emotionalScore / idealScore, 1);
+  const normalizedTrust = Math.min(trustSignals / 4, 1);
+  
+  // Debt = what's missing from ideal
+  result.score = Math.round((1 - ((normalizedCTA + normalizedTrust) / 2)) * 100);
+  
+  if (result.score <= 30) {
+    result.level = 'low';
+  } else if (result.score <= 60) {
+    result.level = 'moderate';
+  } else {
+    result.level = 'high';
+  }
+  
+  // Identify specific gaps
+  if (ctaCount < 3) result.gaps.push('Few actionable CTAs');
+  if (trustSignals < 2) result.gaps.push('Limited trust signals');
+  if (!rawHtml.match(/testimonial|review/gi)) result.gaps.push('No testimonials found');
+  if (!rawHtml.match(/guarantee|secure/gi)) result.gaps.push('No security messaging');
+  
+  return result;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════════
 // SECTION 10: TEST & DIAGNOSTIC FUNCTIONS

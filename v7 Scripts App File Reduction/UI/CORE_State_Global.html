@@ -11,6 +11,427 @@
   console.log('🔧 CORE_State_Global.html loading...');
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // ORACLE_STATE - Global Memory for Competitor Data & Evidence Pointers
+  // ═══════════════════════════════════════════════════════════════════════════
+  // This is the SINGLE SOURCE OF TRUTH for all competitor data in the UI.
+  // Workers populate this when they complete. Audit Trail reads from here.
+  
+  window.ORACLE_STATE = window.ORACLE_STATE || {
+    // Version for cache invalidation
+    version: '1.0.0',
+    
+    // Current job token for MySQL evidence fetches
+    jobToken: null,
+    
+    // Competitor data keyed by domain
+    // e.g. { "example.com": { synthesized: {...}, evidenceMap: {...}, resultId: "abc123" } }
+    competitors: {},
+    
+    // Evidence pointers - lightweight references for on-demand fetch
+    // e.g. { "example.com": { resultId: "abc123", evidenceIds: { "technical.wordCount": "ev_001" } } }
+    evidencePointers: {},
+    
+    // Fetch status tracking
+    fetchStatus: {},
+    
+    // Last update timestamp
+    lastUpdated: null
+  };
+  
+  /**
+   * Store competitor data in ORACLE_STATE
+   * Called by ParallelEngine when a worker completes
+   * @param {string} domain - Competitor domain
+   * @param {Object} data - Complete competitor data
+   * @param {string} resultId - Optional MySQL result ID for evidence pointer
+   */
+  window.ORACLE_STATE_setCompetitor = function(domain, data, resultId) {
+    if (!domain) return;
+    
+    window.ORACLE_STATE.competitors[domain] = {
+      ...(data || {}),
+      _storedAt: new Date().toISOString(),
+      _resultId: resultId || null
+    };
+    
+    // Store evidence pointer for on-demand fetch
+    if (resultId) {
+      window.ORACLE_STATE.evidencePointers[domain] = {
+        resultId: resultId,
+        domain: domain
+      };
+    }
+    
+    window.ORACLE_STATE.lastUpdated = new Date().toISOString();
+    console.log(`[ORACLE_STATE] Stored competitor: ${domain}`, {
+      hasEvidence: !!data?.evidenceMap,
+      resultId: resultId
+    });
+  };
+  
+  /**
+   * Get competitor data from ORACLE_STATE
+   * @param {string} domain - Competitor domain
+   * @returns {Object|null} Competitor data or null
+   */
+  window.ORACLE_STATE_getCompetitor = function(domain) {
+    return window.ORACLE_STATE.competitors[domain] || null;
+  };
+  
+  /**
+   * Get all stored competitor domains
+   * @returns {string[]} Array of domains
+   */
+  window.ORACLE_STATE_getDomains = function() {
+    return Object.keys(window.ORACLE_STATE.competitors);
+  };
+  
+  /**
+   * Set the current job token
+   * STATE AMNESIA FIX: Triple redundancy - ORACLE_STATE + localStorage + sessionStorage
+   * @param {string} token - Job token for MySQL queries
+   */
+  window.ORACLE_STATE_setJobToken = function(token) {
+    window.ORACLE_STATE.jobToken = token;
+    
+    // STATE AMNESIA FIX: Persist to localStorage for recovery after Gemini timeout
+    try {
+      localStorage.setItem('serpifai_jobToken', token);
+      localStorage.setItem('serpifai_jobToken_timestamp', Date.now().toString());
+      sessionStorage.setItem('serpifai_jobToken', token);
+      console.log(`[ORACLE_STATE] ✅ Job token persisted (triple redundancy): ${token}`);
+    } catch (e) {
+      console.warn('[ORACLE_STATE] localStorage unavailable:', e.message);
+    }
+    
+    console.log(`[ORACLE_STATE] Job token set: ${token}`);
+  };
+  
+  /**
+   * Recover job token from localStorage if ORACLE_STATE is empty
+   * STATE AMNESIA FIX: Called on page load and before strategic analysis
+   * @returns {string|null} Recovered token or null
+   */
+  window.ORACLE_STATE_recoverJobToken = function() {
+    // Already have a token
+    if (window.ORACLE_STATE.jobToken) {
+      return window.ORACLE_STATE.jobToken;
+    }
+    
+    try {
+      // Priority 1: localStorage
+      const localToken = localStorage.getItem('serpifai_jobToken');
+      const localTimestamp = localStorage.getItem('serpifai_jobToken_timestamp');
+      
+      if (localToken) {
+        const age = Date.now() - parseInt(localTimestamp || '0');
+        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (age < maxAge) {
+          window.ORACLE_STATE.jobToken = localToken;
+          console.log(`[ORACLE_STATE] ✅ Token recovered from localStorage: ${localToken} (age: ${Math.round(age/60000)}min)`);
+          return localToken;
+        } else {
+          console.log('[ORACLE_STATE] ⚠️ localStorage token expired, clearing...');
+          localStorage.removeItem('serpifai_jobToken');
+          localStorage.removeItem('serpifai_jobToken_timestamp');
+        }
+      }
+      
+      // Priority 2: sessionStorage
+      const sessionToken = sessionStorage.getItem('serpifai_jobToken');
+      if (sessionToken) {
+        window.ORACLE_STATE.jobToken = sessionToken;
+        console.log(`[ORACLE_STATE] ✅ Token recovered from sessionStorage: ${sessionToken}`);
+        return sessionToken;
+      }
+      
+    } catch (e) {
+      console.warn('[ORACLE_STATE] Storage recovery failed:', e.message);
+    }
+    
+    console.log('[ORACLE_STATE] ⚠️ No recoverable job token found');
+    return null;
+  };
+  
+  /**
+   * Display strategic audit pending message (called when Gemini times out)
+   * STATE AMNESIA FIX: Shows user-friendly message during recovery
+   */
+  window.ORACLE_STATE_showStrategicPending = function() {
+    const pendingHtml = `
+      <div class="strategic-pending-notice" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05)); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 20px; margin: 16px 0; text-align: center;">
+        <div style="font-size: 24px; margin-bottom: 8px;">⏳</div>
+        <div style="font-weight: 600; color: #f59e0b; margin-bottom: 4px;">Strategic Audit in progress...</div>
+        <div style="font-size: 12px; color: #6b7280;">Results will hydrate shortly. Job token preserved for recovery.</div>
+        <div style="font-size: 10px; color: #9ca3af; margin-top: 8px;">Token: ${window.ORACLE_STATE.jobToken || 'Recovering...'}</div>
+      </div>
+    `;
+    
+    // Inject into strategic sections if they exist
+    const strategicContainers = document.querySelectorAll('#card-programmatic-moat, #card-emotional-debt, #card-semantic-entity-map, #elite-strategic-section');
+    strategicContainers.forEach(container => {
+      if (container && !container.querySelector('.strategic-pending-notice')) {
+        container.insertAdjacentHTML('afterbegin', pendingHtml);
+      }
+    });
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LAYER 12: ASYNC REHYDRATOR - Domain-Level Sync & Hydration
+  // Never wait for 3.6MB payload - fetch domains one at a time
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Async Rehydrator - Fetches competitor data domain-by-domain
+   * Policy: Never wait for a single large payload
+   * Protocol: Initialize UI with "Empty Shells" -> Request Domain A -> Render A -> Request Domain B -> Render B
+   */
+  window.ORACLE_AsyncRehydrator = {
+    isRunning: false,
+    progress: { total: 0, loaded: 0, totalBytes: 0 },
+    
+    /**
+     * Start the rehydration process
+     * @param {string} jobToken - The job token to rehydrate from
+     * @param {Object} options - Optional configuration
+     */
+    start: async function(jobToken, options = {}) {
+      if (this.isRunning) {
+        console.log('[AsyncRehydrator] Already running, skipping...');
+        return;
+      }
+      
+      console.log('[AsyncRehydrator] ═══════════════════════════════════════════════════');
+      console.log('[AsyncRehydrator] 🛰️ Starting Domain-Level Sync & Hydration');
+      console.log('[AsyncRehydrator] jobToken:', jobToken);
+      console.log('[AsyncRehydrator] ═══════════════════════════════════════════════════');
+      
+      this.isRunning = true;
+      this.progress = { total: 0, loaded: 0, totalBytes: 0 };
+      
+      try {
+        // Step 1: Get competitor list (lightweight, ~2KB)
+        const competitorList = await this.fetchCompetitorList(jobToken);
+        
+        if (!competitorList || competitorList.length === 0) {
+          console.log('[AsyncRehydrator] No competitors found for job');
+          this.isRunning = false;
+          return;
+        }
+        
+        this.progress.total = competitorList.length;
+        console.log(`[AsyncRehydrator] Found ${competitorList.length} competitors to hydrate`);
+        
+        // Step 2: Inject empty shells into UI
+        this.injectEmptyShells(competitorList);
+        
+        // Step 3: Hydrate each domain sequentially (~500KB per call)
+        for (const comp of competitorList) {
+          const domain = comp.domain || comp.competitor_domain;
+          if (!domain) continue;
+          
+          this.updateShellProgress(domain, 'loading');
+          
+          try {
+            const snapshot = await this.fetchCompetitorSnapshot(jobToken, domain);
+            
+            if (snapshot && snapshot.success) {
+              const dataSize = JSON.stringify(snapshot.data || {}).length;
+              this.progress.totalBytes += dataSize;
+              this.progress.loaded++;
+              
+              // Store in ORACLE_STATE
+              window.ORACLE_STATE.competitors[domain] = snapshot.data;
+              window.ORACLE_STATE.competitors[domain]._rehydratedAt = new Date().toISOString();
+              
+              // Update UI shell with real data
+              this.hydrateShell(domain, snapshot.data);
+              
+              console.log(`[AsyncRehydrator] ✓ ${domain} (${this.formatBytes(dataSize)}) [${this.progress.loaded}/${this.progress.total}]`);
+            } else {
+              this.updateShellProgress(domain, 'error', snapshot?.message);
+            }
+          } catch (error) {
+            console.error(`[AsyncRehydrator] ✗ ${domain}:`, error.message);
+            this.updateShellProgress(domain, 'error', error.message);
+          }
+        }
+        
+        // Step 4: Finalize
+        window.ORACLE_STATE._lastMySQLSync = new Date().toISOString();
+        window.ORACLE_STATE._totalDataSize = this.progress.totalBytes;
+        
+        console.log('[AsyncRehydrator] ═══════════════════════════════════════════════════');
+        console.log('[AsyncRehydrator] ✅ Rehydration Complete');
+        console.log(`[AsyncRehydrator] Loaded: ${this.progress.loaded}/${this.progress.total} competitors`);
+        console.log(`[AsyncRehydrator] Total Data: ${this.formatBytes(this.progress.totalBytes)}`);
+        console.log('[AsyncRehydrator] ═══════════════════════════════════════════════════');
+        
+        // Trigger UI refresh if available
+        if (typeof window.refreshCompetitorUI === 'function') {
+          window.refreshCompetitorUI();
+        }
+        
+      } catch (error) {
+        console.error('[AsyncRehydrator] Fatal error:', error);
+      } finally {
+        this.isRunning = false;
+      }
+    },
+    
+    /**
+     * Fetch lightweight competitor list (~2KB)
+     */
+    fetchCompetitorList: function(jobToken) {
+      return new Promise((resolve, reject) => {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(result => resolve(result?.competitors || []))
+            .withFailureHandler(reject)
+            .listJobCompetitors(jobToken);
+        } else {
+          reject(new Error('google.script.run not available'));
+        }
+      });
+    },
+    
+    /**
+     * Fetch single competitor snapshot (~500KB max with evidenceMap)
+     */
+    fetchCompetitorSnapshot: function(jobToken, domain) {
+      return new Promise((resolve, reject) => {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .getCompetitorSnapshot(jobToken, domain);
+        } else {
+          reject(new Error('google.script.run not available'));
+        }
+      });
+    },
+    
+    /**
+     * Inject empty shell placeholders into UI
+     */
+    injectEmptyShells: function(competitorList) {
+      const container = document.getElementById('competitor-results-container') || 
+                        document.getElementById('elite-results-container');
+      
+      if (!container) return;
+      
+      competitorList.forEach((comp, idx) => {
+        const domain = comp.domain || comp.competitor_domain;
+        const shellId = `rehydrate-shell-${domain.replace(/\./g, '-')}`;
+        
+        if (!document.getElementById(shellId)) {
+          const shellHtml = `
+            <div id="${shellId}" class="rehydrate-shell" data-domain="${domain}" 
+                 style="background: rgba(0,0,0,0.1); border-radius: 12px; padding: 20px; margin-bottom: 16px; opacity: 0.6;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="shell-spinner" style="width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #f59e0b; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <div>
+                  <div style="font-weight: 600;">${domain}</div>
+                  <div class="shell-status" style="font-size: 12px; color: #6b7280;">Waiting to hydrate...</div>
+                </div>
+              </div>
+            </div>
+          `;
+          container.insertAdjacentHTML('beforeend', shellHtml);
+        }
+      });
+    },
+    
+    /**
+     * Update shell loading state
+     */
+    updateShellProgress: function(domain, status, message) {
+      const shellId = `rehydrate-shell-${domain.replace(/\./g, '-')}`;
+      const shell = document.getElementById(shellId);
+      if (!shell) return;
+      
+      const statusEl = shell.querySelector('.shell-status');
+      const spinnerEl = shell.querySelector('.shell-spinner');
+      
+      if (status === 'loading') {
+        if (statusEl) statusEl.textContent = 'Fetching data...';
+        shell.style.opacity = '0.8';
+      } else if (status === 'error') {
+        if (statusEl) statusEl.innerHTML = `<span style="color: #ef4444;">❌ ${message || 'Failed'}</span>`;
+        if (spinnerEl) spinnerEl.style.display = 'none';
+        shell.style.opacity = '1';
+      }
+    },
+    
+    /**
+     * Replace shell with fully hydrated content
+     */
+    hydrateShell: function(domain, data) {
+      const shellId = `rehydrate-shell-${domain.replace(/\./g, '-')}`;
+      const shell = document.getElementById(shellId);
+      if (!shell) return;
+      
+      // Mark as hydrated
+      shell.style.opacity = '1';
+      shell.classList.add('hydrated');
+      
+      const statusEl = shell.querySelector('.shell-status');
+      const spinnerEl = shell.querySelector('.shell-spinner');
+      
+      if (statusEl) statusEl.innerHTML = `<span style="color: #22c55e;">✅ Hydrated</span>`;
+      if (spinnerEl) spinnerEl.style.display = 'none';
+      
+      // If there's a render function for this competitor, call it
+      if (typeof window.renderCompetitorCard === 'function') {
+        window.renderCompetitorCard(domain, data, shell);
+      }
+    },
+    
+    /**
+     * Format bytes to human-readable
+     */
+    formatBytes: function(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+  };
+  
+  /**
+   * Auto-trigger rehydration on page load if jobToken exists
+   * LAYER 12 Policy: State Recovery
+   */
+  window.ORACLE_triggerAutoRehydration = function() {
+    const recoveredToken = window.ORACLE_STATE_recoverJobToken?.();
+    
+    if (recoveredToken && Object.keys(window.ORACLE_STATE.competitors).length === 0) {
+      console.log('[AsyncRehydrator] Auto-triggering rehydration for recovered token');
+      
+      // Delay slightly to ensure UI is ready
+      setTimeout(() => {
+        window.ORACLE_AsyncRehydrator.start(recoveredToken);
+      }, 500);
+    }
+  };
+  
+  /**
+   * Debug: Log current ORACLE_STATE summary
+   */
+  window.ORACLE_STATE_debug = function() {
+    const state = window.ORACLE_STATE;
+    console.log('[ORACLE_STATE DEBUG]', {
+      version: state.version,
+      jobToken: state.jobToken,
+      competitorCount: Object.keys(state.competitors).length,
+      domains: Object.keys(state.competitors),
+      lastUpdated: state.lastUpdated
+    });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // FIELD IDS - Form field identifiers for data collection
   // ═══════════════════════════════════════════════════════════════════════════
   window.FIELD_IDS = [
@@ -52,14 +473,21 @@
   };
 
   /**
-   * Switch UI theme (dark/light)
+   * Switch UI theme (dark/light/aurora/neon)
+   * Now delegates to ThemeSystem for full functionality
    * @param {string} theme - Theme name
    */
   window.switchTheme = function(theme) {
-    document.body.classList.remove('theme-dark', 'theme-light');
-    document.body.classList.add('theme-' + theme);
-    localStorage.setItem('serpifai-theme', theme);
-    console.log('🎨 Theme switched to:', theme);
+    // Use ThemeSystem if available (preferred)
+    if (window.ThemeSystem && window.ThemeSystem.apply) {
+      window.ThemeSystem.apply(theme);
+    } else {
+      // Fallback for backwards compatibility
+      document.body.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('serpifai-theme', theme);
+      console.log('🎨 Theme switched to:', theme);
+    }
   };
 
   /**

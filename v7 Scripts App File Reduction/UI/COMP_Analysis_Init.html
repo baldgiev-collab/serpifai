@@ -542,6 +542,31 @@
     console.log('   Has eliteTabIntelligence:', !!intelligenceData.eliteTabIntelligence);
     console.log('   Has analysis:', !!intelligenceData.analysis);
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V33 FIX: PERSIST ANALYSIS TO SERVER-SIDE STORAGE
+    // This ensures data survives page refreshes - CRITICAL FIX
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('💾 V33: Persisting analysis to server-side storage...');
+    try {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result && result.success) {
+            console.log('✅ V33: Analysis persisted to ScriptProperties');
+            console.log('   Size:', result.size, 'bytes');
+            console.log('   Competitors:', result.competitorCount);
+            console.log('   Has Executive Brief:', result.hasExecutiveBrief);
+          } else {
+            console.warn('⚠️ V33: Persistence returned:', result);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.warn('⚠️ V33: Failed to persist analysis:', error);
+        })
+        .saveLatestAnalysis(intelligenceData);
+    } catch (persistError) {
+      console.warn('⚠️ V33: Persistence call failed:', persistError);
+    }
+
     // Show results container, hide empty state
     const emptyState = document.getElementById('comp-empty-state');
     const resultsDiv = document.getElementById('comp-results');

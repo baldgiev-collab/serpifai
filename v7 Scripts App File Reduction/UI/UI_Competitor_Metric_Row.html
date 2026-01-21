@@ -1,0 +1,134 @@
+<!--
+  UI_Competitor_Metric_Row.html
+  METRIC ROW COMPONENT v1.0
+  
+  Label/value pairs with progress bars and accent colors
+  Hover tooltips for context
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 28: METRIC ROW COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--cmd-border);
+}
+
+.metric-row:last-child {
+  border-bottom: none;
+}
+
+.metric-row-label {
+  font-size: 0.8125rem;
+  color: var(--cmd-muted-text);
+}
+
+.metric-row-value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cmd-body-text);
+}
+
+/* With Progress Bar */
+.metric-row--with-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.metric-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-row-bar {
+  height: 6px;
+  background: var(--cmd-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.metric-row-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Accent Types */
+.metric-row-fill--authority { background: var(--accent-authority); }
+.metric-row-fill--value { background: var(--accent-value); }
+.metric-row-fill--velocity { background: var(--accent-velocity); }
+.metric-row-fill--danger { background: var(--accent-danger); }
+
+/* Value Accents */
+.metric-row-value--authority { color: var(--accent-authority); }
+.metric-row-value--value { color: var(--accent-value); }
+.metric-row-value--velocity { color: var(--accent-velocity); }
+.metric-row-value--danger { color: var(--accent-danger); }
+
+/* Tooltip */
+.metric-row[title] {
+  cursor: help;
+  position: relative;
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   METRIC ROW RENDERER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const MetricRow = {
+  
+  /**
+   * Render a single metric row
+   */
+  render(metric) {
+    const { label, value, percent, type = 'neutral', tooltip } = metric;
+    const tooltipAttr = tooltip ? `title="${tooltip}"` : '';
+    const valueClass = type !== 'neutral' ? `metric-row-value--${type}` : '';
+    
+    // With progress bar
+    if (typeof percent === 'number') {
+      return `
+        <div class="metric-row metric-row--with-bar" ${tooltipAttr}>
+          <div class="metric-row-header">
+            <span class="metric-row-label">${label}</span>
+            <span class="metric-row-value ${valueClass}">${value}</span>
+          </div>
+          <div class="metric-row-bar">
+            <div class="metric-row-fill metric-row-fill--${type}" style="width: ${Math.min(percent, 100)}%"></div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Simple label/value
+    return `
+      <div class="metric-row" ${tooltipAttr}>
+        <span class="metric-row-label">${label}</span>
+        <span class="metric-row-value ${valueClass}">${value}</span>
+      </div>
+    `;
+  },
+  
+  /**
+   * Format large numbers
+   */
+  formatValue(num) {
+    if (typeof num !== 'number') return num;
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.MetricRow = MetricRow;
+}
+</script>

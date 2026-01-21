@@ -3,6 +3,8 @@
   │  UI_Scripts_App.html - Elite Modular Architecture v7.0 - Phase 11                │
   │  Main Barrel/Proxy File - Orchestrates All Modular Includes                      │
   │                                                                                    │
+  │  V39.0 - BOM FIX APPLIED TO TAB FILES - CACHE INVALIDATION                       │
+  │                                                                                    │
   │  Architecture Pattern: Include-Based Module System                                 │
   │  Each module provides window.* global functions                                    │
   │  This file is a thin shell that wires event listeners and initializes             │
@@ -18,11 +20,49 @@
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER 0: Theme & Style System (CSS - Must load first)                            -->
 <!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Theme_System'); ?>
 <?!= include('UI_Styles_Theme_Core'); ?>
 <?!= include('UI_Styles_Theme_Components'); ?>
 <?!= include('UI_Styles_Theme_UI'); ?>
 <?!= include('UI_Styles_Theme_Competitor'); ?>
 <?!= include('UI_Styles_Theme_Settings'); ?>
+<?!= include('UI_Styles_Table_Elite'); ?>
+<?!= include('UI_Styles_Bento_Grid'); ?>
+<?!= include('UI_Semantic_Galaxy'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- COMMAND CANVAS v1.0 - Stage 1 Overhaul (Replaces Bento for Stage 1)             -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_Styles_Command_Tokens'); ?>
+<?!= include('UI_Styles_Command_Canvas'); ?>
+<?!= include('UI_Loading_Skeleton'); ?>
+<?!= include('UI_Components_Accordion'); ?>
+<?!= include('UI_Components_Competitor_Card'); ?>
+<?!= include('UI_Stage1_Hero_Verdict'); ?>
+<?!= include('UI_Components_Metric_Badge'); ?>
+<?!= include('UI_Stage1_Sage_Insight'); ?>
+<?!= include('UI_Stage1_Section_Icons'); ?>
+<?!= include('UI_Metrics_Calculator'); ?>
+<?!= include('UI_Stage1_Chart_Stage'); ?>
+<?!= include('UI_D3_Hydration'); ?>
+<?!= include('UI_Chart_Theme_Colors'); ?>
+<?!= include('UI_Chart_Action_Bar'); ?>
+<?!= include('UI_D3_MindMap_Force'); ?>
+<?!= include('UI_D3_Semantic_Galaxy'); ?>
+<?!= include('UI_Chart_Fallback_States'); ?>
+<?!= include('UI_Stage1_Forensic_Accordion'); ?>
+<?!= include('UI_Accordion_Content_Renderer'); ?>
+<?!= include('UI_Accordion_Header_Metadata'); ?>
+<?!= include('UI_Accordion_Copy_Clipboard'); ?>
+<?!= include('UI_Gemini_Response_Parser'); ?>
+<?!= include('UI_Chart_Data_Validator'); ?>
+<?!= include('UI_Competitor_Data_Normalizer'); ?>
+<?!= include('UI_Section_Content_Store'); ?>
+<?!= include('UI_Competitor_Card_Grid'); ?>
+<?!= include('UI_Competitor_Card_Structure'); ?>
+<?!= include('UI_Competitor_Metric_Row'); ?>
+<?!= include('UI_Competitor_Card_Expand'); ?>
+<?!= include('UI_Competitor_Ranking_Badge'); ?>
 
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER 1: Foundation Modules (No dependencies)                                    -->
@@ -89,13 +129,16 @@
 <?!= include('ELITE_Modals_Enhanced'); ?>
 <?!= include('UI_Elite_Opportunity_Engine'); ?>
 <?!= include('UI_Forensic_Grid'); ?>
+<?!= include('UI_AuditTrail_Modal'); ?>
+<?!= include('UI_ZeroTrust_Injection'); ?>
 <?!= include('UI_Tab_Technical'); ?>
 
 <?!= include('UI_Tab_Brand'); ?>
 <?!= include('UI_Tab_ContentSystems'); ?>
-<?!= include('UI_Tab_Conversion'); ?>
-<?!= include('UI_Tab_Audience'); ?>
-<?!= include('UI_Tab_AuthPerf'); ?>
+<?!= include('UI_Tab_Test_V42'); ?>
+<?!= include('UI_Tab_Conversion_V45'); ?>
+<?!= include('UI_Tab_Audience_V45'); ?>
+<?!= include('UI_Tab_AuthPerf_V45'); ?>
 <?!= include('UI_Tab_CategoryIntel'); ?>
 <?!= include('UI_Tab_Scoring'); ?>
 <?!= include('UI_Tab_ContentIntel'); ?>
@@ -118,6 +161,14 @@
 <?!= include('UI_Data_Mapper'); ?>
 <?!= include('UI_Styles_DataBadges'); ?>
 <?!= include('UI_Scripts_Settings'); ?>
+<?!= include('DIAG_TabDebug'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- V7.22 PHASE 2-5: Elite Strategic Intelligence Modules                           -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_EliteInsights_Renderer'); ?>
+<?!= include('UI_D3_MindMap'); ?>
+
 <!-- UI_Components_Settings removed - already in UI_Dashboard.html -->
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER 3: Business Logic (Depends on Core Utilities)                              -->
@@ -148,9 +199,16 @@
 
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER 5: Stage Workflow System                                                   -->
+<!-- V7.14: CRITICAL - Renderer MUST load before Runner for function availability   -->
 <!-- ------------------------------------------------------------------------------- -->
-<?!= include('UI_Stage_Runner'); ?>
 <?!= include('UI_Stage1_Renderer'); ?>
+<?!= include('UI_Stage_Runner'); ?>
+<?!= include('UI_Competitor_Forensics'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- TIER 5.5: Persistence & Data Tracking (v36.0)                                   -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_PersistenceTracker'); ?>
 
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER 6: Navigation & Event Handlers                                             -->
@@ -244,7 +302,7 @@
     // ---------------------------------------------------------------------------
     // INITIALIZATION SEQUENCE
     // ---------------------------------------------------------------------------
-    console.log('?? Running initialization sequence...');
+    console.log('🚀 Running initialization sequence...');
 
     // 0. Wire up navigation handlers (CRITICAL - enables tab clicks)
     window.initNavigationHandlers?.();
@@ -264,8 +322,23 @@
     // 5. Refresh project list and set initial tab
     window.refreshProjectList?.();
     window.setActiveTab?.('workflow');
+    
+    // 6. STATE AMNESIA FIX: Recover jobToken from localStorage on page load
+    console.log('🔄 Checking for recoverable job token...');
+    if (typeof window.ORACLE_STATE_recoverJobToken === 'function') {
+      const recoveredToken = window.ORACLE_STATE_recoverJobToken();
+      if (recoveredToken) {
+        console.log('✅ Job token recovered from localStorage:', recoveredToken);
+        
+        // LAYER 12: Auto-trigger async rehydration if token exists but no data
+        if (typeof window.ORACLE_triggerAutoRehydration === 'function') {
+          console.log('🛰️ Triggering Layer 12 Async Rehydration...');
+          window.ORACLE_triggerAutoRehydration();
+        }
+      }
+    }
 
-    // 6. Safety check: Ensure at least one tab is visible
+    // 7. Safety check: Ensure at least one tab is visible
     setTimeout(function() {
       const visibleTabs = document.querySelectorAll('.tab.active');
       if (visibleTabs.length === 0) {

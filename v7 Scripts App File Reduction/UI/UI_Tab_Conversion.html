@@ -1,4 +1,7 @@
-﻿<script>
+<script>
+  // V41.0 - DIAGNOSTIC SCRIPT LOAD TEST
+  console.log('[V41] UI_Tab_Conversion.html LOADED');
+  window._v41_conversion_loaded = true;
   // ===========================================================================
   // UI_Tab_Conversion.html
   // Conversion & Distribution Tabs - Elite v9.0
@@ -18,11 +21,14 @@
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
   // CONVERSION & MONETIZATION TAB - Elite v9.0
-  // Uses: FT_GenerateEliteTabIntelligence ? Affiliate Masking, Funnel Architecture,
+  // Uses: FT_GenerateEliteTabIntelligence - Affiliate Masking, Funnel Architecture,
   //       Pricing Psychology, Retention Loops, Kill Moves
   // ---------------------------------------------------------------------------
   function populateConversionDataTab(data) {
-    console.log('?? Populating Conversion Tab (Elite v9.0 - FUNNEL FORENSICS)...');
+    console.log('Populating Conversion Tab (Elite v9.0 - FUNNEL FORENSICS)...');
+
+    // V38.3: Wrap entire function in try-catch to prevent silent failures
+    try {
 
     // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
     let metricsDiv = document.getElementById('comp-conversion-metrics');
@@ -31,7 +37,7 @@
       const panel = document.querySelector('[data-comp-panel="conversion"]') ||
         document.getElementById('panel-conversionData');
       if (panel) {
-        console.log('?? Creating dynamic containers inside conversion panel');
+        console.log('📦 Creating dynamic containers inside conversion panel');
         metricsDiv = panel.querySelector('#comp-conversion-metrics') || (() => {
           const c = document.createElement('div'); c.id = 'comp-conversion-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
           const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
@@ -41,7 +47,7 @@
     }
 
     if (!metricsDiv) {
-      console.warn('?? Conversion tab containers not found - check UI_Components_Competitors.html has data-comp-panel="conversion"');
+      console.warn('⚠️ Conversion tab containers not found - check UI_Components_Competitors.html has data-comp-panel="conversion"');
       return;
     }
 
@@ -54,23 +60,23 @@
 
     // ---------------------------------------------------------------------------
     // ELITE TAB INTELLIGENCE v9.0 - Check for enhanced data
+    // V38.2 FIX: Always render BOTH Elite AND fallback content for maximum value
     // ---------------------------------------------------------------------------
     const eliteData = data.eliteTabIntelligence || window._eliteTabIntelligence;
     const convIntel = eliteData?.conversionMonetization;
 
+    // V38.2: Log Elite data availability but ALWAYS compute fallback metrics too
     if (convIntel) {
-      console.log('?? Using ELITE Tab Intelligence v9.0 for Conversion Tab');
+      console.log('🎯 Using ELITE Tab Intelligence v9.0 for Conversion Tab (with rich fallback data)');
       console.log('   Affiliate Masking:', convIntel.affiliateMaskingDepth?.length || 0);
       console.log('   Funnel Architecture:', convIntel.funnelArchitecture?.length || 0);
       console.log('   Retention Loops:', !!convIntel.retentionLoops);
       console.log('   Kill Moves:', convIntel.killMoves?.length || 0);
-
-      renderEliteConversionMonetization(metricsDiv, convIntel, competitors, eliteData);
-      return;
     }
 
-    // FALLBACK: Original conversion analysis
-    console.log('?? Using standard conversion analysis mode...');
+    // V38.2: ALWAYS compute fallback metrics - they provide the rich data tables
+    // COMBINED MODE: Extract REAL conversion metrics + Elite enhancements
+    console.log('📊 Using combined conversion analysis mode (Rich fallback + Elite enhancements)...');
 
     // Extract REAL conversion metrics from PHP Fetcher data
     const conversionData = competitors.map(comp => {
@@ -370,8 +376,131 @@
       });
     })();
 
+    // V38.2: Add Elite Enhancements if available (Affiliate Masking, Funnel Architecture, Pricing Psychology)
+    if (convIntel) {
+      const affiliateMasking = convIntel.affiliateMaskingDepth || [];
+      const funnelArch = convIntel.funnelArchitecture || [];
+      const pricingPsych = convIntel.pricingPsychology || [];
+      const retentionLoops = convIntel.retentionLoops || {};
+      const killMoves = convIntel.killMoves || [];
+      
+      if (affiliateMasking.length > 0) {
+        html += `
+          <h4 style="margin: 30px 0 16px; font-size: 18px; font-weight: 700;">🔗 Elite Affiliate Masking Analysis</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+            <table class="comp-table">
+              <thead>
+                <tr><th>Competitor</th><th>Detected Patterns</th><th>Masking Depth</th><th>Assessment</th><th>Trust Signal</th></tr>
+              </thead>
+              <tbody>
+                ${affiliateMasking.map(aff => `
+                  <tr>
+                    <td><strong>${aff.domain}</strong></td>
+                    <td>${(aff.detectedPatterns || []).map(p => `<code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px;">${p}</code>`).join('') || '<span style="color: #9ca3af;">None</span>'}</td>
+                    <td><span style="font-weight: 700; font-size: 18px;">${aff.maskingDepth}</span></td>
+                    <td><span style="background: ${aff.assessment?.includes('Heavy') ? '#fee2e2' : '#dcfce7'}; color: ${aff.assessment?.includes('Heavy') ? '#991b1b' : '#166534'}; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${aff.assessment}</span></td>
+                    <td style="font-size: 12px; color: #6b7280; max-width: 200px;">${aff.trustSignal}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+      
+      if (funnelArch.length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🎯 Elite Funnel Architecture & Time-to-Conversion</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${funnelArch.slice(0, 4).map(funnel => `
+              <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid ${funnel.timeToConversion?.score >= 60 ? '#22c55e' : '#f59e0b'};">
+                <div style="font-weight: 700; margin-bottom: 12px;">${funnel.domain}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                  <div>
+                    <div style="color: #6b7280;">Time-to-Convert</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #1f2937;">${funnel.timeToConversion?.clicks || 0} clicks</div>
+                    <div style="font-size: 11px; color: #9ca3af;">${funnel.timeToConversion?.assessment || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div style="color: #6b7280;">Intent Clarity</div>
+                    <div style="font-size: 20px; font-weight: 700; color: ${(funnel.userIntentPath?.clarity || 0) >= 50 ? '#22c55e' : '#f59e0b'};">${funnel.userIntentPath?.clarity || 0}%</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if (pricingPsych.length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">💎 Elite Pricing Psychology & Persuasion</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${pricingPsych.slice(0, 4).map(pricing => `
+              <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <span style="font-weight: 700; color: #78350f;">${pricing.domain}</span>
+                  <span style="background: #92400e; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px;">Score: ${pricing.landingPersuasionScore || 0}</span>
+                </div>
+                <div style="font-size: 12px; color: #78350f;">
+                  <strong>Persuasion:</strong> ${[pricing.persuasionPrinciples?.authority && '🏛️ Authority', pricing.persuasionPrinciples?.socialProof && '👥 Social Proof', pricing.persuasionPrinciples?.scarcity && '⏰ Scarcity'].filter(Boolean).join(' • ') || 'None detected'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if ((retentionLoops.offPageEcosystem || []).length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🔄 Elite Retention Loops</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            ${(retentionLoops.offPageEcosystem || []).map(loop => `
+              <div style="background: ${loop.detected ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : '#e5e7eb'}; color: ${loop.detected ? 'white' : '#6b7280'}; padding: 16px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 600;">${loop.channel}</div>
+                <div style="font-size: 12px; opacity: 0.85;">${loop.detected ? '✅ Detected' : '❌ Not Found'}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if (killMoves.length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">⚔️ Kill Moves: Conversion Domination</h4>
+          <div style="display: grid; gap: 12px; margin-bottom: 24px;">
+            ${killMoves.slice(0, 4).map((move, i) => `
+              <div style="background: linear-gradient(135deg, #78350f 0%, #92400e 100%); color: white; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;">${['⚡', '🎯', '🌙', '🔥'][i % 4]}</span>
+                <div>
+                  <div style="font-weight: 700; font-size: 14px;">${move.name}</div>
+                  <div style="font-size: 12px; opacity: 0.9;">${move.action}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
     metricsDiv.innerHTML = html;
     setTimeout(() => renderConversionCharts(conversionData), 300);
+
+    } catch (error) {
+      // V38.3: Show visible error to help debug
+      console.error('❌ CONVERSION TAB ERROR:', error);
+      const errorDiv = document.getElementById('comp-conversion-metrics') || 
+        document.querySelector('[data-comp-panel="conversion"]');
+      if (errorDiv) {
+        errorDiv.innerHTML = `
+          <div style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; padding: 24px; margin: 16px;">
+            <h4 style="color: #991b1b; margin: 0 0 12px;">⚠️ Conversion Tab Error</h4>
+            <p style="color: #7f1d1d; font-size: 14px; margin: 0 0 12px;">${error.message || error}</p>
+            <pre style="background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; font-size: 11px; overflow-x: auto;">${error.stack || 'No stack trace'}</pre>
+          </div>
+        `;
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -533,11 +662,11 @@
     const hoverInsights = eliteData?.hoverInsights?.distributionVisibility || {};
 
     let html = `
-          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">?? Distribution & Visibility <span style="font-size: 12px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 4px 12px; border-radius: 12px; margin-left: 8px;">Elite v9.0</span></h3>
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">📡 Distribution & Visibility <span style="font-size: 12px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 4px 12px; border-radius: 12px; margin-left: 8px;">Elite v9.0</span></h3>
           
           <!-- ELITE HEADER -->
           <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
-            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">?? Referral Efficiency ï¿½ Social SEO Index ï¿½ Dark Social Detection ï¿½ Brand Consistency</p>
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Referral Efficiency • Social SEO Index • Dark Social Detection • Brand Consistency</p>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
               <div title="${hoverInsights?.referralEfficiency || 'Traffic-to-referring-domains ratio indicating link quality'}" style="cursor: help;">
                 <div style="font-size: 12px; opacity: 0.85;">Avg Referral Efficiency</div>
@@ -559,7 +688,7 @@
           </div>
           
           <!-- REFERRAL EFFICIENCY TABLE -->
-          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">?? Referral Efficiency Ratio (Traffic ï¿½ Ref Domains)</h4>
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">📊 Referral Efficiency Ratio (Traffic ÷ Ref Domains)</h4>
           <div style="overflow-x: auto; margin-bottom: 24px;">
             <table class="comp-table">
               <thead>
@@ -586,7 +715,7 @@
                     <td><span style="background: ${ref.ratio >= 50 ? '#dcfce7' : ref.ratio >= 20 ? '#fef3c7' : '#fee2e2'}; color: ${ref.ratio >= 50 ? '#166534' : ref.ratio >= 20 ? '#92400e' : '#991b1b'}; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${ref.assessment}</span></td>
                     <td style="text-align: center;">
                       ${ref.linkBloatRisk ?
-        '<span style="color: #ef4444; font-weight: 600;">?? Risk</span>' :
+        '<span style="color: #ef4444; font-weight: 600;">⚠️ Risk</span>' :
         '<span style="color: #22c55e;">? Clean</span>'
       }
                     </td>
@@ -597,7 +726,7 @@
           </div>
           
           <!-- SOCIAL SEO INDEX -->
-          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">?? Social SEO Index by Platform</h4>
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">📱 Social SEO Index by Platform</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
             ${socialSEO.slice(0, 4).map(seo => `
               <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
@@ -608,7 +737,7 @@
                 <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
                   ${Object.entries(seo.platforms || {}).map(([platform, data]) => `
                     <div style="text-align: center; padding: 8px; background: ${data.detected ? '#dcfce7' : '#f3f4f6'}; border-radius: 8px;">
-                      <div style="font-size: 16px;">${platform === 'reddit' ? '??' : platform === 'youtube' ? '??' : platform === 'tiktok' ? '??' : platform === 'twitter' ? '??' : '??'}</div>
+                      <div style="font-size: 16px;">${platform === 'reddit' ? '🤖' : platform === 'youtube' ? '🎥' : platform === 'tiktok' ? '🎵' : platform === 'twitter' ? '🐦' : '📱'}</div>
                       <div style="font-size: 10px; margin-top: 2px;">${platform}</div>
                       <div style="font-size: 11px; font-weight: 600; color: ${data.detected ? '#166534' : '#9ca3af'};">${data.engagement || 0}</div>
                     </div>
@@ -622,7 +751,7 @@
           </div>
           
           <!-- DARK SOCIAL DETECTION -->
-          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">?? Dark Social Channel Detection</h4>
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🕶️ Dark Social Channel Detection</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
             ${(darkSocial.signals || []).map(signal => `
               <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); color: white; padding: 16px; border-radius: 12px;">
@@ -641,11 +770,11 @@
             `).join('')}
           </div>
           <div style="background: #fef3c7; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px; color: #92400e;">
-            <strong>?? Insight:</strong> ${darkSocial.offPageConversionEstimate || '40% of affiliate revenue happens off-website via dark social channels'}
+            <strong>💡 Insight:</strong> ${darkSocial.offPageConversionEstimate || '40% of affiliate revenue happens off-website via dark social channels'}
           </div>
           
           <!-- BRAND CONSISTENCY -->
-          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">?? Brand Consistency Score</h4>
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🏆 Brand Consistency Score</h4>
           <div style="overflow-x: auto; margin-bottom: 24px;">
             <table class="comp-table">
               <thead>
@@ -679,12 +808,12 @@
           </div>
           
           <!-- KILL MOVES -->
-          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">?? Kill Moves: Distribution Domination</h4>
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">⚔️ Kill Moves: Distribution Domination</h4>
           <div style="display: grid; gap: 16px; margin-bottom: 24px;">
             ${killMoves.map((move, i) => `
               <div style="background: linear-gradient(135deg, #581c87 0%, #7c3aed 100%); color: white; padding: 20px; border-radius: 12px;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                  <span style="font-size: 24px;">${['??', '??', '??'][i % 3]}</span>
+                  <span style="font-size: 24px;">${['🛠️', '📲', '🚀'][i % 3]}</span>
                   <div>
                     <div style="font-size: 16px; font-weight: 700;">${move.name}</div>
                     <div style="font-size: 12px; opacity: 0.7;">${move.logic}</div>
@@ -692,7 +821,7 @@
                 </div>
                 <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;"><strong>Action:</strong> ${move.action}</div>
                 <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; font-size: 12px;">
-                  <strong style="color: #22c55e;">?? Impact:</strong> ${move.impact}
+                  <strong style="color: #22c55e;">📊 Impact:</strong> ${move.impact}
                 </div>
               </div>
             `).join('')}
@@ -997,5 +1126,8 @@
   window.populateDistributionDataTab = populateDistributionDataTab;
   window.renderEliteConversionMonetization = renderEliteConversionMonetization;
   window.renderEliteDistributionVisibility = renderEliteDistributionVisibility;
+
+  console.log('[V41] UI_Tab_Conversion.html: EXPORTS DONE');
+  console.log('[V41] populateConversionDataTab:', typeof window.populateConversionDataTab);
 
 </script>

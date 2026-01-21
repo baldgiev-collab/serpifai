@@ -1,0 +1,176 @@
+<!--
+  UI_Memory_Leak_Check.html
+  MEMORY LEAK CHECK UTILITY v1.0
+  
+  Verify IntersectionObserver cleanup on scroll/destroy
+  Detects orphaned observers, event listeners, D3 selections
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 39: MEMORY LEAK CHECK
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const MemoryLeakCheck = {
+  
+  // Track registered observers
+  _observerRegistry: new WeakMap(),
+  _observerCount: 0,
+  
+  /**
+   * Run full memory check
+   */
+  runCheck() {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('MEMORY LEAK CHECK — IntersectionObserver & D3.js');
+    console.log('═══════════════════════════════════════════════════════════\n');
+    
+    const results = { warnings: [], passed: 0, failed: 0 };
+    
+    // Check 1: IntersectionObserver tracking
+    this.checkObservers(results);
+    
+    // Check 2: D3 selection cleanup
+    this.checkD3Selections(results);
+    
+    // Check 3: Event listener leaks
+    this.checkEventListeners(results);
+    
+    // Check 4: DOM node accumulation
+    this.checkDOMNodes(results);
+    
+    console.log('\n═══════════════════════════════════════════════════════════');
+    console.log(`RESULTS: ${results.passed} PASSED | ${results.failed} WARNINGS`);
+    console.log('═══════════════════════════════════════════════════════════');
+    
+    if (results.warnings.length > 0) {
+      console.log('\n⚠️ POTENTIAL ISSUES:');
+      results.warnings.forEach(w => console.log(`  - ${w}`));
+    }
+    
+    return results;
+  },
+  
+  /**
+   * Check IntersectionObserver status
+   */
+  checkObservers(results) {
+    console.log('📡 INTERSECTION OBSERVERS:');
+    
+    // Check for hydration registry
+    if (window._chartObservers) {
+      const count = Object.keys(window._chartObservers).length;
+      console.log(`  → Active observers: ${count}`);
+      
+      if (count > 14) {
+        results.warnings.push(`Too many observers (${count}), possible leak`);
+        results.failed++;
+      } else {
+        results.passed++;
+      }
+    } else {
+      console.log('  → No observer registry found (OK if charts not loaded)');
+      results.passed++;
+    }
+  },
+  
+  /**
+   * Check D3 selections for orphaned data
+   */
+  checkD3Selections(results) {
+    console.log('\n📊 D3.JS SELECTIONS:');
+    
+    if (typeof d3 === 'undefined') {
+      console.log('  → D3 not loaded');
+      results.passed++;
+      return;
+    }
+    
+    // Count SVG elements with bound data
+    const svgs = document.querySelectorAll('svg');
+    let boundDataCount = 0;
+    
+    svgs.forEach(svg => {
+      if (svg.__data__) boundDataCount++;
+    });
+    
+    console.log(`  → SVGs with bound data: ${boundDataCount}/${svgs.length}`);
+    
+    // Check for excessive bound data
+    if (boundDataCount > 20) {
+      results.warnings.push(`High D3 data binding count (${boundDataCount})`);
+      results.failed++;
+    } else {
+      results.passed++;
+    }
+  },
+  
+  /**
+   * Check for event listener accumulation
+   */
+  checkEventListeners(results) {
+    console.log('\n🎯 EVENT LISTENERS:');
+    
+    // Check scroll listeners on window
+    if (typeof getEventListeners === 'function') {
+      const listeners = getEventListeners(window);
+      const scrollCount = (listeners.scroll || []).length;
+      const resizeCount = (listeners.resize || []).length;
+      
+      console.log(`  → Window scroll listeners: ${scrollCount}`);
+      console.log(`  → Window resize listeners: ${resizeCount}`);
+      
+      if (scrollCount > 10 || resizeCount > 10) {
+        results.warnings.push('High event listener count');
+        results.failed++;
+      } else {
+        results.passed++;
+      }
+    } else {
+      console.log('  → getEventListeners not available (Chrome DevTools only)');
+      results.passed++;
+    }
+  },
+  
+  /**
+   * Check DOM node accumulation
+   */
+  checkDOMNodes(results) {
+    console.log('\n🌳 DOM NODE COUNT:');
+    
+    const nodeCount = document.querySelectorAll('*').length;
+    console.log(`  → Total DOM nodes: ${nodeCount}`);
+    
+    // Typical page should have < 3000 nodes
+    if (nodeCount > 5000) {
+      results.warnings.push(`High DOM node count (${nodeCount})`);
+      results.failed++;
+    } else {
+      results.passed++;
+    }
+  },
+  
+  /**
+   * Cleanup helper - disconnect all tracked observers
+   */
+  cleanupObservers() {
+    if (window._chartObservers) {
+      let disconnected = 0;
+      Object.values(window._chartObservers).forEach(observer => {
+        if (observer && typeof observer.disconnect === 'function') {
+          observer.disconnect();
+          disconnected++;
+        }
+      });
+      window._chartObservers = {};
+      console.log(`🧹 Disconnected ${disconnected} observers`);
+    }
+  }
+};
+
+// Expose globally
+if (typeof window !== 'undefined') {
+  window.MemoryLeakCheck = MemoryLeakCheck;
+  console.log('💡 Run MemoryLeakCheck.runCheck() to scan for leaks');
+  console.log('💡 Run MemoryLeakCheck.cleanupObservers() to force cleanup');
+}
+</script>

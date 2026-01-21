@@ -392,6 +392,33 @@ function saveToMySQL(projectId, jsonData, competitors, yourDomain, metadata) {
     });
     
     Logger.log('   ✅ Chunked upload complete: ' + (finalizeResult.success ? 'SUCCESS' : 'FAILED'));
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v35.0 UPP: Universal Persistence Provider - Force backup to job_results
+    // Ensures data is NEVER lost by also storing in UPP tables
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (typeof UPP_commit === 'function' && finalizeResult.success) {
+      Logger.log('   💾 [UPP] Backing up to Universal Persistence Provider...');
+      try {
+        const parsedData = JSON.parse(jsonData);
+        UPP_commit({
+          type: 'final',
+          domain: yourDomain || 'unknown',
+          jobToken: metadata?.jobToken || projectId,
+          payload: {
+            competitors: competitors,
+            yourDomain: yourDomain,
+            data: parsedData,
+            metadata: metadata,
+            savedAt: new Date().toISOString()
+          }
+        });
+        Logger.log('   ✅ [UPP] Backup complete');
+      } catch (uppError) {
+        Logger.log('   ⚠️ [UPP] Backup failed (non-fatal): ' + uppError.toString());
+      }
+    }
+    
     return finalizeResult;
     
   } catch (error) {

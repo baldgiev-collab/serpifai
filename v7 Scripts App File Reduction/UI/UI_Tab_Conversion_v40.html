@@ -1,0 +1,1133 @@
+<script>
+  // V40.0 - NEW FILE TO BYPASS CACHE
+  console.log('🔥 [V40.0] UI_Tab_Conversion_v40.html: FRESH FILE - NO CACHE');
+  // ===========================================================================
+  // UI_Tab_Conversion_v40.html
+  // Conversion & Distribution Tabs - Elite v9.0
+  // Extracted from UI_Scripts_App.html for modular architecture
+  // 
+  // Contains:
+  // - populateConversionDataTab() - Conversion & monetization analysis (Elite v9.0)
+  // - renderEliteDistributionVisibility() - Elite distribution renderer
+  //
+  // Dependencies:
+  // - extractRealMetrics() from DATA_Real_Metrics.html
+  // - renderExecutiveGeminiInsight() from UI_Executive_Renderer.html
+  // - renderRawDataComparisonTable() from UI_Raw_Data_Tables.html
+  // - renderOnePercentStrategyPanel() from UI_Strategy_Panel.html
+  // - renderDistributionCharts() from UI_Chart_Generator.html
+  // ===========================================================================
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // CONVERSION & MONETIZATION TAB - Elite v9.0
+  // Uses: FT_GenerateEliteTabIntelligence → Affiliate Masking, Funnel Architecture,
+  //       Pricing Psychology, Retention Loops, Kill Moves
+  // ---------------------------------------------------------------------------
+  function populateConversionDataTab(data) {
+    console.log('💰 Populating Conversion Tab (Elite v9.0 - FUNNEL FORENSICS)...');
+
+    // V38.3: Wrap entire function in try-catch to prevent silent failures
+    try {
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-conversion-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="conversion"]') ||
+        document.getElementById('panel-conversionData');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside conversion panel');
+        metricsDiv = panel.querySelector('#comp-conversion-metrics') || (() => {
+          const c = document.createElement('div'); c.id = 'comp-conversion-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+          const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+          return c;
+        })();
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Conversion tab containers not found - check UI_Components_Competitors.html has data-comp-panel="conversion"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // ---------------------------------------------------------------------------
+    // ELITE TAB INTELLIGENCE v9.0 - Check for enhanced data
+    // V38.2 FIX: Always render BOTH Elite AND fallback content for maximum value
+    // ---------------------------------------------------------------------------
+    const eliteData = data.eliteTabIntelligence || window._eliteTabIntelligence;
+    const convIntel = eliteData?.conversionMonetization;
+
+    // V38.2: Log Elite data availability but ALWAYS compute fallback metrics too
+    if (convIntel) {
+      console.log('🎯 Using ELITE Tab Intelligence v9.0 for Conversion Tab (with rich fallback data)');
+      console.log('   Affiliate Masking:', convIntel.affiliateMaskingDepth?.length || 0);
+      console.log('   Funnel Architecture:', convIntel.funnelArchitecture?.length || 0);
+      console.log('   Retention Loops:', !!convIntel.retentionLoops);
+      console.log('   Kill Moves:', convIntel.killMoves?.length || 0);
+    }
+
+    // V38.2: ALWAYS compute fallback metrics - they provide the rich data tables
+    // COMBINED MODE: Extract REAL conversion metrics + Elite enhancements
+    console.log('📊 Using combined conversion analysis mode (Rich fallback + Elite enhancements)...');
+
+    // Extract REAL conversion metrics from PHP Fetcher data
+    const conversionData = competitors.map(comp => {
+      const metrics = extractRealMetrics(comp);
+      const synth = comp.synthesized || {};
+      const content = synth.content || {};
+      const website = synth.website || {};
+      const schemaTypes = website.schemaTypes || metrics.content.schemaTypes || [];
+      const fullText = JSON.stringify(synth).toLowerCase();
+      const title = metrics.content.title || '';
+
+      // REAL CTA and conversion signal detection
+      const ctaSignals = ['sign up', 'get started', 'try free', 'start now', 'buy now', 'request demo', 'book a call', 'download', 'subscribe', 'contact us'];
+      const pricingSignals = ['pricing', 'price', 'cost', 'plan', 'subscription', 'per month', '/mo', 'annually'];
+      const formSignals = ['contact', 'demo', 'quote', 'form', 'submit', 'email', 'newsletter'];
+
+      const ctaCount = ctaSignals.filter(s => fullText.includes(s)).length;
+      const pricingCount = pricingSignals.filter(s => fullText.includes(s)).length;
+      const formCount = formSignals.filter(s => fullText.includes(s)).length;
+
+      // Detect revenue model from REAL signals
+      let revenueModel = 'Unknown';
+      const hasProduct = schemaTypes.includes('Product') || fullText.includes('product');
+      const hasService = schemaTypes.includes('Service') || fullText.includes('service');
+      const hasSaaS = fullText.includes('saas') || fullText.includes('software') || fullText.includes('platform');
+      const hasEcommerce = schemaTypes.includes('Product') && pricingCount >= 2;
+
+      if (hasEcommerce) revenueModel = 'E-commerce';
+      else if (hasSaaS && pricingCount >= 1) revenueModel = 'SaaS';
+      else if (formCount >= 2) revenueModel = 'Lead Gen';
+      else if (hasService) revenueModel = 'Services';
+      else if (hasProduct) revenueModel = 'Product';
+      else revenueModel = 'Hybrid';
+
+      // Calculate funnel score from REAL signals
+      let funnelScore = 20; // Base
+      if (ctaCount >= 3) funnelScore += 25;
+      else if (ctaCount >= 1) funnelScore += 15;
+      if (pricingCount >= 2) funnelScore += 20;
+      else if (pricingCount >= 1) funnelScore += 10;
+      if (formCount >= 2) funnelScore += 15;
+      if (schemaTypes.includes('Product') || schemaTypes.includes('Offer')) funnelScore += 10;
+      if (metrics.content.internalLinks >= 10) funnelScore += 10;
+      funnelScore = Math.min(100, funnelScore);
+
+      // Calculate landing page persuasion from REAL content
+      let landingPersuasion = 25; // Base
+      const persuasionWords = ['best', 'trusted', 'proven', 'guaranteed', 'free', 'exclusive', 'limited', 'fast', 'easy'];
+      const persuasionCount = persuasionWords.filter(w => fullText.includes(w)).length;
+      landingPersuasion += persuasionCount * 8;
+      if (title.length > 20 && title.length < 70) landingPersuasion += 10;
+      if (metrics.content.wordCount >= 1000) landingPersuasion += 15;
+      landingPersuasion = Math.min(100, landingPersuasion);
+
+      // Pricing psychology score
+      let pricingPsych = pricingCount >= 2 ? 60 : (pricingCount >= 1 ? 45 : 25);
+      if (fullText.includes('save') || fullText.includes('discount')) pricingPsych += 15;
+      if (fullText.includes('money back') || fullText.includes('guarantee')) pricingPsych += 10;
+      if (fullText.includes('annual') || fullText.includes('yearly')) pricingPsych += 10;
+      pricingPsych = Math.min(100, pricingPsych);
+
+      const hasRealData = ctaCount > 0 || pricingCount > 0 || formCount > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        funnelScore,
+        landingPersuasion,
+        pricingPsych,
+        revenueModel,
+        ctaCount,
+        pricingCount,
+        formCount,
+        wordCount: metrics.content.wordCount,
+        schemaCount: schemaTypes.length,
+        dataSource: hasRealData ? 'PHP Fetcher' : 'Pending'
+      };
+    });
+
+    // Determine dominant revenue model from REAL data
+    const modelCounts = {};
+    conversionData.forEach(c => {
+      modelCounts[c.revenueModel] = (modelCounts[c.revenueModel] || 0) + 1;
+    });
+    const dominantModel = Object.entries(modelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+
+    // Calculate averages for executive insight
+    const avgFunnel = Math.round(conversionData.reduce((a, b) => a + b.funnelScore, 0) / conversionData.length);
+    const avgPersuasion = Math.round(conversionData.reduce((a, b) => a + b.landingPersuasion, 0) / conversionData.length);
+    const totalCTAs = conversionData.reduce((a, b) => a + b.ctaCount, 0);
+    
+    // Generate executive insight for conversion
+    const convExecConfig = {
+      title: 'Conversion & Revenue Executive Brief',
+      icon: '💰',
+      executiveSummary: `Conversion analysis reveals average funnel score of ${avgFunnel}/100 and landing page persuasion of ${avgPersuasion}%. ${totalCTAs} CTAs detected across ${competitors.length} competitors. Dominant revenue model: ${dominantModel}.`,
+      ceoInsight: `Revenue optimization ${avgFunnel >= 70 ? 'is mature - focus on incremental improvements' : avgFunnel >= 50 ? 'shows moderate efficiency - targeted funnel optimization needed' : 'requires significant investment in conversion infrastructure'}. Expected revenue impact: ${avgFunnel >= 70 ? '+5-10%' : '+15-30%'}.`,
+      cmoInsight: `Landing page persuasion at ${avgPersuasion}% indicates ${avgPersuasion >= 70 ? 'strong messaging - A/B test for further gains' : avgPersuasion >= 50 ? 'opportunity for persuasive copy and social proof' : 'critical need for value proposition refinement'}.`,
+      ctoInsight: `CTA implementation: ${totalCTAs} detected. Recommend ${totalCTAs < competitors.length * 2 ? 'increasing strategic CTA placement' : 'A/B testing CTA variations for optimal conversion'}.`,
+      strategicImperative: `Build systematic conversion optimization with ${avgFunnel < 60 ? 'funnel analysis and CRO program' : 'micro-conversion tracking and predictive analytics'}.`,
+      investmentPriority: avgFunnel < 50 ? 'Critical' : avgFunnel < 70 ? 'High' : 'Medium',
+      timelineToImpact: '1-3 months',
+      riskLevel: avgFunnel < 50 ? 'High' : 'Medium',
+      marketOpportunity: avgPersuasion < 60 ? 'Large' : 'Moderate',
+      roiProjection: avgFunnel < 60 ? '+25% CVR' : '+10% CVR',
+      competitiveThreats: [
+        `Competitors averaging ${avgFunnel}% funnel optimization`,
+        `${dominantModel} revenue model is industry standard`,
+        'Pricing psychology increasingly sophisticated',
+        'Multi-touch attribution changing conversion landscape'
+      ],
+      actionItems: [
+        'Audit and optimize CTA placement',
+        'A/B test landing page variations',
+        'Implement pricing psychology tactics',
+        'Add social proof and trust signals',
+        'Create multi-step conversion funnels',
+        'Track micro-conversions throughout funnel'
+      ],
+      kpis: ['Conversion Rate', 'CTA Click Rate', 'Landing Page CVR', 'Cart Abandonment', 'Trial-to-Paid', 'Revenue Per Visitor'],
+      dataProofs: ['PHP Fetcher', 'CTA Detection', 'Schema.org Analysis', 'Pricing Analysis']
+    };
+
+    let html = `
+          <!-- EXECUTIVE INTELLIGENCE BRIEF -->
+          ${renderExecutiveGeminiInsight(convExecConfig)}
+          
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">💰 Conversion & Monetization Analysis</h3>
+          
+          <!-- HEADER WITH REAL DATA -->
+          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: PHP Fetcher CTA Detection, Schema.org Analysis</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Funnel Score</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(conversionData.reduce((a, b) => a + b.funnelScore, 0) / conversionData.length)}/100</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Persuasion</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(conversionData.reduce((a, b) => a + b.landingPersuasion, 0) / conversionData.length)}%</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Total CTAs Detected</div>
+                <div style="font-size: 24px; font-weight: 700;">${conversionData.reduce((a, b) => a + b.ctaCount, 0)}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Dominant Model</div>
+                <div style="font-size: 24px; font-weight: 700;">${dominantModel}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CONVERSION TABLE WITH DATA SOURCES -->
+          <div style="overflow-x: auto;">
+          <table class="comp-table" style="margin-bottom: 30px;">
+            <thead>
+              <tr>
+                <th>Competitor</th>
+                <th>Funnel Score</th>
+                <th>Landing Persuasion</th>
+                <th>Pricing Psychology</th>
+                <th>CTAs Detected</th>
+                <th>Revenue Model</th>
+                <th>Data Source</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+    conversionData.forEach(conv => {
+      html += `
+            <tr>
+              <td><strong>${conv.domain}</strong></td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div style="width: ${conv.funnelScore}%; height: 100%; background: linear-gradient(90deg, #f59e0b, #d97706);"></div>
+                  </div>
+                  <span style="font-size: 12px; font-weight: 600;">${conv.funnelScore}</span>
+                </div>
+              </td>
+              <td><span class="metric-badge ${conv.landingPersuasion > 70 ? 'badge-high' : 'badge-medium'}">${conv.landingPersuasion}%</span></td>
+              <td><span style="color: ${conv.pricingPsych > 60 ? '#22c55e' : '#f59e0b'}; font-weight: 600;">${conv.pricingPsych}%</span></td>
+              <td style="text-align: center; font-weight: 700;">${conv.ctaCount}</td>
+              <td><span style="background: #667eea20; color: #667eea; padding: 4px 10px; border-radius: 4px; font-size: 12px;">${conv.revenueModel}</span></td>
+              <td style="text-align: center;">${getDataSourceBadge(conv.dataSource)}</td>
+            </tr>
+          `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          </div>
+          
+          <!-- CHARTS -->
+          <div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; width: 100%;">
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                🎯 Funnel Architecture Comparison
+                <span class="info-tooltip" title="[i] Compares conversion funnel depth across competitors." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-conversion-funnel" style="width: 100% !important;"></canvas></div>
+            </div>
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                📊 Revenue Model Distribution
+                <span class="info-tooltip" title="[i] Breakdown of monetization strategies." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-conversion-models" style="width: 100% !important;"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- STRATEGIC INSIGHTS FROM REAL DATA -->
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #f59e0b;">
+            <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #92400e;">💡 Conversion Intelligence Insights</h5>
+            ${(() => {
+        const sorted = [...conversionData].sort((a, b) => b.funnelScore - a.funnelScore);
+        const leader = sorted[0];
+        return `
+                <ul style="margin: 0; padding-left: 20px;">
+                  <li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;">
+                    <strong>Conversion Leader:</strong> ${leader?.domain || 'N/A'} with funnel score ${leader?.funnelScore || 0}/100
+                  </li>
+                  <li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;">
+                    <strong>Market Analysis:</strong> ${dominantModel} is the dominant revenue model.
+                  </li>
+                  <li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;">
+                    <strong>Opportunity:</strong> ${avgFunnel >= 70 ? 'Highly optimized funnels - focus on differentiation.' : 'Room for improvement with stronger CTAs.'}
+                  </li>
+                </ul>
+              `;
+      })()}
+          </div>
+        `;
+
+    // RAW DATA COMPARISON - Conversion
+    html += `
+          <h4 style="margin: 30px 0 20px; font-size: 20px; font-weight: 800; color: #202124;">
+            💰 Raw Conversion Data (Ahrefs/SEMrush Level)
+          </h4>
+        `;
+
+    const convLeader = conversionData.reduce((best, c) => c.funnelScore > (best?.funnelScore || 0) ? c : best, null);
+    const geminiConvInsight = convLeader
+      ? `${convLeader.domain} leads conversion with ${convLeader.funnelScore}/100 funnel score and ${convLeader.ctaCount} CTAs.`
+      : 'Analyze CTA patterns to optimize conversion funnels.';
+
+    html += renderRawDataComparisonTable({
+      title: 'CTA & Funnel Analysis',
+      icon: '💰',
+      description: 'Call-to-action patterns, funnel scores, and conversion elements',
+      competitors: competitors,
+      geminiInsight: geminiConvInsight,
+      dataExtractor: (c, idx, realMetrics) => {
+        const conv = conversionData[idx] || {};
+        const rm = realMetrics || {};
+        const ctaCount = rm.content?.ctaElements?.length || conv.ctaCount || 0;
+        const formCount = rm.content?.forms?.length || conv.formCount || 0;
+        const calcFunnel = conv.funnelScore || Math.min(100, ctaCount * 15 + formCount * 20);
+        return {
+          funnelScore: calcFunnel,
+          ctaCount: ctaCount,
+          formCount: formCount,
+          landingPersuasion: conv.landingPersuasion || Math.min(100, Math.round(calcFunnel * 0.8)),
+          pricingPsych: conv.pricingPsych || Math.min(100, Math.round(calcFunnel * 0.7)),
+          revenueModel: conv.revenueModel || (ctaCount > 3 ? 'Conversion-Focused' : 'Informational')
+        };
+      },
+      fields: [
+        { key: 'funnelScore', label: 'Funnel Score', icon: '📊', type: 'score', compareMode: 'highest' },
+        { key: 'ctaCount', label: 'CTAs Detected', icon: '🎯', type: 'number', compareMode: 'highest' },
+        { key: 'formCount', label: 'Forms', icon: '📝', type: 'number' },
+        { key: 'landingPersuasion', label: 'Persuasion Score', icon: '💬', type: 'score', compareMode: 'highest' },
+        { key: 'pricingPsych', label: 'Pricing Psychology', icon: '💰', type: 'score', compareMode: 'highest' },
+        { key: 'revenueModel', label: 'Revenue Model', icon: '🏷️', type: 'text' }
+      ]
+    });
+
+    // 1% STRATEGY EXECUTION PANEL - Conversion Tab
+    html += (() => {
+      const gemini = data.geminiAnalysis || data.analysis || {};
+      const paaQuestions = gemini?.paaQuestions || gemini?.peopleAlsoAsk ||
+        competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || c.apiData?.serper?.peopleAlsoAsk || []).slice(0, 10);
+      const convKeywords = gemini?.keywords || gemini?.targetKeywords ||
+        competitors.flatMap(c => c.processedMetrics?.topKeywords || []).slice(0, 20);
+      const brandEntity = {
+        name: data.projectName || data.domain || 'Your Brand',
+        url: data.url || data.domain || '',
+        id: '#organization'
+      };
+      return renderOnePercentStrategyPanel({
+        paaQuestions: paaQuestions,
+        keywords: convKeywords,
+        brandEntity: brandEntity,
+        competitors: competitors,
+        tabName: 'conversion'
+      });
+    })();
+
+    // V38.2: Add Elite Enhancements if available (Affiliate Masking, Funnel Architecture, Pricing Psychology)
+    if (convIntel) {
+      const affiliateMasking = convIntel.affiliateMaskingDepth || [];
+      const funnelArch = convIntel.funnelArchitecture || [];
+      const pricingPsych = convIntel.pricingPsychology || [];
+      const retentionLoops = convIntel.retentionLoops || {};
+      const killMoves = convIntel.killMoves || [];
+      
+      if (affiliateMasking.length > 0) {
+        html += `
+          <h4 style="margin: 30px 0 16px; font-size: 18px; font-weight: 700;">🔗 Elite Affiliate Masking Analysis</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+            <table class="comp-table">
+              <thead>
+                <tr><th>Competitor</th><th>Detected Patterns</th><th>Masking Depth</th><th>Assessment</th><th>Trust Signal</th></tr>
+              </thead>
+              <tbody>
+                ${affiliateMasking.map(aff => `
+                  <tr>
+                    <td><strong>${aff.domain}</strong></td>
+                    <td>${(aff.detectedPatterns || []).map(p => `<code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px;">${p}</code>`).join('') || '<span style="color: #9ca3af;">None</span>'}</td>
+                    <td><span style="font-weight: 700; font-size: 18px;">${aff.maskingDepth}</span></td>
+                    <td><span style="background: ${aff.assessment?.includes('Heavy') ? '#fee2e2' : '#dcfce7'}; color: ${aff.assessment?.includes('Heavy') ? '#991b1b' : '#166534'}; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${aff.assessment}</span></td>
+                    <td style="font-size: 12px; color: #6b7280; max-width: 200px;">${aff.trustSignal}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+      
+      if (funnelArch.length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🎯 Elite Funnel Architecture & Time-to-Conversion</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${funnelArch.slice(0, 4).map(funnel => `
+              <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid ${funnel.timeToConversion?.score >= 60 ? '#22c55e' : '#f59e0b'};">
+                <div style="font-weight: 700; margin-bottom: 12px;">${funnel.domain}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                  <div>
+                    <div style="color: #6b7280;">Time-to-Convert</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #1f2937;">${funnel.timeToConversion?.clicks || 0} clicks</div>
+                    <div style="font-size: 11px; color: #9ca3af;">${funnel.timeToConversion?.assessment || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div style="color: #6b7280;">Intent Clarity</div>
+                    <div style="font-size: 20px; font-weight: 700; color: ${(funnel.userIntentPath?.clarity || 0) >= 50 ? '#22c55e' : '#f59e0b'};">${funnel.userIntentPath?.clarity || 0}%</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if (pricingPsych.length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">💎 Elite Pricing Psychology & Persuasion</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${pricingPsych.slice(0, 4).map(pricing => `
+              <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <span style="font-weight: 700; color: #78350f;">${pricing.domain}</span>
+                  <span style="background: #92400e; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px;">Score: ${pricing.landingPersuasionScore || 0}</span>
+                </div>
+                <div style="font-size: 12px; color: #78350f;">
+                  <strong>Persuasion:</strong> ${[pricing.persuasionPrinciples?.authority && '🏛️ Authority', pricing.persuasionPrinciples?.socialProof && '👥 Social Proof', pricing.persuasionPrinciples?.scarcity && '⏰ Scarcity'].filter(Boolean).join(' • ') || 'None detected'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if ((retentionLoops.offPageEcosystem || []).length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🔄 Elite Retention Loops</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            ${(retentionLoops.offPageEcosystem || []).map(loop => `
+              <div style="background: ${loop.detected ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : '#e5e7eb'}; color: ${loop.detected ? 'white' : '#6b7280'}; padding: 16px; border-radius: 12px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 600;">${loop.channel}</div>
+                <div style="font-size: 12px; opacity: 0.85;">${loop.detected ? '✅ Detected' : '❌ Not Found'}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if (killMoves.length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">⚔️ Kill Moves: Conversion Domination</h4>
+          <div style="display: grid; gap: 12px; margin-bottom: 24px;">
+            ${killMoves.slice(0, 4).map((move, i) => `
+              <div style="background: linear-gradient(135deg, #78350f 0%, #92400e 100%); color: white; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;">${['⚡', '🎯', '🌙', '🔥'][i % 4]}</span>
+                <div>
+                  <div style="font-weight: 700; font-size: 14px;">${move.name}</div>
+                  <div style="font-size: 12px; opacity: 0.9;">${move.action}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
+    metricsDiv.innerHTML = html;
+    setTimeout(() => renderConversionCharts(conversionData), 300);
+
+    } catch (error) {
+      // V38.3: Show visible error to help debug
+      console.error('❌ CONVERSION TAB ERROR:', error);
+      const errorDiv = document.getElementById('comp-conversion-metrics') || 
+        document.querySelector('[data-comp-panel="conversion"]');
+      if (errorDiv) {
+        errorDiv.innerHTML = `
+          <div style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; padding: 24px; margin: 16px;">
+            <h4 style="color: #991b1b; margin: 0 0 12px;">⚠️ Conversion Tab Error</h4>
+            <p style="color: #7f1d1d; font-size: 14px; margin: 0 0 12px;">${error.message || error}</p>
+            <pre style="background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; font-size: 11px; overflow-x: auto;">${error.stack || 'No stack trace'}</pre>
+          </div>
+        `;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // VII-B. ELITE CONVERSION MONETIZATION RENDERER v9.0
+  // Renders: Affiliate Masking Depth, Funnel Architecture, Time-to-Conversion,
+  //          Pricing Psychology, Retention Loops, Kill Moves
+  // ---------------------------------------------------------------------------
+  function renderEliteConversionMonetization(container, convIntel, competitors, eliteData) {
+    console.log('🎯 Rendering Elite Conversion Monetization v9.0...');
+
+    const affiliateMasking = convIntel.affiliateMaskingDepth || [];
+    const funnelArch = convIntel.funnelArchitecture || [];
+    const pricingPsych = convIntel.pricingPsychology || [];
+    const retentionLoops = convIntel.retentionLoops || {};
+    const revenueModel = convIntel.revenueModel || [];
+    const killMoves = convIntel.killMoves || [];
+    const hoverInsights = eliteData?.hoverInsights?.conversionMonetization || {};
+
+    let html = `
+      <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">💰 Conversion & Monetization <span style="font-size: 12px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 4px 12px; border-radius: 12px; margin-left: 8px;">Elite v9.0</span></h3>
+      
+      <!-- ELITE HEADER -->
+      <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+        <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Affiliate Masking • Funnel Forensics • Pricing Psychology • Retention Loops</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+          <div title="${hoverInsights?.affiliateMasking || 'Link obfuscation patterns for conversion tracking'}" style="cursor: help;">
+            <div style="font-size: 12px; opacity: 0.85;">Avg Masking Depth</div>
+            <div style="font-size: 24px; font-weight: 700;">${(affiliateMasking.reduce((a, b) => a + (b.maskingDepth || 0), 0) / Math.max(1, affiliateMasking.length)).toFixed(1)}</div>
+          </div>
+          <div title="${hoverInsights?.timeToConversion || 'Clicks required to reach conversion point'}" style="cursor: help;">
+            <div style="font-size: 12px; opacity: 0.85;">Avg Time-to-Convert</div>
+            <div style="font-size: 24px; font-weight: 700;">${(funnelArch.reduce((a, b) => a + (b.timeToConversion?.clicks || 0), 0) / Math.max(1, funnelArch.length)).toFixed(1)} clicks</div>
+          </div>
+          <div title="${hoverInsights?.persuasion || 'Landing page persuasion effectiveness'}" style="cursor: help;">
+            <div style="font-size: 12px; opacity: 0.85;">Avg Persuasion Score</div>
+            <div style="font-size: 24px; font-weight: 700;">${Math.round(pricingPsych.reduce((a, b) => a + (b.landingPersuasionScore || 0), 0) / Math.max(1, pricingPsych.length))}</div>
+          </div>
+          <div title="${hoverInsights?.retention || 'Off-site retention mechanism count'}" style="cursor: help;">
+            <div style="font-size: 12px; opacity: 0.85;">Retention Loops</div>
+            <div style="font-size: 24px; font-weight: 700;">${(retentionLoops.offPageEcosystem || []).filter(r => r.detected).length}</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- AFFILIATE MASKING DEPTH -->
+      <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🔗 Affiliate Masking Depth Analysis</h4>
+      <div style="overflow-x: auto; margin-bottom: 24px;">
+        <table class="comp-table">
+          <thead>
+            <tr><th>Competitor</th><th>Detected Patterns</th><th>Masking Depth</th><th>Assessment</th><th>Trust Signal</th></tr>
+          </thead>
+          <tbody>
+            ${affiliateMasking.map(aff => `
+              <tr>
+                <td><strong>${aff.domain}</strong></td>
+                <td>${(aff.detectedPatterns || []).map(p => `<code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px;">${p}</code>`).join('') || '<span style="color: #9ca3af;">None</span>'}</td>
+                <td><span style="font-weight: 700; font-size: 18px;">${aff.maskingDepth}</span></td>
+                <td><span style="background: ${aff.assessment?.includes('Heavy') ? '#fee2e2' : '#dcfce7'}; color: ${aff.assessment?.includes('Heavy') ? '#991b1b' : '#166534'}; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${aff.assessment}</span></td>
+                <td style="font-size: 12px; color: #6b7280; max-width: 200px;">${aff.trustSignal}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- FUNNEL ARCHITECTURE -->
+      <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🎯 Funnel Architecture & Time-to-Conversion</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        ${funnelArch.slice(0, 4).map(funnel => `
+          <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid ${funnel.timeToConversion?.score >= 60 ? '#22c55e' : '#f59e0b'};">
+            <div style="font-weight: 700; margin-bottom: 12px;">${funnel.domain}</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+              <div>
+                <div style="color: #6b7280;">Time-to-Convert</div>
+                <div style="font-size: 20px; font-weight: 700; color: #1f2937;">${funnel.timeToConversion?.clicks || 0} clicks</div>
+                <div style="font-size: 11px; color: #9ca3af;">${funnel.timeToConversion?.assessment || 'N/A'}</div>
+              </div>
+              <div>
+                <div style="color: #6b7280;">Intent Clarity</div>
+                <div style="font-size: 20px; font-weight: 700; color: ${(funnel.userIntentPath?.clarity || 0) >= 50 ? '#22c55e' : '#f59e0b'};">${funnel.userIntentPath?.clarity || 0}%</div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <!-- PRICING PSYCHOLOGY -->
+      <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">💎 Pricing Psychology & Persuasion</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        ${pricingPsych.slice(0, 4).map(pricing => `
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 16px; border-radius: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <span style="font-weight: 700; color: #78350f;">${pricing.domain}</span>
+              <span style="background: #92400e; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px;">Score: ${pricing.landingPersuasionScore || 0}</span>
+            </div>
+            <div style="font-size: 12px; color: #78350f;">
+              <strong>Persuasion:</strong> ${[pricing.persuasionPrinciples?.authority && '🏛️ Authority', pricing.persuasionPrinciples?.socialProof && '👥 Social Proof', pricing.persuasionPrinciples?.scarcity && '⏰ Scarcity'].filter(Boolean).join(' • ') || 'None detected'}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <!-- RETENTION LOOPS -->
+      <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🔄 Retention Loops</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        ${(retentionLoops.offPageEcosystem || []).map(loop => `
+          <div style="background: ${loop.detected ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)' : '#6b7280'}; color: white; padding: 16px; border-radius: 12px;">
+            <div style="font-size: 14px; font-weight: 600;">${loop.channel}</div>
+            <div style="font-size: 12px; opacity: 0.85;">${loop.detected ? '✅ Detected' : '❌ Not Found'}</div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <!-- KILL MOVES -->
+      ${killMoves.length > 0 ? `
+        <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">⚔️ Kill Moves: Conversion Domination</h4>
+        <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+          ${killMoves.map((move, i) => `
+            <div style="background: linear-gradient(135deg, #78350f 0%, #92400e 100%); color: white; padding: 20px; border-radius: 12px;">
+              <div style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">${['⚡', '🎯', '🌙'][i % 3]} ${move.name}</div>
+              <div style="font-size: 14px; opacity: 0.9;"><strong>Action:</strong> ${move.action}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    `;
+
+    container.innerHTML = html;
+
+    // Render charts
+    setTimeout(() => {
+      if (typeof renderConversionCharts === 'function') {
+        const chartData = funnelArch.map(f => ({
+          domain: f.domain,
+          funnelScore: f.timeToConversion?.score || 50,
+          landingPersuasion: f.userIntentPath?.clarity || 50,
+          pricingPsych: 50,
+          revenueModel: 'Hybrid'
+        }));
+        renderConversionCharts(chartData);
+      }
+    }, 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIII-B. ELITE DISTRIBUTION VISIBILITY RENDERER v9.0
+  // Renders: Referral Efficiency Ratio, Social SEO Index, Dark Social Detection,
+  //          Brand Consistency Score, SERP Visibility Defense, Kill Moves
+  // ---------------------------------------------------------------------------
+  function renderEliteDistributionVisibility(container, distIntel, competitors, eliteData) {
+    console.log('📡 Rendering Elite Distribution Visibility v9.0...');
+
+    const referralEfficiency = distIntel.referralEfficiency || [];
+    const socialSEO = distIntel.socialSEOIndex || [];
+    const darkSocial = distIntel.darkSocialDetection || {};
+    const brandConsistency = distIntel.brandConsistencyScore || [];
+    const serpDefense = distIntel.serpVisibilityDefense || {};
+    const killMoves = distIntel.killMoves || [];
+    const hoverInsights = eliteData?.hoverInsights?.distributionVisibility || {};
+
+    let html = `
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">📡 Distribution & Visibility <span style="font-size: 12px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 4px 12px; border-radius: 12px; margin-left: 8px;">Elite v9.0</span></h3>
+          
+          <!-- ELITE HEADER -->
+          <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Referral Efficiency • Social SEO Index • Dark Social Detection • Brand Consistency</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+              <div title="${hoverInsights?.referralEfficiency || 'Traffic-to-referring-domains ratio indicating link quality'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg Referral Efficiency</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(referralEfficiency.reduce((a, b) => a + (b.ratio || 0), 0) / Math.max(1, referralEfficiency.length))}:1</div>
+              </div>
+              <div title="${hoverInsights?.socialSEO || 'Presence across social platforms with SEO impact'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg Social SEO Score</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(socialSEO.reduce((a, b) => a + (b.socialSEOScore || 0), 0) / Math.max(1, socialSEO.length))}</div>
+              </div>
+              <div title="${hoverInsights?.darkSocial || 'Estimated dark social channel presence'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Dark Social Channels</div>
+                <div style="font-size: 24px; font-weight: 700;">${darkSocial.signals?.length || 0}</div>
+              </div>
+              <div title="${hoverInsights?.brandConsistency || 'Website vs Social persona alignment'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg Brand Consistency</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(brandConsistency.reduce((a, b) => a + (b.consistencyScore || 0), 0) / Math.max(1, brandConsistency.length))}%</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- REFERRAL EFFICIENCY TABLE -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">📊 Referral Efficiency Ratio (Traffic ÷ Ref Domains)</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Competitor</th>
+                  <th>Est. Traffic</th>
+                  <th>Ref Domains</th>
+                  <th>Efficiency Ratio</th>
+                  <th>Assessment</th>
+                  <th>Link Bloat Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${referralEfficiency.map(ref => `
+                  <tr>
+                    <td><strong>${ref.domain}</strong></td>
+                    <td>${(ref.traffic || 0).toLocaleString()}</td>
+                    <td>${(ref.refDomains || 0).toLocaleString()}</td>
+                    <td>
+                      <span style="font-weight: 700; color: ${ref.ratio >= 50 ? '#22c55e' : ref.ratio >= 20 ? '#f59e0b' : '#ef4444'};">
+                        ${ref.ratio}:1
+                      </span>
+                    </td>
+                    <td><span style="background: ${ref.ratio >= 50 ? '#dcfce7' : ref.ratio >= 20 ? '#fef3c7' : '#fee2e2'}; color: ${ref.ratio >= 50 ? '#166534' : ref.ratio >= 20 ? '#92400e' : '#991b1b'}; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${ref.assessment}</span></td>
+                    <td style="text-align: center;">
+                      ${ref.linkBloatRisk ?
+        '<span style="color: #ef4444; font-weight: 600;">⚠️ Risk</span>' :
+        '<span style="color: #22c55e;">? Clean</span>'
+      }
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- SOCIAL SEO INDEX -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">📱 Social SEO Index by Platform</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${socialSEO.slice(0, 4).map(seo => `
+              <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <span style="font-weight: 700;">${seo.domain}</span>
+                  <span style="background: #ede9fe; color: #7c3aed; padding: 4px 10px; border-radius: 12px; font-size: 12px;">Score: ${seo.socialSEOScore}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                  ${Object.entries(seo.platforms || {}).map(([platform, data]) => `
+                    <div style="text-align: center; padding: 8px; background: ${data.detected ? '#dcfce7' : '#f3f4f6'}; border-radius: 8px;">
+                      <div style="font-size: 16px;">${platform === 'reddit' ? '🤖' : platform === 'youtube' ? '🎥' : platform === 'tiktok' ? '🎵' : platform === 'twitter' ? '🐦' : '📱'}</div>
+                      <div style="font-size: 10px; margin-top: 2px;">${platform}</div>
+                      <div style="font-size: 11px; font-weight: 600; color: ${data.detected ? '#166534' : '#9ca3af'};">${data.engagement || 0}</div>
+                    </div>
+                  `).join('')}
+                </div>
+                <div style="margin-top: 12px; font-size: 12px; color: #6b7280;">
+                  Gen-Z Discoverability: <strong style="color: ${seo.genZDiscoverability >= 50 ? '#22c55e' : '#f59e0b'};">${seo.genZDiscoverability}%</strong>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <!-- DARK SOCIAL DETECTION -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🕶️ Dark Social Channel Detection</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            ${(darkSocial.signals || []).map(signal => `
+              <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); color: white; padding: 16px; border-radius: 12px;">
+                <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">${signal.channel}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-size: 11px; opacity: 0.7;">Likelihood</div>
+                    <div style="font-size: 20px; font-weight: 700;">${signal.likelihood}%</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div style="font-size: 11px; opacity: 0.7;">Conversion Impact</div>
+                    <div style="font-size: 14px; font-weight: 600; color: ${signal.conversionImpact === 'Very High' ? '#22c55e' : signal.conversionImpact === 'High' ? '#84cc16' : '#f59e0b'};">${signal.conversionImpact}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div style="background: #fef3c7; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px; color: #92400e;">
+            <strong>💡 Insight:</strong> ${darkSocial.offPageConversionEstimate || '40% of affiliate revenue happens off-website via dark social channels'}
+          </div>
+          
+          <!-- BRAND CONSISTENCY -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🏆 Brand Consistency Score</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Competitor</th>
+                  <th>Website Persona</th>
+                  <th>Social Persona</th>
+                  <th>Consistency Score</th>
+                  <th>Trust Impact</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${brandConsistency.map(brand => `
+                  <tr>
+                    <td><strong>${brand.domain}</strong></td>
+                    <td><span style="background: #e0f2fe; color: #075985; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${brand.websitePersona}</span></td>
+                    <td><span style="background: #fce7f3; color: #9d174d; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${brand.socialPersona}</span></td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                          <div style="width: ${brand.consistencyScore}%; height: 100%; background: ${brand.consistencyScore >= 70 ? '#22c55e' : brand.consistencyScore >= 50 ? '#f59e0b' : '#ef4444'};"></div>
+                        </div>
+                        <span style="font-weight: 600;">${brand.consistencyScore}%</span>
+                      </div>
+                    </td>
+                    <td style="font-size: 12px; color: #6b7280;">${brand.trustImpact}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- KILL MOVES -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">⚔️ Kill Moves: Distribution Domination</h4>
+          <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+            ${killMoves.map((move, i) => `
+              <div style="background: linear-gradient(135deg, #581c87 0%, #7c3aed 100%); color: white; padding: 20px; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                  <span style="font-size: 24px;">${['🛠️', '📲', '🚀'][i % 3]}</span>
+                  <div>
+                    <div style="font-size: 16px; font-weight: 700;">${move.name}</div>
+                    <div style="font-size: 12px; opacity: 0.7;">${move.logic}</div>
+                  </div>
+                </div>
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;"><strong>Action:</strong> ${move.action}</div>
+                <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; font-size: 12px;">
+                  <strong style="color: #22c55e;">📊 Impact:</strong> ${move.impact}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        // ---------------------------------------------------------------------------
+        // 1% STRATEGY EXECUTION PANEL - Distribution Focus
+        // P1: FAQ Schema for distribution queries | P5: Hub & Spoke for traffic channels
+        // AIO Survival: Distribution tools that AIs can't replicate
+        // ---------------------------------------------------------------------------
+        html += (() => {
+          // Extract gemini analysis from data
+          const gemini = data.geminiAnalysis || data.analysis || {};
+          
+          // Extract distribution-focused PAA questions
+          const paaQuestions = gemini?.paaQuestions || 
+            competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || [])
+              .filter(q => /traffic|referral|social|distribution|channel|backlink|share|viral|reach/i.test(q?.question || q))
+              .slice(0, 8);
+          
+          // Extract distribution keywords
+          const distKeywords = gemini?.keywords || 
+            gemini?.targetKeywords?.slice(0, 15) || 
+            ['traffic sources', 'referral marketing', 'backlink strategy', 'social distribution', 'content syndication', 'viral sharing'];
+          
+          // Brand entity for schema linking
+          const brandEntity = {
+            name: data.projectName || data.domain || 'Your Brand',
+            url: data.targetUrl || `https://${data.domain}`,
+            id: '#organization'
+          };
+          
+          return renderOnePercentStrategyPanel({
+            paaQuestions,
+            keywords: distKeywords,
+            brandEntity,
+            competitors,
+            tabName: 'distribution'
+          });
+        })();
+
+    container.innerHTML = html;
+
+    // Render charts
+    setTimeout(() => {
+      if (typeof renderDistributionCharts === 'function') {
+        // Use real data from referralEfficiency - no random values
+        const chartData = referralEfficiency.map(r => ({
+          domain: r.domain,
+          pageRank: r.pageRank || 0,  // Real data only
+          domainAuthority: r.domainAuthority || Math.floor(r.ratio * 2) || 0,
+          serpVisibility: Math.min(100, r.ratio * 2) || 0,
+          serpResults: r.serpResults || Math.floor((r.traffic || 0) / 5000),
+          externalLinks: r.externalLinks || Math.floor((r.refDomains || 0) / 10)
+        }));
+        renderDistributionCharts(chartData);
+      }
+    }, 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // VIII. DISTRIBUTION & VISIBILITY TAB - Elite v9.0
+  // Uses: FT_GenerateEliteTabIntelligence → Referral Efficiency, Social SEO Index,
+  //       Dark Social Detection, Brand Consistency + OpenPageRank, Serper
+  // ---------------------------------------------------------------------------
+  function populateDistributionDataTab(data) {
+    console.log('📡 Populating Distribution Tab (Elite v9.0 - REFERRAL EFFICIENCY)...');
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-distribution-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="distribution"]') ||
+        document.getElementById('panel-distributionData');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside distribution panel');
+        metricsDiv = panel.querySelector('#comp-distribution-metrics') || (() => {
+          const c = document.createElement('div'); c.id = 'comp-distribution-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+          const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+          return c;
+        })();
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Distribution tab containers not found - check UI_Components_Competitors.html has data-comp-panel="distribution"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // ---------------------------------------------------------------------------
+    // ELITE TAB INTELLIGENCE v9.0 - Check for enhanced data
+    // ---------------------------------------------------------------------------
+    const eliteData = data.eliteTabIntelligence || window._eliteTabIntelligence;
+    const distIntel = eliteData?.distributionVisibility;
+
+    if (distIntel) {
+      console.log('🎯 Using ELITE Tab Intelligence v9.0 for Distribution Tab');
+      console.log('   Referral Efficiency:', distIntel.referralEfficiency?.length || 0);
+      console.log('   Social SEO Index:', distIntel.socialSEOIndex?.length || 0);
+      console.log('   Dark Social:', !!distIntel.darkSocialDetection);
+      console.log('   Kill Moves:', distIntel.killMoves?.length || 0);
+
+      renderEliteDistributionVisibility(metricsDiv, distIntel, competitors, eliteData);
+      return;
+    }
+
+    // FALLBACK: Original distribution analysis
+    console.log('📊 Using standard distribution analysis mode...');
+
+    // Extract REAL distribution metrics using helper
+    const distData = competitors.map(comp => {
+      const metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { authority: {}, content: {} };
+      const stages = comp.stages || {};
+      const opr = stages.openPageRank?.data || comp.apiData?.openPageRank || {};
+      const serper = comp.apiData?.serper || stages.serper?.data || {};
+      const synth = comp.synthesized || {};
+      const content = synth.content || {};
+
+      // REAL OpenPageRank data
+      const pageRankDecimal = opr.page_rank_decimal || metrics.authority?.pageRank || 0;
+      const globalRank = opr.rank || metrics.authority?.rank || 0;
+
+      // Calculate domain authority from real PageRank (scale 0-10 to 0-100)
+      const domainAuthority = pageRankDecimal > 0 ? Math.min(100, Math.round(pageRankDecimal * 10)) : (metrics.authority?.domainAuthority || 0);
+
+      // Real link counts from PHP Fetcher
+      const externalLinks = content.externalLinks?.length || metrics.content?.externalLinks || 0;
+      const internalLinks = content.internalLinks?.length || metrics.content?.internalLinks || 0;
+
+      // SERP visibility from Serper API
+      const serpResults = (serper.organic || []).length;
+      const serpVisibility = Math.min(100, serpResults * 10);
+
+      const hasRealData = pageRankDecimal > 0 || serpResults > 0 || externalLinks > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        pageRank: pageRankDecimal,
+        globalRank,
+        domainAuthority,
+        externalLinks,
+        internalLinks,
+        serpVisibility,
+        serpResults,
+        dataSource: pageRankDecimal > 0 ? 'OpenPageRank API' : (serpResults > 0 ? 'Serper API' : 'Pending')
+      };
+    });
+
+    // Calculate averages for header
+    const avgPageRank = (distData.reduce((a, b) => a + b.pageRank, 0) / distData.length).toFixed(1);
+    const avgDA = Math.round(distData.reduce((a, b) => a + b.domainAuthority, 0) / distData.length);
+    const totalSerp = distData.reduce((a, b) => a + b.serpResults, 0);
+    const totalExtLinks = distData.reduce((a, b) => a + b.externalLinks, 0);
+
+    let html = `
+      <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">📡 Distribution & Visibility Analysis</h3>
+      
+      <!-- HEADER WITH REAL DATA -->
+      <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+        <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: OpenPageRank API, Serper API, PHP Fetcher Links</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Avg PageRank</div>
+            <div style="font-size: 24px; font-weight: 700;">${avgPageRank}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Avg Domain Authority</div>
+            <div style="font-size: 24px; font-weight: 700;">${avgDA}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Total SERP Results</div>
+            <div style="font-size: 24px; font-weight: 700;">${totalSerp}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Total External Links</div>
+            <div style="font-size: 24px; font-weight: 700;">${totalExtLinks}</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- DISTRIBUTION TABLE WITH DATA SOURCES -->
+      <div style="overflow-x: auto;">
+        <table class="comp-table" style="margin-bottom: 30px;">
+          <thead>
+            <tr>
+              <th>Competitor</th>
+              <th>PageRank</th>
+              <th>Domain Auth.</th>
+              <th>Global Rank</th>
+              <th>SERP Results</th>
+              <th>External Links</th>
+              <th>SERP Visibility</th>
+              <th>Data Source</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    distData.forEach(dist => {
+      html += `
+        <tr>
+          <td><strong>${dist.domain}</strong></td>
+          <td>
+            <span style="font-weight: 700; color: ${dist.pageRank >= 5 ? '#22c55e' : dist.pageRank >= 3 ? '#3b82f6' : '#f59e0b'};">
+              ${dist.pageRank > 0 ? dist.pageRank.toFixed(1) : 'N/A'}
+            </span>
+          </td>
+          <td><span class="metric-badge ${dist.domainAuthority > 50 ? 'badge-high' : 'badge-medium'}">${dist.domainAuthority}</span></td>
+          <td>${dist.globalRank > 0 ? '#' + dist.globalRank.toLocaleString() : 'N/A'}</td>
+          <td style="text-align: center;">
+            ${dist.serpResults > 0 ?
+              `<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px;">${dist.serpResults}</span>` :
+              '<span style="color: #9ca3af;">0</span>'}
+          </td>
+          <td style="text-align: center;">${dist.externalLinks}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                <div style="width: ${dist.serpVisibility}%; height: 100%; background: #8b5cf6;"></div>
+              </div>
+              <span style="font-size: 11px;">${dist.serpVisibility}%</span>
+            </div>
+          </td>
+          <td style="text-align: center;">${typeof getDataSourceBadge === 'function' ? getDataSourceBadge(dist.dataSource) : dist.dataSource}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- CHARTS -->
+      <div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">
+        <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            📊 PageRank Comparison (OpenPageRank)
+            <span class="info-tooltip" title="[i] Domain authority ranking from OpenPageRank API. Higher PageRank = stronger domain authority from backlink profile." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+          </h3>
+          <div style="height: 240px; width: 100%;"><canvas id="chart-distribution-backlinks" style="width: 100% !important;"></canvas></div>
+        </div>
+        <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            🎯 Visibility Radar
+            <span class="info-tooltip" title="[i] Multi-axis radar: PageRank, SERP Results, Referring Domains, External Links, SERP Visibility %. Compare shapes to find weaknesses." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+          </h3>
+          <div style="height: 240px; width: 100%;"><canvas id="chart-distribution-radar" style="width: 100% !important;"></canvas></div>
+        </div>
+      </div>
+      
+      <!-- INSIGHT WITH REAL DATA -->
+      <div style="background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #8b5cf6;">
+        <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #5b21b6;">🎯 Distribution Strategy Insights</h5>
+        ${(() => {
+          const sorted = [...distData].sort((a, b) => b.pageRank - a.pageRank);
+          const leader = sorted[0];
+          const avgPR = (distData.reduce((a, b) => a + b.pageRank, 0) / distData.length).toFixed(1);
+          const totalS = distData.reduce((a, b) => a + b.serpResults, 0);
+          return `
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px; color: #4c1d95; line-height: 1.5;">
+                <strong>Authority Leader:</strong> ${leader?.domain || 'N/A'} with PageRank ${leader?.pageRank?.toFixed(1) || 0} 
+                ${leader?.pageRank > 0 ? `(Global Rank: #${leader?.globalRank?.toLocaleString() || 'N/A'})` : '(data pending)'}
+              </li>
+              <li style="margin-bottom: 8px; color: #4c1d95; line-height: 1.5;">
+                <strong>Industry Average:</strong> PageRank ${avgPR}. 
+                ${parseFloat(avgPR) >= 5 ? 'High authority competitive landscape.' : parseFloat(avgPR) >= 3 ? 'Moderate authority - opportunity to differentiate.' : 'Lower authority - quick wins possible with link building.'}
+              </li>
+              <li style="margin-bottom: 8px; color: #4c1d95; line-height: 1.5;">
+                <strong>SERP Presence:</strong> ${totalS} indexed results across competitors. 
+                ${totalS >= 50 ? 'Strong indexed presence.' : totalS >= 20 ? 'Moderate coverage.' : 'Limited SERP footprint - content expansion recommended.'}
+              </li>
+            </ul>
+          `;
+        })()}
+      </div>
+    `;
+
+    metricsDiv.innerHTML = html;
+
+    // Render charts after DOM update
+    setTimeout(() => {
+      if (typeof renderDistributionCharts === 'function') {
+        renderDistributionCharts(distData);
+      }
+    }, 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // WINDOW EXPORTS
+  // ---------------------------------------------------------------------------
+  window.populateConversionDataTab = populateConversionDataTab;
+  window.populateDistributionDataTab = populateDistributionDataTab;
+  window.renderEliteConversionMonetization = renderEliteConversionMonetization;
+  window.renderEliteDistributionVisibility = renderEliteDistributionVisibility;
+
+  console.log('✅ [DIAG] UI_Tab_Conversion.html: Script block END - All exports complete');
+  console.log('   populateConversionDataTab:', typeof window.populateConversionDataTab);
+  console.log('   populateDistributionDataTab:', typeof window.populateDistributionDataTab);
+
+</script>

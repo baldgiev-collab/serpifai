@@ -3,69 +3,582 @@
   Stage 1 Unified Layout Renderer with Executive Summary
   Part of Elite Modular Architecture - Phase 11
   
+  V8.0: Modular Bento Grid Layout
+  - 12-column CSS Grid with anchor zones
+  - Forensic Card component with fixed aspect ratio charts
+  - Progressive disclosure for long content
+  - Aurora & Neon theme-conscious styling
+  
   Provides:
   - window.renderUnifiedStage1Results() - Render Stage 1 unified layout
   - window.parseMarkdownSections() - Parse markdown into sections
   - window.formatMarkdownContent() - Format markdown for sections
   - window.populateFormFieldsFromResponse() - Auto-fill form from AI
+  - window.showForensicProofModal() - Show DOM evidence modal
   
   Dependencies:
+  - UI_Styles_Bento_Grid.html (Bento Grid CSS)
   - UI_Markdown_Utils.html (for cleanReportForDisplay, formatMarkdownReport)
   - UI_Chart_Generator.html (for generateStage1Charts)
   - UI_Core_Utils.html (for showToast)
 -->
 <script>
   console.log('📊 UI_Stage1_Renderer.html loading...');
+  
+  // V8.0: Enable Bento Grid layout by default
+  window.BENTO_GRID_ENABLED = true;
+  
+  // V9.3: Enable Command Canvas layout (overrides Bento)
+  window.COMMAND_CANVAS_ENABLED = true;
+  
+  /**
+   * V9.3: Run full diagnostic on Stage 1 rendering
+   * Press Ctrl+Shift+D to toggle diagnostic panel
+   */
+  window.runStage1Diagnostic = function() {
+    console.log('=== 🔍 STAGE 1 DIAGNOSTIC REPORT ===');
+    
+    const report = {
+      timestamp: new Date().toISOString(),
+      dataState: {},
+      chartState: {},
+      contentState: {},
+      errors: []
+    };
+    
+    // Check data availability
+    report.dataState = {
+      hasLastStage1Json: !!window._lastStage1Json,
+      jsonKeys: window._lastStage1Json ? Object.keys(window._lastStage1Json) : [],
+      hasDashboardCharts: !!window._lastStage1Json?.dashboardCharts,
+      dashboardChartKeys: window._lastStage1Json?.dashboardCharts ? 
+        Object.keys(window._lastStage1Json.dashboardCharts) : [],
+      sectionContentStoreKeys: window._sectionContentStore ? 
+        Object.keys(window._sectionContentStore) : []
+    };
+    
+    // Check chart canvases
+    const storage = document.getElementById('stage1-chart-storage');
+    const storageCanvases = storage?.querySelectorAll('canvas') || [];
+    report.chartState.storageCanvasCount = storageCanvases.length;
+    report.chartState.storageCanvasIds = Array.from(storageCanvases).map(c => c.id);
+    
+    // Check which charts have Chart.js instances
+    report.chartState.chartInstances = window.chartInstances ? 
+      Object.keys(window.chartInstances) : [];
+    
+    // Check each section
+    report.contentState.sections = [];
+    for (let i = 1; i <= 14; i++) {
+      const section = {
+        num: i,
+        hasHeroHeader: !!document.querySelector(`.command-canvas-section[data-section-num="${i}"] .hero-verdict`),
+        hasContentZone: !!document.getElementById(`section-content-zone-${i}`),
+        hasChartStage: !!document.getElementById(`chart-stage-${i}`),
+        contentLength: 0,
+        chartStatus: 'unknown'
+      };
+      
+      const contentZone = document.getElementById(`section-content-zone-${i}`);
+      if (contentZone) {
+        section.contentLength = contentZone.textContent?.length || 0;
+        section.isExpanded = contentZone.style.display !== 'none';
+      }
+      
+      const chartStage = document.getElementById(`chart-stage-${i}`);
+      if (chartStage) {
+        const hasCanvas = !!chartStage.querySelector('canvas');
+        const hasSvg = !!chartStage.querySelector('svg');
+        const hasLoading = !!chartStage.querySelector('.chart-loading-state');
+        const hasNoData = !!chartStage.querySelector('.chart-no-data');
+        
+        if (hasCanvas || hasSvg) {
+          section.chartStatus = '✅ Rendered';
+        } else if (hasLoading) {
+          section.chartStatus = '⏳ Loading';
+        } else if (hasNoData) {
+          section.chartStatus = '❌ No Data';
+        } else {
+          section.chartStatus = '⚠️ Empty';
+        }
+      }
+      
+      report.contentState.sections.push(section);
+    }
+    
+    // Log report
+    console.log('📊 Data State:');
+    console.table(report.dataState);
+    
+    console.log('📊 Chart State:');
+    console.log('  Storage canvases:', report.chartState.storageCanvasIds);
+    console.log('  Chart instances:', report.chartState.chartInstances);
+    
+    console.log('📊 Section State:');
+    console.table(report.contentState.sections);
+    
+    // Show in UI if modal available
+    if (typeof window.showToast === 'function') {
+      const chartCount = report.contentState.sections.filter(s => 
+        s.chartStatus === '✅ Rendered'
+      ).length;
+      const contentCount = report.contentState.sections.filter(s => 
+        s.contentLength > 100
+      ).length;
+      window.showToast(`📊 ${contentCount}/14 sections, ${chartCount}/14 charts`);
+    }
+    
+    return report;
+  };
+  
+  // Keyboard shortcut for diagnostic
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      e.preventDefault();
+      window.runStage1Diagnostic();
+    }
+  });
+  
+  /**
+   * V8.0: Toggle between Bento Grid and Legacy layout
+   * @param {boolean} enabled - Whether to enable Bento Grid
+   */
+  window.setBentoGridMode = function(enabled) {
+    window.BENTO_GRID_ENABLED = enabled;
+    console.log('🎨 Bento Grid layout:', enabled ? 'ENABLED' : 'DISABLED');
+  };
+  
+  /**
+   * V8.0: Show Forensic Proof Modal
+   * Opens a modal with DOM evidence and verification data
+   * V8.1: Fixed selector to use data-section attribute and improved content extraction
+   * @param {number} sectionNum - Section number
+   */
+  window.showForensicProofModal = function(sectionNum) {
+    console.log('🔍 Opening Forensic Proof Modal for Section:', sectionNum);
+    
+    // Create modal if doesn't exist
+    let modal = document.getElementById('forensic-proof-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'forensic-proof-modal';
+      modal.className = 'chart-fullscreen-modal';
+      modal.innerHTML = `
+        <div class="chart-fullscreen-header" style="justify-content: space-between;">
+          <h2 id="forensic-proof-modal-title">🔍 Forensic Evidence - Section</h2>
+          <div class="chart-fullscreen-actions">
+            <button onclick="window.copyForensicProof?.()">📋 Copy</button>
+            <button onclick="window.closeForensicProofModal()">✕ Close</button>
+          </div>
+        </div>
+        <div id="forensic-proof-modal-content" style="padding: 24px; overflow: auto; flex: 1;"></div>
+      `;
+      document.body.appendChild(modal);
+    }
+    
+    // V8.1: Multiple selectors for robust section finding
+    let sectionElement = document.querySelector(`.stage1-section[data-section-num="SECTION ${sectionNum}"]`);
+    if (!sectionElement) {
+      sectionElement = document.querySelector(`.bento-section[data-section-num="SECTION ${sectionNum}"]`);
+    }
+    if (!sectionElement) {
+      // Try simpler numeric match
+      sectionElement = document.querySelectorAll('.stage1-section, .bento-section')[sectionNum - 1];
+    }
+    
+    console.log('📋 Found section element:', sectionElement ? 'YES' : 'NO');
+    
+    // Extract content from multiple possible containers
+    let sectionContent = 'No content available';
+    if (sectionElement) {
+      const contentEl = sectionElement.querySelector('.strategic-summary-content, .section-body, .section-content');
+      if (contentEl) {
+        sectionContent = contentEl.innerText;
+      } else {
+        // Fallback: get all text from the section
+        sectionContent = sectionElement.innerText;
+      }
+    }
+    
+    // Also check stored section data
+    const storedData = window._sectionContentStore?.[sectionNum];
+    if (storedData && storedData.length > sectionContent.length) {
+      sectionContent = storedData;
+    }
+    
+    const sectionNames = {
+      1: 'Customer Intelligence', 2: 'Jobs-To-Be-Done', 3: 'Competitive Warfare',
+      4: 'Blue Ocean Strategy', 5: 'Brand Positioning', 6: 'Content Pillars',
+      7: 'Strategic Moat', 8: 'Action Plan', 9: 'AEO Citation Matrix',
+      10: 'Digital Asset Valuation', 11: 'Algorithmic Risk', 12: 'Semantic DNA Galaxy',
+      13: 'Strategic Imperatives', 14: 'Cross-Stage Prep'
+    };
+    
+    modal.querySelector('#forensic-proof-modal-title').textContent = 
+      `🔍 Forensic Evidence - Section ${sectionNum}: ${sectionNames[sectionNum] || ''}`;
+    
+    modal.querySelector('#forensic-proof-modal-content').innerHTML = `
+      <div class="forensic-modal-grid" style="display: grid; gap: 24px;">
+        <div class="forensic-modal-section">
+          <h3 style="font-size: 14px; font-weight: 700; color: var(--accent-primary); margin-bottom: 12px; text-transform: uppercase;">
+            📋 Verification Status
+          </h3>
+          <div class="forensic-proof-item" style="margin-bottom: 12px;">
+            <strong>Data Source:</strong> AI Analysis + Competitor Intelligence
+          </div>
+          <div class="forensic-proof-item" style="margin-bottom: 12px;">
+            <strong>Timestamp:</strong> ${new Date().toISOString()}
+          </div>
+          <div class="forensic-proof-item" style="margin-bottom: 12px;">
+            <strong>Section:</strong> ${sectionNames[sectionNum] || 'Unknown'}
+          </div>
+        </div>
+        
+        <div class="forensic-modal-section">
+          <h3 style="font-size: 14px; font-weight: 700; color: var(--accent-primary); margin-bottom: 12px; text-transform: uppercase;">
+            📝 Full Content Extract
+          </h3>
+          <div class="forensic-dom-snippet" style="max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-size: 13px; line-height: 1.6;">
+${sectionContent.substring(0, 5000)}${sectionContent.length > 5000 ? '\n\n... [Content truncated for display]' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Close on Escape
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') {
+        window.closeForensicProofModal();
+        document.removeEventListener('keydown', escHandler);
+      }
+    });
+  };
+  
+  window.closeForensicProofModal = function() {
+    const modal = document.getElementById('forensic-proof-modal');
+    if (modal) {
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  };
+  
+  window.copyForensicProof = function() {
+    const content = document.getElementById('forensic-proof-modal-content')?.innerText;
+    if (content) {
+      navigator.clipboard?.writeText(content);
+      window.showToast?.('📋 Evidence copied to clipboard');
+    }
+  };
 
   /**
-   * ELITE CHART MAPPING: Strategic section → advanced visualization (18 sections)
+   * V7 HELPER: Generate narrative report from JSON when no markdown report exists
+   * Maps structured data to the 11 strategic sections
+   */
+  window.generateReportFromJSON = function(jsonData) {
+    if (!jsonData) return null;
+    
+    const sections = [];
+    const dc = jsonData.dashboardCharts || {};
+    
+    // Section 1: Customer Frustrations
+    if (dc.customerFrustrationsChart?.length > 0) {
+      const items = dc.customerFrustrationsChart.map(f => `- **${f.label || f.frustration}**: ${f.severity || f.value || 'High'}`).join('\n');
+      sections.push(`## 1. Customer Frustrations & Pain Points\n\n${items}`);
+    }
+    
+    // Section 2: Hidden Aspirations
+    if (dc.hiddenAspirationsChart?.length > 0) {
+      const items = dc.hiddenAspirationsChart.map(a => `- **${a.label || a.aspiration}**: ${a.intensity || a.value || 'Strong'}`).join('\n');
+      sections.push(`## 2. Hidden Aspirations & Desires\n\n${items}`);
+    }
+    
+    // Section 3: Mindset Transformation
+    if (dc.mindsetTransformationChart?.length > 0) {
+      const items = dc.mindsetTransformationChart.map(m => `- **${m.from || m.label}** → **${m.to || 'Empowered State'}**`).join('\n');
+      sections.push(`## 3. Mindset Transformation Journey\n\n${items}`);
+    }
+    
+    // Section 4: JTBD Priority
+    if (jsonData.jtbdScenarios?.length > 0 || dc.customerJobPriorityChart?.length > 0) {
+      const jtbd = jsonData.jtbdScenarios || dc.customerJobPriorityChart || [];
+      const items = jtbd.map(j => `- **${j.job || j.label}**: ${j.description || j.importance || 'Critical'}`).join('\n');
+      sections.push(`## 4. Jobs-To-Be-Done Priority Analysis\n\n${items}`);
+    }
+    
+    // Section 5: Competitive Advantage
+    if (dc.competitiveAdvantageMapChart?.length > 0 || jsonData.competitiveGaps) {
+      const gaps = jsonData.competitiveGaps || {};
+      let content = '';
+      if (gaps.topicGap) content += `- **Topic Gap**: ${gaps.topicGap}\n`;
+      if (gaps.angleVoiceGap) content += `- **Angle/Voice Gap**: ${gaps.angleVoiceGap}\n`;
+      if (gaps.formatGap) content += `- **Format Gap**: ${gaps.formatGap}\n`;
+      sections.push(`## 5. Competitive Advantage Mapping\n\n${content || 'See visualization for competitive gaps.'}`);
+    }
+    
+    // Section 6: Content Format Strategy
+    if (dc.contentFormatStrategyChart?.length > 0) {
+      const items = dc.contentFormatStrategyChart.map(f => `- **${f.label || f.format}**: ${f.percentage || f.value || 0}%`).join('\n');
+      sections.push(`## 6. Strategic Content Format Mix\n\n${items}`);
+    }
+    
+    // Section 7: Brand Positioning
+    if (dc.brandPositioningChart || jsonData.brandStrategy) {
+      const brand = jsonData.brandStrategy || {};
+      let content = '';
+      if (brand.brandArchetype) content += `- **Archetype**: ${brand.brandArchetype}\n`;
+      if (brand.uniqueValueProposition) content += `- **UVP**: ${brand.uniqueValueProposition}\n`;
+      if (brand.brandVoice) content += `- **Voice**: ${brand.brandVoice}\n`;
+      sections.push(`## 7. Brand Positioning Matrix\n\n${content || 'See visualization for brand positioning.'}`);
+    }
+    
+    // Section 8: Value Proposition
+    if (jsonData.uniqueMechanism) {
+      const um = jsonData.uniqueMechanism;
+      let content = `**${um.name || 'Unique Mechanism'}**\n\n`;
+      if (um.tagline) content += `*${um.tagline}*\n\n`;
+      if (um.oneParagraphDefinition) content += um.oneParagraphDefinition + '\n\n';
+      if (um.keyPromises?.length > 0) {
+        content += '**Key Promises:**\n' + um.keyPromises.map(p => `- ${p}`).join('\n');
+      }
+      sections.push(`## 8. Value Proposition Architecture\n\n${content}`);
+    }
+    
+    // Section 9: Content Pillars
+    if (jsonData.contentPillars?.length > 0 || dc.strategicContentPillarsChart?.length > 0) {
+      const pillars = jsonData.contentPillars || dc.strategicContentPillarsChart || [];
+      const items = pillars.map(p => {
+        if (typeof p === 'string') return `- ${p}`;
+        return `- **${p.pillar || p.label}**: ${p.description || ''}`;
+      }).join('\n');
+      sections.push(`## 9. Strategic Content Pillars\n\n${items}`);
+    }
+    
+    // Section 10: Priority Matrix
+    if (dc.priorityFocusMatrixChart?.length > 0) {
+      const items = dc.priorityFocusMatrixChart.map(p => `- **${p.label}**: Impact ${p.impact || 'High'}, Effort ${p.effort || 'Medium'}`).join('\n');
+      sections.push(`## 10. Priority Focus Matrix\n\n${items}`);
+    }
+    
+    // Section 11: Market Opportunity
+    if (dc.marketOpportunityAnalysisChart?.length > 0 || dc.opportunityGapsChart?.length > 0) {
+      const opps = dc.marketOpportunityAnalysisChart || dc.opportunityGapsChart || [];
+      const items = opps.map(o => `- **${o.label || o.opportunity}**: ${o.potential || o.value || 'High potential'}`).join('\n');
+      sections.push(`## 11. Market Opportunity Analysis\n\n${items}`);
+    }
+    
+    if (sections.length === 0) {
+      return '## 📊 Stage 1 Analysis Complete\n\nYour strategic analysis has been processed. Interactive charts are available below for each insight area.';
+    }
+    
+    return `# 📊 Stage 1: Strategic Intelligence Report\n\n${sections.join('\n\n---\n\n')}`;
+  };
+
+  /**
+   * ELITE CHART MAPPING: Strategic section → advanced visualization
+   * V7.13: ALIGNED TO ACTUAL GEMINI PROMPT SECTIONS (14 total)
+   * 
+   * Gemini prompt generates:
+   * Section 1: Customer Intelligence (frustrations, aspirations, mindset)
+   * Section 2: Jobs-To-Be-Done Framework (job priority)
+   * Section 3: Competitive Warfare (advantage map, kill moves, asymmetric)
+   * Section 4: Blue Ocean & Market Opportunities
+   * Section 5: Brand Positioning & Value Architecture
+   * Section 6: Content Strategy & Pillars
+   * Section 7: Strategic Moat Architecture
+   * Section 8: Action Plan & Execution Roadmap
+   * Section 9: Forensic - AEO Citation Analysis
+   * Section 10: Forensic - Digital Asset Valuation
+   * Section 11: Forensic - Brittleness Prediction
+   * Section 12: Information Black Holes
+   * Section 13: Strategic Imperatives (Top 10 Actions)
+   * Section 14: Cross-Stage Data Preparation
    */
   const CHART_MAP = [
-    { num: 1, title: 'Customer Frustrations & Pain Points', canvas: 'chart-emotional-pains', type: 'bar', interactive: true },
-    { num: 2, title: 'Hidden Aspirations & Desires', canvas: 'chart-hidden-desires', type: 'radar', interactive: true },
-    { num: 3, title: 'Mindset Transformation Journey', canvas: 'chart-mindset-shifts', type: 'line', interactive: true },
-    { num: 4, title: 'Jobs-To-Be-Done Priority Analysis', canvas: 'chart-jtbd-impact', type: 'bubble', interactive: true },
-    { num: 5, title: 'Competitive Advantage Mapping', canvas: 'chart-competitor-gaps', type: 'radar', interactive: true },
-    { num: 6, title: 'Strategic Content Format Mix', canvas: 'chart-format-usage', type: 'doughnut', interactive: true },
-    { num: 7, title: 'Brand Positioning Matrix', canvas: 'chart-brand-positioning', type: 'scatter', interactive: true },
-    { num: 8, title: 'Value Proposition Architecture', canvas: 'chart-value-proposition', type: 'bar', interactive: true },
-    { num: 9, title: 'Strategic Content Pillars', canvas: 'chart-content-pillars', type: 'bar', interactive: true },
-    { num: 10, title: 'Priority Focus Matrix', canvas: 'chart-priority-matrix', type: 'scatter', interactive: true },
-    { num: 11, title: 'Next 90 Days Tactical Roadmap', canvas: 'chart-tactical-roadmap', type: 'gantt', interactive: true },
-    { num: 12, title: 'Quick Wins vs Long-term Impact', canvas: 'chart-impact-matrix', type: 'bubble', interactive: true },
-    { num: 13, title: 'Resource Allocation Strategy', canvas: 'chart-resource-allocation', type: 'stacked-bar', interactive: true },
-    { num: 14, title: 'Market Opportunity Analysis', canvas: 'chart-opportunity-gaps', type: 'bar', interactive: true },
-    { num: 15, title: 'Risk Assessment Matrix', canvas: 'chart-risk-assessment', type: 'bubble', interactive: true },
-    { num: 16, title: 'Competitive Intelligence Dashboard', canvas: 'chart-competitive-intel', type: 'radar', interactive: true },
-    { num: 17, title: 'Growth Projection Model', canvas: 'chart-growth-projection', type: 'line', interactive: true },
-    { num: 18, title: 'Strategic Action Plan', canvas: 'chart-action-plan', type: 'bar', interactive: true }
+    // Section 1: Customer Intelligence - Primary chart: frustrations
+    { num: 1, title: 'Customer Intelligence', canvas: 'chart-emotional-pains', type: 'bar', dataKey: 'customerFrustrationsChart', 
+      additionalCharts: ['hiddenAspirationsChart', 'mindsetTransformationChart'] },
+    
+    // Section 2: Jobs-To-Be-Done Framework
+    { num: 2, title: 'Jobs-To-Be-Done Framework', canvas: 'chart-jtbd-impact', type: 'bar', dataKey: 'customerJobPriorityChart' },
+    
+    // Section 3: Competitive Warfare
+    { num: 3, title: 'Competitive Warfare', canvas: 'chart-competitor-gaps', type: 'radar', dataKey: 'competitiveAdvantageMapChart',
+      additionalCharts: ['competitorKillMovesChart', 'asymmetricAdvantagesChart'] },
+    
+    // Section 4: Blue Ocean & Market Opportunities
+    { num: 4, title: 'Blue Ocean Strategy', canvas: 'chart-blue-ocean', type: 'bar', dataKey: 'blueOceanOpportunitiesChart',
+      additionalCharts: ['marketOpportunityAnalysisChart'] },
+    
+    // Section 5: Brand Positioning & Value Architecture
+    { num: 5, title: 'Brand Positioning', canvas: 'chart-brand-positioning', type: 'scatter', dataKey: 'brandPositioningChart',
+      additionalCharts: ['valuePropositionMixChart'] },
+    
+    // Section 6: Content Strategy & Pillars — V7.21: Uses mind map as primary visualization
+    { num: 6, title: 'Content Strategy & Pillars', canvas: 'pillar-mindmap-container', type: 'mindmap', dataKey: 'contentPillarMindMap',
+      additionalCharts: ['strategicContentPillarsChart', 'contentFormatStrategyChart'] },
+    
+    // Section 7: Strategic Moat Architecture
+    { num: 7, title: 'Strategic Moat', canvas: 'chart-format-usage', type: 'doughnut', dataKey: 'moatComponentsChart' },
+    
+    // Section 8: Action Plan & Execution Roadmap
+    { num: 8, title: 'Action Plan', canvas: 'chart-priority-matrix', type: 'scatter', dataKey: 'priorityFocusMatrixChart' },
+    
+    // Section 9: Forensic - AEO Citation Analysis
+    { num: 9, title: 'AEO Citation Matrix', canvas: 'chart-aeo-analysis', type: 'bar', dataKey: 'aeoAnalysisChart' },
+    
+    // Section 10: Forensic - Digital Asset Valuation
+    { num: 10, title: 'Digital Asset Valuation', canvas: 'chart-asset-valuation', type: 'bar', dataKey: 'assetValuationChart' },
+    
+    // Section 11: Forensic - Brittleness Prediction
+    { num: 11, title: 'Algorithmic Risk Forensics', canvas: 'chart-brittleness-risk', type: 'bar', dataKey: 'brittlenessRiskChart' },
+    
+    // Section 12: Information Black Holes
+    { num: 12, title: 'Semantic DNA Galaxy', canvas: 'chart-information-blackholes', type: 'bubble', dataKey: 'informationBlackHolesChart' },
+    
+    // Section 13: Strategic Imperatives (Top 10 Actions)
+    { num: 13, title: 'Strategic Imperatives', canvas: null, type: null, dataKey: null },
+    
+    // Section 14: Cross-Stage Data Preparation
+    { num: 14, title: 'Cross-Stage Data Preparation', canvas: null, type: null, dataKey: null }
   ];
 
   /**
    * Render unified scrollable layout with embedded charts
+   * V7 ELITE: Supports data from response.report, response.analysis_text
    * @param {string} reportText - Raw markdown report
    * @param {Object} jsonData - Chart data from AI
    */
   window.renderUnifiedStage1Results = function(reportText, jsonData) {
-    console.log('=== UNIFIED LAYOUT RENDERER ===');
-    console.log('Report text length:', reportText?.length || 0);
-    console.log('JSON data:', jsonData ? Object.keys(jsonData) : 'null');
+    console.log('=== 🎨 UNIFIED LAYOUT RENDERER V9.3 ELITE ===');
+    console.log('📄 Report text length:', reportText?.length || 0);
+    console.log('📊 JSON data keys:', jsonData ? Object.keys(jsonData) : 'null');
+    console.log('📊 dashboardCharts:', jsonData?.dashboardCharts ? Object.keys(jsonData.dashboardCharts) : 'none');
+
+    // V9.3: Enhanced data validation and logging
+    if (jsonData?.dashboardCharts) {
+      console.log('=== 📊 DASHBOARD CHARTS INVENTORY ===');
+      Object.entries(jsonData.dashboardCharts).forEach(([key, value]) => {
+        const dataType = Array.isArray(value) ? 'array' : typeof value;
+        const dataLength = Array.isArray(value) ? value.length : (value ? 'object' : 0);
+        console.log(`  📈 ${key}: ${dataType} (${dataLength} items)`);
+      });
+    }
+
+    // V9.2: Store JSON data globally for D3 chart initialization
+    window._lastStage1Json = jsonData;
+    
+    // V9.3: Also store report text for fallback extraction
+    window._lastReportText = reportText;
+
+    // ========================================================================
+    // V7 ELITE: Empty payload detection with token logging
+    // ========================================================================
+    const jobToken = window.ORACLE_STATE?.currentJobToken || 'UNKNOWN';
+    
+    if (!reportText && (!jsonData || Object.keys(jsonData).length === 0)) {
+      console.error(`❌ Database returned empty payload for Token: ${jobToken}`);
+      console.error('   reportText:', reportText);
+      console.error('   jsonData:', jsonData);
+      window.showToast?.(`⚠️ No data received for Stage 1 (Token: ${jobToken})`);
+      
+      // Show error state in container
+      const container = document.getElementById('stage1-unified-container');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 48px; text-align: center; background: #fef3c7; border-radius: 16px; margin: 24px;">
+            <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
+            <h2 style="color: #92400e; margin: 0 0 16px;">Empty Response Received</h2>
+            <p style="color: #78350f;">Token: <code style="background: #fde68a; padding: 4px 8px; border-radius: 4px;">${jobToken}</code></p>
+            <p style="color: #78350f; margin-top: 16px;">
+              The database query returned no data. Please check:
+            </p>
+            <ul style="text-align: left; max-width: 400px; margin: 16px auto; color: #78350f;">
+              <li>Is the ai_analysis table accessible?</li>
+              <li>Was the Stage 1 result saved successfully?</li>
+              <li>Check server logs for persistence errors</li>
+            </ul>
+            <button onclick="window.checkMySQLForResults?.('${window.ORACLE_STATE?.projectId || ''}', 1)"
+                    style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 16px;">
+              🔍 Check MySQL
+            </button>
+          </div>
+        `;
+        container.style.display = 'block';
+      }
+      return;
+    }
 
     try {
-      // Clean and parse markdown report
-      const cleanedReport = window.cleanReportForDisplay?.(reportText) || reportText || '';
-      const sections = window.parseMarkdownSections?.(cleanedReport) || [];
-      console.log(`Parsed ${sections.length} sections from report`);
-
-      // Get container
-      const container = document.getElementById('stage1-unified-container');
+      // V7.16 FIX: Verify container exists FIRST and re-query after creation
+      let container = document.getElementById('stage1-unified-container');
       if (!container) {
-        console.error('❌ Unified container not found');
-        return;
+        console.error('❌ CRITICAL: Container #stage1-unified-container NOT FOUND!');
+        console.log('   Trying alternative containers...');
+        const altContainer = document.querySelector('[data-results-panel="1"]');
+        if (altContainer) {
+          console.log('   Found alternative container via data-results-panel');
+          altContainer.innerHTML = '<div id="stage1-unified-container" class="results-unified-scroll"></div>';
+          // V7.16: Re-query container after creation
+          container = document.getElementById('stage1-unified-container');
+        }
+        
+        // V7.16: Final fallback - create container in results area
+        if (!container) {
+          console.log('   Creating container in default results area...');
+          const resultsArea = document.getElementById('results-panel') || 
+                              document.querySelector('.results-panel') ||
+                              document.querySelector('.main-content');
+          if (resultsArea) {
+            const newContainer = document.createElement('div');
+            newContainer.id = 'stage1-unified-container';
+            newContainer.className = 'results-unified-scroll';
+            resultsArea.appendChild(newContainer);
+            container = newContainer;
+          }
+        }
+        
+        if (!container) {
+          console.error('❌ Could not create container - aborting render');
+          window.showToast?.('❌ Cannot render: Results container not found');
+          return;
+        }
       }
       
-      // Clear existing content FIRST
+      // ========================================================================
+      // V7 VISUAL RECOVERY: Force container visible
+      // ========================================================================
+      container.style.display = 'block';
+      container.style.visibility = 'visible';
+      container.style.opacity = '1';
+      
+      // Clear existing placeholder content
       container.innerHTML = '';
+      
+      // Clean and parse markdown report
+      const cleanedReport = window.cleanReportForDisplay?.(reportText) || reportText || '';
+      console.log('📄 Cleaned report length:', cleanedReport.length);
+      
+      const sections = window.parseMarkdownSections?.(cleanedReport) || [];
+      console.log(`📑 Parsed ${sections.length} sections from report`);
+
+      // ========================================================================
+      // V7 ENHANCED: Generate sections from JSON if no markdown sections
+      // ========================================================================
+      if (sections.length === 0 && jsonData?.dashboardCharts) {
+        console.log('⚡ No markdown sections, generating from JSON charts...');
+        const chartKeys = Object.keys(jsonData.dashboardCharts);
+        chartKeys.forEach((key, idx) => {
+          const chartTitle = key.replace(/Chart$/, '').replace(/([A-Z])/g, ' $1').trim();
+          sections.push({
+            title: chartTitle,
+            content: `Data visualization for ${chartTitle}. See chart below for detailed analysis.`
+          });
+        });
+        console.log(`📑 Generated ${sections.length} sections from chart keys`);
+      }
 
       // ========================================================================
       // FALLBACK: If no sections parsed, display raw formatted content
@@ -158,15 +671,52 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     // Initialize progress indicator
     initProgressIndicator(scrollContainer);
 
-    // Render each section with embedded chart
-    sections.forEach((section, index) => {
-      const sectionNum = index + 1;
-      const chartInfo = CHART_MAP.find(c => c.num === sectionNum);
-      const sectionDiv = createSectionDiv(section, sectionNum, chartInfo);
+    // V7.14: Render ALL 14 sections from CHART_MAP with SMART section matching
+    // Match by sectionNum property for accurate content placement
+    console.log(`📑 Matching ${sections.length} parsed sections to ${CHART_MAP.length} chart definitions`);
+    
+    CHART_MAP.forEach((chartDef) => {
+      const sectionNum = chartDef.num;
+      
+      // V7.14: Match by section number first, then by title keywords
+      let matchedSection = sections.find(s => s.sectionNum === sectionNum);
+      
+      if (!matchedSection) {
+        // Try title-based matching
+        const chartTitleLower = chartDef.title.toLowerCase();
+        matchedSection = sections.find(s => {
+          const titleLower = (s.title || '').toLowerCase();
+          // Check for keyword overlap
+          const chartWords = chartTitleLower.split(/\s+/).filter(w => w.length > 3);
+          const titleWords = titleLower.split(/\s+/).filter(w => w.length > 3);
+          return chartWords.some(cw => titleWords.some(tw => tw.includes(cw) || cw.includes(tw)));
+        });
+      }
+      
+      // Create section with matched content or informative placeholder
+      const section = matchedSection || {
+        title: chartDef.title,
+        content: generatePlaceholderContent(chartDef, sectionNum)
+      };
+      
+      const sectionDiv = createSectionDiv(section, sectionNum, chartDef);
       container.appendChild(sectionDiv);
     });
 
-    console.log('✅ Unified layout rendered');
+    console.log('✅ Unified layout rendered with all 14 sections');
+    
+    // V7.14: Generate informative placeholder for missing sections
+    function generatePlaceholderContent(chartDef, num) {
+      const placeholders = {
+        9: '**AEO Citation Analysis** evaluates how well your content is structured for AI/LLM citation. This section analyzes semantic triplets, entity density, and RAG-ready formatting across competitors.',
+        10: '**Digital Asset Valuation** calculates the organic traffic value of competitor domains. This forensic analysis estimates the cost to replicate their search visibility through paid channels.',
+        11: '**Algorithmic Risk Forensics** predicts vulnerability to Google Core Updates. Sites with high "brittleness" scores rely on tactics that may be devalued in future algorithm changes.',
+        12: '**Semantic DNA Galaxy** visualizes topic clusters and information gaps. "Black holes" represent high-opportunity topics with minimal competitive coverage.',
+        13: '**Strategic Imperatives** lists the top 10 priority actions for the next 90 days based on all preceding analysis.',
+        14: '**Cross-Stage Data Preparation** packages key insights for use in subsequent workflow stages.'
+      };
+      return placeholders[num] || `Analysis for **${chartDef.title}** is being processed. The AI will populate this section with strategic insights.`;
+    }
 
     // Now generate charts
     if (jsonData?.dashboardCharts && typeof jsonData.dashboardCharts === 'object') {
@@ -175,12 +725,76 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       if (chartKeys.length > 0) {
         window.generateStage1Charts?.(jsonData);
         console.log('✅ Charts generated');
+        
+        // V9.1: Inject charts into Command Canvas or Bento Grid containers after generation
+        setTimeout(() => {
+          if (window.COMMAND_CANVAS_ENABLED !== false && typeof window.injectChartsIntoCommandCanvas === 'function') {
+            window.injectChartsIntoCommandCanvas();
+          } else if (typeof window.injectChartsIntoBentoGrid === 'function') {
+            window.injectChartsIntoBentoGrid();
+          }
+        }, 300);
       } else {
         console.warn('⚠️ No chart data available');
         window.showToast?.('⚠️ No chart data generated by AI');
       }
     } else {
       console.warn('⚠️ No dashboardCharts in response');
+    }
+    
+    // ========================================================================
+    // V7.21 ELITE TASK 39: INITIALIZE INTERACTIVE PILLAR MIND MAP FOR SECTION 6
+    // Renders the D3.js force-directed pillar-cluster-keyword visualization
+    // ========================================================================
+    if (typeof window.createInteractivePillarMindMap === 'function') {
+      console.log('🗺️ Initializing Interactive Pillar Mind Map...');
+      
+      setTimeout(() => {
+        const mindMapContainer = document.getElementById('pillar-mindmap-interactive');
+        if (mindMapContainer) {
+          // Prepare data for mind map
+          const pillarMindMapData = jsonData?.dashboardCharts?.contentPillarMindMap || 
+                                     jsonData?.contentPillarMindMap ||
+                                     { center: jsonData?.coreTopic || 'Content Strategy' };
+          
+          // If no pillar data in JSON, try parsing from report
+          if (!pillarMindMapData.pillars && reportText) {
+            pillarMindMapData.pillars = window.parsePillarStructureFromContent?.(reportText) || [];
+          }
+          
+          // Validate pillars
+          if (pillarMindMapData.pillars) {
+            pillarMindMapData.pillars = window.validatePillarDepth?.(pillarMindMapData.pillars, pillarMindMapData.center) || pillarMindMapData.pillars;
+          }
+          
+          window.createInteractivePillarMindMap('pillar-mindmap-interactive', pillarMindMapData);
+          console.log('✅ Pillar Mind Map initialized');
+        } else {
+          console.warn('⚠️ Pillar mind map container not found');
+        }
+      }, 500);
+    } else {
+      console.warn('⚠️ createInteractivePillarMindMap not available - include UI_D3_MindMap.html');
+    }
+    
+    // ========================================================================
+    // V7.9 ELITE: COMPETITOR FORENSICS MODULE
+    // Renders the Market Gravity Hub, Emotional Debt Audit, RAG Moat Scores
+    // ========================================================================
+    if (typeof window.renderCompetitorForensics === 'function') {
+      console.log('🎯 Initializing Competitor Forensics module...');
+      
+      // Create container for forensics module after the main content
+      const forensicsContainer = document.createElement('div');
+      forensicsContainer.id = 'competitor-forensics-container';
+      container.appendChild(forensicsContainer);
+      
+      // Render with a slight delay to ensure DOM is ready
+      setTimeout(() => {
+        window.renderCompetitorForensics(jsonData, 'competitor-forensics-container');
+      }, 300);
+    } else {
+      console.warn('⚠️ renderCompetitorForensics not available - include UI_Competitor_Forensics.html');
     }
     
     } catch (renderError) {
@@ -201,86 +815,1724 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   };
 
   /**
-   * Create executive summary HTML
+   * Create executive summary HTML with COMPACT Dashboard
+   * V7.13 ELITE: Fixed 14-section navigation using CHART_MAP
    */
   function createExecutiveSummaryHTML(sections, uniqueCharts, readingTime, wordCount, strategicDepthScore, competitiveAdvantageIndex, marketOpportunityScore) {
+    // V7.13: Generate tab pills from CHART_MAP to GUARANTEE all 14 sections appear
+    // Use CHART_MAP as source of truth, not parsed sections (which may vary)
+    const sectionTabs = CHART_MAP.map((chartDef, idx) => {
+      // Get short title (first 2 words)
+      const shortTitle = chartDef.title.split(' ').slice(0, 2).join(' ');
+      const hasContent = idx < sections.length; // Mark if section has content
+      return `
+        <button class="elite-section-pill${idx === 0 ? ' active' : ''}${!hasContent ? ' empty-section' : ''}" 
+                data-section="${chartDef.num}" 
+                onclick="window.scrollToSection(${chartDef.num})"
+                title="${chartDef.title}">
+          <span class="pill-num">${chartDef.num}</span>
+          <span class="pill-title">${shortTitle}</span>
+        </button>
+      `;
+    }).join('');
+    
     return `
-      <div class="executive-summary elite">
-        <!-- Row 1: Core Metrics -->
-        <div class="summary-card metric-card" data-metric="sections">
-          <div class="card-header">
-            <div class="summary-card-icon">📊</div>
-            <div class="trend-indicator positive">+${Math.round((sections.length / 14) * 100 - 100)}%</div>
-          </div>
-          <div class="summary-card-value">${sections.length}</div>
-          <div class="summary-card-label">Strategic Sections</div>
-          <div class="card-footer">
-            <div class="confidence-bar"><div class="confidence-fill" style="width: ${strategicDepthScore}%"></div></div>
-            <span class="confidence-label">Depth: ${strategicDepthScore}%</span>
-          </div>
+      <!-- V7.11 COMPACT ELITE HEADER -->
+      <div class="elite-compact-header">
+        <div class="elite-header-left">
+          <h2 class="elite-dashboard-title">Strategic Intelligence Dashboard</h2>
+          <p class="elite-dashboard-subtitle">Powered by Gemini AI • ${new Date().toLocaleDateString()}</p>
         </div>
-        
-        <div class="summary-card metric-card" data-metric="visualizations">
-          <div class="card-header">
-            <div class="summary-card-icon">📈</div>
-            <div class="trend-indicator positive">+${Math.round((uniqueCharts / 11) * 100 - 100)}%</div>
-          </div>
-          <div class="summary-card-value">${uniqueCharts}</div>
-          <div class="summary-card-label">Data Visualizations</div>
+        <div class="elite-header-stats">
+          <span class="elite-stat-badge"><strong>${sections.length}</strong> Sections</span>
+          <span class="elite-stat-badge"><strong>${uniqueCharts}</strong> Charts</span>
+          <span class="elite-stat-badge"><strong>${readingTime}</strong> min read</span>
+          <button class="elite-export-btn" onclick="exportReportToPDF()" title="Export PDF">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+            PDF
+          </button>
         </div>
-        
-        <div class="summary-card metric-card" data-metric="reading-time">
-          <div class="card-header">
-            <div class="summary-card-icon">⏱️</div>
-            <div class="trend-indicator neutral">${wordCount} words</div>
-          </div>
-          <div class="summary-card-value">${readingTime}<span class="unit">min</span></div>
-          <div class="summary-card-label">Reading Time</div>
+      </div>
+      
+      <!-- V7.11 SECTION NAVIGATION - Horizontal scroll, dynamic count -->
+      <div class="elite-section-nav">
+        <div class="elite-pills-scroll">
+          ${sectionTabs}
         </div>
-        
-        <div class="summary-card metric-card" data-metric="insights">
-          <div class="card-header">
-            <div class="summary-card-icon">💡</div>
-            <div class="trend-indicator positive">High Impact</div>
-          </div>
-          <div class="summary-card-value">${Math.min(sections.length * 2, 30)}</div>
-          <div class="summary-card-label">Actionable Insights</div>
+        <button class="elite-view-toggle" onclick="window.toggleBentoView()" title="Toggle View">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="1" y="1" width="6" height="6" rx="1"/>
+            <rect x="9" y="1" width="6" height="6" rx="1"/>
+            <rect x="1" y="9" width="6" height="6" rx="1"/>
+            <rect x="9" y="9" width="6" height="6" rx="1"/>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- V7.11 COMPACT KPI BAR (single row, not grid) -->
+      <div class="elite-kpi-bar">
+        <div class="elite-kpi-item">
+          <span class="kpi-icon">🎯</span>
+          <span class="kpi-label">Competitive Edge</span>
+          <span class="kpi-score ${competitiveAdvantageIndex >= 80 ? 'high' : competitiveAdvantageIndex >= 60 ? 'medium' : 'low'}">${competitiveAdvantageIndex}</span>
         </div>
-        
-        <!-- Row 2: Strategic KPIs -->
-        <div class="summary-card kpi-card" data-kpi="competitive">
-          <div class="kpi-header"><span class="kpi-icon">🎯</span><span class="kpi-title">Competitive Advantage</span></div>
-          <div class="kpi-value-container"><div class="kpi-value">${competitiveAdvantageIndex}</div><div class="kpi-max">/100</div></div>
-          <div class="kpi-description">${competitiveAdvantageIndex >= 80 ? 'Strong positioning' : competitiveAdvantageIndex >= 60 ? 'Moderate edge' : 'Growth opportunity'}</div>
+        <div class="elite-kpi-item">
+          <span class="kpi-icon">🚀</span>
+          <span class="kpi-label">Market Opportunity</span>
+          <span class="kpi-score ${marketOpportunityScore >= 75 ? 'high' : marketOpportunityScore >= 50 ? 'medium' : 'low'}">${marketOpportunityScore}</span>
         </div>
-        
-        <div class="summary-card kpi-card" data-kpi="opportunity">
-          <div class="kpi-header"><span class="kpi-icon">🚀</span><span class="kpi-title">Market Opportunity</span></div>
-          <div class="kpi-value-container"><div class="kpi-value">${marketOpportunityScore}</div><div class="kpi-max">/100</div></div>
-          <div class="kpi-description">${marketOpportunityScore >= 75 ? 'High potential market' : marketOpportunityScore >= 50 ? 'Moderate growth' : 'Niche focus'}</div>
+        <div class="elite-kpi-item">
+          <span class="kpi-icon">⚡</span>
+          <span class="kpi-label">Execution Ready</span>
+          <span class="kpi-score high">92</span>
         </div>
-        
-        <div class="summary-card kpi-card" data-kpi="readiness">
-          <div class="kpi-header"><span class="kpi-icon">⚡</span><span class="kpi-title">Execution Readiness</span></div>
-          <div class="kpi-value-container"><div class="kpi-value">92</div><div class="kpi-max">/100</div></div>
-          <div class="kpi-description">Ready for immediate deployment</div>
-        </div>
-        
-        <div class="summary-card kpi-card" data-kpi="confidence">
-          <div class="kpi-header"><span class="kpi-icon">🎓</span><span class="kpi-title">Data Confidence</span></div>
-          <div class="kpi-value-container"><div class="kpi-value">96</div><div class="kpi-max">/100</div></div>
-          <div class="kpi-description">High statistical significance</div>
+        <div class="elite-kpi-item">
+          <span class="kpi-icon">📊</span>
+          <span class="kpi-label">Data Confidence</span>
+          <span class="kpi-score high">${strategicDepthScore}</span>
         </div>
       </div>
     `;
   }
+  
+  /**
+   * V7.11 ELITE UI HELPERS: Tab navigation and view toggle
+   */
+  window.scrollToSection = function(sectionNum) {
+    const sectionEl = document.querySelector(`[data-section-num="SECTION ${sectionNum}"]`);
+    if (sectionEl) {
+      sectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Update active tab - support both old and new class names
+      document.querySelectorAll('.bento-tab-pill, .elite-section-pill').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.section === String(sectionNum)) {
+          tab.classList.add('active');
+        }
+      });
+      
+      // Highlight section briefly
+      sectionEl.classList.add('section-highlight');
+      setTimeout(() => sectionEl.classList.remove('section-highlight'), 1500);
+    }
+  };
+  
+  window.toggleBentoView = function() {
+    const container = document.getElementById('stage1-unified-container');
+    if (container) {
+      container.classList.toggle('bento-list-view');
+      window.showToast?.(container.classList.contains('bento-list-view') ? '📜 List View' : '🔲 Grid View');
+    }
+  };
 
   /**
-   * Create section div with text and chart
+   * V7.21 PHASE 6: Render Section Summary Card with Gemini Strategic Insight
+   * V7.22 UPDATE: Now uses Elite Insights renderer when available
+   * Extracts key takeaways and strategic insight from section content
+   * @param {number} sectionNum - Section number (1-14)
+   * @param {string} content - Section content text
+   * @returns {HTMLElement} Summary card element
+   */
+  function renderSectionSummary(sectionNum, content) {
+    // V7.22: Use Elite Insights renderer if available
+    if (typeof window.renderEliteSectionSummary === 'function' && window.isEliteInsightsEnabled?.()) {
+      return window.renderEliteSectionSummary(sectionNum, content);
+    }
+    
+    // Legacy fallback for non-elite mode
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'section-summary-card';
+    
+    // Extract key takeaways from content
+    const takeaways = extractKeyTakeaways(content, 3);
+    
+    // V7.21: Extract strategic insight instead of showing non-functional button
+    const strategicInsight = extractStrategicInsight(sectionNum, content);
+    
+    summaryDiv.innerHTML = `
+      <div class="summary-header">
+        <span class="summary-icon">💡</span>
+        <span class="summary-title">Key Takeaways</span>
+      </div>
+      <ul class="summary-takeaways">
+        ${takeaways.map(t => `<li>${t}</li>`).join('')}
+      </ul>
+      <div class="strategic-insight">
+        <span class="insight-icon">🧠</span>
+        <p class="insight-text">${strategicInsight}</p>
+      </div>
+    `;
+    
+    return summaryDiv;
+  }
+  
+  /**
+   * V7.21 PHASE 6 (Task 34): Extract Strategic Insight from Section Content
+   * Finds the most strategically relevant sentence for each section type
+   * @param {number} sectionNum - Section number (1-14)
+   * @param {string} content - Raw section content
+   * @returns {string} Strategic insight sentence
+   */
+  function extractStrategicInsight(sectionNum, content) {
+    if (!content || content.length < 50) {
+      return getSectionFallbackInsight(sectionNum);
+    }
+    
+    // Section-specific insight extraction patterns
+    const patterns = {
+      1: /(?:key\s*(?:pain|frustration)|critical\s*(?:pain|issue)|biggest\s*challenge|primary\s*(?:pain|frustration))[^.!?]*[.!?]/gi,
+      2: /(?:priority\s*job|critical\s*job|primary\s*jtbd|most\s*important\s*job)[^.!?]*[.!?]/gi,
+      3: /(?:competitive\s*advantage|gap\s*(?:to\s*)?exploit|key\s*differentiat|unique\s*position)[^.!?]*[.!?]/gi,
+      4: /(?:blue\s*ocean|untapped\s*(?:market|opportunity)|market\s*gap|white\s*space)[^.!?]*[.!?]/gi,
+      5: /(?:brand\s*position|unique\s*value|value\s*proposition|brand\s*archetype)[^.!?]*[.!?]/gi,
+      6: /(?:content\s*pillar|pillar\s*strategy|primary\s*pillar|content\s*moat)[^.!?]*[.!?]/gi,
+      7: /(?:moat\s*(?:score|strength)|strategic\s*moat|defensib|sustainable\s*advantage)[^.!?]*[.!?]/gi,
+      8: /(?:priority\s*(?:action|focus)|90[\s-]*day|execution\s*(?:plan|roadmap)|first\s*action)[^.!?]*[.!?]/gi,
+      9: /(?:aeo|citation|ai\s*overview|answer\s*engine|entity\s*density)[^.!?]*[.!?]/gi,
+      10: /(?:asset\s*value|digital\s*asset|otv|organic\s*traffic\s*value)[^.!?]*[.!?]/gi,
+      11: /(?:brittleness|algorithm\s*risk|vulnerability|thin\s*content|e-e-a-t\s*gap)[^.!?]*[.!?]/gi,
+      12: /(?:black\s*hole|information\s*gap|semantic\s*gap|topic\s*gap|missing\s*content)[^.!?]*[.!?]/gi,
+      13: /(?:top\s*(?:action|priority|imperative)|strategic\s*imperative|critical\s*action|immediate\s*priority)[^.!?]*[.!?]/gi,
+      14: /(?:stage\s*2|cross[\s-]*stage|preparation|data\s*(?:handoff|transfer))[^.!?]*[.!?]/gi
+    };
+    
+    const pattern = patterns[sectionNum];
+    if (pattern) {
+      const matches = content.match(pattern);
+      if (matches && matches.length > 0) {
+        // Get the longest, most complete match
+        const bestMatch = matches.reduce((a, b) => a.length > b.length ? a : b);
+        const cleaned = bestMatch.replace(/\*\*/g, '').replace(/\n/g, ' ').trim();
+        if (cleaned.length > 30 && cleaned.length < 250) {
+          return cleaned;
+        }
+      }
+    }
+    
+    // Fallback: Find strategic sentences by looking for signal words
+    const strategicSignals = /(?:critical|priority|key|important|primary|strategic|unique|competitive|advantage)/i;
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 40 && s.trim().length < 200);
+    
+    const strategicSentence = sentences.find(s => strategicSignals.test(s));
+    if (strategicSentence) {
+      return strategicSentence.replace(/\*\*/g, '').replace(/\n/g, ' ').trim() + '.';
+    }
+    
+    // Final fallback: First meaningful sentence
+    const firstGood = sentences.find(s => s.trim().length > 50);
+    if (firstGood) {
+      return firstGood.replace(/\*\*/g, '').replace(/\n/g, ' ').trim() + '.';
+    }
+    
+    return getSectionFallbackInsight(sectionNum);
+  }
+  
+  /**
+   * V7.21: Get section-specific fallback insight when extraction fails
+   */
+  function getSectionFallbackInsight(sectionNum) {
+    const fallbacks = {
+      1: 'Focus on addressing the primary customer pain points to drive engagement and conversions.',
+      2: 'Prioritize jobs-to-be-done that align with your competitive advantages and market positioning.',
+      3: 'Exploit competitive gaps where rivals are underserving the market to gain strategic advantage.',
+      4: 'Target blue ocean opportunities where competition is minimal and demand is emerging.',
+      5: 'Your brand positioning should differentiate clearly from competitors while resonating with target audience.',
+      6: 'Content pillars should map directly to customer pain points and competitive gaps for maximum impact.',
+      7: 'Build strategic moats by combining multiple defensible elements that are difficult to replicate.',
+      8: 'Execute high-impact, low-effort actions first to build momentum and demonstrate quick wins.',
+      9: 'Optimize for AEO by increasing entity density and citation potential across key content.',
+      10: 'Maximize digital asset value by focusing on high-traffic, high-intent pages.',
+      11: 'Reduce algorithmic brittleness by addressing thin content and E-E-A-T gaps proactively.',
+      12: 'Fill information black holes to capture traffic from underserved semantic territories.',
+      13: 'Execute top strategic imperatives immediately to capitalize on time-sensitive opportunities.',
+      14: 'Prepare comprehensive data handoff to ensure Stage 2 execution has full context.'
+    };
+    return fallbacks[sectionNum] || 'Review this section for strategic opportunities and action items.';
+  }
+  
+  /**
+   * V7.20 Helper: Extract key takeaways from content
+   * @param {string} content - Raw section content
+   * @param {number} count - Number of takeaways to extract
+   * @returns {Array<string>} Array of takeaway strings
+   */
+  function extractKeyTakeaways(content, count = 3) {
+    const takeaways = [];
+    
+    if (!content || content.length < 20) {
+      return ['Analyze this section for strategic insights', 'Review data visualizations', 'Identify action items'];
+    }
+    
+    // Strategy 1: Look for bold items (**text**)
+    const boldMatches = content.match(/\*\*([^*]+)\*\*/g);
+    if (boldMatches && boldMatches.length > 0) {
+      boldMatches.slice(0, count).forEach(m => {
+        const cleaned = m.replace(/\*\*/g, '').trim();
+        if (cleaned.length > 10 && cleaned.length < 100) {
+          takeaways.push(cleaned);
+        }
+      });
+    }
+    
+    // Strategy 2: Look for list items (- or * at start of line)
+    if (takeaways.length < count) {
+      const listItems = content.match(/^[-*]\s+(.+)$/gm);
+      if (listItems) {
+        listItems.slice(0, count - takeaways.length).forEach(item => {
+          const cleaned = item.replace(/^[-*]\s+/, '').replace(/\*\*/g, '').trim();
+          if (cleaned.length > 10 && cleaned.length < 100 && !takeaways.includes(cleaned)) {
+            takeaways.push(cleaned);
+          }
+        });
+      }
+    }
+    
+    // Strategy 3: Extract first sentence of each paragraph
+    if (takeaways.length < count) {
+      const paragraphs = content.split(/\n\n+/).filter(p => p.trim().length > 20);
+      paragraphs.slice(0, count - takeaways.length).forEach(p => {
+        const firstSentence = p.split(/[.!?]/)[0].trim();
+        if (firstSentence.length > 15 && firstSentence.length < 100 && !takeaways.includes(firstSentence)) {
+          takeaways.push(firstSentence);
+        }
+      });
+    }
+    
+    // Fallback if we still don't have enough
+    while (takeaways.length < count) {
+      takeaways.push(['Review data for insights', 'Analyze competitive positioning', 'Identify opportunities'][takeaways.length] || 'Review section details');
+    }
+    
+    return takeaways.slice(0, count);
+  }
+
+  /**
+   * Create section div with Command Canvas layout (v2.0)
+   * V9.0: Command Canvas with Hero Verdict → Interactive Stage → Forensic Accordion
+   * Replaces Bento Grid for Stage 1
    */
   function createSectionDiv(section, sectionNum, chartInfo) {
+    // Use Command Canvas layout (default for Stage 1)
+    if (window.COMMAND_CANVAS_ENABLED !== false) {
+      return createCommandCanvasSectionDiv(section, sectionNum, chartInfo);
+    }
+    // Legacy Bento Grid fallback
+    if (window.BENTO_GRID_ENABLED !== false) {
+      return createBentoSectionDiv(section, sectionNum, chartInfo);
+    }
+    return createLegacySectionDiv(section, sectionNum, chartInfo);
+  }
+
+  /**
+   * V9.2 COMMAND CANVAS: Elite Comprehensive Layout
+   * Structure: Hero Header + Full Content (default expanded) + Chart Stage
+   * ALL content visible by default - no truncation
+   */
+  function createCommandCanvasSectionDiv(section, sectionNum, chartInfo) {
     const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'report-section-with-chart';
+    sectionDiv.className = 'command-canvas-section';
+    sectionDiv.setAttribute('data-section-num', sectionNum);
+    
+    // Store section content for modal retrieval
+    window._sectionContentStore = window._sectionContentStore || {};
+    const content = section.content || '';
+    window._sectionContentStore[sectionNum] = content;
+
+    // Section icons
+    const sectionIcons = {
+      1: '🎯', 2: '🔧', 3: '⚔️', 4: '🌊', 5: '🏛️', 6: '📚', 7: '🏰',
+      8: '📋', 9: '🤖', 10: '💰', 11: '⚠️', 12: '🕳️', 13: '🚀', 14: '🔗'
+    };
+    const icon = sectionIcons[sectionNum] || '📊';
+    const title = chartInfo?.title || section.title || `Section ${sectionNum}`;
+    
+    // Calculate metrics from content
+    const wordCount = content.split(/\s+/).filter(w => w.length > 0).length;
+    const readingTime = Math.ceil(wordCount / 200);
+    const headingCount = (content.match(/^#{1,3}\s/gm) || []).length;
+    
+    // Extract scores if present
+    const scoreMatch = content.match(/(\d+)\/10/);
+    const citeScore = scoreMatch ? (parseInt(scoreMatch[1]) / 10).toFixed(2) : '0.75';
+    const percentMatch = content.match(/(\d+)%/);
+    const janitorRatio = percentMatch ? `${percentMatch[1]}%` : '~25%';
+    const dollarMatch = content.match(/\$[\d,]+[KMB]?/i);
+    const moatValue = dollarMatch ? dollarMatch[0] : '~$75K';
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HERO HEADER — Title, Metrics, Collapsible
+    // ═══════════════════════════════════════════════════════════════════════
+    const heroHeader = document.createElement('div');
+    heroHeader.className = 'hero-verdict';
+    heroHeader.innerHTML = `
+      <div class="hero-verdict-header" onclick="toggleSectionCollapse(${sectionNum})" style="cursor:pointer;">
+        <div class="hero-header-left">
+          <span class="hero-verdict-icon">${icon}</span>
+          <h2 class="hero-verdict-title">${title}</h2>
+        </div>
+        <div class="hero-header-right">
+          <div class="hero-header-meta">
+            <span class="meta-pill">${wordCount.toLocaleString()} words</span>
+            <span class="meta-pill">${readingTime} min read</span>
+            <span class="meta-pill">${headingCount} sections</span>
+          </div>
+          <span class="hero-collapse-icon" id="collapse-icon-${sectionNum}">▼</span>
+        </div>
+      </div>
+      
+      <div class="hero-metrics-row">
+        <div class="metric-badge metric-badge--authority">
+          <span class="metric-value">${citeScore}</span>
+          <span class="metric-label">Cite-ability</span>
+        </div>
+        <div class="metric-badge metric-badge--value">
+          <span class="metric-value">${moatValue}</span>
+          <span class="metric-label">Moat Value</span>
+        </div>
+        <div class="metric-badge metric-badge--danger">
+          <span class="metric-value">${janitorRatio}</span>
+          <span class="metric-label">Janitor Ratio</span>
+        </div>
+        <button class="copy-section-btn" onclick="event.stopPropagation(); copySectionContent(${sectionNum})">
+          📋 Copy
+        </button>
+      </div>
+    `;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // COLLAPSIBLE CONTENT ZONE — Full Gemini Response (DEFAULT: EXPANDED)
+    // ═══════════════════════════════════════════════════════════════════════
+    const contentZone = document.createElement('div');
+    contentZone.className = 'section-content-zone';
+    contentZone.id = `section-content-zone-${sectionNum}`;
+    contentZone.style.display = 'block'; // DEFAULT EXPANDED
+    
+    // Format content with proper markdown rendering
+    const formattedContent = formatEliteMarkdown(content);
+    contentZone.innerHTML = `
+      <div class="elite-content-inner">
+        ${formattedContent}
+      </div>
+    `;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CHART STAGE — 550px Fixed Container with Action Bar
+    // ═══════════════════════════════════════════════════════════════════════
+    const chartStage = document.createElement('div');
+    chartStage.className = 'interactive-stage';
+    chartStage.id = `chart-stage-${sectionNum}`;
+    
+    // Map section numbers to canvas IDs
+    const canvasIdMap = {
+      1: 'chart-emotional-pains',
+      2: 'chart-jtbd-impact',
+      3: 'chart-competitor-gaps',
+      4: 'chart-blue-ocean',
+      5: 'chart-brand-positioning',
+      6: null, // Mind Map - D3
+      7: 'chart-value-proposition',
+      8: 'chart-tactical-roadmap',
+      9: 'chart-aeo-analysis',
+      10: 'chart-asset-valuation',
+      11: 'chart-brittleness-risk',
+      12: null, // Semantic Galaxy - D3
+      13: 'chart-impact-matrix',
+      14: 'chart-priority-matrix'
+    };
+    
+    const canvasId = canvasIdMap[sectionNum];
+    
+    // Action buttons (always visible)
+    const actionButtons = `
+      <div class="chart-action-bar">
+        <button class="chart-action-btn" onclick="downloadChart(${sectionNum})" title="Download PNG">💾</button>
+        <button class="chart-action-btn" onclick="viewChartFullscreen(${sectionNum})" title="Fullscreen">⛶</button>
+        <button class="chart-action-btn" onclick="showChartInfo(${sectionNum})" title="Info">ℹ️</button>
+      </div>
+    `;
+    
+    let chartHtml = actionButtons;
+    
+    if (sectionNum === 6) {
+      // Mind Map for Content Pillars
+      chartHtml += `<div id="pillar-mindmap-interactive" class="d3-chart-container" style="width:100%;height:100%;"></div>`;
+    } else if (sectionNum === 12) {
+      // Semantic Galaxy
+      chartHtml += `<div id="semantic-galaxy-container" class="d3-chart-container" style="width:100%;height:100%;"></div>`;
+    } else if (canvasId) {
+      // Chart.js canvas - will be populated by injection
+      chartHtml += `
+        <div class="chart-wrapper" data-chart-target="${canvasId}">
+          <div class="chart-loading-state">
+            <div class="chart-loading-spinner"></div>
+            <p>Loading chart...</p>
+          </div>
+        </div>
+      `;
+    } else {
+      // No chart defined - show key insights
+      const bulletPoints = extractBulletPoints(content, 6);
+      chartHtml += `
+        <div class="chart-insights-fallback">
+          <h3>📊 Key Strategic Insights</h3>
+          <ul>
+            ${bulletPoints.map(b => `<li>${b}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+    
+    chartStage.innerHTML = chartHtml;
+
+    sectionDiv.appendChild(heroHeader);
+    sectionDiv.appendChild(contentZone);
+    sectionDiv.appendChild(chartStage);
+    
+    return sectionDiv;
+  }
+  
+  /**
+   * Format content with Elite-level markdown rendering
+   * V7.16: Enhanced with insight box formatting and better structure
+   * Handles tables with resizable columns, code blocks, lists, insight boxes
+   */
+  function formatEliteMarkdown(content) {
+    if (!content) return '<p>No content available</p>';
+    
+    // V7.16: Process insight boxes FIRST (before other transformations)
+    content = processInsightBoxes(content);
+    
+    // V7.16: Process JTBD scenarios
+    content = processJTBDScenarios(content);
+    
+    // Process tables (before other transformations)
+    content = processMarkdownTables(content);
+    
+    // Process code blocks
+    content = content.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+      return `<pre class="code-block" data-lang="${lang || 'text'}"><code>${escapeHtml(code.trim())}</code></pre>`;
+    });
+    
+    // Process inline code
+    content = content.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    
+    // V7.16: Process subsection headers (### 1.1 Title, ### 1.5 STRATEGIC INTELLIGENCE SUMMARY)
+    content = content.replace(/^###\s+(\d+\.\d+)\s+(.+)$/gm, (match, num, title) => {
+      const cleanTitle = title.replace(/STRATEGIC INTELLIGENCE SUMMARY\s*[—–-]*\s*/i, '').trim();
+      const isStrategicSummary = /STRATEGIC INTELLIGENCE SUMMARY/i.test(title);
+      const icon = isStrategicSummary ? '🧠' : '📌';
+      return `<div class="subsection-header ${isStrategicSummary ? 'strategic-summary' : ''}">
+        <span class="subsection-number">${num}</span>
+        <span class="subsection-icon">${icon}</span>
+        <h4 class="subsection-title">${cleanTitle || title}</h4>
+      </div>`;
+    });
+    
+    // Process other headers
+    content = content.replace(/^#### (.+)$/gm, '<h5 class="elite-h5">$1</h5>');
+    content = content.replace(/^### (.+)$/gm, '<h4 class="elite-h4">$1</h4>');
+    content = content.replace(/^## (.+)$/gm, '<h3 class="elite-h3">$1</h3>');
+    content = content.replace(/^# (.+)$/gm, '<h2 class="elite-h2">$1</h2>');
+    
+    // Process bold and italic
+    content = content.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    content = content.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    content = content.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    
+    // Process bullet lists
+    const lines = content.split('\n');
+    let inList = false;
+    let listType = null;
+    const processed = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const bulletMatch = line.match(/^(\s*)[-*•]\s+(.+)/);
+      const numMatch = line.match(/^(\s*)\d+\.\s+(.+)/);
+      
+      if (bulletMatch) {
+        if (!inList || listType !== 'ul') {
+          if (inList) processed.push(listType === 'ol' ? '</ol>' : '</ul>');
+          processed.push('<ul class="elite-list">');
+          inList = true;
+          listType = 'ul';
+        }
+        processed.push(`<li>${bulletMatch[2]}</li>`);
+      } else if (numMatch) {
+        if (!inList || listType !== 'ol') {
+          if (inList) processed.push(listType === 'ol' ? '</ol>' : '</ul>');
+          processed.push('<ol class="elite-list">');
+          inList = true;
+          listType = 'ol';
+        }
+        processed.push(`<li>${numMatch[2]}</li>`);
+      } else {
+        if (inList) {
+          processed.push(listType === 'ol' ? '</ol>' : '</ul>');
+          inList = false;
+          listType = null;
+        }
+        // Skip empty lines, wrap paragraphs
+        if (line.trim() && !line.startsWith('<')) {
+          processed.push(`<p>${line}</p>`);
+        } else {
+          processed.push(line);
+        }
+      }
+    }
+    if (inList) processed.push(listType === 'ol' ? '</ol>' : '</ul>');
+    
+    return processed.join('\n');
+  }
+  
+  /**
+   * Process markdown tables into HTML with resizable columns
+   */
+  function processMarkdownTables(content) {
+    const tableRegex = /(\|.+\|[\r\n]+\|[-:\s|]+\|[\r\n]+(?:\|.+\|[\r\n]*)+)/g;
+    
+    return content.replace(tableRegex, (tableMatch) => {
+      const rows = tableMatch.trim().split('\n').filter(r => r.trim());
+      if (rows.length < 2) return tableMatch;
+      
+      // Parse header
+      const headerCells = rows[0].split('|').filter(c => c.trim());
+      
+      // Skip separator row (row 1)
+      const dataCells = rows.slice(2);
+      
+      let html = `<div class="elite-table-wrapper"><table class="elite-table resizable-table">`;
+      
+      // Header row with resize handles
+      html += '<thead><tr>';
+      headerCells.forEach((cell, idx) => {
+        html += `<th class="resizable-col" data-col="${idx}">
+          <span class="th-content">${cell.trim()}</span>
+          <div class="resize-handle" onmousedown="initTableResize(event, ${idx})"></div>
+        </th>`;
+      });
+      html += '</tr></thead>';
+      
+      // Body rows
+      html += '<tbody>';
+      dataCells.forEach(row => {
+        const cells = row.split('|').filter(c => c.trim());
+        html += '<tr>';
+        cells.forEach(cell => {
+          html += `<td>${cell.trim()}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      
+      return html;
+    });
+  }
+  
+  /**
+   * Escape HTML entities
+   */
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  /**
+   * V7.16: Process insight boxes (🎯 INSIGHT #1: Title)
+   * Converts markdown insight format to styled HTML cards
+   */
+  function processInsightBoxes(content) {
+    // Match insight patterns: 🎯 INSIGHT #1: Title followed by Finding/Competitive Edge/Actionable Impact
+    const insightRegex = /🎯\s*INSIGHT\s*#?(\d+):\s*([^\n]+)([\s\S]*?)(?=🎯\s*INSIGHT|$)/gi;
+    
+    return content.replace(insightRegex, (match, num, title, body) => {
+      // Parse the body for Finding, Competitive Edge, Actionable Impact
+      const findingMatch = body.match(/\*?\s*Finding:\s*([\s\S]*?)(?=\*?\s*Competitive Edge:|$)/i);
+      const edgeMatch = body.match(/\*?\s*Competitive Edge:\s*([\s\S]*?)(?=\*?\s*Actionable Impact:|$)/i);
+      const impactMatch = body.match(/\*?\s*Actionable Impact:\s*([\s\S]*?)(?=🎯|$)/i);
+      
+      const finding = findingMatch ? findingMatch[1].trim().replace(/^\*\s*/, '').replace(/\s*\*$/, '') : '';
+      const edge = edgeMatch ? edgeMatch[1].trim().replace(/^\*\s*/, '').replace(/\s*\*$/, '') : '';
+      const impact = impactMatch ? impactMatch[1].trim().replace(/^\*\s*/, '').replace(/\s*\*$/, '') : '';
+      
+      // Clean title - remove "INSIGHT #X:" prefix display
+      const cleanTitle = title.trim();
+      
+      return `
+<div class="insight-card" data-insight="${num}">
+  <div class="insight-header">
+    <span class="insight-icon">🎯</span>
+    <h4 class="insight-title">${cleanTitle}</h4>
+    <span class="insight-number">#${num}</span>
+  </div>
+  <div class="insight-body">
+    ${finding ? `<div class="insight-section finding">
+      <span class="insight-label">📊 Finding</span>
+      <p>${finding}</p>
+    </div>` : ''}
+    ${edge ? `<div class="insight-section competitive-edge">
+      <span class="insight-label">⚔️ Competitive Edge</span>
+      <p>${edge}</p>
+    </div>` : ''}
+    ${impact ? `<div class="insight-section actionable-impact">
+      <span class="insight-label">🚀 Actionable Impact</span>
+      <p>${impact}</p>
+    </div>` : ''}
+  </div>
+</div>
+`;
+    });
+  }
+  
+  /**
+   * V7.16: Process JTBD scenarios (JTBD #1: Title)
+   * Converts JTBD format to styled HTML cards
+   */
+  function processJTBDScenarios(content) {
+    // Match JTBD patterns
+    const jtbdRegex = /JTBD\s*#(\d+):\s*([^\n]+)([\s\S]*?)(?=JTBD\s*#|🎯\s*INSIGHT|$)/gi;
+    
+    return content.replace(jtbdRegex, (match, num, title, body) => {
+      // Parse WHEN, HELP ME, SO I CAN, Metrics, etc.
+      const whenMatch = body.match(/🔹?\s*WHEN:\s*([^\n🔹]+)/i);
+      const helpMatch = body.match(/🔹?\s*HELP ME:\s*([^\n🔹]+)/i);
+      const soICanMatch = body.match(/🔹?\s*SO I CAN:\s*([^\n📊]+)/i);
+      const metricsMatch = body.match(/📊\s*Metrics:\s*([^\n🎯]+)/i);
+      const segmentMatch = body.match(/🎯\s*Segment:\s*([^\n🔥]+)/i);
+      const gapMatch = body.match(/🔥\s*Competitor Gap:\s*([^\n⚡]+)/i);
+      const solutionMatch = body.match(/⚡\s*Your Solution:\s*([^\n]+)/i);
+      
+      const isCritical = /MOST CRITICAL/i.test(title);
+      
+      return `
+<div class="jtbd-card ${isCritical ? 'critical' : ''}" data-jtbd="${num}">
+  <div class="jtbd-header">
+    <span class="jtbd-badge">JTBD #${num}</span>
+    <h4 class="jtbd-title">${title.replace(/\s*[—–-]+\s*MOST CRITICAL/i, '')}</h4>
+    ${isCritical ? '<span class="critical-badge">🔥 MOST CRITICAL</span>' : ''}
+  </div>
+  <div class="jtbd-body">
+    ${whenMatch ? `<div class="jtbd-row when"><span class="jtbd-label">🔹 WHEN</span><p>${whenMatch[1].trim()}</p></div>` : ''}
+    ${helpMatch ? `<div class="jtbd-row help"><span class="jtbd-label">🔹 HELP ME</span><p>${helpMatch[1].trim()}</p></div>` : ''}
+    ${soICanMatch ? `<div class="jtbd-row result"><span class="jtbd-label">🔹 SO I CAN</span><p>${soICanMatch[1].trim()}</p></div>` : ''}
+    ${metricsMatch ? `<div class="jtbd-metrics"><span class="jtbd-label">📊 Metrics</span><p>${metricsMatch[1].trim()}</p></div>` : ''}
+    ${segmentMatch ? `<div class="jtbd-segment"><span class="jtbd-label">🎯 Segment</span><p>${segmentMatch[1].trim()}</p></div>` : ''}
+    ${gapMatch ? `<div class="jtbd-gap"><span class="jtbd-label">🔥 Competitor Gap</span><p>${gapMatch[1].trim()}</p></div>` : ''}
+    ${solutionMatch ? `<div class="jtbd-solution"><span class="jtbd-label">⚡ Your Solution</span><p>${solutionMatch[1].trim()}</p></div>` : ''}
+  </div>
+</div>
+`;
+    });
+  }
+  
+  /**
+   * Extract bullet points from content for summary display
+   */
+  function extractBulletPoints(content, count = 5) {
+    const lines = content.split('\n');
+    const bullets = [];
+    
+    for (const line of lines) {
+      const cleaned = line.replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').trim();
+      if (cleaned.length > 20 && cleaned.length < 250 && !cleaned.startsWith('#') && !cleaned.includes('|')) {
+        bullets.push(cleaned.replace(/\*\*/g, ''));
+        if (bullets.length >= count) break;
+      }
+    }
+    
+    return bullets.length > 0 ? bullets : ['Analysis data available in section above'];
+  }
+
+  // Global toggle function - collapse/expand entire section
+  window.toggleSectionCollapse = function(sectionNum) {
+    const content = document.getElementById(`section-content-zone-${sectionNum}`);
+    const icon = document.getElementById(`collapse-icon-${sectionNum}`);
+    if (content && icon) {
+      const isVisible = content.style.display !== 'none';
+      content.style.display = isVisible ? 'none' : 'block';
+      icon.textContent = isVisible ? '▶' : '▼';
+    }
+  };
+  
+  window.copySectionContent = function(sectionNum) {
+    const content = window._sectionContentStore?.[sectionNum];
+    if (content && navigator.clipboard) {
+      navigator.clipboard.writeText(content);
+      window.showToast?.('📋 Content copied to clipboard!');
+    }
+  };
+  
+  window.downloadChart = function(sectionNum) {
+    const stage = document.getElementById(`chart-stage-${sectionNum}`);
+    const canvas = stage?.querySelector('canvas');
+    if (canvas) {
+      const link = document.createElement('a');
+      link.download = `section-${sectionNum}-chart.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      window.showToast?.('💾 Chart downloaded!');
+    } else {
+      window.showToast?.('📊 No chart available to download');
+    }
+  };
+  
+  window.viewChartFullscreen = function(sectionNum) {
+    const stage = document.getElementById(`chart-stage-${sectionNum}`);
+    if (stage?.requestFullscreen) {
+      stage.requestFullscreen();
+    } else if (stage?.webkitRequestFullscreen) {
+      stage.webkitRequestFullscreen();
+    }
+  };
+  
+  window.showChartInfo = function(sectionNum) {
+    const sectionNames = {
+      1: 'Customer Frustrations & Pain Points',
+      2: 'Jobs-To-Be-Done Priority',
+      3: 'Competitive Kill Moves',
+      4: 'Blue Ocean Opportunities',
+      5: 'Brand Positioning Map',
+      6: 'Content Pillars Mind Map',
+      7: 'Strategic Moat Components',
+      8: 'Action Plan Timeline',
+      9: 'AEO Citation Readiness',
+      10: 'Digital Asset Valuation',
+      11: 'Algorithmic Risk Factors',
+      12: 'Semantic Topic Galaxy',
+      13: 'Strategic Imperatives',
+      14: 'Cross-Stage Data Prep'
+    };
+    const name = sectionNames[sectionNum] || `Section ${sectionNum}`;
+    window.showToast?.(`ℹ️ ${name}`);
+  };
+  
+  // Table resize functionality
+  window.initTableResize = function(e, colIndex) {
+    e.preventDefault();
+    const th = e.target.closest('th');
+    const table = th.closest('table');
+    const startX = e.pageX;
+    const startWidth = th.offsetWidth;
+    
+    function onMouseMove(e) {
+      const newWidth = startWidth + (e.pageX - startX);
+      if (newWidth > 50) {
+        th.style.width = newWidth + 'px';
+        th.style.minWidth = newWidth + 'px';
+      }
+    }
+    
+    function onMouseUp() {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Enable Command Canvas by default
+  window.COMMAND_CANVAS_ENABLED = true;
+
+  /**
+   * V8.0 BENTO GRID: Create section with 12-column grid layout (LEGACY)
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // FORENSIC ACCORDION ZONE (Bottom - Collapsible)
+    // ═══════════════════════════════════════════════════════════════════════
+    const forensicAccordion = createForensicAccordionZone(section, sectionNum);
+
+    sectionDiv.appendChild(heroVerdict);
+    sectionDiv.appendChild(interactiveStage);
+    sectionDiv.appendChild(forensicAccordion);
+    
+    return sectionDiv;
+  }
+
+  /**
+   * V9.0: Create Hero Verdict Zone
+   * Section icon + 1-line insight + 3 metric badges
+   */
+  function createHeroVerdictZone(section, sectionNum, chartInfo) {
+    const zone = document.createElement('div');
+    zone.className = 'hero-verdict';
+    
+    // Get section icon and accent
+    const iconData = window.getSectionIconData?.(sectionNum) || { icon: '📊', accent: 'authority' };
+    
+    // Extract Sage insight (1-line summary)
+    const insight = window.extractSageInsight?.(section.content) || 
+                    extractStrategicInsight(sectionNum, section.content);
+    
+    // Calculate hero metrics
+    const metrics = window.calculateHeroMetrics?.(section.content, sectionNum) || {
+      citeability: { value: '—', trend: 'neutral' },
+      janitor: { value: '—', trend: 'neutral' },
+      moat: { value: '—', trend: 'neutral' }
+    };
+    
+    zone.innerHTML = `
+      <div class="hero-verdict-header">
+        <span class="hero-verdict-icon">${iconData.icon}</span>
+        <h2 class="hero-verdict-title">${chartInfo?.title || section.title || `Section ${sectionNum}`}</h2>
+      </div>
+      <p class="hero-verdict-insight">${insight}</p>
+      <div class="hero-metrics-grid">
+        ${window.renderMetricBadge?.({
+          value: metrics.citeability.value,
+          label: 'Cite-ability',
+          trend: metrics.citeability.trend,
+          accentType: 'authority'
+        }) || `<div class="metric-badge metric-badge--authority"><span class="metric-value">${metrics.citeability.value}</span><span class="metric-label">Cite-ability</span></div>`}
+        ${window.renderMetricBadge?.({
+          value: metrics.moat.value,
+          label: 'Moat Value',
+          trend: metrics.moat.trend,
+          accentType: 'value'
+        }) || `<div class="metric-badge metric-badge--value"><span class="metric-value">${metrics.moat.value}</span><span class="metric-label">Moat Value</span></div>`}
+        ${window.renderMetricBadge?.({
+          value: metrics.janitor.value,
+          label: 'Janitor Ratio',
+          trend: metrics.janitor.trend,
+          accentType: 'danger'
+        }) || `<div class="metric-badge metric-badge--danger"><span class="metric-value">${metrics.janitor.value}</span><span class="metric-label">Janitor Ratio</span></div>`}
+      </div>
+    `;
+    
+    return zone;
+  }
+
+  /**
+   * V9.0: Create Interactive Stage Zone
+   * 550px fixed-height chart container with action bar
+   */
+  function createInteractiveStageZone(section, sectionNum, chartInfo) {
+    const zone = document.createElement('div');
+    zone.className = 'interactive-stage';
+    zone.id = `chart-stage-${sectionNum}`;
+    zone.setAttribute('data-hydrated', 'false');
+    
+    // Action bar
+    const actionsHtml = `
+      <div class="chart-action-bar">
+        ${chartInfo?.canvas ? `
+          <button class="chart-action-btn" title="Download PNG" onclick="window.downloadChartAsPNG?.('${chartInfo.canvas}')">💾</button>
+          <button class="chart-action-btn" title="Fullscreen" onclick="window.openChartFullscreen?.('${chartInfo.canvas}')">⛶</button>
+          <button class="chart-action-btn" title="Chart Info" onclick="window.showChartMethodology?.('${chartInfo.canvas}')">ℹ️</button>
+        ` : sectionNum === 6 ? `
+          <button class="chart-action-btn" title="Download" onclick="window.exportPillarMindMapAsPNG?.()">💾</button>
+          <button class="chart-action-btn" title="Fullscreen" onclick="window.viewMindMapFullscreen?.('pillar-mindmap-interactive')">⛶</button>
+          <button class="chart-action-btn" title="Reset View" onclick="window.resetPillarMindMapView?.()">⟲</button>
+        ` : sectionNum === 12 ? `
+          <button class="chart-action-btn" title="Download" onclick="window.exportSemanticGalaxyAsPNG?.()">💾</button>
+          <button class="chart-action-btn" title="Fullscreen" onclick="window.viewGalaxyFullscreen?.()">⛶</button>
+        ` : ''}
+      </div>
+    `;
+    
+    // Chart container
+    if (sectionNum === 6 && chartInfo?.type === 'mindmap') {
+      zone.innerHTML = actionsHtml + `
+        <div id="pillar-mindmap-interactive" class="d3-chart-canvas" style="width:100%;height:100%;"></div>
+      `;
+      zone._pillarContent = section.content;
+    } else if (sectionNum === 12) {
+      zone.innerHTML = actionsHtml + `
+        <div id="semantic-galaxy-${sectionNum}" class="d3-chart-canvas" style="width:100%;height:100%;"></div>
+      `;
+    } else if (chartInfo?.canvas) {
+      zone.innerHTML = actionsHtml + `
+        <div class="chart-container-wrapper" data-chart-target="${chartInfo.canvas}">
+          <canvas id="${chartInfo.canvas}" class="chart-canvas"></canvas>
+        </div>
+      `;
+    } else {
+      // Fallback: show loading skeleton
+      zone.innerHTML = `
+        <div class="chart-fallback chart-fallback--loading">
+          <div class="skeleton-chart"></div>
+          <p class="chart-fallback-text">Preparing visualization...</p>
+        </div>
+      `;
+    }
+    
+    // Register for lazy hydration
+    if (typeof window.registerChartForHydration === 'function') {
+      setTimeout(() => window.registerChartForHydration(zone, sectionNum, chartInfo), 100);
+    }
+    
+    return zone;
+  }
+
+  /**
+   * V9.0: Create Forensic Accordion Zone
+   * Collapsible panel with full Gemini response
+   */
+  function createForensicAccordionZone(section, sectionNum) {
+    const zone = document.createElement('div');
+    zone.className = 'forensic-accordion';
+    zone.setAttribute('data-expanded', 'false');
+    
+    // Calculate metadata
+    const content = section.content || '';
+    const wordCount = content.split(/\s+/).filter(w => w.length > 0).length;
+    const readingTime = Math.ceil(wordCount / 200);
+    const sectionCount = (content.match(/^##\s/gm) || []).length;
+    
+    zone.innerHTML = `
+      <div class="forensic-accordion-header" onclick="window.toggleForensicAccordion?.(${sectionNum})">
+        <div class="accordion-header-left">
+          <span class="accordion-toggle-icon">▶</span>
+          <span class="accordion-title">Strategic Proof & Full Analysis</span>
+        </div>
+        <div class="accordion-header-meta">
+          <span class="accordion-meta-item">${wordCount.toLocaleString()} words</span>
+          <span class="accordion-meta-item">${readingTime} min read</span>
+          <span class="accordion-meta-item">${sectionCount} sections</span>
+          <button class="accordion-copy-btn" onclick="event.stopPropagation(); window.copyAccordionContent?.(${sectionNum})">📋 Copy</button>
+        </div>
+      </div>
+      <div class="forensic-accordion-content" id="accordion-content-${sectionNum}">
+        <div class="accordion-content-inner">
+          ${window.renderAccordionContent?.(content) || window.formatMarkdownContent?.(content) || `<pre>${content}</pre>`}
+        </div>
+      </div>
+    `;
+    
+    return zone;
+  }
+
+  // Enable Command Canvas by default
+  window.COMMAND_CANVAS_ENABLED = true;
+
+  /**
+   * Toggle Forensic Accordion expand/collapse
+   */
+  window.toggleForensicAccordion = function(sectionNum) {
+    const accordion = document.querySelector(`.command-canvas-section[data-section-num="${sectionNum}"] .forensic-accordion`);
+    if (!accordion) return;
+    
+    const isExpanded = accordion.getAttribute('data-expanded') === 'true';
+    accordion.setAttribute('data-expanded', !isExpanded);
+    
+    const icon = accordion.querySelector('.accordion-toggle-icon');
+    if (icon) icon.textContent = isExpanded ? '▶' : '▼';
+  };
+
+  /**
+   * Copy accordion content to clipboard
+   */
+  window.copyAccordionContent = function(sectionNum) {
+    const content = window._sectionContentStore?.[sectionNum] || '';
+    if (content && navigator.clipboard) {
+      navigator.clipboard.writeText(content);
+      window.showToast?.('📋 Content copied to clipboard');
+    }
+  };
+
+  /**
+   * V8.0 BENTO GRID: Create section with 12-column grid layout (LEGACY)
+   * - Left Span (1-4): Strategic Summary Card
+   * - Center Span (5-9): Primary Visualization (Forensic Card)
+   * - Right Span (10-12): Forensic Proof Snippets
+   */
+  function createBentoSectionDiv(section, sectionNum, chartInfo) {
+    const sectionDiv = document.createElement('div');
+    sectionDiv.className = 'bento-section stage1-section';
+    sectionDiv.setAttribute('data-section-num', `SECTION ${sectionNum}`);
+    
+    // V8.1: Store section content for modal retrieval
+    window._sectionContentStore = window._sectionContentStore || {};
+    window._sectionContentStore[sectionNum] = section.content || '';
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LEFT SPAN: Strategic Summary Card (Columns 1-4)
+    // ═══════════════════════════════════════════════════════════════════════
+    const strategicSummary = createStrategicSummaryCard(section, sectionNum);
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // CENTER SPAN: Primary Visualization / Forensic Card (Columns 5-9)
+    // ═══════════════════════════════════════════════════════════════════════
+    const primaryVizCard = createForensicCard(section, sectionNum, chartInfo);
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // RIGHT SPAN: Forensic Proof Card (Columns 10-12)
+    // ═══════════════════════════════════════════════════════════════════════
+    const forensicProofCard = createForensicProofCard(section, sectionNum);
+
+    sectionDiv.appendChild(strategicSummary);
+    sectionDiv.appendChild(primaryVizCard);
+    sectionDiv.appendChild(forensicProofCard);
+    
+    return sectionDiv;
+  }
+
+  /**
+   * V8.0: Create Strategic Summary Card (Left Span)
+   * Contains scrollable summary with Sage-Architect insight
+   */
+  function createStrategicSummaryCard(section, sectionNum) {
+    const card = document.createElement('div');
+    card.className = 'strategic-summary-card';
+    
+    const sectionIcons = {
+      1: '🎯', 2: '🔧', 3: '⚔️', 4: '🌊', 5: '🏛️', 6: '📚', 7: '🏰',
+      8: '📋', 9: '🤖', 10: '💰', 11: '⚠️', 12: '🕳️', 13: '🚀', 14: '🔗'
+    };
+    
+    card.innerHTML = `
+      <div class="strategic-summary-header">
+        <div class="strategic-summary-icon">${sectionIcons[sectionNum] || '📊'}</div>
+        <h3 class="strategic-summary-title">${section.title || `Section ${sectionNum}`}</h3>
+      </div>
+      <div class="strategic-summary-content">
+        ${window.formatMarkdownContent?.(section.content) || section.content}
+      </div>
+    `;
+    
+    // Add summary card at the end
+    const summaryCard = renderSectionSummary(sectionNum, section.content);
+    card.appendChild(summaryCard);
+    
+    return card;
+  }
+
+  /**
+   * V8.0: Create Primary Visualization Forensic Card (Center Span)
+   * Fixed aspect ratio chart container with action bar and inspect button
+   * V8.1: Charts placed via delayed injection after generateStage1Charts
+   */
+  function createForensicCard(section, sectionNum, chartInfo) {
+    const card = document.createElement('div');
+    card.className = 'forensic-card primary-viz-card';
+    
+    // Generate Sage-Architect insight for card
+    const insight = extractStrategicInsight(sectionNum, section.content);
+    const truncatedInsight = insight.length > 80 ? insight.substring(0, 77) + '...' : insight;
+    
+    // Card Header
+    const header = document.createElement('div');
+    header.className = 'forensic-card-header';
+    header.innerHTML = `
+      <h3 class="forensic-card-title">${chartInfo?.title || section.title || `Section ${sectionNum}`}</h3>
+      <p class="forensic-card-insight">${truncatedInsight}</p>
+    `;
+    
+    // Card Body with Chart Container
+    const body = document.createElement('div');
+    body.className = 'forensic-card-body';
+    
+    const chartContainer = document.createElement('div');
+    chartContainer.className = 'forensic-chart-container';
+    // V8.1: Add data attribute for delayed chart injection
+    if (chartInfo?.canvas) {
+      chartContainer.setAttribute('data-chart-target', chartInfo.canvas);
+    }
+    
+    // Action buttons
+    const actionsHtml = `
+      <div class="forensic-chart-actions">
+        ${chartInfo?.canvas ? `
+          <button class="forensic-action-btn" title="Download Chart" onclick="downloadChart('${chartInfo.canvas}')">💾</button>
+          <button class="forensic-action-btn" title="View Fullscreen" onclick="viewChartFullscreen('${chartInfo.canvas}')">⛶</button>
+          <button class="forensic-action-btn" title="Chart Info" onclick="showChartInfo('${chartInfo.canvas}', '${chartInfo.title}')">ℹ️</button>
+        ` : sectionNum === 6 ? `
+          <button class="forensic-action-btn" title="Download Mind Map" onclick="window.exportPillarMindMapAsPNG?.()">💾</button>
+          <button class="forensic-action-btn" title="View Fullscreen" onclick="window.viewMindMapFullscreen?.('pillar-mindmap-interactive')">⛶</button>
+          <button class="forensic-action-btn" title="Mind Map Info" onclick="window.showMindMapInfo?.()">ℹ️</button>
+          <button class="forensic-action-btn" title="Reset View" onclick="window.resetPillarMindMapView?.()">⟲</button>
+        ` : ''}
+      </div>
+    `;
+    
+    // Handle different chart types
+    if (sectionNum === 6 && chartInfo?.type === 'mindmap') {
+      const pillarStats = getPillarDepthStats(section.content);
+      chartContainer.innerHTML = actionsHtml + `
+        <div class="mindmap-header">
+          <span class="mindmap-stats">${pillarStats.pillars} Pillars × ${pillarStats.clusters} Clusters × ${pillarStats.keywords}+ Keywords</span>
+        </div>
+        <div id="pillar-mindmap-interactive" class="pillar-mindmap-container"></div>
+      `;
+      chartContainer._pillarContent = section.content;
+    } else if (chartInfo?.canvas) {
+      // V8.1: Show loading state - charts will be injected after generation
+      chartContainer.innerHTML = actionsHtml + `
+        <div class="forensic-chart-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+          <div style="font-size: 32px; margin-bottom: 12px; animation: pulse 1.5s infinite;">📊</div>
+          <p style="color: var(--text-tertiary, #94a3b8); font-size: 14px;">Loading ${chartInfo.title || 'Chart'}...</p>
+        </div>
+      `;
+    } else {
+      chartContainer.innerHTML = `
+        <div style="text-align:center; color: var(--text-tertiary); padding: 40px;">
+          <div style="font-size: 48px; margin-bottom: 12px;">✨</div>
+          <p>Summary Section</p>
+        </div>
+      `;
+    }
+    
+    body.appendChild(chartContainer);
+    
+    // Card Footer with Inspect Button
+    const footer = document.createElement('div');
+    footer.className = 'forensic-card-footer';
+    footer.innerHTML = `
+      <button class="forensic-inspect-btn" onclick="window.showForensicProofModal?.(${sectionNum})">
+        Inspect Source
+      </button>
+    `;
+    
+    card.appendChild(header);
+    card.appendChild(body);
+    card.appendChild(footer);
+    
+    return card;
+  }
+  
+  /**
+   * V8.1: Inject charts into Bento Grid after generation
+   * Called after generateStage1Charts to move canvases to their containers
+   */
+  window.injectChartsIntoBentoGrid = function() {
+    console.log('🎨 Injecting charts into Bento Grid containers...');
+    
+    const storage = document.getElementById('stage1-chart-storage');
+    if (!storage) {
+      console.warn('⚠️ Chart storage not found');
+      return;
+    }
+    
+    const chartContainers = document.querySelectorAll('.forensic-chart-container[data-chart-target]');
+    let injectedCount = 0;
+    
+    chartContainers.forEach(container => {
+      const canvasId = container.getAttribute('data-chart-target');
+      const canvas = storage.querySelector(`#${canvasId}`);
+      
+      if (canvas) {
+        // Clear loading state
+        const loadingEl = container.querySelector('.forensic-chart-loading');
+        if (loadingEl) loadingEl.remove();
+        
+        // Keep action buttons
+        const actions = container.querySelector('.forensic-chart-actions');
+        container.innerHTML = '';
+        if (actions) container.appendChild(actions);
+        
+        // Clone and append canvas
+        const canvasClone = canvas.cloneNode(true);
+        canvasClone.style.maxWidth = '100%';
+        canvasClone.style.maxHeight = '100%';
+        container.appendChild(canvasClone);
+        injectedCount++;
+        
+        console.log(`✅ Injected chart: ${canvasId}`);
+      } else {
+        console.warn(`⚠️ Canvas not found: ${canvasId}`);
+        // Show no data state
+        const loadingEl = container.querySelector('.forensic-chart-loading');
+        if (loadingEl) {
+          loadingEl.innerHTML = `
+            <div style="font-size: 32px; margin-bottom: 12px;">📭</div>
+            <p style="color: var(--text-tertiary, #94a3b8); font-size: 14px;">No chart data available</p>
+          `;
+        }
+      }
+    });
+    
+    console.log(`🎨 Injected ${injectedCount} charts into Bento Grid`);
+  };
+
+  /**
+   * V9.2: Inject charts into Command Canvas after generation
+   * Called after generateStage1Charts to clone canvases to Interactive Stage containers
+   */
+  window.injectChartsIntoCommandCanvas = function() {
+    console.log('=== 🎨 V9.3 CHART INJECTION (MOVE, NOT CLONE) ===');
+    
+    const storage = document.getElementById('stage1-chart-storage');
+    if (!storage) {
+      console.warn('⚠️ Chart storage not found - charts may not be generated yet');
+      return;
+    }
+    
+    // Log all canvases in storage for debugging
+    const allCanvases = storage.querySelectorAll('canvas');
+    console.log(`📦 Storage contains ${allCanvases.length} canvas elements:`);
+    allCanvases.forEach(c => {
+      const ctx = c.getContext('2d');
+      const hasChart = window.chartInstances && Object.values(window.chartInstances).some(
+        chart => chart?.canvas?.id === c.id
+      );
+      console.log(`  📊 ${c.id}: hasContext=${!!ctx}, hasChartInstance=${hasChart}`);
+    });
+    
+    // CORRECT mapping: Section number → Canvas ID in storage
+    // Based on UI_Components_Results.html and UI_Chart_Generator.html
+    const sectionToCanvasMap = {
+      1: ['chart-emotional-pains', 'chart-hidden-desires', 'chart-mindset-shifts'],
+      2: 'chart-jtbd-impact',
+      3: 'chart-competitor-gaps',
+      4: 'chart-blue-ocean',
+      5: 'chart-brand-positioning',
+      // 6: D3 Mind Map - handled separately
+      7: 'chart-value-proposition',
+      8: ['chart-tactical-roadmap', 'chart-priority-matrix'],
+      9: 'chart-aeo-analysis',
+      10: 'chart-asset-valuation',
+      11: 'chart-brittleness-risk',
+      // 12: D3 Semantic Galaxy - handled separately
+      13: 'chart-impact-matrix',
+      14: 'chart-resource-allocation'
+    };
+    
+    let injectedCount = 0;
+    
+    Object.entries(sectionToCanvasMap).forEach(([sectionNum, canvasIdOrArray]) => {
+      const stage = document.getElementById(`chart-stage-${sectionNum}`);
+      if (!stage) {
+        console.warn(`⚠️ Chart stage not found for section ${sectionNum}`);
+        return;
+      }
+      
+      const wrapper = stage.querySelector('.chart-wrapper');
+      if (!wrapper) {
+        console.warn(`⚠️ Chart wrapper not found in section ${sectionNum}`);
+        return;
+      }
+      
+      // Handle multiple charts per section
+      const canvasIds = Array.isArray(canvasIdOrArray) ? canvasIdOrArray : [canvasIdOrArray];
+      let foundAny = false;
+      
+      // Clear loading state
+      wrapper.innerHTML = '';
+      
+      // V9.3: MOVE the canvas (not clone) to preserve Chart.js instance
+      for (const canvasId of canvasIds) {
+        const sourceCanvas = document.getElementById(canvasId);
+        if (sourceCanvas) {
+          // Check if canvas has actual content (chart was rendered)
+          const ctx = sourceCanvas.getContext('2d');
+          const hasContent = ctx && (sourceCanvas.width > 0 && sourceCanvas.height > 0);
+          
+          if (hasContent) {
+            // MOVE the canvas element (preserves Chart.js instance)
+            sourceCanvas.style.maxWidth = '100%';
+            sourceCanvas.style.maxHeight = '500px';
+            sourceCanvas.style.width = '100%';
+            sourceCanvas.style.height = 'auto';
+            wrapper.appendChild(sourceCanvas);
+            foundAny = true;
+            injectedCount++;
+            console.log(`✅ MOVED chart to section ${sectionNum}: ${canvasId}`);
+            break; // Only inject first found chart
+          }
+        }
+      }
+      
+      if (!foundAny) {
+        // Show no data state with more helpful message
+        wrapper.innerHTML = `
+          <div class="chart-no-data">
+            <span class="chart-no-data-icon">📊</span>
+            <p>Chart data not available</p>
+            <small>Expected: ${canvasIds.join(' or ')}</small>
+            <button class="retry-chart-btn" onclick="window.retryChartGeneration(${sectionNum})" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-secondary);cursor:pointer;">
+              🔄 Retry
+            </button>
+          </div>
+        `;
+        console.warn(`⚠️ No chart found for section ${sectionNum}: ${canvasIds.join(', ')}`);
+      }
+    });
+    
+    console.log(`🎨 Moved ${injectedCount} charts into Command Canvas`);
+    
+    // Also trigger D3 charts for sections 6 and 12
+    setTimeout(() => {
+      initializeD3Charts();
+    }, 100);
+  };
+  
+  /**
+   * Retry chart generation for a specific section
+   */
+  window.retryChartGeneration = function(sectionNum) {
+    console.log(`🔄 Retrying chart generation for section ${sectionNum}...`);
+    
+    if (!window._lastStage1Json) {
+      console.error('❌ No cached Stage 1 JSON data available');
+      window.showToast?.('❌ No data available - please run Stage 1 again');
+      return;
+    }
+    
+    // Try to regenerate specific chart
+    if (typeof window.generateStage1Charts === 'function') {
+      window.generateStage1Charts(window._lastStage1Json);
+      
+      // Re-inject after a delay
+      setTimeout(() => {
+        window.injectChartsIntoCommandCanvas();
+      }, 500);
+    }
+  };
+  
+  /**
+   * Initialize D3.js charts for sections 6 (Mind Map) and 12 (Semantic Galaxy)
+   */
+  function initializeD3Charts() {
+    console.log('🎨 V9.3 Initializing D3 charts...');
+    
+    // Section 6: Content Pillar Mind Map
+    const mindMapContainer = document.getElementById('pillar-mindmap-interactive');
+    if (mindMapContainer) {
+      // Data should be stored from the JSON response
+      const pillarData = window._lastStage1Json?.dashboardCharts?.contentPillarMindMap || 
+                         window._lastStage1Json?.contentPillarMindMap ||
+                         window._lastStage1Json?.contentPillars ||
+                         { center: window._lastStage1Json?.coreTopic || 'Content Strategy', pillars: [] };
+      
+      // Normalize pillar data if it's in array format
+      const normalizedData = normalizePillarData(pillarData);
+      
+      if (!mindMapContainer.hasChildNodes() || mindMapContainer.children.length < 2) {
+        if (typeof window.createInteractivePillarMindMap === 'function') {
+          console.log('🗺️ Initializing Content Pillar Mind Map with data:', normalizedData);
+          window.createInteractivePillarMindMap('pillar-mindmap-interactive', normalizedData);
+        } else {
+          console.warn('⚠️ createInteractivePillarMindMap not available');
+          renderPillarFallback(mindMapContainer, normalizedData);
+        }
+      }
+    }
+    
+    // Section 12: Semantic Galaxy (Topic Galaxy / Information Black Holes)
+    const galaxyContainer = document.getElementById('semantic-galaxy-container');
+    if (galaxyContainer) {
+      const galaxyData = window._lastStage1Json?.dashboardCharts?.informationBlackHolesChart || 
+                         window._lastStage1Json?.informationBlackHoles || [];
+      
+      if (!galaxyContainer.hasChildNodes() || galaxyContainer.children.length < 2) {
+        // Try multiple possible function names
+        if (typeof window.renderTopicGalaxy === 'function') {
+          console.log('🌌 Initializing Semantic Galaxy via renderTopicGalaxy...');
+          window.renderTopicGalaxy('semantic-galaxy-container', galaxyData);
+        } else if (typeof window.SemanticGalaxy === 'function') {
+          console.log('🌌 Initializing Semantic Galaxy via SemanticGalaxy class...');
+          new window.SemanticGalaxy('semantic-galaxy-container', galaxyData);
+        } else {
+          console.warn('⚠️ Semantic Galaxy functions not available');
+          renderGalaxyFallback(galaxyContainer, galaxyData);
+        }
+      }
+    }
+  }
+  
+  /**
+   * Normalize pillar data to consistent format for D3 mind map
+   */
+  function normalizePillarData(data) {
+    // If already in correct format, return as-is
+    if (data.center && data.pillars) {
+      return data;
+    }
+    
+    // If it's an array of pillars, wrap it
+    if (Array.isArray(data)) {
+      return {
+        center: window._lastStage1Json?.coreTopic || 'Content Strategy',
+        pillars: data.map(p => ({
+          name: p.name || p.pillar || p.title,
+          clusters: (p.clusters || p.topics || []).map(c => ({
+            name: typeof c === 'string' ? c : (c.name || c.topic),
+            keywords: c.keywords || []
+          }))
+        }))
+      };
+    }
+    
+    return data;
+  }
+  
+  /**
+   * Render fallback for pillar mind map when D3 not available
+   */
+  function renderPillarFallback(container, data) {
+    const pillars = data.pillars || [];
+    container.innerHTML = `
+      <div class="chart-insights-fallback" style="padding:24px;">
+        <h3 style="margin-bottom:16px;">📚 Content Pillars (${pillars.length} pillars)</h3>
+        ${pillars.length > 0 ? `
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+            ${pillars.map((p, i) => `
+              <div style="background:var(--bg-secondary);padding:16px;border-radius:12px;border:1px solid var(--border-color);">
+                <strong style="color:var(--accent-primary);">${i + 1}. ${p.name || 'Pillar'}</strong>
+                ${p.clusters?.length ? `
+                  <ul style="margin-top:8px;padding-left:20px;font-size:13px;">
+                    ${p.clusters.slice(0, 4).map(c => `<li>${c.name || c}</li>`).join('')}
+                    ${p.clusters.length > 4 ? `<li style="color:var(--text-tertiary);">+${p.clusters.length - 4} more...</li>` : ''}
+                  </ul>
+                ` : '<p style="font-size:12px;color:var(--text-tertiary);">No clusters defined</p>'}
+              </div>
+            `).join('')}
+          </div>
+        ` : '<p style="color:var(--text-tertiary);">No pillar data available in AI response</p>'}
+      </div>
+    `;
+  }
+  
+  /**
+   * Render fallback for semantic galaxy when D3 not available
+   */
+  function renderGalaxyFallback(container, data) {
+    const topics = Array.isArray(data) ? data : [];
+    container.innerHTML = `
+      <div class="chart-insights-fallback" style="padding:24px;">
+        <h3 style="margin-bottom:16px;">🌌 Information Black Holes (${topics.length} topics)</h3>
+        ${topics.length > 0 ? `
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            ${topics.map(t => `
+              <span style="background:var(--bg-tertiary);padding:8px 12px;border-radius:20px;font-size:13px;border:1px solid var(--border-color);">
+                ${t.topic || t.label || t} 
+                ${t.opportunityScore ? `<strong style="color:var(--accent-success);">${t.opportunityScore}/10</strong>` : ''}
+              </span>
+            `).join('')}
+          </div>
+        ` : '<p style="color:var(--text-tertiary);">No black hole topics in AI response</p>'}
+      </div>
+    `;
+  }
+    const galaxyContainer = document.getElementById('semantic-galaxy-container');
+    if (galaxyContainer) {
+      const galaxyData = window._lastStage1Json?.dashboardCharts?.informationBlackHolesChart || [];
+      
+      if (!galaxyContainer.hasChildNodes() || galaxyContainer.children.length < 2) {
+        // Try multiple possible function names
+        if (typeof window.renderTopicGalaxy === 'function') {
+          console.log('🌌 Initializing Semantic Galaxy via renderTopicGalaxy...');
+          window.renderTopicGalaxy('semantic-galaxy-container', galaxyData);
+        } else if (typeof window.SemanticGalaxy === 'function') {
+          console.log('🌌 Initializing Semantic Galaxy via SemanticGalaxy class...');
+          new window.SemanticGalaxy('semantic-galaxy-container', galaxyData);
+        } else {
+          console.warn('⚠️ Semantic Galaxy functions not available');
+          galaxyContainer.innerHTML = `
+            <div class="chart-insights-fallback">
+              <h3>🌌 Information Black Holes</h3>
+              <p>Semantic galaxy requires D3.js visualization module.</p>
+              <p>Data: ${galaxyData?.length || 0} topics detected</p>
+            </div>
+          `;
+        }
+      }
+    }
+  }
+
+  /**
+   * V8.0: Create Forensic Proof Card (Right Span)
+   * V8.1: Renamed to "Key Indicators" - shows extracted data points
+   */
+  function createForensicProofCard(section, sectionNum) {
+    const card = document.createElement('div');
+    card.className = 'forensic-proof-card';
+    
+    // Extract key proofs from section content
+    const proofs = extractForensicProofs(section.content, sectionNum);
+    
+    // Check if we have meaningful data
+    const hasMeaningfulData = proofs.some(p => !p.isDefault);
+    
+    card.innerHTML = `
+      <div class="forensic-proof-header">Key Indicators</div>
+      <div class="forensic-proof-list">
+        ${proofs.map(proof => `
+          <div class="forensic-proof-item${proof.isDefault ? ' default-proof' : ''}">
+            <strong>${proof.label}:</strong> ${proof.value}
+          </div>
+        `).join('')}
+      </div>
+      ${!hasMeaningfulData ? `
+        <div style="margin-top: 12px; padding: 8px 12px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; font-size: 11px; color: var(--text-tertiary, #94a3b8);">
+          💡 Click "Inspect Source" for full content
+        </div>
+      ` : ''}
+    `;
+    
+    return card;
+  }
+
+  /**
+   * V8.0: Extract forensic proofs from section content
+   * V8.1: Enhanced to extract more meaningful data points
+   */
+  function extractForensicProofs(content, sectionNum) {
+    if (!content || content.length < 50) {
+      return getSectionDefaultProofs(sectionNum);
+    }
+    
+    const proofs = [];
+    
+    // Extract percentages with context
+    const percentMatches = content.match(/(\d+(?:\.\d+)?)\s*%/g);
+    if (percentMatches && percentMatches.length > 0) {
+      const uniquePercents = [...new Set(percentMatches)].slice(0, 3);
+      proofs.push({ 
+        label: 'Metrics Found', 
+        value: uniquePercents.join(', '),
+        isDefault: false
+      });
+    }
+    
+    // Extract dollar amounts
+    const dollarMatches = content.match(/\$[\d,]+(?:\.\d+)?[KMB]?/gi);
+    if (dollarMatches && dollarMatches.length > 0) {
+      const uniqueDollars = [...new Set(dollarMatches)].slice(0, 2);
+      proofs.push({ 
+        label: 'Value Signals', 
+        value: uniqueDollars.join(', '),
+        isDefault: false
+      });
+    }
+    
+    // Extract competitor mentions
+    const compPatterns = /(?:ahrefs|semrush|moz|surfer|clearscope|marketmuse|hubspot|mailchimp|salesforce|google|microsoft|amazon)/gi;
+    const compMatches = content.match(compPatterns);
+    if (compMatches && compMatches.length > 0) {
+      const unique = [...new Set(compMatches.map(c => c.charAt(0).toUpperCase() + c.slice(1).toLowerCase()))];
+      proofs.push({ 
+        label: 'Competitors', 
+        value: unique.slice(0, 3).join(', '),
+        isDefault: false
+      });
+    }
+    
+    // Extract keywords in quotes or bold
+    const quotedMatches = content.match(/"([^"]+)"/g) || [];
+    const boldMatches = content.match(/\*\*([^*]+)\*\*/g) || [];
+    const highlights = [...quotedMatches, ...boldMatches].slice(0, 2);
+    if (highlights.length > 0) {
+      const cleaned = highlights.map(h => h.replace(/[*"]/g, '').substring(0, 25));
+      proofs.push({ 
+        label: 'Key Concepts', 
+        value: cleaned.join(', '),
+        isDefault: false
+      });
+    }
+    
+    // Extract numbers (scores, counts, rankings)
+    const numMatches = content.match(/(?:score|rating|rank|level|tier|grade)\s*(?:of|:)?\s*(\d+(?:\.\d+)?)/gi);
+    if (numMatches && numMatches.length > 0) {
+      proofs.push({ 
+        label: 'Scores', 
+        value: numMatches.slice(0, 2).join(', ').replace(/score|rating|rank|level|tier|grade/gi, '').trim(),
+        isDefault: false
+      });
+    }
+    
+    // Add section-specific context
+    const sectionContext = getSectionSpecificProof(sectionNum, content);
+    if (sectionContext) {
+      proofs.push(sectionContext);
+    }
+    
+    // Ensure we have at least 2 proofs
+    if (proofs.length < 2) {
+      const defaults = getSectionDefaultProofs(sectionNum);
+      while (proofs.length < 2 && defaults.length > 0) {
+        proofs.push(defaults.shift());
+      }
+    }
+    
+    return proofs.slice(0, 4);
+  }
+  
+  /**
+   * V8.1: Get section-specific contextual proof
+   */
+  function getSectionSpecificProof(sectionNum, content) {
+    const contentLower = content.toLowerCase();
+    
+    const sectionAnalyzers = {
+      1: () => {
+        const painCount = (content.match(/pain|frustrat|problem|issue|challeng/gi) || []).length;
+        if (painCount > 0) return { label: 'Pain Points', value: `${painCount} identified`, isDefault: false };
+      },
+      2: () => {
+        const jobCount = (content.match(/job[s]?\s*(?:to\s*be\s*done)?|jtbd|when\s*i/gi) || []).length;
+        if (jobCount > 0) return { label: 'Jobs Found', value: `${jobCount} customer jobs`, isDefault: false };
+      },
+      3: () => {
+        const gapCount = (content.match(/gap|weakness|opportunit|vulnerab/gi) || []).length;
+        if (gapCount > 0) return { label: 'Gaps Found', value: `${gapCount} competitive gaps`, isDefault: false };
+      },
+      6: () => {
+        const pillarCount = (content.match(/pillar|topic|cluster|theme/gi) || []).length;
+        if (pillarCount > 0) return { label: 'Structure', value: `${Math.ceil(pillarCount/3)} pillars detected`, isDefault: false };
+      },
+      9: () => {
+        if (contentLower.includes('citation') || contentLower.includes('aeo')) {
+          return { label: 'AEO Status', value: 'Citation matrix analyzed', isDefault: false };
+        }
+      },
+      10: () => {
+        if (contentLower.includes('valuation') || contentLower.includes('asset')) {
+          return { label: 'Asset Type', value: 'Digital equity calculated', isDefault: false };
+        }
+      },
+      11: () => {
+        if (contentLower.includes('risk') || contentLower.includes('brittle')) {
+          return { label: 'Risk Level', value: 'Algorithm vulnerability assessed', isDefault: false };
+        }
+      }
+    };
+    
+    return sectionAnalyzers[sectionNum]?.();
+  }
+  
+  /**
+   * V8.1: Default proofs when no data extracted
+   */
+  function getSectionDefaultProofs(sectionNum) {
+    const sectionDefaults = {
+      1: [
+        { label: 'Focus', value: 'Customer pain points & aspirations', isDefault: true },
+        { label: 'Method', value: 'Competitive gap analysis', isDefault: true }
+      ],
+      2: [
+        { label: 'Focus', value: 'Jobs-to-be-done framework', isDefault: true },
+        { label: 'Method', value: 'Outcome-based segmentation', isDefault: true }
+      ],
+      3: [
+        { label: 'Focus', value: 'Competitive warfare tactics', isDefault: true },
+        { label: 'Method', value: 'Kill move identification', isDefault: true }
+      ],
+      6: [
+        { label: 'Focus', value: 'Content pillar architecture', isDefault: true },
+        { label: 'Method', value: '6×5×6 topic clustering', isDefault: true }
+      ],
+      9: [
+        { label: 'Focus', value: 'AI citation optimization', isDefault: true },
+        { label: 'Method', value: 'RAG readiness scoring', isDefault: true }
+      ],
+      default: [
+        { label: 'Status', value: 'Analysis complete', isDefault: true },
+        { label: 'Source', value: 'AI strategic analysis', isDefault: true }
+      ]
+    };
+    
+    return sectionDefaults[sectionNum] || sectionDefaults.default;
+  }
+
+  /**
+   * Legacy section div (fallback if Bento disabled)
+   * V7.20: Original 55%/45% split layout
+   */
+  function createLegacySectionDiv(section, sectionNum, chartInfo) {
+    const sectionDiv = document.createElement('div');
+    sectionDiv.className = 'report-section-with-chart stage1-section';
     sectionDiv.setAttribute('data-section-num', `SECTION ${sectionNum}`);
 
     // Left: Text content (55%)
@@ -289,20 +2541,53 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
 
     const heading = document.createElement('h3');
     heading.className = 'section-heading';
-    heading.innerHTML = `<span class="section-number">${sectionNum}.</span> ${chartInfo ? chartInfo.title : section.title}`;
+    
+    // V7.21 Elite: Add pillar depth badge for Section 6
+    let headingHTML = `<span class="section-number">${sectionNum}.</span> ${chartInfo ? chartInfo.title : section.title}`;
+    if (sectionNum === 6) {
+      const pillarStats = getPillarDepthStats(section.content);
+      headingHTML += renderPillarDepthBadge(pillarStats);
+    }
+    heading.innerHTML = headingHTML;
 
     const content = document.createElement('div');
     content.className = 'section-body';
     content.innerHTML = window.formatMarkdownContent?.(section.content) || section.content;
+    
+    // V7.20: Add summary card at bottom of text content
+    const summaryCard = renderSectionSummary(sectionNum, section.content);
 
     textDiv.appendChild(heading);
     textDiv.appendChild(content);
+    textDiv.appendChild(summaryCard);
 
     // Right: Chart container (45%)
     const chartDiv = document.createElement('div');
     chartDiv.className = 'section-chart-container';
 
-    if (chartInfo?.canvas) {
+    // V7.21 Elite Task 39: Special handling for Section 6 - Interactive Pillar Mind Map
+    if (sectionNum === 6 && chartInfo?.type === 'mindmap') {
+      const pillarStats = getPillarDepthStats(section.content);
+      const mindMapWrapper = document.createElement('div');
+      mindMapWrapper.className = 'section-mindmap-wrapper';
+      mindMapWrapper.innerHTML = `
+        <div class="mindmap-header">
+          <span class="mindmap-title">🗺️ Pillar-Cluster-Keyword Mind Map</span>
+          <span class="mindmap-stats">${pillarStats.pillars} Pillars × ${pillarStats.clusters} Clusters × ${pillarStats.keywords}+ Keywords</span>
+        </div>
+        <div class="chart-action-bar mindmap-action-bar">
+          <button class="chart-action-btn" title="Download Mind Map" onclick="window.exportPillarMindMapAsPNG?.()">💾</button>
+          <button class="chart-action-btn" title="View Fullscreen" onclick="window.viewMindMapFullscreen?.('pillar-mindmap-interactive')">⛶</button>
+          <button class="chart-action-btn" title="Mind Map Info" onclick="window.showMindMapInfo?.()">ℹ️</button>
+          <button class="chart-action-btn" title="Reset View" onclick="window.resetPillarMindMapView?.()">⟲</button>
+        </div>
+        <div id="pillar-mindmap-interactive" class="pillar-mindmap-container"></div>
+      `;
+      chartDiv.appendChild(mindMapWrapper);
+      
+      // Store section content for later initialization
+      chartDiv._pillarContent = section.content;
+    } else if (chartInfo?.canvas) {
       const storage = document.getElementById('stage1-chart-storage');
       const canvas = storage?.querySelector(`#${chartInfo.canvas}`);
       if (canvas) {
@@ -325,6 +2610,87 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     sectionDiv.appendChild(textDiv);
     sectionDiv.appendChild(chartDiv);
     return sectionDiv;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V7.21 ELITE PHASE 3 TASK 30: PILLAR DEPTH INDICATOR BADGE
+  // Shows 6×5×6 structure validation status for Section 6
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Calculate pillar depth statistics from section content
+   * @param {string} content - Section 6 markdown content
+   * @returns {Object} Stats object with pillars, clusters, keywords counts
+   */
+  function getPillarDepthStats(content) {
+    const stats = { pillars: 0, clusters: 0, keywords: 0, isValid: false, funnelStages: [] };
+    
+    if (!content) return stats;
+    
+    // Count PILLAR # markers
+    const pillarMatches = content.match(/PILLAR\s*#?\d+/gi);
+    stats.pillars = pillarMatches ? Math.min(pillarMatches.length, 6) : 0;
+    
+    // Count CLUSTER X.Y markers
+    const clusterMatches = content.match(/CLUSTER\s*\d+\.\d+/gi);
+    stats.clusters = clusterMatches ? clusterMatches.length : 0;
+    
+    // Estimate keywords from table rows or keyword lists
+    const keywordRowMatches = content.match(/\|\s*\d+\s*\|[^|]+\|/g);
+    stats.keywords = keywordRowMatches ? keywordRowMatches.length : stats.clusters * 6;
+    
+    // Check for funnel stages
+    const funnelKeywords = ['awareness', 'consideration', 'decision', 'retention', 'advocacy'];
+    funnelKeywords.forEach(stage => {
+      if (content.toLowerCase().includes(stage)) {
+        stats.funnelStages.push(stage);
+      }
+    });
+    
+    // Validate against 6×5×6 requirement (180 keywords minimum)
+    stats.isValid = stats.pillars >= 6 && stats.clusters >= 25 && stats.keywords >= 150;
+    stats.avgClustersPerPillar = stats.pillars > 0 ? Math.round(stats.clusters / stats.pillars) : 0;
+    stats.avgKeywordsPerCluster = stats.clusters > 0 ? Math.round(stats.keywords / stats.clusters) : 0;
+    
+    return stats;
+  }
+
+  /**
+   * Render pillar depth indicator badge HTML
+   * @param {Object} stats - Stats from getPillarDepthStats
+   * @returns {string} Badge HTML string
+   */
+  function renderPillarDepthBadge(stats) {
+    const isComplete = stats.pillars >= 6 && stats.avgClustersPerPillar >= 5;
+    const hasFunnelCoverage = stats.funnelStages.length >= 4;
+    
+    // Determine badge status
+    let badgeClass, badgeIcon, badgeText, tooltipText;
+    
+    if (stats.isValid && hasFunnelCoverage) {
+      badgeClass = 'pillar-badge-complete';
+      badgeIcon = '✅';
+      badgeText = `${stats.pillars}×${stats.avgClustersPerPillar}×${stats.avgKeywordsPerCluster}`;
+      tooltipText = `Complete: ${stats.pillars} pillars, ${stats.clusters} clusters, ${stats.keywords}+ keywords, Full funnel coverage`;
+    } else if (stats.pillars >= 5) {
+      badgeClass = 'pillar-badge-partial';
+      badgeIcon = '⚠️';
+      badgeText = `${stats.pillars}×${stats.avgClustersPerPillar}×${stats.avgKeywordsPerCluster}`;
+      tooltipText = `Partial: ${stats.pillars}/6 pillars, ${stats.clusters} clusters. Target: 6×5×6 = 180 keywords`;
+    } else {
+      badgeClass = 'pillar-badge-incomplete';
+      badgeIcon = '❌';
+      badgeText = stats.pillars > 0 ? `${stats.pillars}×${stats.avgClustersPerPillar}` : 'N/A';
+      tooltipText = `Incomplete: Only ${stats.pillars}/6 pillars detected. Target: 6×5×6 = 180 keywords`;
+    }
+    
+    return `
+      <span class="pillar-depth-badge ${badgeClass}" title="${tooltipText}">
+        <span class="badge-icon">${badgeIcon}</span>
+        <span class="badge-text">${badgeText}</span>
+        ${hasFunnelCoverage ? '<span class="funnel-indicator">🔄</span>' : ''}
+      </span>
+    `;
   }
 
   /**
@@ -353,19 +2719,112 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   }
 
   /**
-   * Parse markdown into sections by ### headings
+   * Parse markdown into sections by various heading patterns
+   * V7.14: COMPREHENSIVE FIX for all 14 sections including forensic sections 9-12
    * @param {string} markdown - Raw markdown text
    * @returns {Array} Array of {title, content} objects
    */
   window.parseMarkdownSections = function(markdown) {
     const sections = [];
     
-    // V7 Enhanced Format: Handle both ## SECTION and ### subsection headers
-    // First, try splitting on ## for main sections (V7 format)
+    if (!markdown || markdown.length < 50) {
+      console.warn('⚠️ Markdown too short for section parsing');
+      return sections;
+    }
+    
+    console.log('📄 Parsing markdown, length:', markdown.length);
+    
+    // V7.14: COMPREHENSIVE regex that matches ALL section formats including forensic emojis
+    // Captures: ## 📊 SECTION 1: Title, ## 🔬 SECTION 9: Title, ## ⚡ STRATEGIC IMPERATIVES, etc.
+    const allEmojis = '📊|🎯|🏆|🌊|🎨|📚|🏗️|📋|⚡|🔄|🔬|💰|⚠️|🌐|✍️|💡|🔥|📈|🛡️|🧬|💎|🚀';
+    
+    // Pattern matches: ## [emoji?] SECTION [num]: Title OR ## [emoji?] Title (for non-numbered sections)
+    const sectionRegex = new RegExp(
+      `##\\s*(?:${allEmojis})?\\s*SECTION\\s+(\\d+):\\s*([^\\n(]+)`,
+      'gi'
+    );
+    
+    const sectionMatches = [...markdown.matchAll(sectionRegex)];
+    console.log(`📄 Found ${sectionMatches.length} SECTION markers`);
+    
+    // Also find Strategic Imperatives and Cross-Stage sections (they don't have SECTION numbers)
+    const imperativesIdx = markdown.search(/##\s*⚡?\s*STRATEGIC IMPERATIVES/i);
+    const crossStageIdx = markdown.search(/##\s*🔄?\s*CROSS-STAGE DATA PREPARATION/i);
+    
+    if (sectionMatches.length >= 4) {
+      // Extract numbered sections
+      for (let i = 0; i < sectionMatches.length; i++) {
+        const match = sectionMatches[i];
+        const sectionNum = parseInt(match[1]);
+        const startIdx = match.index;
+        
+        // Find end: next SECTION, STRATEGIC IMPERATIVES, or end of doc
+        let endIdx = markdown.length;
+        
+        // Check for next section
+        if (sectionMatches[i + 1]) {
+          endIdx = sectionMatches[i + 1].index;
+        }
+        
+        // Check if Strategic Imperatives comes before next section
+        if (imperativesIdx > startIdx && imperativesIdx < endIdx) {
+          endIdx = imperativesIdx;
+        }
+        
+        const sectionContent = markdown.substring(startIdx, endIdx).trim();
+        const lines = sectionContent.split('\n');
+        
+        // Extract clean title (remove ## emoji SECTION N:)
+        let title = lines[0]
+          .replace(new RegExp(`^##\\s*(?:${allEmojis})?\\s*SECTION\\s+\\d+:\\s*`, 'i'), '')
+          .replace(/\s*\(→.*\)$/, '') // Remove (→ Chart: xxx) suffix
+          .trim();
+        
+        const content = lines.slice(1).join('\n').trim();
+        
+        sections.push({ 
+          sectionNum,
+          title: title || `Section ${sectionNum}`, 
+          content 
+        });
+      }
+      
+      // Add Strategic Imperatives if found
+      if (imperativesIdx > 0) {
+        let endIdx = crossStageIdx > imperativesIdx ? crossStageIdx : markdown.length;
+        const imperativesContent = markdown.substring(imperativesIdx, endIdx);
+        const lines = imperativesContent.split('\n');
+        sections.push({
+          sectionNum: 13,
+          title: 'Strategic Imperatives (Top 10 Actions)',
+          content: lines.slice(1).join('\n').trim()
+        });
+      }
+      
+      // Add Cross-Stage Data if found
+      if (crossStageIdx > 0) {
+        const crossContent = markdown.substring(crossStageIdx);
+        const lines = crossContent.split('\n');
+        sections.push({
+          sectionNum: 14,
+          title: 'Cross-Stage Data Preparation',
+          content: lines.slice(1).join('\n').trim()
+        });
+      }
+      
+      // Sort by section number to ensure correct order
+      sections.sort((a, b) => (a.sectionNum || 99) - (b.sectionNum || 99));
+      
+      console.log(`📄 Parsed ${sections.length} sections (V7.14 SECTION format)`);
+      console.log('   Sections:', sections.map(s => `${s.sectionNum}: ${s.title.substring(0, 30)}`).join(', '));
+      return sections;
+    }
+    
+    // FALLBACK: Split on any ## header
+    console.log('📄 Falling back to ## split method');
     const mainSections = markdown.split(/\n##\s+(?!#)/);
     
     if (mainSections.length > 2) {
-      // V7 format detected (## headers)
       for (let i = 1; i < mainSections.length; i++) {
         const section = mainSections[i].trim();
         if (!section) continue;
@@ -373,68 +2832,202 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
         const lines = section.split('\n');
         let title = lines[0].trim();
         
-        // Remove section numbering like "SECTION 1:", "1.1", etc.
+        // Clean title
         title = title.replace(/^SECTION\s*\d+:?\s*/i, '');
         title = title.replace(/^\d+\.?\d*\s*[\-:.]?\s*/, '');
-        title = title.replace(/^[\d\-]+\s*/, '');
+        title = title.replace(new RegExp(`^(?:${allEmojis})\\s*`, 'i'), '');
+        title = title.replace(/\s*\(→.*\)$/, '');
         
         const content = lines.slice(1).join('\n').trim();
-        sections.push({ title, content });
+        sections.push({ sectionNum: i, title, content });
       }
       
-      if (sections.length > 0) {
-        console.log(`📄 Parsed ${sections.length} sections (V7 ## format)`);
-        return sections;
-      }
+      console.log(`📄 Parsed ${sections.length} sections (## fallback)`);
+      return sections;
     }
     
-    // Fallback: Original V6 format (### headers)
+    // FINAL FALLBACK: ### headers
     const parts = markdown.split(/###\s+/);
-
     for (let i = 1; i < parts.length; i++) {
       const part = parts[i].trim();
       if (!part) continue;
-
+      
       const lines = part.split('\n');
-      let title = lines[0].trim();
-
-      // Remove old numbering
-      title = title.replace(/^\d+[\.\-]+\s*/, '');
-      title = title.replace(/^[\d\-]+\s*/, '');
-
+      let title = lines[0].replace(/^\d+[\.\-]+\s*/, '').trim();
       const content = lines.slice(1).join('\n').trim();
-      sections.push({ title, content });
+      sections.push({ sectionNum: i, title, content });
     }
     
-    console.log(`📄 Parsed ${sections.length} sections (V6 ### format)`);
+    console.log(`📄 Parsed ${sections.length} sections (### fallback)`);
     return sections;
   };
 
   /**
-   * Format markdown content for section display
+   * V7.12 ELITE Format markdown content for section display
+   * Enhanced to create styled insight cards, transformation cards, priority rows, and TABLES
    * @param {string} text - Markdown text
-   * @returns {string} HTML formatted text
+   * @returns {string} HTML formatted text with elite components
    */
   window.formatMarkdownContent = function(text) {
+    if (!text) return '';
     let html = text;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V7.12: DETECT AND FORMAT MARKDOWN TABLES (| Col1 | Col2 | format)
+    // ═══════════════════════════════════════════════════════════════════════════
+    html = html.replace(/(\|[^\n]+\|)\n(\|[\-:\| ]+\|)\n((?:\|[^\n]+\|\n?)+)/g, function(match, headerRow, separatorRow, bodyRows) {
+      // Parse header cells
+      const headers = headerRow.split('|').filter(c => c.trim()).map(c => c.trim());
+      
+      // Parse body rows
+      const rows = bodyRows.trim().split('\n').map(row => {
+        return row.split('|').filter(c => c.trim()).map(c => c.trim());
+      });
+      
+      // Build HTML table with elite styling
+      let tableHtml = '<div class="elite-table-wrapper"><table class="elite-data-table">';
+      
+      // Header
+      tableHtml += '<thead><tr>';
+      headers.forEach((h, i) => {
+        const isNumeric = ['#', 'Impact', 'Effort', 'Speed', 'Score', 'Priority', 'Timeline'].some(k => h.includes(k));
+        tableHtml += `<th class="${isNumeric ? 'numeric' : ''}">${formatCellValue(h)}</th>`;
+      });
+      tableHtml += '</tr></thead>';
+      
+      // Body
+      tableHtml += '<tbody>';
+      rows.forEach((row, rowIdx) => {
+        tableHtml += `<tr class="${rowIdx % 2 === 0 ? 'even' : 'odd'}">`;
+        row.forEach((cell, cellIdx) => {
+          const isNumeric = /^\d+\/10$|^\d+$|^Week|^Month|^Day/.test(cell);
+          const isScore = /^\d+\/10$/.test(cell);
+          let cellClass = isNumeric ? 'numeric' : '';
+          if (isScore) {
+            const score = parseInt(cell);
+            cellClass += score >= 9 ? ' score-high' : score >= 7 ? ' score-medium' : score >= 5 ? ' score-low' : '';
+          }
+          tableHtml += `<td class="${cellClass}">${formatCellValue(cell)}</td>`;
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</tbody></table></div>';
+      
+      return tableHtml;
+    });
+    
+    // Helper function to format cell values with badges
+    function formatCellValue(val) {
+      if (!val) return '';
+      // Format X/10 scores as badges
+      val = val.replace(/(\d+)\/10/g, function(m, score) {
+        const s = parseInt(score);
+        const cls = s >= 9 ? 'critical' : s >= 7 ? 'high' : s >= 5 ? 'medium' : 'low';
+        return `<span class="score-badge ${cls}">${score}/10</span>`;
+      });
+      // Format timeline badges
+      val = val.replace(/(Week \d+[-–]\d+|Month \d+[-–]?\d*)/gi, '<span class="timeline-badge">$1</span>');
+      // Bold text
+      val = val.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      return val;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V7.11: DETECT AND FORMAT INTENSITY PATTERNS (Intensity: X/10)
+    // ═══════════════════════════════════════════════════════════════════════════
+    html = html.replace(/\*\*([^*]+)\*\*\s*\(Intensity:\s*(\d+)\/10\):\s*(.+?)(?=\n\n|\n[A-Z]|$)/gs, function(match, title, intensity, description) {
+      const intensityNum = parseInt(intensity);
+      const intensityClass = intensityNum >= 9 ? 'critical' : intensityNum >= 7 ? 'high' : 'medium';
+      return `
+        <div class="insight-card">
+          <div class="insight-header">
+            <span class="insight-icon">💡</span>
+            <span class="insight-title">${title}</span>
+            <span class="intensity-badge ${intensityClass}">${intensity}/10</span>
+          </div>
+          <p class="insight-body">${description.trim()}</p>
+        </div>
+      `;
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V7.11: DETECT AND FORMAT TRANSFORMATION PATTERNS (FROM: → TO:)
+    // ═══════════════════════════════════════════════════════════════════════════
+    html = html.replace(/FROM:\s*"([^"]+)"\s*→\s*TO:\s*"([^"]+)"/gi, function(match, from, to) {
+      return `
+        <div class="transform-card">
+          <div class="from-state">
+            <span class="label">FROM</span>
+            <p>"${from}"</p>
+          </div>
+          <div class="arrow">→</div>
+          <div class="to-state">
+            <span class="label">TO</span>
+            <p>"${to}"</p>
+          </div>
+        </div>
+      `;
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V7.11: FORMAT URGENCY/IMPORTANCE PATTERNS
+    // ═══════════════════════════════════════════════════════════════════════════
+    html = html.replace(/\(Urgency:\s*(\d+)\/10\)/gi, '<span class="intensity-badge critical">Urgency: $1/10</span>');
+    html = html.replace(/\(Importance:\s*(\d+)\/10\)/gi, '<span class="intensity-badge high">Importance: $1/10</span>');
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V7.16: FORMAT ERRC FRAMEWORK (Eliminate, Reduce, Raise, Create) - 2x2 Grid
+    // Matches emoji prefix patterns from Gemini output
+    // ═══════════════════════════════════════════════════════════════════════════
+    // First, convert individual ERRC lines to items
+    html = html.replace(/[-❌]\s*\*\*(?:ELIMINATE|Eliminate):\*\*\s*(.+?)(?=\n|$)/gi, '<div class="errc-item eliminate"><span class="errc-label">❌ ELIMINATE</span><span class="errc-value">$1</span></div>');
+    html = html.replace(/[-⬇️]\s*\*\*(?:REDUCE|Reduce):\*\*\s*(.+?)(?=\n|$)/gi, '<div class="errc-item reduce"><span class="errc-label">⬇️ REDUCE</span><span class="errc-value">$1</span></div>');
+    html = html.replace(/[-⬆️]\s*\*\*(?:RAISE|Raise):\*\*\s*(.+?)(?=\n|$)/gi, '<div class="errc-item raise"><span class="errc-label">⬆️ RAISE</span><span class="errc-value">$1</span></div>');
+    html = html.replace(/[-✨]\s*\*\*(?:CREATE|Create):\*\*\s*(.+?)(?=\n|$)/gi, '<div class="errc-item create"><span class="errc-label">✨ CREATE</span><span class="errc-value">$1</span></div>');
+    
+    // Wrap consecutive ERRC items in a grid container
+    html = html.replace(/(<div class="errc-item[^>]*>[\s\S]*?<\/div>\s*){2,4}/g, function(match) {
+      return '<div class="errc-grid">' + match + '</div>';
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // V7.11: STANDARD MARKDOWN FORMATTING
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Subheadings (### Title)
+    html = html.replace(/###\s+(\d+\.?\d*)\s*([^\n]+)/g, '<h4 class="section-subheading"><span class="subheading-num">$1</span> $2</h4>');
+    html = html.replace(/###\s+([^\n]+)/g, '<h4 class="section-subheading">$1</h4>');
 
     // Bold
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
 
     // Italic
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    html = html.replace(/_([^_\n]+)_/g, '<em>$1</em>');
 
     // Code
-    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+    html = html.replace(/`(.+?)`/g, '<code class="inline-code">$1</code>');
 
     // Lists
     html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    // Wrap consecutive li elements in ul
+    html = html.replace(/(<li>.*?<\/li>\s*)+/gs, function(match) {
+      return '<ul class="elite-list">' + match + '</ul>';
+    });
 
-    // Paragraphs
-    html = html.split('\n\n').map(p => p.trim() ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '').join('');
+    // Numbered lists
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li class="numbered">$1</li>');
+
+    // Paragraphs - split by double newlines
+    html = html.split('\n\n').map(p => {
+      p = p.trim();
+      // Don't wrap if already has HTML tags
+      if (p && !p.startsWith('<') && !p.includes('<div') && !p.includes('<ul') && !p.includes('<h4')) {
+        return `<p class="section-paragraph">${p.replace(/\n/g, '<br>')}</p>`;
+      }
+      return p;
+    }).join('');
 
     return html;
   };

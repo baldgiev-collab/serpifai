@@ -2,10 +2,12 @@
   UI_Stage_Runner.html
   Workflow Stage Execution & Results Display
   Part of Elite Modular Architecture - Phase 11
+  V7.9 FIX: Extended retry window + stage-running detection
   
   Provides:
   - window.runStage() - Execute a workflow stage
   - window.displayStageResults() - Display stage output
+  - window.isStageRunning - Flag to detect active stage execution
   
   Dependencies:
   - CORE_Form_Data.html (for collectFormData)
@@ -14,7 +16,14 @@
   - UI_Chart_Generator.html (for generateStage1Charts)
 -->
 <script>
-  console.log('🚀 UI_Stage_Runner.html loading...');
+  console.log('🚀 UI_Stage_Runner.html V7.9 loading...');
+  
+  // V7.9 FIX: Global state to track running stages (prevents concurrent hydration)
+  window.stageRunningState = window.stageRunningState || {
+    isRunning: false,
+    stageNum: null,
+    startedAt: null
+  };
 
   /**
    * Run a workflow stage via Apps Script backend
@@ -57,22 +66,50 @@
       geminiModelSelect?.focus();
       return;
     }
+    
+    // V7.9 FIX: Mark stage as running (prevents auto-hydration from triggering)
+    window.stageRunningState = {
+      isRunning: true,
+      stageNum: stageNum,
+      startedAt: Date.now()
+    };
+    console.log('🔒 Stage ' + stageNum + ' marked as RUNNING');
 
     console.log('✅ MANDATORY checks passed');
     console.log('   📁 Project:', projectName);
     console.log('   🤖 Model:', selectedModel);
 
-    // Collect form data
-    const formData = window.collectFormData?.() || {};
-
-    // Build single payload object
-    const payload = {
-      action: "runWorkflowStage",
+    // ========================================================================
+    // V7.1 ULTRA-MINIMAL PAYLOAD: Absolute minimum to prevent HTTP 400
+    // Only pass essential IDs - server will handle everything else
+    // ========================================================================
+    
+    // ULTRA-MINIMAL: Only the absolute essentials
+    const ultraMinimalPayload = {
       stageNum: stageNum,
       projectId: projectName,
       model: selectedModel,
-      ...formData
+      _fetchCompetitorDataFromMySQL: true
     };
+    
+    // Log and validate payload size
+    const payloadStr = JSON.stringify(ultraMinimalPayload);
+    const payloadSize = payloadStr.length;
+    
+    console.log('========================================');
+    console.log('🔬 V7.1 ULTRA-MINIMAL PAYLOAD DIAGNOSTIC');
+    console.log('========================================');
+    console.log('📦 Payload size:', payloadSize, 'bytes (', (payloadSize / 1024).toFixed(2), 'KB)');
+    console.log('📄 Payload content:', payloadStr);
+    console.log('========================================');
+    
+    // SAFETY CHECK: If somehow still too large, abort
+    if (payloadSize > 50000) { // 50KB max
+      console.error('🚨 CRITICAL: Payload too large even after stripping!');
+      console.error('   Size:', (payloadSize / 1024).toFixed(2), 'KB');
+      window.showToast?.('❌ Payload too large. Please contact support.');
+      return;
+    }
 
     // Update button state
     buttonEl.classList.add('running');
@@ -81,10 +118,34 @@
 
     window.showToast?.(`Running Stage ${stageNum}...`);
 
-    // Call backend
+    // ========================================================================
+    // V7 FIX: 60-SECOND TIMEOUT for hung requests
+    // ========================================================================
+    let requestCompleted = false;
+    const timeoutId = setTimeout(() => {
+      if (!requestCompleted) {
+        console.error('⏱️ TIMEOUT: Stage ' + stageNum + ' request exceeded 60 seconds');
+        buttonEl.classList.remove('running');
+        buttonEl.textContent = `▶ Run Stage ${stageNum}`;
+        buttonEl.disabled = false;
+        window.showTimeoutError?.(stageNum, projectName);
+      }
+    }, 60000); // 60 seconds
+
+    // Call backend with MINIMAL payload
     google.script.run
       .withSuccessHandler(function(result) {
-        console.log('✅ Backend response received:', result);
+        requestCompleted = true;
+        clearTimeout(timeoutId);
+        console.log('✅ Backend response received');
+        
+        // V7.9 FIX: Clear running state on success
+        window.stageRunningState = { isRunning: false, stageNum: null, startedAt: null };
+        console.log('🔓 Stage ' + stageNum + ' marked as COMPLETE');
+
+        console.log('   success:', result?.success);
+        console.log('   projectId:', result?.projectId);
+        console.log('   stage:', result?.stage);
 
         buttonEl.classList.remove('running');
         buttonEl.textContent = `▶ Run Stage ${stageNum}`;
@@ -92,7 +153,7 @@
 
         if (result.success) {
           console.log('✅ Stage ' + stageNum + ' completed successfully');
-          window.showToast?.(`Stage ${stageNum} complete!`);
+          window.showToast?.(`Stage ${stageNum} complete! Loading results...`);
 
           // Auto-switch to results tab FIRST
           window.setActiveTab?.('results');
@@ -111,31 +172,113 @@
           const targetSubBtn = document.querySelector(`.nav-subbtn[data-stage="${stageNum}"]`);
           if (targetSubBtn) targetSubBtn.classList.add('active');
 
-          // CRITICAL: Delay results display to allow DOM to settle
-          setTimeout(() => {
-            window.displayStageResults?.(stageNum, result);
-            window.showStageInSidebar?.(stageNum);
-            window.updateStageStatus?.(stageNum, 'completed');
-
-            // Populate form fields from response (Stage 1 only)
-            if (stageNum === 1 && result.json) {
-              window.populateFormFieldsFromResponse?.(result.json);
+          // ================================================================
+          // V7.10 SIMPLIFIED: Use ORACLE_STATE cache first, then hydrate
+          // This eliminates waiting for MySQL - data is available immediately
+          // ================================================================
+          const hydrateProjectId = result.projectId || projectName;
+          
+          if (stageNum === 1) {
+            console.log('💎 V7.10 SIMPLIFIED: Rendering Stage 1...');
+            console.log('   Project:', hydrateProjectId);
+            
+            // Hide placeholder immediately
+            const placeholder = document.getElementById('stage1-placeholder');
+            if (placeholder) placeholder.style.display = 'none';
+            
+            // Show container
+            const container = document.getElementById('stage1-unified-container');
+            if (container) {
+              container.style.display = 'block';
             }
-          }, 300);
+            
+            // V7.10: Check if ORACLE_STATE has cached data first
+            const cachedResult = window.ORACLE_STATE?.stage1_results;
+            if (cachedResult && (cachedResult.json || cachedResult.report)) {
+              console.log('✅ V7.10: Using ORACLE_STATE cache - no MySQL needed!');
+              console.log('   Report length:', cachedResult.report?.length || 0);
+              console.log('   JSON keys:', cachedResult.json ? Object.keys(cachedResult.json).join(', ') : 'none');
+              
+              // Render immediately from cache
+              if (typeof window.renderUnifiedStage1Results === 'function') {
+                window.renderUnifiedStage1Results(cachedResult.report || '', cachedResult.json || {});
+              }
+              
+              // Generate charts if available
+              if (cachedResult.json?.dashboardCharts && typeof window.generateStage1Charts === 'function') {
+                window.generateStage1Charts(cachedResult.json);
+              }
+              
+              window.showToast?.('💎 Strategic intelligence loaded!');
+            } else {
+              // V7.11: No cache - use EXTENDED retry mode since stage just completed
+              // Data is definitely being saved now, just may need more time
+              console.log('📡 V7.11: No cache, starting EXTENDED hydration...');
+              container.innerHTML = `
+                <div class="hydration-loading" style="padding: 48px; text-align: center;">
+                  <div class="pulse-loader" style="width: 60px; height: 60px; margin: 0 auto 16px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); animation: pulse 1.5s infinite;"></div>
+                  <p style="color: #6b7280; font-size: 14px;">📡 Loading results from database...</p>
+                </div>
+              `;
+              // V7.11: Use extended mode and forceAfterComplete flag
+              window.hydrateStage1FromDatabase?.(hydrateProjectId, 0, { extended: true, forceAfterComplete: true });
+            }
+          } else {
+            // For stages 2-5, use the lightweight response approach
+            setTimeout(() => {
+              window.displayStageResults?.(stageNum, result);
+              window.showStageInSidebar?.(stageNum);
+              window.updateStageStatus?.(stageNum, 'completed');
+            }, 300);
+          }
+            
+          // UNLOCK NEXT STAGE: When a stage completes, unlock the next one
+          if (stageNum < 5) {
+            const nextStage = stageNum + 1;
+            window.updateStageLock?.(nextStage, false);
+            console.log(`🔓 Stage ${nextStage} unlocked!`);
+            window.showToast?.(`Stage ${nextStage} is now available!`);
+          }
         } else {
           console.error('❌ Stage ' + stageNum + ' failed:', result.error || 'Unknown error');
           window.showToast?.(`⚠️ Stage ${stageNum} failed: ${result.error || 'Unknown error'}`);
         }
       })
       .withFailureHandler(function(error) {
+        requestCompleted = true;
+        clearTimeout(timeoutId);
+        
+        // V7.9 FIX: Clear running state on failure
+        window.stageRunningState = { isRunning: false, stageNum: null, startedAt: null };
+        console.log('🔓 Stage ' + stageNum + ' marked as FAILED (cleared running state)');
+        
+        // ========================================================================
+        // V7 ENHANCED ERROR DIAGNOSTIC
+        // ========================================================================
         console.error('❌ Backend call failed:', error);
+        console.error('   Error type:', typeof error);
+        console.error('   Error message:', error?.message || error?.toString?.() || String(error));
+        
+        // Check if this is an HTTP 400 (payload too large)
+        const errorStr = String(error);
+        if (errorStr.includes('400') || errorStr.includes('HTTP 400')) {
+          console.error('🚨 HTTP 400 DETECTED - Payload may still be too large!');
+          console.error('   Light payload size was: ' + (payloadSize / 1024).toFixed(2) + ' KB');
+          console.error('   This should NOT happen with shredded payload.');
+          console.error('   Possible causes:');
+          console.error('   1. Apps Script deployment not refreshed');
+          console.error('   2. Browser cache serving old sidebar');
+          console.error('   3. Another component adding data to payload');
+          window.showToast?.('🚨 HTTP 400: Please refresh the sidebar (Ctrl+Shift+R) and try again');
+        } else {
+          window.showToast?.('⚠️ Unable to process request: ' + error);
+        }
 
         buttonEl.classList.remove('running');
         buttonEl.textContent = `▶ Run Stage ${stageNum}`;
         buttonEl.disabled = false;
-        window.showToast?.('⚠️ Unable to process request: ' + error);
       })
-      .runWorkflowStage(payload);
+      .runWorkflowStage(ultraMinimalPayload);
   };
 
   /**
@@ -144,59 +287,158 @@
    * @param {Object} result - Result object from backend
    */
   window.displayStageResults = function(stageNum, result) {
-    console.log('=== RESULT STRUCTURE DIAGNOSTIC ===');
-    console.log('Full result object:', result);
-    console.log('Result keys:', Object.keys(result));
-    console.log('result.data exists?', !!result.data);
-    console.log('result.data keys:', result.data ? Object.keys(result.data) : 'N/A');
+    console.log('=== 🔍 STAGE 1 RAW DATA DIAGNOSTIC ===');
+    console.log('📦 Full result object:', JSON.stringify(result, null, 2).substring(0, 2000));
+    console.log('📋 Result keys:', Object.keys(result));
+    console.log('📊 result.success:', result.success);
+    console.log('📊 result.json exists?', !!result.json);
+    console.log('📊 result.report exists?', !!result.report, 'length:', result.report?.length || 0);
+    console.log('📊 result.data exists?', !!result.data);
+    console.log('📊 result.data keys:', result.data ? Object.keys(result.data) : 'N/A');
+    
+    // V7 FIX: Check container exists
+    const containerCheck = document.getElementById('stage1-unified-container');
+    console.log('🎯 Container #stage1-unified-container exists?', !!containerCheck);
+    if (!containerCheck) {
+      console.error('❌ CRITICAL: Container #stage1-unified-container NOT FOUND in DOM!');
+      console.log('   Available elements with stage1:', document.querySelectorAll('[id*="stage1"]').length);
+    }
 
     try {
       // Update timestamp
       const timestamp = new Date(result.timestamp || Date.now()).toLocaleString();
       const timestampEl = document.getElementById(`stage${stageNum}-timestamp`);
       if (timestampEl) timestampEl.textContent = timestamp;
+      
+      // ========================================================================
+      // V7 FIX: IMMEDIATELY hide placeholder and show container on success
+      // ========================================================================
+      if (stageNum === 1) {
+        const container = document.getElementById('stage1-unified-container');
+        const placeholder = container?.querySelector('.report-placeholder-unified');
+        if (placeholder) {
+          placeholder.style.display = 'none';
+          console.log('✅ Placeholder hidden');
+        }
+        // Also show the export button
+        const exportBtn = document.getElementById('export-stage1-btn');
+        if (exportBtn) exportBtn.style.display = 'inline-flex';
+        
+        // Store in ORACLE_STATE for tab injection
+        window.ORACLE_STATE = window.ORACLE_STATE || {};
+        window.ORACLE_STATE.stage1_results = result;
+        window.ORACLE_STATE.currentJobToken = result.job_token || result.jobToken || '';
+        window.ORACLE_STATE.projectId = result.projectId || '';
+        console.log('✅ Stage 1 results stored in ORACLE_STATE');
+        console.log('   Token:', window.ORACLE_STATE.currentJobToken);
+      }
 
       // ========================================================================
-      // ENHANCED EXTRACTION: Handle all possible response structures
+      // V7 ELITE: VISUAL RECOVERY - Force container visible
       // ========================================================================
-      
-      // Extract report text - check all possible locations
+      const stage1Container = document.getElementById('stage1-unified-container');
+      if (stage1Container) {
+        stage1Container.style.display = 'block';
+        stage1Container.style.visibility = 'visible';
+        stage1Container.style.opacity = '1';
+        stage1Container.classList.remove('hidden');
+        console.log('✅ Force-enabled #stage1-unified-container visibility');
+      }
+
+      // ========================================================================
+      // V7 ELITE EXTRACTION: Handle ALL possible response structures
+      // Priority: result.report > result.analysis_text > result.data.report
+      // ========================================================================
       let reportText = '';
-      if (result.data?.report && typeof result.data.report === 'string') {
-        reportText = result.data.report;
-        console.log('✅ Report from result.data.report:', reportText.length, 'chars');
-      } else if (result.report && typeof result.report === 'string') {
+      
+      // Priority 1: Direct report property (V7 format)
+      if (result.report && typeof result.report === 'string' && result.report.length > 50) {
         reportText = result.report;
         console.log('✅ Report from result.report:', reportText.length, 'chars');
-      } else if (result.data?.fullResponse && typeof result.data.fullResponse === 'string') {
-        reportText = result.data.fullResponse;
-        console.log('✅ Report from result.data.fullResponse:', reportText.length, 'chars');
-      } else if (result.fullResponse && typeof result.fullResponse === 'string') {
+      }
+      // Priority 2: analysis_text (Elite column name)
+      else if (result.analysis_text && typeof result.analysis_text === 'string' && result.analysis_text.length > 50) {
+        reportText = result.analysis_text;
+        console.log('✅ Report from result.analysis_text:', reportText.length, 'chars');
+      }
+      // Priority 3: Nested in data (legacy format)
+      else if (result.data?.report && typeof result.data.report === 'string' && result.data.report.length > 50) {
+        reportText = result.data.report;
+        console.log('✅ Report from result.data.report:', reportText.length, 'chars');
+      }
+      // Priority 4: analysis_text in data
+      else if (result.data?.analysis_text && typeof result.data.analysis_text === 'string') {
+        reportText = result.data.analysis_text;
+        console.log('✅ Report from result.data.analysis_text:', reportText.length, 'chars');
+      }
+      // Priority 5: fullResponse fallback
+      else if (result.fullResponse && typeof result.fullResponse === 'string') {
         reportText = result.fullResponse;
         console.log('✅ Report from result.fullResponse:', reportText.length, 'chars');
-      } else {
-        console.warn('⚠️ No report text found in any expected location');
-        reportText = 'No report content received from AI. Please check the Gemini API connection.';
       }
+      else if (result.data?.fullResponse && typeof result.data.fullResponse === 'string') {
+        reportText = result.data.fullResponse;
+        console.log('✅ Report from result.data.fullResponse:', reportText.length, 'chars');
+      }
+      // Priority 6: Generate report from JSON if no text report
+      else if (result.json || result.data?.json) {
+        const jsonSrc = result.json || result.data.json;
+        console.log('⚠️ No report text, generating from JSON...');
+        reportText = window.generateReportFromJSON?.(jsonSrc) || 
+          '## 📊 Stage 1 Analysis Complete\n\nYour strategic analysis has been processed. See the charts below for visualizations.';
+      }
+      else {
+        console.warn('⚠️ No report text found in any expected location');
+        console.log('   Checked: result.report, result.analysis_text, result.data.report');
+        reportText = '## ⚠️ Report Generation Notice\n\nThe AI response was received but no narrative report was included. Charts may still be available below.';
+      }
+      
+      console.log('📄 Final reportText preview:', reportText.substring(0, 300));
 
-      // Extract JSON data for charts - check all possible locations
+      // ========================================================================
+      // V7 ELITE JSON EXTRACTION: Handle ALL possible response structures
+      // Priority: result.json > result.analysis_json > result.data.json
+      // ========================================================================
       let jsonData = null;
-      if (result.data?.json && typeof result.data.json === 'object') {
-        jsonData = result.data.json;
-        console.log('✅ JSON from result.data.json');
-      } else if (result.json && typeof result.json === 'object') {
+      
+      // Priority 1: Direct json property (V7 format)
+      if (result.json && typeof result.json === 'object') {
         jsonData = result.json;
-        console.log('✅ JSON from result.json');
-      } else if (result.data?.dashboardCharts) {
-        jsonData = result.data;
-        console.log('✅ JSON from result.data (has dashboardCharts)');
-      } else if (result.dashboardCharts) {
-        jsonData = result;
-        console.log('✅ JSON from result (has dashboardCharts)');
-      } else {
+        console.log('✅ JSON from result.json, keys:', Object.keys(jsonData).join(', '));
+      }
+      // Priority 2: analysis_json (Elite column name)
+      else if (result.analysis_json && typeof result.analysis_json === 'object') {
+        jsonData = result.analysis_json;
+        console.log('✅ JSON from result.analysis_json, keys:', Object.keys(jsonData).join(', '));
+      }
+      // Priority 3: Nested in data (legacy format)
+      else if (result.data?.json && typeof result.data.json === 'object') {
+        jsonData = result.data.json;
+        console.log('✅ JSON from result.data.json, keys:', Object.keys(jsonData).join(', '));
+      }
+      // Priority 3: dashboardCharts at root
+      else if (result.dashboardCharts && typeof result.dashboardCharts === 'object') {
+        jsonData = { dashboardCharts: result.dashboardCharts };
+        console.log('✅ JSON from result.dashboardCharts');
+      }
+      // Priority 4: dashboardCharts in data
+      else if (result.data?.dashboardCharts) {
+        jsonData = { dashboardCharts: result.data.dashboardCharts };
+        console.log('✅ JSON from result.data.dashboardCharts');
+      }
+      // Fallback: Empty structure
+      else {
         jsonData = { dashboardCharts: {} };
         console.warn('⚠️ No JSON data found, using empty structure');
+        console.log('   Checked: result.json, result.data.json, result.dashboardCharts, result.data.dashboardCharts');
       }
+      
+      // Ensure dashboardCharts exists
+      if (!jsonData.dashboardCharts) {
+        jsonData.dashboardCharts = {};
+      }
+      
+      console.log('📊 dashboardCharts keys:', Object.keys(jsonData.dashboardCharts).join(', ') || 'EMPTY');
 
       console.log('Report text preview:', reportText.substring(0, 200));
       console.log('JSON data keys:', Object.keys(jsonData));
@@ -204,23 +446,62 @@
 
       // Render unified layout for Stage 1
       if (stageNum == 1) {
-        console.log('✅ Stage 1 - Calling renderUnifiedStage1Results...');
+        console.log('✅ Stage 1 - Attempting to render...');
+        
+        // V7.12: Ensure container is visible before rendering
+        const container = document.getElementById('stage1-unified-container');
+        if (container) {
+          container.style.display = 'block';
+          container.style.visibility = 'visible';
+          container.style.opacity = '1';
+          container.classList.remove('hidden');
+          
+          // Hide placeholder if it exists
+          const placeholder = container.querySelector('.report-placeholder-unified');
+          if (placeholder) placeholder.style.display = 'none';
+        }
+        
         if (typeof window.renderUnifiedStage1Results === 'function') {
           window.renderUnifiedStage1Results(reportText, jsonData);
           console.log('✅ renderUnifiedStage1Results completed');
         } else {
-          console.error('❌ renderUnifiedStage1Results function not found!');
-          // Fallback: Display raw content
-          const container = document.getElementById('stage1-unified-container');
+          console.warn('⚠️ renderUnifiedStage1Results not available - using enhanced fallback');
+          // V7.12: Enhanced fallback with better formatting
           if (container) {
-            const cleanedReport = window.cleanReportForDisplay?.(reportText) || reportText;
+            const chartKeys = jsonData?.dashboardCharts ? Object.keys(jsonData.dashboardCharts) : [];
+            const reportHtml = (reportText || '')
+              .replace(/\n\n/g, '</p><p style="margin-bottom:12px;">')
+              .replace(/##\s+(.+)/g, '</p><h3 style="color:#312e81;margin:20px 0 12px;font-size:18px;">$1</h3><p>')
+              .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+              .replace(/\*(.+?)\*/g, '<em>$1</em>');
+            
             container.innerHTML = `
-              <div style="padding: 24px; background: #fef3c7; border-radius: 12px; margin: 16px;">
-                <h3 style="color: #92400e;">⚠️ Renderer Not Available</h3>
-                <p>Displaying raw report content:</p>
-                <pre style="background: white; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap;">${cleanedReport}</pre>
+              <div style="padding: 24px;">
+                <div style="background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%); padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #c7d2fe;">
+                  <h2 style="margin: 0 0 8px; color: #312e81; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 28px;">✅</span> Stage 1 Analysis Complete
+                  </h2>
+                  <p style="margin: 0; color: #4338ca;">Strategic intelligence processed successfully</p>
+                </div>
+                
+                ${chartKeys.length > 0 ? `
+                <div style="background: #f0fdf4; padding: 16px 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bbf7d0;">
+                  <h4 style="margin: 0 0 8px; color: #166534; font-size: 14px;">📊 Available Visualizations (${chartKeys.length})</h4>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${chartKeys.map(k => `<span style="background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${k}</span>`).join('')}
+                  </div>
+                </div>
+                ` : ''}
+                
+                <div style="background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; max-height: 600px; overflow-y: auto;">
+                  <h3 style="margin: 0 0 16px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">📝 Strategic Analysis Report</h3>
+                  <div style="color: #334155; line-height: 1.7; font-size: 14px;">
+                    <p>${reportHtml || '<span style="color:#94a3b8;">Report content loading...</span>'}</p>
+                  </div>
+                </div>
               </div>
             `;
+            console.log('✅ V7.12: Enhanced fallback render complete');
           }
         }
       } else {
@@ -247,3 +528,631 @@
           </div>
         `;
       }
+    }
+  };
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * V7 FIX: TIMEOUT ERROR HANDLER
+   * Shows user-friendly error when request exceeds 60 seconds
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  window.showTimeoutError = function(stageNum, projectId) {
+    console.error('⏱️ Timeout error for Stage ' + stageNum + ', Project: ' + projectId);
+    
+    // Show toast
+    window.showToast?.('⏱️ Request timed out after 60 seconds. Server may still be processing...');
+    
+    // Create modal with recovery options
+    const modal = document.createElement('div');
+    modal.id = 'timeout-error-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7); z-index: 10000;
+      display: flex; align-items: center; justify-content: center;
+    `;
+    modal.innerHTML = `
+      <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h2 style="margin: 0 0 16px; color: #f59e0b;">⏱️ Request Timeout</h2>
+        <p style="color: #4b5563; margin-bottom: 24px;">
+          The Stage ${stageNum} request for <strong>${projectId}</strong> exceeded 60 seconds.<br><br>
+          This usually means the server is still processing. The data may have been saved to MySQL.
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button onclick="window.checkMySQLForResults('${projectId}', ${stageNum}); this.closest('#timeout-error-modal').remove();"
+                  style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            🔍 Check MySQL
+          </button>
+          <button onclick="this.closest('#timeout-error-modal').remove();"
+                  style="background: #e5e7eb; color: #374151; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer;">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  };
+
+  /**
+   * Check MySQL for saved results after timeout
+   */
+  window.checkMySQLForResults = function(projectId, stageNum) {
+    console.log('🔍 Checking MySQL for Stage ' + stageNum + ' results...');
+    window.showToast?.('🔍 Checking MySQL for saved results...');
+    
+    if (typeof google !== 'undefined' && google.script?.run) {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result && result.success && result.json) {
+            console.log('✅ Found saved Stage ' + stageNum + ' results in MySQL!');
+            window.showToast?.('✅ Found saved results! Loading...');
+            window.displayStageResults?.(stageNum, result);
+          } else {
+            console.warn('⚠️ No saved results found in MySQL');
+            window.showToast?.('⚠️ No saved results found. Try running the stage again.');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ MySQL check failed:', error);
+          window.showToast?.('❌ MySQL check failed: ' + error);
+        })
+        .loadWorkflowStageResults(projectId, stageNum);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════
+  // V7.3 CHUNKED HYDRATION: hydrateStage1FromDatabase
+  // ═══════════════════════════════════════════════════════════════════════════════════════
+  // PROBLEM: google.script.run has ~50KB response limit → HTTP 400 when returning full data
+  // SOLUTION: Fetch data in 3 separate calls, each under 50KB:
+  //   1. loadStageResultsMeta() → ~500 bytes (checks if data exists)
+  //   2. loadStageResultsReport() → 5-20KB (report text)
+  //   3. loadStageResultsJson() → 10-35KB (JSON data, chunked if needed)
+  // ═══════════════════════════════════════════════════════════════════════════════════════
+  
+  window.hydrateStage1FromDatabase = function(projectId, retryCount, options) {
+    // V7.11 FIX: Extended hydration with skip-while-running protection
+    retryCount = retryCount || 0;
+    options = options || {};
+    
+    // V7.11: Check if stage is actively running - if so, skip hydration
+    // This prevents wasted retries while Gemini is still processing
+    if (window.stageRunningState?.isRunning && !options.forceAfterComplete) {
+      const runningFor = Math.round((Date.now() - (window.stageRunningState?.startedAt || Date.now())) / 1000);
+      console.log('⏳ Stage ' + window.stageRunningState?.stageNum + ' is still running (' + runningFor + 's) - skipping hydration');
+      console.log('   Hydration will auto-start when stage completes.');
+      return;
+    }
+    
+    // V7.11: Extended retries for post-completion hydration (Gemini can take 40+ seconds)
+    const MAX_AUTO_RETRIES = options.extended ? 15 : 5; // 45s or 15s total
+    const RETRY_DELAY_MS = 3000;
+    
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log('💎 V7.11 HYDRATION: Fetching Stage 1 from MySQL');
+    console.log('   Project:', projectId);
+    console.log('   Attempt:', retryCount + 1, '/', MAX_AUTO_RETRIES + 1);
+    console.log('   Mode:', options.extended ? 'EXTENDED (post-completion)' : 'STANDARD');
+    console.log('═══════════════════════════════════════════════════════════════');
+    
+    if (typeof google === 'undefined' || !google.script?.run) {
+      console.error('❌ Google Apps Script not available');
+      window.showToast?.('❌ Cannot hydrate: Apps Script unavailable');
+      return;
+    }
+    
+    // Initialize hydration state
+    const hydrationState = {
+      projectId: projectId,
+      report: null,
+      json: {},
+      meta: null,
+      chunksLoaded: 0,
+      totalChunks: 1
+    };
+    
+    // V7.11: Retry handler with extended mode support
+    function handleNoResults() {
+      if (retryCount < MAX_AUTO_RETRIES) {
+        console.log('⏳ No results yet, auto-retry in ' + (RETRY_DELAY_MS/1000) + 's... (attempt ' + (retryCount + 2) + ')');
+        window.showToast?.('⏳ Syncing with database...');
+        setTimeout(function() {
+          // V7.11: Pass options through to maintain extended mode
+          window.hydrateStage1FromDatabase(projectId, retryCount + 1, options);
+        }, RETRY_DELAY_MS);
+      } else {
+        // V7.11: Show manual retry UI instead of endless retries
+        console.warn('⚠️ No results after ' + (MAX_AUTO_RETRIES + 1) + ' attempts - showing retry button');
+        showRetryUI(projectId);
+      }
+    }
+    
+    // V7.10: Show retry button UI (instead of endless auto-retries)
+    function showRetryUI(projId) {
+      const container = document.getElementById('stage1-unified-container');
+      if (container) {
+        container.innerHTML = `
+          <div class="hydration-retry" style="padding: 48px; text-align: center; background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05)); border-radius: 16px; border: 1px solid rgba(251,191,36,0.3);">
+            <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+            <h3 style="color: #f59e0b; margin: 0 0 8px;">Data Still Processing</h3>
+            <p style="color: #6b7280; font-size: 14px; margin: 0 0 24px;">
+              The analysis is being saved to the database.<br>
+              This can take a few seconds after completion.
+            </p>
+            <button onclick="window.hydrateStage1FromDatabase('${projId}', 0)" 
+                    style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none; padding: 12px 32px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; margin-right: 8px;">
+              🔄 Retry Now
+            </button>
+            <button onclick="window.forceRenderFromCache('${projId}')" 
+                    style="background: rgba(107,114,128,0.2); color: #6b7280; border: 1px solid rgba(107,114,128,0.3); padding: 12px 24px; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 14px;">
+              📋 Use Cached Data
+            </button>
+          </div>
+        `;
+      }
+      window.showToast?.('⚠️ Data not ready - click Retry when available');
+    }
+    
+    // V7.12: Show visual progress indicator with checkmarks
+    function showProgressUI() {
+      const container = document.getElementById('stage1-unified-container');
+      if (container) {
+        container.innerHTML = `
+          <div id="hydration-progress" style="padding: 40px; text-align: center; background: linear-gradient(135deg, rgba(99,102,241,0.05), rgba(139,92,246,0.05)); border-radius: 16px; margin: 16px;">
+            <div style="font-size: 48px; margin-bottom: 20px;">
+              <span class="loading-spinner" style="display: inline-block; animation: spin 1s linear infinite;">⚙️</span>
+            </div>
+            <h3 style="color: #6366f1; margin: 0 0 24px; font-size: 20px;">Loading Strategic Intelligence...</h3>
+            
+            <div style="max-width: 400px; margin: 0 auto; text-align: left;">
+              <!-- Step 1: Metadata -->
+              <div id="progress-step-1" class="progress-step" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 8px; background: rgba(99,102,241,0.1); border-radius: 8px; transition: all 0.3s ease;">
+                <span id="progress-icon-1" style="font-size: 20px;">⏳</span>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #4338ca;">Step 1: Check Database</div>
+                  <div style="font-size: 12px; color: #6366f1;">Verifying saved results...</div>
+                </div>
+              </div>
+              
+              <!-- Step 2: Report -->
+              <div id="progress-step-2" class="progress-step" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 8px; background: rgba(156,163,175,0.1); border-radius: 8px; transition: all 0.3s ease;">
+                <span id="progress-icon-2" style="font-size: 20px; opacity: 0.5;">⏸️</span>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #6b7280;">Step 2: Load Report</div>
+                  <div style="font-size: 12px; color: #9ca3af;">Analysis text...</div>
+                </div>
+              </div>
+              
+              <!-- Step 3: JSON -->
+              <div id="progress-step-3" class="progress-step" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 8px; background: rgba(156,163,175,0.1); border-radius: 8px; transition: all 0.3s ease;">
+                <span id="progress-icon-3" style="font-size: 20px; opacity: 0.5;">⏸️</span>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #6b7280;">Step 3: Load Charts</div>
+                  <div style="font-size: 12px; color: #9ca3af;">Dashboard data...</div>
+                </div>
+              </div>
+              
+              <!-- Step 4: Render -->
+              <div id="progress-step-4" class="progress-step" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(156,163,175,0.1); border-radius: 8px; transition: all 0.3s ease;">
+                <span id="progress-icon-4" style="font-size: 20px; opacity: 0.5;">⏸️</span>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #6b7280;">Step 4: Render UI</div>
+                  <div style="font-size: 12px; color: #9ca3af;">Visualizations...</div>
+                </div>
+              </div>
+            </div>
+            
+            <p id="progress-status" style="margin-top: 24px; color: #6366f1; font-size: 14px;">Connecting to database...</p>
+          </div>
+          <style>
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          </style>
+        `;
+      }
+    }
+    
+    // V7.12: Update progress step
+    function updateProgress(step, status, message) {
+      const stepEl = document.getElementById('progress-step-' + step);
+      const iconEl = document.getElementById('progress-icon-' + step);
+      const statusEl = document.getElementById('progress-status');
+      
+      if (iconEl) {
+        if (status === 'loading') {
+          iconEl.textContent = '⏳';
+          iconEl.style.opacity = '1';
+          iconEl.style.animation = 'pulse 1s ease-in-out infinite';
+        } else if (status === 'done') {
+          iconEl.textContent = '✅';
+          iconEl.style.opacity = '1';
+          iconEl.style.animation = 'none';
+        } else if (status === 'error') {
+          iconEl.textContent = '❌';
+          iconEl.style.opacity = '1';
+        }
+      }
+      
+      if (stepEl && status === 'loading') {
+        stepEl.style.background = 'rgba(99,102,241,0.1)';
+        const label = stepEl.querySelector('div > div:first-child');
+        if (label) label.style.color = '#4338ca';
+      } else if (stepEl && status === 'done') {
+        stepEl.style.background = 'rgba(16,185,129,0.1)';
+        const label = stepEl.querySelector('div > div:first-child');
+        if (label) label.style.color = '#059669';
+      }
+      
+      if (statusEl && message) {
+        statusEl.textContent = message;
+      }
+    }
+    
+    // V7.12: Show progress UI immediately
+    showProgressUI();
+    
+    // STEP 1: Load metadata first (fastest, checks if data exists)
+    console.log('📊 Step 1/3: Loading metadata...');
+    updateProgress(1, 'loading', 'Checking database for saved results...');
+    window.showToast?.('📊 Loading Stage 1 data (1/3)...');
+    
+    google.script.run
+      .withSuccessHandler(function(meta) {
+        console.log('📊 Meta response:', meta);
+        
+        if (!meta || !meta.success || !meta.hasData) {
+          console.warn('⚠️ No Stage 1 results in database (source: ' + (meta?.source || 'unknown') + ')');
+          updateProgress(1, 'error', 'No saved results found - retrying...');
+          handleNoResults();
+          return;
+        }
+        
+        // V7.12: Update progress - Step 1 complete
+        updateProgress(1, 'done', 'Database check complete ✓');
+        
+        hydrationState.meta = meta;
+        console.log('✅ Meta loaded: reportLength=' + meta.reportLength + ', jsonKeys=' + meta.jsonKeyCount);
+        
+        // STEP 2: Load report
+        console.log('📄 Step 2/3: Loading report...');
+        updateProgress(2, 'loading', 'Loading analysis report...');
+        window.showToast?.('📄 Loading Stage 1 data (2/3)...');
+        
+        google.script.run
+          .withSuccessHandler(function(reportResult) {
+            console.log('📄 Report loaded:', reportResult?.report?.length || 0, 'chars');
+            
+            // V7.12: Update progress - Step 2 complete
+            updateProgress(2, 'done', 'Report loaded (' + (reportResult?.report?.length || 0) + ' chars) ✓');
+            
+            if (reportResult && reportResult.success) {
+              hydrationState.report = reportResult.report;
+            }
+            
+            // STEP 3: Load JSON (may require multiple chunks)
+            console.log('🗂️ Step 3/3: Loading JSON data...');
+            updateProgress(3, 'loading', 'Loading chart data...');
+            window.showToast?.('🗂️ Loading Stage 1 data (3/3)...');
+            
+            loadJsonChunk(0);
+          })
+          .withFailureHandler(function(error) {
+            console.error('❌ Report load failed:', error);
+            updateProgress(2, 'error', 'Report load failed - continuing...');
+            // Continue anyway - try to load JSON
+            loadJsonChunk(0);
+          })
+          .loadStageResultsReport(projectId, 1);
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Meta load failed:', error);
+        window.showToast?.('❌ Failed to check results: ' + error);
+        showErrorUI(error);
+      })
+      .loadStageResultsMeta(projectId, 1);
+    
+    // Recursive JSON chunk loader
+    function loadJsonChunk(chunkIndex) {
+      google.script.run
+        .withSuccessHandler(function(jsonResult) {
+          console.log('🗂️ JSON chunk ' + chunkIndex + ' loaded:', jsonResult);
+          
+          if (jsonResult && jsonResult.success && jsonResult.json) {
+            // Merge chunk into hydration state
+            Object.assign(hydrationState.json, jsonResult.json);
+            hydrationState.chunksLoaded++;
+            hydrationState.totalChunks = jsonResult.totalChunks || 1;
+            
+            console.log('   Merged keys:', Object.keys(jsonResult.json).join(', '));
+            console.log('   Total keys so far:', Object.keys(hydrationState.json).length);
+            
+            // Check if more chunks needed
+            if (!jsonResult.isComplete && jsonResult.nextChunk !== null) {
+              console.log('   Loading next chunk: ' + jsonResult.nextChunk);
+              loadJsonChunk(jsonResult.nextChunk);
+              return;
+            }
+          }
+          
+          // All data loaded - render!
+          console.log('✅ All chunks loaded! Rendering...');
+          updateProgress(3, 'done', 'Chart data loaded ✓');
+          updateProgress(4, 'loading', 'Rendering visualizations...');
+          renderHydratedData();
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ JSON chunk ' + chunkIndex + ' failed:', error);
+          // Try to render with what we have
+          renderHydratedData();
+        })
+        .loadStageResultsJson(projectId, 1, chunkIndex);
+    }
+    
+    // Render the fully hydrated data
+    function renderHydratedData() {
+      const result = {
+        success: true,
+        stage: 1,
+        projectId: projectId,
+        report: hydrationState.report || '',
+        json: hydrationState.json || {},
+        model: hydrationState.meta?.model || 'unknown',
+        timestamp: hydrationState.meta?.timestamp || new Date().toISOString(),
+        source: 'chunked-mysql'
+      };
+      
+      console.log('💎 Hydration complete!');
+      console.log('   Report length:', result.report.length);
+      console.log('   JSON keys:', Object.keys(result.json).length);
+      
+      // Store in ORACLE_STATE for tab injection
+      window.ORACLE_STATE = window.ORACLE_STATE || {};
+      window.ORACLE_STATE.stage1_results = result;
+      window.ORACLE_STATE.projectId = projectId;
+      
+      // Update timestamp display
+      const stage1Timestamp = document.getElementById('stage1-timestamp');
+      if (stage1Timestamp && result.timestamp) {
+        const date = new Date(result.timestamp);
+        stage1Timestamp.textContent = 'Completed ' + date.toLocaleString();
+      }
+      
+      // Update stage status
+      window.updateStageStatus?.(1, 'completed');
+      window.showStageInSidebar?.(1);
+      
+      // V7.15: Robust renderer with multi-retry and direct fallback
+      // The renderer may not be immediately available due to script execution timing
+      const MAX_RENDER_RETRIES = 15; // V7.15: Increased from 10
+      const RENDER_RETRY_DELAY = 200; // V7.15: More frequent checks
+      let renderAttempts = 0;
+      
+      // V7.15: Log diagnostic info for renderer debugging
+      console.log('=== 🎨 V7.15 RENDERER INITIALIZATION ===');
+      console.log('   renderUnifiedStage1Results:', typeof window.renderUnifiedStage1Results);
+      console.log('   generateStage1Charts:', typeof window.generateStage1Charts);
+      console.log('   stage1-unified-container:', !!document.getElementById('stage1-unified-container'));
+      
+      const tryRender = () => {
+        renderAttempts++;
+        
+        // V7.15: More detailed logging on each attempt
+        if (renderAttempts === 1 || renderAttempts % 5 === 0) {
+          console.log(`🎨 Render attempt ${renderAttempts}/${MAX_RENDER_RETRIES}...`);
+          console.log(`   typeof renderUnifiedStage1Results: ${typeof window.renderUnifiedStage1Results}`);
+        }
+        
+        if (typeof window.renderUnifiedStage1Results === 'function') {
+          console.log('✅ renderUnifiedStage1Results available, rendering...');
+          try {
+            window.renderUnifiedStage1Results(result.report, result.json);
+            console.log('✅ Stage 1 rendering complete');
+            return true;
+          } catch (renderError) {
+            console.error('❌ renderUnifiedStage1Results threw error:', renderError);
+            console.error('   Stack:', renderError.stack);
+            // Still use fallback if primary renderer fails
+            console.log('🔧 Using fallback due to render error...');
+            renderDirectFallback(result);
+            return true;
+          }
+        }
+        
+        if (renderAttempts < MAX_RENDER_RETRIES) {
+          console.log(`⏳ Renderer not ready, retry in ${RENDER_RETRY_DELAY}ms...`);
+          setTimeout(tryRender, RENDER_RETRY_DELAY);
+          return false;
+        }
+        
+        // V7.12: Direct visual fallback - render content directly without displayStageResults
+        console.warn('⚠️ renderUnifiedStage1Results unavailable after max retries - using direct fallback');
+        renderDirectFallback(result);
+        return true;
+      };
+      
+      // V7.12: Direct fallback renderer - bypasses displayStageResults circular dependency
+      function renderDirectFallback(result) {
+        console.log('🔧 V7.12: Direct fallback renderer executing...');
+        const container = document.getElementById('stage1-unified-container');
+        if (!container) {
+          console.error('❌ No container found for fallback render');
+          window.showToast?.('❌ Container not found - please refresh the page');
+          return;
+        }
+        
+        // Clear placeholder and show container
+        container.style.display = 'block';
+        container.style.visibility = 'visible';
+        container.style.opacity = '1';
+        
+        // Generate readable content from report and JSON
+        const chartKeys = result.json?.dashboardCharts ? Object.keys(result.json.dashboardCharts) : [];
+        const reportHtml = (result.report || '')
+          .replace(/\n\n/g, '</p><p style="margin-bottom:12px;">')
+          .replace(/##\s+(.+)/g, '</p><h3 style="color:#312e81;margin:20px 0 12px;font-size:18px;border-bottom:2px solid #e0e7ff;padding-bottom:8px;">$1</h3><p>')
+          .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#4338ca;">$1</strong>')
+          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+          .replace(/- (.+)/g, '<li style="margin-left:16px;margin-bottom:4px;">$1</li>');
+        
+        container.innerHTML = `
+          <div style="padding: 24px;">
+            <div style="background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%); padding: 20px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #c7d2fe;">
+              <h2 style="margin: 0 0 8px; color: #312e81; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">✅</span> Stage 1 Analysis Complete
+              </h2>
+              <p style="margin: 0; color: #4338ca;">Data loaded successfully. Report: ${result.report?.length || 0} chars</p>
+            </div>
+            
+            ${chartKeys.length > 0 ? `
+            <div style="background: #f0fdf4; padding: 16px 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bbf7d0;">
+              <h4 style="margin: 0 0 8px; color: #166534; font-size: 14px;">📊 Available Visualizations (${chartKeys.length})</h4>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                ${chartKeys.map(k => `<span style="background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 20px; font-size: 12px;">${k}</span>`).join('')}
+              </div>
+            </div>
+            ` : ''}
+            
+            <!-- V7.14: Add chart containers for fallback mode -->
+            <div id="fallback-charts-container" style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">
+              ${chartKeys.map(k => `
+                <div style="flex: 1 1 300px; min-width: 300px; background: white; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                  <h4 style="margin: 0 0 8px; color: #312e81; font-size: 14px;">${k.replace(/([A-Z])/g, ' $1').replace(/Chart$/, '').trim()}</h4>
+                  <canvas id="${k}" style="width: 100%; height: 200px;"></canvas>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div style="background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; max-height: 600px; overflow-y: auto;">
+              <h3 style="margin: 0 0 16px; color: #475569; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">📝 Strategic Analysis Report</h3>
+              <div style="color: #334155; line-height: 1.7; font-size: 14px;">
+                <p>${reportHtml || '<span style="color:#94a3b8;">Report content loading...</span>'}</p>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        console.log('✅ V7.14: Fallback render complete');
+        
+        // V7.14: Generate charts even in fallback mode
+        if (result.json?.dashboardCharts && typeof window.generateStage1Charts === 'function') {
+          console.log('📊 V7.14: Generating charts in fallback mode...');
+          setTimeout(() => {
+            window.generateStage1Charts(result.json);
+            console.log('✅ Charts generated in fallback mode');
+          }, 100);
+        }
+        
+        window.showToast?.('✅ Stage 1 results displayed');
+      }
+      
+      // Start rendering
+      tryRender();
+      
+      // Populate form fields from JSON
+      if (result.json && typeof window.populateFormFieldsFromResponse === 'function') {
+        window.populateFormFieldsFromResponse(result.json);
+      }
+      
+      // Trigger tab injection
+      setTimeout(() => {
+        if (typeof window.injectGeminiInsightsToAllTabs === 'function') {
+          console.log('🔄 Triggering Stage 1 → Tab injection...');
+          const injectedCount = window.injectGeminiInsightsToAllTabs({});
+          console.log(`✅ Injected insights into ${injectedCount}/14 tabs`);
+        }
+      }, 500);
+      
+      // Generate D3.js visualizations if dashboardCharts exists
+      if (result.json?.dashboardCharts && typeof window.generateStage1Charts === 'function') {
+        console.log('📊 Generating D3.js visualizations...');
+        window.generateStage1Charts(result.json);
+      }
+      
+      window.showToast?.('💎 Strategic intelligence loaded successfully!');
+    }
+    
+    // Show "no results" UI
+    function showNoResultsUI() {
+      const container = document.getElementById('stage1-unified-container');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 48px; text-align: center; background: #fef3c7; border-radius: 16px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+            <h3 style="color: #92400e; margin: 0 0 8px;">No Saved Results Found</h3>
+            <p style="color: #78350f; margin: 0;">No Stage 1 analysis results found for this project.</p>
+            <button onclick="window.runStage(1, this)" 
+                    style="margin-top: 16px; background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer;">
+              ▶ Run Stage 1 Analysis
+            </button>
+          </div>
+        `;
+      }
+    }
+    
+    // Show error UI
+    function showErrorUI(error) {
+      const container = document.getElementById('stage1-unified-container');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 48px; text-align: center; background: #fee2e2; border-radius: 16px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+            <h3 style="color: #b91c1c; margin: 0 0 8px;">Hydration Failed</h3>
+            <p style="color: #7f1d1d; margin: 0;">Error: ${error}</p>
+            <button onclick="window.hydrateStage1FromDatabase('${projectId}')" 
+                    style="margin-top: 16px; background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer;">
+              🔄 Retry
+            </button>
+          </div>
+        `;
+      }
+    }
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════════
+  // V7.10: Force render from ORACLE_STATE cache (fallback when MySQL unavailable)
+  // ═══════════════════════════════════════════════════════════════════════════════════════
+  window.forceRenderFromCache = function(projectId) {
+    console.log('📋 V7.10: Attempting to render from ORACLE_STATE cache...');
+    
+    const cachedResult = window.ORACLE_STATE?.stage1_results;
+    
+    if (cachedResult && (cachedResult.json || cachedResult.report)) {
+      console.log('✅ Found cached data in ORACLE_STATE');
+      console.log('   Report length:', cachedResult.report?.length || 0);
+      console.log('   JSON keys:', cachedResult.json ? Object.keys(cachedResult.json).join(', ') : 'none');
+      
+      // Render using existing function
+      if (typeof window.renderUnifiedStage1Results === 'function') {
+        window.renderUnifiedStage1Results(cachedResult.report || '', cachedResult.json || {});
+        window.showToast?.('✅ Rendered from cached data');
+      } else if (typeof window.displayStageResults === 'function') {
+        window.displayStageResults(1, cachedResult);
+        window.showToast?.('✅ Rendered from cached data');
+      }
+      
+      // Also generate charts if available
+      if (cachedResult.json?.dashboardCharts && typeof window.generateStage1Charts === 'function') {
+        window.generateStage1Charts(cachedResult.json);
+      }
+    } else {
+      console.warn('⚠️ No cached data available in ORACLE_STATE');
+      window.showToast?.('⚠️ No cached data available. Please run Stage 1 again.');
+      
+      const container = document.getElementById('stage1-unified-container');
+      if (container) {
+        container.innerHTML = `
+          <div style="padding: 48px; text-align: center; background: #fef3c7; border-radius: 16px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
+            <h3 style="color: #92400e; margin: 0 0 8px;">No Cached Data Available</h3>
+            <p style="color: #78350f; margin: 0 0 16px;">The analysis needs to be run again.</p>
+            <button onclick="window.runStage(1, this)" 
+                    style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+              ▶ Run Stage 1 Analysis
+            </button>
+          </div>
+        `;
+      }
+    }
+  };
+
+  console.log('✅ UI_Stage_Runner.html loaded (V7.12 Progress Checkmarks + Robust Renderer Fallback)');
+</script>

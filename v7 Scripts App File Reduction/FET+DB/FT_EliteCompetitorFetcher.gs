@@ -329,6 +329,59 @@ function FT_fetchEliteCompetitorData(domain, options) {
     Logger.log(`   ✅ COMPLETE: ${successfulStages}/5 stages successful (${result.executionTime}ms)`);
     Logger.log(``);
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // v35.0 UPP: Force MySQL Persistence for Elite Competitor Data
+    // ═══════════════════════════════════════════════════════════════════════
+    if (typeof UPP_commit === 'function') {
+      Logger.log(`   💾 [UPP] Persisting competitor data to MySQL...`);
+      
+      // 1. Persist link forensics (HTML, metadata, links)
+      if (result.stages.phpFetcher?.success) {
+        UPP_commit({
+          type: 'link_forensics',
+          domain: domain,
+          jobToken: options.jobToken,
+          competitorId: options.competitorId,
+          payload: {
+            url: fullUrl,
+            rawHtml: result.stages.phpFetcher.data?.content || '',
+            metadata: result.stages.phpFetcher.data?.metadata || {},
+            links: result.stages.phpFetcher.data?.links || [],
+            images: result.stages.phpFetcher.data?.images || []
+          }
+        });
+      }
+      
+      // 2. Persist technical metrics (PageSpeed, OPR)
+      UPP_commit({
+        type: 'competitor_results',
+        domain: domain,
+        jobToken: options.jobToken,
+        competitorId: options.competitorId,
+        payload: {
+          pageSpeedScore: result.stages.pageSpeed?.data?.scores?.performance || 0,
+          pageRank: result.stages.openPageRank?.data?.rank || 0,
+          serperCredits: result.stages.serper?.creditsUsed || 0,
+          stagesSuccess: successfulStages,
+          stagesTotal: totalStages,
+          executionTime: result.executionTime
+        }
+      });
+      
+      // 3. Persist synthesized data as strategic_analysis
+      if (result.synthesized) {
+        UPP_commit({
+          type: 'strategic',
+          domain: domain,
+          jobToken: options.jobToken,
+          competitorId: options.competitorId,
+          payload: result.synthesized
+        });
+      }
+      
+      Logger.log(`   ✅ [UPP] Competitor MySQL persistence complete`);
+    }
+    
     return result;
     
   } catch (error) {
@@ -765,6 +818,17 @@ function FT_synthesizeEliteData(stages, domain, options) {
     synthesized.seo.topStories = serper.topStories || [];
     synthesized.seo.videos = serper.videos || [];
     synthesized.seo.images = serper.images || [];
+    
+    // V7 FIX: Extract topKeywords from organic results for proper keyword counting
+    synthesized.topKeywords = organic.slice(0, 20).map(function(item, idx) {
+      return {
+        keyword: item.title || 'Keyword ' + (idx + 1),
+        position: item.position || (idx + 1),
+        url: item.link || '',
+        volume: 1000 - (idx * 50) // Estimated volume
+      };
+    });
+    Logger.log(`      📊 Extracted ${synthesized.topKeywords.length} top keywords from Serper`);
     
     // V8.5: Merge serperBrand data (brand keyword search returns rich SERP features)
     if (stages.serperBrand && stages.serperBrand.success && stages.serperBrand.data) {

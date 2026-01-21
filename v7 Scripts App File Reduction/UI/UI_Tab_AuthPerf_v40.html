@@ -1,0 +1,1089 @@
+<script>
+  // V40.0 - NEW FILE TO BYPASS CACHE
+  console.log('🔥 [V40.0] UI_Tab_AuthPerf_v40.html: FRESH FILE - NO CACHE');
+  // ===========================================================================
+  // UI_Tab_AuthPerf_v40.html
+  // Authority Influence + Performance Predictive Tabs - Elite v9.0
+  // Extracted from UI_Scripts_App.html for modular architecture
+  // 
+  // Contains:
+  // - populateAuthorityInfluenceTab() - Authority & influence analysis
+  // - populatePerformancePredictiveTab() - Performance & predictive metrics
+  //
+  // Dependencies:
+  // - extractRealMetrics() from DATA_Real_Metrics.html
+  // - renderExecutiveGeminiInsight() from UI_Executive_Renderer.html
+  // - renderRawDataComparisonTable() from UI_Raw_Data_Tables.html
+  // - renderOnePercentStrategyPanel() from UI_Strategy_Panel.html
+  // - renderAuthorityCharts(), renderPredictiveCharts() from UI_Chart_Generator.html
+  // ===========================================================================
+
+  // ---------------------------------------------------------------------------
+  // XI. AUTHORITY & INFLUENCE TAB - Elite v2.0 (REAL DATA)
+  // Uses: OpenPageRank API, PHP Fetcher link data
+  // ---------------------------------------------------------------------------
+  function populateAuthorityInfluenceTab(data) {
+    console.log('🏆 Populating Authority Tab (Elite v2.0 - REAL DATA)...');
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-authority-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="authority"]') ||
+        document.getElementById('panel-authorityInfluence');
+      if (panel) {
+        console.log('🏗️ Creating dynamic containers inside authority panel');
+        metricsDiv = panel.querySelector('#comp-authority-metrics') || (() => {
+          const c = document.createElement('div'); c.id = 'comp-authority-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+          const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+          return c;
+        })();
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Authority tab containers not found - check UI_Components_Competitors.html has data-comp-panel="authority"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+    const gemini = data.geminiAnalysis || data.analysis || {};
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // Extract REAL authority metrics
+    const authorityData = competitors.map(comp => {
+      const metrics = extractRealMetrics(comp);
+      const stages = comp.stages || {};
+      const opr = stages.openPageRank?.data || comp.apiData?.openPageRank || {};
+      const synth = comp.synthesized || {};
+      const content = synth.content || {};
+      const pm = comp.processedMetrics || {};
+
+      // REAL OpenPageRank data
+      const pageRank = opr.page_rank_decimal || metrics.authority.pageRank || 0;
+      const globalRank = opr.rank || metrics.authority.rank || 0;
+
+      // Real link data from PHP Fetcher
+      const internalLinks = content.internalLinks?.length || metrics.content.internalLinks || 0;
+      const externalLinks = content.externalLinks?.length || metrics.content.externalLinks || 0;
+      
+      // Referring Domains - extract from API data or estimate from backlinks
+      // Priority: actual API data > processedMetrics > calculated estimate
+      const backlinks = pm.backlinks || metrics.authority.refDomains * 10 || externalLinks * 2 || 0;
+      const refDomainsRaw = opr.referring_domains || pm.referringDomains || pm.refDomains || 0;
+      const refDomainsEstimated = Math.round(backlinks / 10) || Math.round(externalLinks * 0.3);
+      const refDomains = refDomainsRaw > 0 ? refDomainsRaw : refDomainsEstimated;
+      const refDomainsSource = refDomainsRaw > 0 ? 'API' : 'Estimated';
+
+      // Calculate topical authority based on real signals
+      let topicalRelevance = 30; // Base
+      if (metrics.content.wordCount >= 3000) topicalRelevance += 25;
+      else if (metrics.content.wordCount >= 1500) topicalRelevance += 15;
+      if (internalLinks >= 20) topicalRelevance += 20;
+      else if (internalLinks >= 10) topicalRelevance += 10;
+      if (pageRank >= 5) topicalRelevance += 25;
+      else if (pageRank >= 3) topicalRelevance += 15;
+      topicalRelevance = Math.min(100, topicalRelevance);
+
+      const hasRealData = pageRank > 0 || internalLinks > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        pageRank,
+        globalRank,
+        internalLinks,
+        externalLinks,
+        refDomains,
+        refDomainsSource,
+        backlinks,
+        topicalRelevance,
+        wordCount: metrics.content.wordCount,
+        dataSource: pageRank > 0 ? 'OpenPageRank API' : (internalLinks > 0 ? 'PHP Fetcher' : 'Pending')
+      };
+    });
+
+    // Calculate averages for executive insight
+    const avgPageRank = (authorityData.reduce((a, b) => a + b.pageRank, 0) / authorityData.length);
+    const totalInternalLinks = authorityData.reduce((a, b) => a + b.internalLinks, 0);
+    const totalExternalLinks = authorityData.reduce((a, b) => a + b.externalLinks, 0);
+    const avgTopical = Math.round(authorityData.reduce((a, b) => a + b.topicalRelevance, 0) / authorityData.length);
+    const leader = [...authorityData].sort((a, b) => b.pageRank - a.pageRank)[0];
+    
+    // Generate executive insight for authority
+    const authExecConfig = {
+      title: 'Authority & Influence Executive Brief',
+      icon: '?',
+      executiveSummary: `Authority analysis reveals average PageRank of ${avgPageRank.toFixed(1)}/10 and topical authority of ${avgTopical}%. ${totalInternalLinks} internal links and ${totalExternalLinks} external links mapped across ${competitors.length} competitors.`,
+      ceoInsight: `Domain authority is ${avgPageRank >= 5 ? 'strong in this market - maintain through quality content and strategic partnerships' : avgPageRank >= 3 ? 'moderate - focused link building and content investment needed' : 'below competitive threshold - significant authority building required'}.`,
+      cmoInsight: `${leader?.domain || 'Market leader'} leads with ${leader?.pageRank?.toFixed(1) || '0'} PageRank. Strategy: ${avgPageRank < leader?.pageRank * 0.8 ? 'Digital PR and thought leadership campaign required' : 'Maintain competitive parity through consistent content'}.`,
+      ctoInsight: `Internal linking: ${totalInternalLinks} links detected. ${totalInternalLinks < competitors.length * 10 ? 'Significant opportunity to improve link equity distribution' : 'Healthy internal link structure - focus on anchor text optimization'}.`,
+      strategicImperative: `Build sustainable authority through ${avgPageRank < 4 ? 'aggressive content marketing, digital PR, and strategic partnerships' : 'targeted high-authority backlinks and topical content expansion'}.`,
+      investmentPriority: avgPageRank < 3 ? 'Critical' : avgPageRank < 5 ? 'High' : 'Medium',
+      timelineToImpact: avgPageRank < 3 ? '9-12 months' : '6-9 months',
+      riskLevel: avgPageRank < 3 ? 'High' : 'Medium',
+      marketOpportunity: avgPageRank < 5 ? 'Large' : 'Moderate',
+      roiProjection: avgPageRank < 4 ? '+50% Authority' : '+20% Authority',
+      competitiveThreats: [
+        `${leader?.domain || 'Leader'} dominates with ${leader?.pageRank?.toFixed(1) || 'N/A'} PageRank`,
+        'Authority gap widening in competitive markets',
+        'AI search prioritizing authoritative sources',
+        'Link building becoming more competitive'
+      ],
+      actionItems: [
+        'Audit and optimize internal linking',
+        'Build strategic partnership for backlinks',
+        'Create linkable asset content',
+        'Implement digital PR campaign',
+        'Develop thought leadership program',
+        'Monitor competitor backlink acquisition'
+      ],
+      kpis: ['PageRank', 'Domain Authority', 'Referring Domains', 'Internal Link Ratio', 'Topical Authority', 'Brand Mentions'],
+      dataProofs: ['OpenPageRank API', 'PHP Fetcher', 'Link Analysis', 'Authority Metrics']
+    };
+
+    let html = `
+          <!-- EXECUTIVE INTELLIGENCE BRIEF -->
+          ${renderExecutiveGeminiInsight(authExecConfig)}
+          
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">? Authority & Influence Analysis</h3>
+          
+          <!-- HEADER WITH REAL DATA -->
+          <div style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: OpenPageRank API, PHP Fetcher Link Analysis</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px;">
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg PageRank</div>
+                <div style="font-size: 24px; font-weight: 700;">${(authorityData.reduce((a, b) => a + b.pageRank, 0) / authorityData.length).toFixed(1)}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Total Ref. Domains</div>
+                <div style="font-size: 24px; font-weight: 700;">${authorityData.reduce((a, b) => a + b.refDomains, 0).toLocaleString()}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Total Backlinks</div>
+                <div style="font-size: 24px; font-weight: 700;">${authorityData.reduce((a, b) => a + b.backlinks, 0).toLocaleString()}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Internal Links</div>
+                <div style="font-size: 24px; font-weight: 700;">${authorityData.reduce((a, b) => a + b.internalLinks, 0)}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">External Links</div>
+                <div style="font-size: 24px; font-weight: 700;">${authorityData.reduce((a, b) => a + b.externalLinks, 0)}</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Topical Auth</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(authorityData.reduce((a, b) => a + b.topicalRelevance, 0) / authorityData.length)}%</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- AUTHORITY TABLE WITH DATA SOURCES -->
+          <div style="overflow-x: auto;">
+          <table class="comp-table" style="margin-bottom: 30px;">
+            <thead>
+              <tr>
+                <th>Competitor</th>
+                <th>PageRank</th>
+                <th>Global Rank</th>
+                <th>Ref. Domains <span class="info-tooltip" title="[i] Referring domains linking to this site. API = actual data from authority provider. Est = estimated from backlink analysis." style="cursor: help;">?</span></th>
+                <th>Backlinks</th>
+                <th>Internal Links</th>
+                <th>External Links</th>
+                <th>Topical Authority</th>
+                <th>Data Source</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+    authorityData.forEach(auth => {
+      const refDomainsColor = auth.refDomains >= 1000 ? '#22c55e' : auth.refDomains >= 100 ? '#3b82f6' : auth.refDomains >= 10 ? '#f59e0b' : '#6b7280';
+      const backlinksColor = auth.backlinks >= 10000 ? '#22c55e' : auth.backlinks >= 1000 ? '#3b82f6' : auth.backlinks >= 100 ? '#f59e0b' : '#6b7280';
+      html += `
+            <tr>
+              <td><strong>${auth.domain}</strong></td>
+              <td>
+                <span style="font-weight: 700; color: ${auth.pageRank >= 5 ? '#22c55e' : auth.pageRank >= 3 ? '#3b82f6' : '#f59e0b'};">
+                  ${auth.pageRank > 0 ? auth.pageRank.toFixed(1) : 'N/A'}
+                </span>
+              </td>
+              <td>${auth.globalRank > 0 ? '#' + auth.globalRank.toLocaleString() : 'N/A'}</td>
+              <td style="text-align: center;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                  <span style="font-weight: 600; color: ${refDomainsColor};">${auth.refDomains > 0 ? auth.refDomains.toLocaleString() : 'N/A'}</span>
+                  <span style="font-size: 9px; padding: 2px 4px; border-radius: 3px; background: ${auth.refDomainsSource === 'API' ? '#dcfce7' : '#fef3c7'}; color: ${auth.refDomainsSource === 'API' ? '#166534' : '#92400e'};">${auth.refDomainsSource}</span>
+                </div>
+              </td>
+              <td style="text-align: center;">
+                <span style="font-weight: 600; color: ${backlinksColor};">${auth.backlinks > 0 ? auth.backlinks.toLocaleString() : 'N/A'}</span>
+              </td>
+              <td style="text-align: center;">${auth.internalLinks}</td>
+              <td style="text-align: center;">${auth.externalLinks}</td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                    <div style="width: ${auth.topicalRelevance}%; height: 100%; background: #eab308;"></div>
+                  </div>
+                  <span style="font-size: 11px; font-weight: 600;">${auth.topicalRelevance}%</span>
+                </div>
+              </td>
+              <td style="text-align: center;">${getDataSourceBadge(auth.dataSource)}</td>
+            </tr>
+          `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          </div>
+          
+          <!-- CHARTS -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">📈 PageRank Comparison</h5>
+              <div style="height: 220px;"><canvas id="chart-authority-velocity"></canvas></div>
+            </div>
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🔗 Link Architecture</h5>
+              <div style="height: 220px;"><canvas id="chart-authority-network"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- STRATEGIC INSIGHTS -->
+          <div style="background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #eab308;">
+            <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #92400e;">💡 Authority Building Insights</h5>
+            ${(() => {
+        const sorted = [...authorityData].sort((a, b) => b.pageRank - a.pageRank);
+        const leader = sorted[0];
+        const avgPR = (authorityData.reduce((a, b) => a + b.pageRank, 0) / authorityData.length).toFixed(1);
+        const totalLinks = authorityData.reduce((a, b) => a + b.internalLinks + b.externalLinks, 0);
+
+        return `
+                <ul style="margin: 0; padding-left: 20px;">
+                  <li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;">
+                    <strong>Authority Leader:</strong> ${leader?.domain || 'N/A'} with PageRank ${leader?.pageRank.toFixed(1) || 0} 
+                    ${leader?.globalRank ? `(Global Rank: #${leader.globalRank.toLocaleString()})` : ''}
+                  </li>
+                  <li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;">
+                    <strong>Industry Average:</strong> PageRank ${avgPR}. 
+                    ${avgPR >= 5 ? 'High authority competitive landscape - focus on quality backlinks.' : avgPR >= 3 ? 'Moderate authority - link building campaigns recommended.' : 'Lower authority market - opportunity for rapid gains.'}
+                  </li>
+                  <li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;">
+                    <strong>Link Architecture:</strong> ${totalLinks} total links analyzed. 
+                    ${leader?.internalLinks >= 20 ? 'Strong internal linking structures present.' : 'Opportunity to improve internal link equity flow.'}
+                  </li>
+                </ul>
+              `;
+      })()}
+          </div>
+        `;
+
+    // ---------------------------------------------------------------------------
+    // ELITE RAW DATA COMPARISON - Authority & EEAT (Ahrefs/SEMrush Level)
+    // ---------------------------------------------------------------------------
+    html += `
+          <h4 style="margin: 30px 0 20px; font-size: 20px; font-weight: 800; color: #202124;">
+            ? Raw Authority & E-E-A-T Data (Ahrefs/SEMrush Level)
+          </h4>
+        `;
+
+    // PageRank & Authority Comparison
+    const authLeader = authorityData.reduce((best, a) => a.pageRank > (best?.pageRank || 0) ? a : best, null);
+    const geminiAuthInsight = authLeader
+      ? `${authLeader.domain} leads with PageRank ${authLeader.pageRank.toFixed(1)}. PageRank above 5.0 indicates strong domain authority. Focus on acquiring links from PR 4+ sites.`
+      : 'Analyze PageRank distribution to identify authority gaps.';
+
+    html += renderRawDataComparisonTable({
+      title: 'Domain Authority Metrics',
+      icon: '?',
+      description: 'PageRank, global ranking, and topical relevance scores',
+      competitors: competitors,
+      geminiInsight: geminiAuthInsight,
+      dataExtractor: (c, idx, realMetrics) => {
+        const auth = authorityData[idx] || {};
+        const rm = realMetrics || {};
+        return {
+          pageRank: auth.pageRank || rm.authority?.pageRank || 0,
+          globalRank: auth.globalRank || rm.authority?.rank || 0,
+          topicalRelevance: auth.topicalRelevance || rm.gemini?.topicalAuthority || 50,
+          internalLinks: auth.internalLinks || rm.content?.internalLinks || 0,
+          externalLinks: auth.externalLinks || rm.content?.externalLinks || 0,
+          dataSource: rm.authority?.source || auth.dataSource || 'Pending'
+        };
+      },
+      fields: [
+        { key: 'pageRank', label: 'PageRank', icon: '🏆', type: 'number', compareMode: 'highest' },
+        { key: 'globalRank', label: 'Global Rank', icon: '🌐', type: 'number', compareMode: 'lowest' },
+        { key: 'topicalRelevance', label: 'Topical Relevance', icon: '🎯', type: 'score', compareMode: 'highest' },
+        { key: 'internalLinks', label: 'Internal Links', icon: '🔗', type: 'number', compareMode: 'highest' },
+        { key: 'externalLinks', label: 'External Links', icon: '🔗', type: 'number' },
+        { key: 'dataSource', label: 'Data Source', icon: '📊', type: 'text' }
+      ]
+    });
+
+    // E-E-A-T Signals Comparison
+    html += renderRawDataComparisonTable({
+      title: 'E-E-A-T Signal Detection',
+      icon: '🏅',
+      description: 'Experience, Expertise, Authoritativeness, and Trustworthiness signals',
+      competitors: competitors,
+      geminiInsight: 'Strong E-E-A-T signals include: author bios, expert credentials, citations, reviews, and transparent contact information. Sites with 5+ E-E-A-T signals rank 40% higher.',
+      dataExtractor: (c, idx, realMetrics) => {
+        const rm = realMetrics || {};
+        const website = getWebsiteData(c);  // v28.7: Use helper
+        const schemas = rm.content?.schemaTypes || website.schemaTypes || [];
+        const fullText = ((rm.content?.title || website.title || '') + ' ' + (rm.content?.description || website.description || '')).toLowerCase();
+        const extLinks = rm.content?.externalLinks || website.externalLinks || 0;
+        const wordCount = rm.content?.wordCount || website.wordCount || 0;
+        return {
+          hasAuthor: schemas.includes('Person') || fullText.includes('author') || fullText.includes('expert') ? '? Yes' : '? No',
+          hasOrganization: schemas.includes('Organization') ? '? Yes' : '? No',
+          hasReviews: schemas.includes('Review') || schemas.includes('AggregateRating') ? '? Yes' : '? No',
+          hasCitations: extLinks >= 3 ? '? Yes' : '? No',
+          hasAboutPage: fullText.includes('about') ? 'Likely' : 'Check',
+          hasContact: fullText.includes('contact') ? 'Likely' : 'Check',
+          eeatScore: (schemas.includes('Person') ? 20 : 0) + (schemas.includes('Organization') ? 20 : 0) + (schemas.includes('Review') ? 20 : 0) + (extLinks >= 3 ? 20 : 0) + (wordCount >= 1500 ? 20 : 10)
+        };
+      },
+      fields: [
+        { key: 'eeatScore', label: 'E-E-A-T Score', icon: '🏅', type: 'score', compareMode: 'highest' },
+        { key: 'hasAuthor', label: 'Author Bio', icon: '✍️', type: 'text' },
+        { key: 'hasOrganization', label: 'Org Schema', icon: '🏢', type: 'text' },
+        { key: 'hasReviews', label: 'Reviews', icon: '?', type: 'text' },
+        { key: 'hasCitations', label: 'Citations', icon: '📚', type: 'text' },
+        { key: 'hasContact', label: 'Contact Info', icon: '📞', type: 'text' }
+      ]
+    });
+
+    // ---------------------------------------------------------------------------
+    // 1% STRATEGY EXECUTION PANEL - Authority Tab (E-E-A-T Focus)
+    // ---------------------------------------------------------------------------
+    html += (() => {
+      // Extract authority-focused PAA questions
+      const paaQuestions = gemini?.paaQuestions || gemini?.peopleAlsoAsk ||
+        competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || c.apiData?.serper?.peopleAlsoAsk || []).slice(0, 10);
+      
+      // Extract authority-related keywords
+      const authKeywords = gemini?.keywords || gemini?.targetKeywords ||
+        competitors.flatMap(c => c.processedMetrics?.topKeywords || []).slice(0, 20);
+      
+      // Brand entity
+      const brandEntity = {
+        name: data.projectName || data.domain || 'Your Brand',
+        url: data.url || data.domain || '',
+        id: '#organization'
+      };
+      
+      return renderOnePercentStrategyPanel({
+        paaQuestions: paaQuestions,
+        keywords: authKeywords,
+        brandEntity: brandEntity,
+        competitors: competitors,
+        tabName: 'authority'
+      });
+    })();
+
+    metricsDiv.innerHTML = html;
+    setTimeout(() => renderAuthorityCharts(authorityData), 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // PERFORMANCE & PREDICTIVE TAB - Elite v2.0 (REAL DATA)
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // PERFORMANCE & PREDICTIVE TAB - Elite v2.0 (REAL DATA)
+  // Uses: PageSpeed Insights API, PHP Fetcher content metrics, OpenPageRank
+  // ---------------------------------------------------------------------------
+  function populatePerformancePredictiveTab(data) {
+    console.log('📈 Populating Performance Tab (Elite v3.0 - COMPREHENSIVE PageSpeed)...');
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-performance-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="performance"]') ||
+        document.getElementById('panel-performancePredictive');
+      if (panel) {
+        console.log('🏗️ Creating dynamic container inside performance panel');
+        metricsDiv = panel.querySelector('#comp-performance-metrics') || (() => {
+          const c = document.createElement('div'); c.id = 'comp-performance-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+          const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+          return c;
+        })();
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Performance tab containers not found - check UI_Components_Competitors.html has data-comp-panel="performance"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+    const gemini = data.geminiAnalysis || data.analysis || {};
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // Extract REAL performance metrics from ALL possible data paths
+    const perfData = competitors.map(comp => {
+      const metrics = extractRealMetrics(comp);
+      const stages = comp.stages || {};
+      const apiData = comp.apiData || {};
+
+      // PageSpeed data can be in multiple locations
+      const pageSpeedStage = stages.pageSpeed?.data || {};
+      const pageSpeedAPI = apiData.pageSpeed || {};
+      const pageSpeed = { ...pageSpeedAPI, ...pageSpeedStage };
+
+      // Extract from PHP gateway format (scores, metrics, core_web_vitals at root)
+      const scores = pageSpeed.scores || {};
+      const psMetrics = pageSpeed.metrics || {};
+      const cwv = pageSpeed.core_web_vitals || {};
+
+      // Also check for direct lighthouseResult (raw API response)
+      const lhr = pageSpeed.lighthouseResult || {};
+      const audits = lhr.audits || {};
+      const categories = lhr.categories || {};
+
+      // Get OpenPageRank data
+      const opr = stages.openPageRank?.data || apiData.openPageRank || {};
+
+      // REAL Core Web Vitals - try both formats
+      // Format 1: From PHP gateway (metrics object with snake_case)
+      // Format 2: From raw Lighthouse (audits with hyphenated keys)
+      const fcp = psMetrics.first_contentful_paint || audits['first-contentful-paint']?.numericValue || 0;
+      const lcp = cwv.lcp || psMetrics.largest_contentful_paint || audits['largest-contentful-paint']?.numericValue || 0;
+      const cls = cwv.cls || psMetrics.cumulative_layout_shift || audits['cumulative-layout-shift']?.numericValue || 0;
+      const tbt = psMetrics.total_blocking_time || audits['total-blocking-time']?.numericValue || 0;
+      const tti = psMetrics.time_to_interactive || audits['interactive']?.numericValue || 0;
+      const si = psMetrics.speed_index || audits['speed-index']?.numericValue || 0;
+      const fid = cwv.fid || audits['max-potential-fid']?.numericValue || 0;
+
+      // Get scores - try PHP gateway format first, then raw categories
+      const performance = scores.performance || Math.round((categories.performance?.score || 0) * 100) || metrics.technical.performance || 0;
+      const seoScore = scores.seo || Math.round((categories.seo?.score || 0) * 100) || metrics.technical.seo || 0;
+      const accessibility = scores.accessibility || Math.round((categories.accessibility?.score || 0) * 100) || metrics.technical.accessibility || 0;
+      const bestPractices = scores.best_practices || Math.round((categories['best-practices']?.score || 0) * 100) || 0;
+
+      // Determine if we have REAL PageSpeed data
+      const hasPageSpeedData = performance > 0 || lcp > 0 || Object.keys(scores).length > 0;
+
+      // Calculate traffic quality from REAL signals
+      let trafficQuality = 30;
+      if (performance >= 80) trafficQuality += 25;
+      else if (performance >= 60) trafficQuality += 15;
+      if (seoScore >= 80) trafficQuality += 20;
+      else if (seoScore >= 60) trafficQuality += 10;
+      if (metrics.content.wordCount >= 2000) trafficQuality += 15;
+      if (opr.page_rank_decimal >= 5) trafficQuality += 10;
+      trafficQuality = Math.min(100, trafficQuality);
+
+      // Calculate engagement potential
+      let engagementLoops = 30;
+      if (metrics.content.wordCount >= 3000) engagementLoops += 25;
+      else if (metrics.content.wordCount >= 1500) engagementLoops += 15;
+      if (metrics.content.internalLinks >= 15) engagementLoops += 20;
+      else if (metrics.content.internalLinks >= 5) engagementLoops += 10;
+      if (metrics.content.schemaTypes?.length >= 2) engagementLoops += 15;
+      engagementLoops = Math.min(100, engagementLoops);
+
+      // Predict rank delta based on REAL signals
+      let predictedRankDelta = 0;
+      if (performance >= 80 && seoScore >= 80) predictedRankDelta += 2;
+      if (metrics.content.wordCount >= 2000 && metrics.content.internalLinks >= 10) predictedRankDelta += 2;
+      if (opr.page_rank_decimal >= 6) predictedRankDelta += 1;
+      if (performance < 50) predictedRankDelta -= 2;
+      if (lcp > 4000) predictedRankDelta -= 1;
+
+      // Determine data source
+      let dataSource = 'Pending';
+      if (hasPageSpeedData) dataSource = 'PageSpeed API';
+      else if (metrics.content.wordCount > 0) dataSource = 'PHP Fetcher';
+
+      return {
+        domain: comp.domain || comp.url,
+        trafficQuality,
+        engagementLoops,
+        predictedRankDelta,
+        performance,
+        seo: seoScore,
+        accessibility,
+        bestPractices,
+        lcp: lcp > 0 ? (lcp / 1000).toFixed(2) : 'N/A',
+        fcp: fcp > 0 ? (fcp / 1000).toFixed(2) : 'N/A',
+        cls: cls > 0 ? cls.toFixed(3) : 'N/A',
+        tbt: tbt > 0 ? Math.round(tbt) : 'N/A',
+        tti: tti > 0 ? (tti / 1000).toFixed(1) : 'N/A',
+        si: si > 0 ? (si / 1000).toFixed(1) : 'N/A',
+        fid: fid > 0 ? Math.round(fid) : 'N/A',
+        wordCount: metrics.content.wordCount,
+        pageRank: opr.page_rank_decimal || 0,
+        hasPageSpeedData,
+        dataSource
+      };
+    });
+
+    // Calculate aggregates
+    const avgPerf = Math.round(perfData.reduce((a, b) => a + b.performance, 0) / perfData.length);
+    const avgSeo = Math.round(perfData.reduce((a, b) => a + b.seo, 0) / perfData.length);
+    const avgTraffic = Math.round(perfData.reduce((a, b) => a + b.trafficQuality, 0) / perfData.length);
+    const avgEngagement = Math.round(perfData.reduce((a, b) => a + b.engagementLoops, 0) / perfData.length);
+    const goodLCP = perfData.filter(p => p.lcp !== 'N/A' && parseFloat(p.lcp) <= 2.5).length;
+    const needsLCP = perfData.filter(p => p.lcp !== 'N/A' && parseFloat(p.lcp) > 2.5 && parseFloat(p.lcp) <= 4).length;
+    const poorLCP = perfData.filter(p => p.lcp !== 'N/A' && parseFloat(p.lcp) > 4).length;
+    const hasRealPSData = perfData.filter(p => p.hasPageSpeedData).length;
+
+    // EXECUTIVE INTELLIGENCE BRIEF - Performance
+    const performanceExecConfig = generateExecutiveInsightConfig('performance', competitors, gemini);
+
+    let html = renderExecutiveGeminiInsight(performanceExecConfig);
+    
+    html += `
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">📊 Performance & Core Web Vitals Analysis</h3>
+          
+          <!-- HEADER WITH REAL DATA -->
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <p style="margin: 0; font-size: 12px; opacity: 0.9;">📊 Data: Google PageSpeed Insights API | OpenPageRank API</p>
+              <span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 11px;">
+                ${hasRealPSData}/${perfData.length} sites with PageSpeed data
+              </span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px;">
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; opacity: 0.85;">Avg Performance</div>
+                <div style="font-size: 22px; font-weight: 700;">${avgPerf}/100</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; opacity: 0.85;">Avg SEO</div>
+                <div style="font-size: 22px; font-weight: 700;">${avgSeo}/100</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; opacity: 0.85;">Good LCP</div>
+                <div style="font-size: 22px; font-weight: 700;">${goodLCP}/${perfData.length}</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;">
+                <div style="font-size: 11px; opacity: 0.85;">Traffic Quality</div>
+                <div style="font-size: 22px; font-weight: 700;">${avgTraffic}/100</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CORE WEB VITALS VISUAL GAUGES -->
+          <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px;">
+            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700;">
+              📊 Core Web Vitals Summary
+              ${getDataSourceBadge('PageSpeed API')}
+            </h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+              <!-- LCP Gauge -->
+              <div style="text-align: center; padding: 20px; background: #f0fdf4; border-radius: 12px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">LCP (Largest Contentful Paint)</div>
+                <div style="font-size: 28px; font-weight: 700; color: ${goodLCP >= perfData.length / 2 ? '#22c55e' : needsLCP >= poorLCP ? '#f59e0b' : '#ef4444'};">
+                  ${goodLCP}/${perfData.length}
+                </div>
+                <div style="font-size: 11px; color: #666; margin-top: 6px;">=2.5s = Good</div>
+                <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px; font-size: 10px;">
+                  <span style="color: #22c55e;">? ${goodLCP} Good</span>
+                  <span style="color: #f59e0b;">? ${needsLCP} Needs Work</span>
+                  <span style="color: #ef4444;">? ${poorLCP} Poor</span>
+                </div>
+              </div>
+              <!-- CLS Gauge -->
+              <div style="text-align: center; padding: 20px; background: #f0fdf4; border-radius: 12px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">CLS (Cumulative Layout Shift)</div>
+                ${(() => {
+        const goodCLS = perfData.filter(p => p.cls !== 'N/A' && parseFloat(p.cls) <= 0.1).length;
+        const needsCLS = perfData.filter(p => p.cls !== 'N/A' && parseFloat(p.cls) > 0.1 && parseFloat(p.cls) <= 0.25).length;
+        const poorCLS = perfData.filter(p => p.cls !== 'N/A' && parseFloat(p.cls) > 0.25).length;
+        return `
+                    <div style="font-size: 28px; font-weight: 700; color: ${goodCLS >= perfData.length / 2 ? '#22c55e' : needsCLS >= poorCLS ? '#f59e0b' : '#ef4444'};">
+                      ${goodCLS}/${perfData.length}
+                    </div>
+                    <div style="font-size: 11px; color: #666; margin-top: 6px;">=0.1 = Good</div>
+                    <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px; font-size: 10px;">
+                      <span style="color: #22c55e;">? ${goodCLS} Good</span>
+                      <span style="color: #f59e0b;">? ${needsCLS} Needs Work</span>
+                      <span style="color: #ef4444;">? ${poorCLS} Poor</span>
+                    </div>
+                  `;
+      })()}
+              </div>
+              <!-- TBT/FID Gauge -->
+              <div style="text-align: center; padding: 20px; background: #f0fdf4; border-radius: 12px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">TBT (Total Blocking Time)</div>
+                ${(() => {
+        const goodTBT = perfData.filter(p => p.tbt !== 'N/A' && parseInt(p.tbt) <= 200).length;
+        const needsTBT = perfData.filter(p => p.tbt !== 'N/A' && parseInt(p.tbt) > 200 && parseInt(p.tbt) <= 600).length;
+        const poorTBT = perfData.filter(p => p.tbt !== 'N/A' && parseInt(p.tbt) > 600).length;
+        return `
+                    <div style="font-size: 28px; font-weight: 700; color: ${goodTBT >= perfData.length / 2 ? '#22c55e' : needsTBT >= poorTBT ? '#f59e0b' : '#ef4444'};">
+                      ${goodTBT}/${perfData.length}
+                    </div>
+                    <div style="font-size: 11px; color: #666; margin-top: 6px;">=200ms = Good</div>
+                    <div style="display: flex; justify-content: center; gap: 8px; margin-top: 10px; font-size: 10px;">
+                      <span style="color: #22c55e;">? ${goodTBT} Good</span>
+                      <span style="color: #f59e0b;">? ${needsTBT} Needs Work</span>
+                      <span style="color: #ef4444;">? ${poorTBT} Poor</span>
+                    </div>
+                  `;
+      })()}
+              </div>
+            </div>
+          </div>
+          
+          <!-- COMPREHENSIVE PERFORMANCE TABLE -->
+          <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; overflow-x: auto;">
+            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700;">📊 Detailed Performance Metrics</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+                  <th style="text-align: left; padding: 12px 8px; border-bottom: 2px solid #6ee7b7;">Competitor</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">Perf</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">SEO</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">A11y</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">LCP</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">FCP</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">CLS</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">TBT</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">TTI</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">Rank ?</th>
+                  <th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">Source</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+    const getScoreColor = (score) => score >= 90 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+    const getLCPColor = (lcp) => lcp === 'N/A' ? '#9ca3af' : parseFloat(lcp) <= 2.5 ? '#22c55e' : parseFloat(lcp) <= 4 ? '#f59e0b' : '#ef4444';
+    const getFCPColor = (fcp) => fcp === 'N/A' ? '#9ca3af' : parseFloat(fcp) <= 1.8 ? '#22c55e' : parseFloat(fcp) <= 3 ? '#f59e0b' : '#ef4444';
+    const getCLSColor = (cls) => cls === 'N/A' ? '#9ca3af' : parseFloat(cls) <= 0.1 ? '#22c55e' : parseFloat(cls) <= 0.25 ? '#f59e0b' : '#ef4444';
+    const getTBTColor = (tbt) => tbt === 'N/A' ? '#9ca3af' : parseInt(tbt) <= 200 ? '#22c55e' : parseInt(tbt) <= 600 ? '#f59e0b' : '#ef4444';
+    const getTTIColor = (tti) => tti === 'N/A' ? '#9ca3af' : parseFloat(tti) <= 3.8 ? '#22c55e' : parseFloat(tti) <= 7.3 ? '#f59e0b' : '#ef4444';
+
+    perfData.forEach((perf, idx) => {
+      const deltaColor = perf.predictedRankDelta > 0 ? '#22c55e' : perf.predictedRankDelta < 0 ? '#ef4444' : '#6b7280';
+      html += `
+            <tr style="border-bottom: 1px solid #f1f5f9; ${idx % 2 === 1 ? 'background: #f9fafb;' : ''}">
+              <td style="padding: 12px 8px;">
+                <div style="font-weight: 600; color: #1f2937;">${perf.domain}</div>
+                <div style="font-size: 10px; color: #666;">DA: ${perf.pageRank.toFixed(1)}</div>
+              </td>
+              <td style="text-align: center; padding: 12px 6px;">
+                <span style="display: inline-block; width: 36px; padding: 4px; border-radius: 4px; font-weight: 700; color: white; background: ${getScoreColor(perf.performance)};">
+                  ${perf.performance || '-'}
+                </span>
+              </td>
+              <td style="text-align: center; padding: 12px 6px;">
+                <span style="display: inline-block; width: 36px; padding: 4px; border-radius: 4px; font-weight: 700; color: white; background: ${getScoreColor(perf.seo)};">
+                  ${perf.seo || '-'}
+                </span>
+              </td>
+              <td style="text-align: center; padding: 12px 6px;">
+                <span style="display: inline-block; width: 36px; padding: 4px; border-radius: 4px; font-weight: 700; color: white; background: ${getScoreColor(perf.accessibility)};">
+                  ${perf.accessibility || '-'}
+                </span>
+              </td>
+              <td style="text-align: center; padding: 12px 6px; color: ${getLCPColor(perf.lcp)}; font-weight: 600;">${perf.lcp}s</td>
+              <td style="text-align: center; padding: 12px 6px; color: ${getFCPColor(perf.fcp)}; font-weight: 600;">${perf.fcp}s</td>
+              <td style="text-align: center; padding: 12px 6px; color: ${getCLSColor(perf.cls)}; font-weight: 600;">${perf.cls}</td>
+              <td style="text-align: center; padding: 12px 6px; color: ${getTBTColor(perf.tbt)}; font-weight: 600;">${perf.tbt}${perf.tbt !== 'N/A' ? 'ms' : ''}</td>
+              <td style="text-align: center; padding: 12px 6px; color: ${getTTIColor(perf.tti)}; font-weight: 600;">${perf.tti}${perf.tti !== 'N/A' ? 's' : ''}</td>
+              <td style="text-align: center; padding: 12px 6px; color: ${deltaColor}; font-weight: 700;">${perf.predictedRankDelta > 0 ? '+' : ''}${perf.predictedRankDelta}</td>
+              <td style="text-align: center; padding: 12px 6px;">${getDataSourceBadge(perf.dataSource)}</td>
+            </tr>`;
+    });
+
+    html += `
+              </tbody>
+            </table>
+            <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 11px; color: #64748b;">
+              <strong>Legend:</strong> 
+              <span style="color: #22c55e;">? Good</span> | 
+              <span style="color: #f59e0b;">? Needs Improvement</span> | 
+              <span style="color: #ef4444;">? Poor</span> |
+              LCP =2.5s | FCP =1.8s | CLS =0.1 | TBT =200ms | TTI =3.8s
+            </div>
+          </div>
+          
+          <!-- CHARTS -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🔮 Predictive Rank Forecast</h5>
+              <div style="height: 220px;"><canvas id="chart-predictive-forecast"></canvas></div>
+            </div>
+            <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🎯 Performance vs Quality Matrix</h5>
+              <div style="height: 220px;"><canvas id="chart-predictive-quality"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- PREDICTION CARDS -->
+          <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700;">🔮 90-Day Predictions (Based on PageSpeed + Authority)</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${perfData.slice(0, 4).map((p, i) => {
+      const prediction = p.predictedRankDelta > 1 ? 'Rising' : p.predictedRankDelta < -1 ? 'Declining' : 'Stable';
+      const color = prediction === 'Rising' ? '#22c55e' : prediction === 'Declining' ? '#ef4444' : '#f59e0b';
+      return `
+                <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid ${color};">
+                  <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">${p.domain}</div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 24px;">${prediction === 'Rising' ? '📈' : prediction === 'Declining' ? '📉' : '➡️'}</span>
+                    <div>
+                      <div style="font-size: 18px; font-weight: 700; color: ${color};">${prediction}</div>
+                      <div style="font-size: 10px; color: #666;">Perf: ${p.performance} | LCP: ${p.lcp} | DA: ${p.pageRank.toFixed(1)}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+    }).join('')}
+          </div>
+          
+          <!-- STRATEGIC INSIGHTS -->
+          <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #10b981;">
+            <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #065f46;">
+              💡 Performance Intelligence Insights
+              ${getDataSourceBadge('PageSpeed API')}
+            </h5>
+            ${(() => {
+        const sorted = [...perfData].sort((a, b) => b.performance - a.performance);
+        const leader = sorted[0];
+        const worstPerf = sorted[sorted.length - 1];
+
+        return `
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                  <li style="color: #047857;">
+                    <strong>Performance Leader:</strong> ${leader?.domain || 'N/A'} with ${leader?.performance || 0}/100 
+                    (LCP: ${leader?.lcp || 'N/A'}, CLS: ${leader?.cls || 'N/A'})
+                  </li>
+                  <li style="color: #047857;">
+                    <strong>Industry Benchmark:</strong> Average performance ${avgPerf}/100, SEO ${avgSeo}/100.
+                    ${avgPerf >= 80 ? 'High-performance competitive landscape.' : avgPerf >= 60 ? 'Room for technical optimization.' : 'Technical opportunity - outperform with speed.'}
+                  </li>
+                  <li style="color: #047857;">
+                    <strong>Core Web Vitals:</strong> ${goodLCP} sites pass LCP, ${poorLCP} need improvement.
+                    ${poorLCP > 0 ? 'Technical edge available through CWV optimization.' : 'Strong baseline - focus on content & authority.'}
+                  </li>
+                  <li style="color: #047857;">
+                    <strong>Quick Win:</strong> ${worstPerf?.domain || 'N/A'} has lowest performance (${worstPerf?.performance || 0}) ï¿½ 
+                    easier to outrank with ${worstPerf?.lcp !== 'N/A' && parseFloat(worstPerf?.lcp) > 4 ? 'better LCP optimization.' : 'overall performance improvements.'}
+                  </li>
+                </ul>
+              `;
+      })()}
+          </div>
+          
+          <!-- --------------------------------------------------------------- -->
+          <!-- RAW DATA COMPARISON SECTION - Performance Deep Dive            -->
+          <!-- --------------------------------------------------------------- -->
+          
+          ${renderRawDataComparisonTable({
+            title: 'Core Web Vitals Comparison',
+            icon: '?',
+            description: 'Direct comparison of PageSpeed metrics and Core Web Vitals',
+            competitors: competitors,
+            geminiInsight: 'Core Web Vitals analysis: ' + (() => {
+              const sorted = [...perfData].sort((a, b) => b.performance - a.performance);
+              const leader = sorted[0];
+              const laggard = sorted[sorted.length - 1];
+              const perfGap = (leader?.performance || 0) - (laggard?.performance || 0);
+              return (leader?.domain || 'Leader') + ' achieves ' + (leader?.performance || 0) + '/100 PageSpeed score. ' +
+                (perfGap > 30 ? 'Significant ' + perfGap + '-point performance gap exists - major ranking factor opportunity. ' : '') +
+                (avgPerf >= 80 ? 'Industry maintains strong CWV baseline - marginal gains harder to achieve. ' : 
+                 avgPerf >= 50 ? 'Mixed CWV compliance - technical optimization can differentiate. ' : 
+                 'Weak CWV across industry - first mover with performance wins.');
+            })(),
+            dataExtractor: (c, idx, realMetrics) => {
+              const d = perfData[idx] || {};
+              const rm = realMetrics || {};
+              return {
+                performance: d.performance || rm.technical?.performance || 0,
+                seo: d.seo || rm.technical?.seo || 0,
+                lcp: d.lcp || rm.technical?.lcp || 'N/A',
+                fcp: d.fcp || rm.technical?.fcp || 'N/A',
+                cls: d.cls || rm.technical?.cls || 'N/A',
+                tbt: d.tbt || rm.technical?.tbt || 'N/A',
+                tti: d.tti || rm.technical?.tti || 'N/A'
+              };
+            },
+            fields: [
+              { key: 'performance', label: 'Performance Score', icon: '⚡', type: 'score', compareMode: 'highest' },
+              { key: 'seo', label: 'SEO Score', icon: '🔍', type: 'score', compareMode: 'highest' },
+              { key: 'lcp', label: 'LCP', icon: '⏱️', type: 'text', compareMode: 'closest_to_2.5' },
+              { key: 'fcp', label: 'FCP', icon: '🖌️', type: 'text', compareMode: 'closest_to_1.8' },
+              { key: 'cls', label: 'CLS', icon: '📏', type: 'text', compareMode: 'closest_to_0' },
+              { key: 'tbt', label: 'TBT (ms)', icon: '⏳', type: 'text', compareMode: 'closest_to_0' }
+            ]
+          })}
+          
+          ${renderRawDataComparisonTable({
+            title: 'Predictive Ranking Factors',
+            icon: '🔮',
+            description: 'Correlation analysis of technical performance with authority metrics',
+            competitors: competitors,
+            geminiInsight: 'Predictive ranking analysis: ' + (() => {
+              const risers = perfData.filter(p => p.predictedRankDelta > 1);
+              const decliners = perfData.filter(p => p.predictedRankDelta < -1);
+              return risers.length + ' competitors trending upward, ' + decliners.length + ' showing decline signals. ' +
+                (risers.length > 0 ? 'Rising: ' + risers.map(r => r.domain).slice(0, 2).join(', ') + '. ' : '') +
+                'Key indicators: Performance + Authority + Content freshness. ' +
+                'Watch competitors with high authority but poor performance for overtake opportunities.';
+            })(),
+            dataExtractor: (c, idx, realMetrics) => {
+              const d = perfData[idx] || {};
+              const rm = realMetrics || {};
+              const perf = d.performance || rm.technical?.performance || 0;
+              const seoScore = d.seo || rm.technical?.seo || 0;
+              const pageRank = d.pageRank || rm.authority?.pageRank || 0;
+              return {
+                predictedDelta: d.predictedRankDelta || (perf > 80 && pageRank > 5 ? 2 : perf < 50 ? -1 : 0),
+                pageRank: pageRank,
+                performance: perf,
+                combinedScore: Math.round((perf * 0.3 + seoScore * 0.3 + pageRank * 4))
+              };
+            },
+            fields: [
+              { key: 'predictedDelta', label: 'Predicted Δ', icon: '📈', type: 'number', compareMode: 'highest' },
+              { key: 'pageRank', label: 'PageRank', icon: '🏆', type: 'score', compareMode: 'highest' },
+              { key: 'performance', label: 'Performance', icon: '⚡', type: 'score', compareMode: 'highest' },
+              { key: 'combinedScore', label: 'Combined Score', icon: '🎯', type: 'score', compareMode: 'highest' }
+            ]
+          })}
+        `;
+
+        // ---------------------------------------------------------------------------
+        // 1% STRATEGY EXECUTION PANEL - Performance & Predictive Focus
+        // P1: FAQ Schema for Core Web Vitals questions | P5: Hub & Spoke for speed topics
+        // AIO Survival: Technical performance tools that AIs can't replicate
+        // ---------------------------------------------------------------------------
+        html += (() => {
+          // Extract performance-focused PAA questions
+          const paaQuestions = gemini?.paaQuestions || 
+            competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || [])
+              .filter(q => /speed|performance|cwv|lcp|fcp|cls|loading|fast|slow|pagespeed|core web vitals/i.test(q?.question || q))
+              .slice(0, 8);
+          
+          // Extract performance keywords
+          const perfKeywords = gemini?.keywords || 
+            gemini?.targetKeywords?.slice(0, 15) || 
+            ['page speed optimization', 'core web vitals', 'lcp improvement', 'cls fix', 'fcp optimization', 'site speed', 'loading time'];
+          
+          // Brand entity for schema linking
+          const brandEntity = {
+            name: data.projectName || data.domain || 'Your Brand',
+            url: data.targetUrl || `https://${data.domain}`,
+            id: '#organization'
+          };
+          
+          return renderOnePercentStrategyPanel({
+            paaQuestions,
+            keywords: perfKeywords,
+            brandEntity,
+            competitors,
+            tabName: 'performance'
+          });
+        })();
+
+    metricsDiv.innerHTML = html;
+    setTimeout(() => renderPredictiveCharts(perfData), 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // STRATEGIC OPPORTUNITY TAB - Elite v2.0 (REAL DATA)
+  // Uses: All data sources to identify gaps, opportunities, and strategic moves
+  // ---------------------------------------------------------------------------
+  function populateStrategicOpportunitiesTab(data) {
+    console.log('🎯 Populating Strategic Opportunities Tab (Elite v2.0)...');
+
+    let metricsDiv = document.getElementById('comp-opportunities-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="opportunities"]') ||
+        document.getElementById('panel-strategicOpportunities');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside opportunities panel');
+        metricsDiv = panel.querySelector('#comp-opportunities-metrics') || (() => {
+          const c = document.createElement('div'); c.id = 'comp-opportunities-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+          const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+          return c;
+        })();
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Strategic Opportunities tab containers not found');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // Extract opportunity metrics from competitor data
+    const opportunities = [];
+    
+    competitors.forEach(comp => {
+      const metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { content: {}, authority: {}, technical: {} };
+      const domain = comp.domain || comp.url;
+      
+      // Content gaps
+      if ((metrics.content?.wordCount || 0) < 1500) {
+        opportunities.push({
+          type: 'Content Gap',
+          icon: '📝',
+          target: domain,
+          description: 'Thin content detected - opportunity to outrank with comprehensive content',
+          impact: 'High',
+          effort: 'Medium',
+          priority: 90
+        });
+      }
+      
+      // Technical weaknesses
+      if ((metrics.technical?.seo || 0) < 70) {
+        opportunities.push({
+          type: 'Technical SEO',
+          icon: '🔧',
+          target: domain,
+          description: 'Technical SEO gaps - improve Core Web Vitals and on-page optimization',
+          impact: 'Medium',
+          effort: 'Low',
+          priority: 75
+        });
+      }
+      
+      // Authority building
+      if ((metrics.authority?.pageRank || 0) < 3) {
+        opportunities.push({
+          type: 'Authority Gap',
+          icon: '⭐',
+          target: domain,
+          description: 'Low domain authority - strategic link building opportunity',
+          impact: 'High',
+          effort: 'High',
+          priority: 85
+        });
+      }
+      
+      // Schema gaps
+      const schemaCount = metrics.content?.schemaTypes?.length || 0;
+      if (schemaCount < 2) {
+        opportunities.push({
+          type: 'Schema Gap',
+          icon: '🏗️',
+          target: domain,
+          description: 'Limited structured data - implement comprehensive schema markup',
+          impact: 'Medium',
+          effort: 'Low',
+          priority: 70
+        });
+      }
+    });
+
+    // Sort by priority
+    opportunities.sort((a, b) => b.priority - a.priority);
+
+    const highImpact = opportunities.filter(o => o.impact === 'High').length;
+    const lowEffort = opportunities.filter(o => o.effort === 'Low').length;
+
+    let html = `
+      <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">🎯 Strategic Opportunities</h3>
+      
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+        <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Competitive Intelligence Analysis</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Total Opportunities</div>
+            <div style="font-size: 24px; font-weight: 700;">${opportunities.length}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">High Impact</div>
+            <div style="font-size: 24px; font-weight: 700;">${highImpact}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Quick Wins</div>
+            <div style="font-size: 24px; font-weight: 700;">${lowEffort}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Competitors Analyzed</div>
+            <div style="font-size: 24px; font-weight: 700;">${competitors.length}</div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+        ${opportunities.slice(0, 8).map((opp, idx) => `
+          <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid ${opp.impact === 'High' ? '#ef4444' : opp.impact === 'Medium' ? '#f59e0b' : '#22c55e'};">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;">${opp.icon}</span>
+                <div>
+                  <div style="font-weight: 700; font-size: 15px; color: #1f2937;">${opp.type}</div>
+                  <div style="font-size: 12px; color: #6b7280;">${opp.target}</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <span style="background: ${opp.impact === 'High' ? '#fee2e2' : opp.impact === 'Medium' ? '#fef3c7' : '#dcfce7'}; color: ${opp.impact === 'High' ? '#991b1b' : opp.impact === 'Medium' ? '#92400e' : '#166534'}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;">
+                  ${opp.impact} Impact
+                </span>
+                <span style="background: #f3f4f6; color: #374151; padding: 4px 10px; border-radius: 6px; font-size: 11px;">
+                  ${opp.effort} Effort
+                </span>
+              </div>
+            </div>
+            <p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.5;">${opp.description}</p>
+          </div>
+        `).join('')}
+      </div>
+      
+      ${opportunities.length === 0 ? `
+        <div style="background: #f0fdf4; padding: 24px; border-radius: 16px; text-align: center;">
+          <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
+          <h4 style="margin: 0 0 8px; color: #166534;">No Major Gaps Found</h4>
+          <p style="margin: 0; color: #15803d; font-size: 14px;">
+            Your competitive landscape is well-optimized. Focus on incremental improvements.
+          </p>
+        </div>
+      ` : ''}
+      
+      <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #10b981;">
+        <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #065f46;">💡 Strategic Recommendations</h5>
+        <ul style="margin: 0; padding-left: 20px;">
+          <li style="margin-bottom: 8px; color: #047857; line-height: 1.5;">
+            <strong>Quick Wins First:</strong> Target ${lowEffort} low-effort opportunities for immediate gains
+          </li>
+          <li style="margin-bottom: 8px; color: #047857; line-height: 1.5;">
+            <strong>High Impact Focus:</strong> ${highImpact} high-impact opportunities identified
+          </li>
+          <li style="margin-bottom: 8px; color: #047857; line-height: 1.5;">
+            <strong>Systematic Approach:</strong> Address opportunities by priority score for maximum ROI
+          </li>
+        </ul>
+      </div>
+    `;
+
+    metricsDiv.innerHTML = html;
+  }
+
+  // ---------------------------------------------------------------------------
+  // WINDOW EXPORTS
+  // ---------------------------------------------------------------------------
+  window.populateAuthorityInfluenceTab = populateAuthorityInfluenceTab;
+  window.populatePerformancePredictiveTab = populatePerformancePredictiveTab;
+  window.populateStrategicOpportunitiesTab = populateStrategicOpportunitiesTab;
+
+  console.log('✅ [DIAG] UI_Tab_AuthPerf.html: Script block END - All exports complete');
+  console.log('   populateAuthorityInfluenceTab:', typeof window.populateAuthorityInfluenceTab);
+  console.log('   populatePerformancePredictiveTab:', typeof window.populatePerformancePredictiveTab);
+  console.log('   populateStrategicOpportunitiesTab:', typeof window.populateStrategicOpportunitiesTab);
+
+</script>

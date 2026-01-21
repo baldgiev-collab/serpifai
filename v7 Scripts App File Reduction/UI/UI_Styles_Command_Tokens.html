@@ -1,0 +1,105 @@
+<!--
+  UI_Styles_Command_Tokens.html
+  COMMAND CANVAS THEME TOKEN SYSTEM v1.0
+  
+  WCAG AA Compliant (4.5:1 contrast minimum)
+  Themes: Light, Dark, Aurora, Neon
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 1: THEME CONTRAST TOKENS — WCAG AA Compliant
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Light theme defaults */
+  --cmd-page-bg: #FFFFFF;
+  --cmd-card-bg: #F8FAFC;
+  --cmd-header-bg: #FFFFFF;
+  --cmd-header-text: #0F172A;
+  --cmd-body-text: #1E293B;
+  --cmd-muted-text: #64748B;
+  --cmd-border: #E2E8F0;
+  --cmd-chart-bg: #FAFBFC;
+}
+
+/* LIGHT — Slate-900 on White-50 */
+[data-theme="light"] {
+  --cmd-page-bg: #FFFFFF;
+  --cmd-card-bg: #F8FAFC;
+  --cmd-header-bg: #FFFFFF;
+  --cmd-header-text: #0F172A;
+  --cmd-body-text: #1E293B;
+  --cmd-muted-text: #64748B;
+  --cmd-border: #E2E8F0;
+  --cmd-chart-bg: #FAFBFC;
+}
+
+/* DARK — White-100 on Deep Indigo */
+[data-theme="dark"] {
+  --cmd-page-bg: #0F172A;
+  --cmd-card-bg: #1E293B;
+  --cmd-header-bg: #312E81;
+  --cmd-header-text: #F1F5F9;
+  --cmd-body-text: #E2E8F0;
+  --cmd-muted-text: #94A3B8;
+  --cmd-border: #334155;
+  --cmd-chart-bg: #1E293B;
+}
+
+/* AURORA — Emerald-400 with text-shadow for glassmorphism */
+[data-theme="aurora"] {
+  --cmd-page-bg: rgba(15,23,42,0.6);
+  --cmd-card-bg: rgba(255,255,255,0.05);
+  --cmd-header-bg: rgba(15,23,42,0.7);
+  --cmd-header-text: #34D399;
+  --cmd-body-text: #F1F5F9;
+  --cmd-muted-text: rgba(241,245,249,0.7);
+  --cmd-border: rgba(52,211,153,0.15);
+  --cmd-chart-bg: rgba(255,255,255,0.04);
+  --cmd-blur: 12px;
+  --cmd-text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+/* NEON — Amber headers, white-silver body */
+[data-theme="neon"] {
+  --cmd-page-bg: #000000;
+  --cmd-card-bg: #0A0A0A;
+  --cmd-header-bg: #000000;
+  --cmd-header-text: #F59E0B;
+  --cmd-body-text: #E6EDF3;
+  --cmd-muted-text: rgba(230,237,243,0.7);
+  --cmd-border: rgba(245,158,11,0.15);
+  --cmd-chart-bg: #0A0A0A;
+  --cmd-glow: 0 0 20px rgba(245,158,11,0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 2: TRIADIC ACCENT SYSTEM — Semantic Colors
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Danger/Risk — Magenta (Kill Moves, Brittleness) */
+  --accent-danger: #EC4899;
+  --accent-danger-glow: 0 0 16px rgba(236,72,153,0.3);
+  
+  /* Velocity/Speed — Cyan (Momentum, Growth) */
+  --accent-velocity: #22D3EE;
+  --accent-velocity-glow: 0 0 16px rgba(34,211,238,0.3);
+  
+  /* Value/Opportunity — Emerald (Moat, Assets) */
+  --accent-value: #34D399;
+  --accent-value-glow: 0 0 16px rgba(52,211,153,0.3);
+  
+  /* Authority/Trust — Indigo (E-E-A-T, Citations) */
+  --accent-authority: #6366F1;
+  --accent-authority-glow: 0 0 16px rgba(99,102,241,0.3);
+}
+
+/* Theme-specific accent adjustments */
+[data-theme="neon"] {
+  --accent-danger: #FF6B9D;
+  --accent-velocity: #60F0FF;
+  --accent-value: #4ADE80;
+  --accent-authority: #A78BFA;
+}
+</style>

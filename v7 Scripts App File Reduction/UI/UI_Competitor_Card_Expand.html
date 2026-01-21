@@ -1,0 +1,194 @@
+<!--
+  UI_Competitor_Card_Expand.html
+  CARD EXPAND/COLLAPSE v1.0
+  
+  Detailed metrics revealed on expand:
+  Keyword overlap, backlink profile, content quality scores
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 29: CARD EXPAND/COLLAPSE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.comp-card-details {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: var(--cmd-header-bg);
+}
+
+.comp-card.is-expanded .comp-card-details {
+  max-height: 500px;
+}
+
+.comp-card-details-inner {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--cmd-border);
+}
+
+/* Detail Sections */
+.comp-detail-section {
+  margin-bottom: 1rem;
+}
+
+.comp-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.comp-detail-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cmd-muted-text);
+  margin: 0 0 0.5rem;
+}
+
+/* Keyword Tags */
+.comp-keyword-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.comp-keyword-tag {
+  font-size: 0.6875rem;
+  padding: 4px 8px;
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 6px;
+  color: var(--cmd-body-text);
+}
+
+/* Backlink Summary */
+.comp-backlink-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.375rem 0;
+  font-size: 0.8125rem;
+}
+
+.comp-backlink-label {
+  color: var(--cmd-muted-text);
+}
+
+.comp-backlink-value {
+  font-weight: 600;
+  color: var(--cmd-body-text);
+}
+
+/* Quality Score Bar */
+.comp-quality-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.comp-quality-track {
+  flex: 1;
+  height: 8px;
+  background: var(--cmd-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.comp-quality-fill {
+  height: 100%;
+  background: var(--accent-value);
+  border-radius: 4px;
+}
+
+.comp-quality-score {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--accent-value);
+  min-width: 40px;
+  text-align: right;
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPANDED DETAILS RENDERER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CompetitorDetails = {
+  
+  /**
+   * Render expanded details section
+   */
+  render(competitor) {
+    const keywords = competitor.keywordOverlap || competitor.sharedKeywords || [];
+    const backlinks = competitor.backlinks || {};
+    const quality = competitor.contentQuality || competitor.qualityScore || 0;
+    
+    return `
+      <div class="comp-card-details">
+        <div class="comp-card-details-inner">
+          ${this.renderKeywords(keywords)}
+          ${this.renderBacklinks(backlinks)}
+          ${this.renderQuality(quality)}
+        </div>
+      </div>
+    `;
+  },
+  
+  renderKeywords(keywords) {
+    if (!keywords.length) return '';
+    
+    const tags = keywords.slice(0, 8).map(kw => 
+      `<span class="comp-keyword-tag">${kw}</span>`
+    ).join('');
+    
+    return `
+      <div class="comp-detail-section">
+        <h6 class="comp-detail-title">Keyword Overlap</h6>
+        <div class="comp-keyword-list">${tags}</div>
+      </div>
+    `;
+  },
+  
+  renderBacklinks(backlinks) {
+    const total = backlinks.total || backlinks.count || 0;
+    const referring = backlinks.referringDomains || 0;
+    
+    if (!total && !referring) return '';
+    
+    return `
+      <div class="comp-detail-section">
+        <h6 class="comp-detail-title">Backlink Profile</h6>
+        <div class="comp-backlink-stat">
+          <span class="comp-backlink-label">Total Backlinks</span>
+          <span class="comp-backlink-value">${MetricRow.formatValue(total)}</span>
+        </div>
+        <div class="comp-backlink-stat">
+          <span class="comp-backlink-label">Referring Domains</span>
+          <span class="comp-backlink-value">${MetricRow.formatValue(referring)}</span>
+        </div>
+      </div>
+    `;
+  },
+  
+  renderQuality(score) {
+    if (!score) return '';
+    
+    const percent = typeof score === 'number' ? score : parseInt(score, 10);
+    
+    return `
+      <div class="comp-detail-section">
+        <h6 class="comp-detail-title">Content Quality</h6>
+        <div class="comp-quality-bar">
+          <div class="comp-quality-track">
+            <div class="comp-quality-fill" style="width: ${percent}%"></div>
+          </div>
+          <span class="comp-quality-score">${percent}%</span>
+        </div>
+      </div>
+    `;
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.CompetitorDetails = CompetitorDetails;
+}
+</script>

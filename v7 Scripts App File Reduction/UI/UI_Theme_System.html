@@ -1,0 +1,563 @@
+<!--
+═══════════════════════════════════════════════════════════════════════════════
+UI_Theme_System.html
+FORENSIC UPGRADE v7.1 — Complete Theme Consciousness System
+
+PURPOSE: Centralized theme management with localStorage persistence,
+         smooth transitions, and theme-aware chart recoloring.
+
+THEMES:
+  - LIGHT: Professional (Slate/Deep Indigo)
+  - DARK: Sophisticated (Charcoal/Electric Cyan)
+  - AURORA: Organic-High-Tech (Deep Sea/Northern Emerald)
+  - NEON: Aggressive-Forensic (Jet Black/High-Vibrancy Amber)
+
+DATE: 2026-01-18
+═══════════════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME TRANSITION SMOOTHING
+   ═══════════════════════════════════════════════════════════════════════════ */
+body,
+body *:not(.no-transition) {
+  transition: 
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.15s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Disable transitions during initial load to prevent flash */
+body.theme-loading,
+body.theme-loading * {
+  transition: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME TOGGLE COMPONENT STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.theme-toggle-container {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-soft, #f3f4f6);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--surface-glass, rgba(255,255,255,0.5));
+  color: var(--text-secondary, #374151);
+}
+
+.theme-toggle-btn.active {
+  background: var(--brand-primary, #4f45e3);
+  color: white;
+  box-shadow: 0 2px 8px rgba(79, 69, 227, 0.25);
+}
+
+.theme-toggle-btn .theme-icon {
+  font-size: 14px;
+}
+
+/* Compact mode for sidebar */
+.theme-toggle-container.compact {
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+}
+
+.theme-toggle-container.compact .theme-toggle-btn {
+  justify-content: flex-start;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME COLOR TOKENS (Extended)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* LIGHT THEME: Professional Elegance */
+html[data-theme="light"],
+body[data-theme="light"] {
+  /* Surfaces */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  
+  /* Text */
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-inverse: #f8fafc;
+  
+  /* Accents */
+  --accent-primary: #4f46e5;
+  --accent-secondary: #818cf8;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  --accent-info: #3b82f6;
+  
+  /* Borders */
+  --border-light: #f1f5f9;
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
+  
+  /* Charts */
+  --chart-grid: #e2e8f0;
+  --chart-axis: #64748b;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-text: #1e293b;
+  
+  /* Semantic colors */
+  --positive: #10b981;
+  --negative: #ef4444;
+  --neutral: #64748b;
+  --opportunity: #3b82f6;
+  --warning: #f59e0b;
+}
+
+/* DARK THEME: Sophisticated Depth */
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  /* Surfaces */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-inverse: #0f172a;
+  
+  /* Accents */
+  --accent-primary: #06b6d4;
+  --accent-secondary: #22d3ee;
+  --accent-success: #34d399;
+  --accent-warning: #fbbf24;
+  --accent-danger: #f87171;
+  --accent-info: #60a5fa;
+  
+  /* Borders */
+  --border-light: #1e293b;
+  --border-default: #334155;
+  --border-strong: #475569;
+  
+  /* Charts */
+  --chart-grid: #334155;
+  --chart-axis: #94a3b8;
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-text: #f1f5f9;
+  
+  /* Semantic colors */
+  --positive: #34d399;
+  --negative: #f87171;
+  --neutral: #94a3b8;
+  --opportunity: #60a5fa;
+  --warning: #fbbf24;
+}
+
+/* AURORA THEME: Organic High-Tech */
+html[data-theme="aurora"],
+body[data-theme="aurora"] {
+  /* Surfaces */
+  --bg-primary: #042f2e;
+  --bg-secondary: #0d3d56;
+  --bg-tertiary: #115e59;
+  
+  /* Text */
+  --text-primary: #ccfbf1;
+  --text-secondary: #99f6e4;
+  --text-muted: #5eead4;
+  --text-inverse: #042f2e;
+  
+  /* Accents */
+  --accent-primary: #10b981;
+  --accent-secondary: #34d399;
+  --accent-success: #6ee7b7;
+  --accent-warning: #fcd34d;
+  --accent-danger: #fca5a5;
+  --accent-info: #67e8f9;
+  
+  /* Borders */
+  --border-light: #0d3d56;
+  --border-default: #115e59;
+  --border-strong: #14b8a6;
+  
+  /* Charts */
+  --chart-grid: #115e59;
+  --chart-axis: #5eead4;
+  --chart-tooltip-bg: #0d3d56;
+  --chart-tooltip-text: #ccfbf1;
+  
+  /* Semantic colors */
+  --positive: #6ee7b7;
+  --negative: #fca5a5;
+  --neutral: #5eead4;
+  --opportunity: #67e8f9;
+  --warning: #fcd34d;
+}
+
+/* NEON THEME: Aggressive Forensic */
+html[data-theme="neon"],
+body[data-theme="neon"] {
+  /* Surfaces */
+  --bg-primary: #09090b;
+  --bg-secondary: #18181b;
+  --bg-tertiary: #27272a;
+  
+  /* Text */
+  --text-primary: #fafafa;
+  --text-secondary: #d4d4d8;
+  --text-muted: #a1a1aa;
+  --text-inverse: #09090b;
+  
+  /* Accents */
+  --accent-primary: #f59e0b;
+  --accent-secondary: #fbbf24;
+  --accent-success: #84cc16;
+  --accent-warning: #fb923c;
+  --accent-danger: #f43f5e;
+  --accent-info: #a78bfa;
+  
+  /* Borders */
+  --border-light: #27272a;
+  --border-default: #3f3f46;
+  --border-strong: #52525b;
+  
+  /* Charts */
+  --chart-grid: #3f3f46;
+  --chart-axis: #a1a1aa;
+  --chart-tooltip-bg: #27272a;
+  --chart-tooltip-text: #fafafa;
+  
+  /* Semantic colors */
+  --positive: #84cc16;
+  --negative: #f43f5e;
+  --neutral: #a1a1aa;
+  --opportunity: #a78bfa;
+  --warning: #fb923c;
+  
+  /* Special neon glow effects */
+  --neon-glow: 0 0 20px rgba(245, 158, 11, 0.4);
+}
+
+/* Neon theme special effects */
+body[data-theme="neon"] .elite-table th,
+body[data-theme="neon"] .forensic-table th {
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+body[data-theme="neon"] .summary-card,
+body[data-theme="neon"] .metric-card {
+  box-shadow: var(--neon-glow);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHART THEME PALETTES
+   ═══════════════════════════════════════════════════════════════════════════ */
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * SERPIFAI THEME SYSTEM v7.1
+ * Complete theme management with persistence and chart integration
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+(function() {
+  'use strict';
+  
+  const STORAGE_KEY = 'serpifai-theme';
+  const DEFAULT_THEME = 'light';
+  const VALID_THEMES = ['light', 'dark', 'aurora', 'neon'];
+  
+  // Theme metadata for UI
+  const THEME_META = {
+    light: {
+      name: 'Light',
+      icon: '☀️',
+      description: 'Professional & Clean',
+      chartColors: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+    },
+    dark: {
+      name: 'Dark',
+      icon: '🌙',
+      description: 'Sophisticated Depth',
+      chartColors: ['#06b6d4', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#38bdf8']
+    },
+    aurora: {
+      name: 'Aurora',
+      icon: '🌌',
+      description: 'Organic High-Tech',
+      chartColors: ['#10b981', '#06b6d4', '#fcd34d', '#f472b6', '#818cf8', '#2dd4bf']
+    },
+    neon: {
+      name: 'Neon',
+      icon: '⚡',
+      description: 'Aggressive Forensic',
+      chartColors: ['#f59e0b', '#84cc16', '#f43f5e', '#a78bfa', '#fb923c', '#22d3ee']
+    }
+  };
+  
+  /**
+   * Initialize theme system on page load
+   * Applies saved theme before first paint to prevent flash
+   */
+  function initThemeSystem() {
+    // Add loading class to prevent transition flash
+    document.body.classList.add('theme-loading');
+    
+    // Get saved theme or detect system preference
+    const savedTheme = localStorage.getItem(STORAGE_KEY);
+    let theme = savedTheme;
+    
+    if (!theme || !VALID_THEMES.includes(theme)) {
+      // Check system preference
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        theme = 'dark';
+      } else {
+        theme = DEFAULT_THEME;
+      }
+    }
+    
+    // Apply theme immediately
+    applyTheme(theme, false);
+    
+    // Remove loading class after a small delay to enable transitions
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.body.classList.remove('theme-loading');
+      });
+    });
+    
+    // Listen for system theme changes
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem(STORAGE_KEY)) {
+          applyTheme(e.matches ? 'dark' : 'light', true);
+        }
+      });
+    }
+    
+    console.log('🎨 Theme system initialized:', theme);
+  }
+  
+  /**
+   * Apply a theme to the document
+   * @param {string} theme - Theme name
+   * @param {boolean} save - Whether to persist to localStorage
+   */
+  function applyTheme(theme, save = true) {
+    if (!VALID_THEMES.includes(theme)) {
+      console.warn('Invalid theme:', theme);
+      theme = DEFAULT_THEME;
+    }
+    
+    // Apply to both html and body for maximum compatibility
+    document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+    
+    // Update toggle buttons
+    document.querySelectorAll('.theme-toggle-btn, .btn-theme').forEach(btn => {
+      const target = btn.getAttribute('data-theme-target') || btn.getAttribute('data-theme');
+      btn.classList.toggle('active', target === theme);
+    });
+    
+    // Persist to localStorage
+    if (save) {
+      localStorage.setItem(STORAGE_KEY, theme);
+    }
+    
+    // Dispatch custom event for chart recoloring
+    window.dispatchEvent(new CustomEvent('themechange', { 
+      detail: { 
+        theme: theme,
+        meta: THEME_META[theme]
+      }
+    }));
+    
+    // Update Chart.js defaults if available
+    if (window.Chart) {
+      updateChartTheme(theme);
+    }
+    
+    console.log('🎨 Theme applied:', theme);
+  }
+  
+  /**
+   * Update Chart.js global defaults for the current theme
+   * @param {string} theme - Current theme name
+   */
+  function updateChartTheme(theme) {
+    const meta = THEME_META[theme];
+    const style = getComputedStyle(document.body);
+    
+    // Update Chart.js defaults
+    Chart.defaults.color = style.getPropertyValue('--chart-axis').trim() || '#64748b';
+    Chart.defaults.borderColor = style.getPropertyValue('--chart-grid').trim() || '#e2e8f0';
+    
+    if (Chart.defaults.plugins && Chart.defaults.plugins.legend) {
+      Chart.defaults.plugins.legend.labels.color = style.getPropertyValue('--text-secondary').trim();
+    }
+    
+    // Update all existing charts
+    Chart.helpers.each(Chart.instances, (chart) => {
+      if (chart && chart.options) {
+        // Update scales
+        if (chart.options.scales) {
+          Object.values(chart.options.scales).forEach(scale => {
+            if (scale.grid) {
+              scale.grid.color = style.getPropertyValue('--chart-grid').trim();
+            }
+            if (scale.ticks) {
+              scale.ticks.color = style.getPropertyValue('--chart-axis').trim();
+            }
+          });
+        }
+        
+        // Trigger redraw
+        chart.update('none');
+      }
+    });
+  }
+  
+  /**
+   * Get the current theme
+   * @returns {string} Current theme name
+   */
+  function getCurrentTheme() {
+    return document.body.getAttribute('data-theme') || 
+           localStorage.getItem(STORAGE_KEY) || 
+           DEFAULT_THEME;
+  }
+  
+  /**
+   * Get theme metadata
+   * @param {string} theme - Theme name (optional, defaults to current)
+   * @returns {object} Theme metadata
+   */
+  function getThemeMeta(theme) {
+    theme = theme || getCurrentTheme();
+    return THEME_META[theme] || THEME_META[DEFAULT_THEME];
+  }
+  
+  /**
+   * Get chart colors for current theme
+   * @returns {string[]} Array of hex color codes
+   */
+  function getChartColors() {
+    const theme = getCurrentTheme();
+    return THEME_META[theme]?.chartColors || THEME_META.light.chartColors;
+  }
+  
+  /**
+   * Cycle to the next theme
+   */
+  function cycleTheme() {
+    const current = getCurrentTheme();
+    const currentIndex = VALID_THEMES.indexOf(current);
+    const nextIndex = (currentIndex + 1) % VALID_THEMES.length;
+    applyTheme(VALID_THEMES[nextIndex]);
+  }
+  
+  /**
+   * Render theme toggle buttons
+   * @param {string} containerId - ID of container element
+   * @param {object} options - Configuration options
+   */
+  function renderThemeToggle(containerId, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const compact = options.compact || false;
+    const showLabels = options.showLabels !== false;
+    const currentTheme = getCurrentTheme();
+    
+    let html = `<div class="theme-toggle-container${compact ? ' compact' : ''}">`;
+    
+    VALID_THEMES.forEach(theme => {
+      const meta = THEME_META[theme];
+      const isActive = theme === currentTheme;
+      html += `
+        <button 
+          class="theme-toggle-btn${isActive ? ' active' : ''}" 
+          data-theme-target="${theme}"
+          title="${meta.description}"
+        >
+          <span class="theme-icon">${meta.icon}</span>
+          ${showLabels ? `<span class="theme-label">${meta.name}</span>` : ''}
+        </button>
+      `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Attach click handlers
+    container.querySelectorAll('.theme-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyTheme(btn.getAttribute('data-theme-target'));
+      });
+    });
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PUBLIC API
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Override existing switchTheme with enhanced version
+  window.switchTheme = applyTheme;
+  
+  // Expose additional utilities
+  window.ThemeSystem = {
+    init: initThemeSystem,
+    apply: applyTheme,
+    get: getCurrentTheme,
+    getMeta: getThemeMeta,
+    getChartColors: getChartColors,
+    cycle: cycleTheme,
+    render: renderThemeToggle,
+    themes: VALID_THEMES,
+    meta: THEME_META
+  };
+  
+  // Initialize on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initThemeSystem);
+  } else {
+    initThemeSystem();
+  }
+  
+  // Also run immediately for earliest possible application
+  // (handles script in <head> before body exists)
+  if (document.body) {
+    const savedTheme = localStorage.getItem(STORAGE_KEY);
+    if (savedTheme && VALID_THEMES.includes(savedTheme)) {
+      document.body.setAttribute('data-theme', savedTheme);
+    }
+  }
+  
+})();
+</script>

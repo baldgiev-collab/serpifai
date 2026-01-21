@@ -72,32 +72,32 @@ define('OPEN_PAGERANK_API_KEY', $_ENV['OPEN_PAGERANK_API_KEY'] ?? '');
 // Apps Script Project
 define('APPS_SCRIPT_PROJECT_ID', '1ccoF_sOZRHtmee-M9h-MZ5AZMS44tq2SpZYf5TJvRMErBOIEM489tpY3');
 
-// Credit pricing
+// Credit pricing - Updated for Gemini 3 token usage (~20K prompt + ~65K response per stage)
 define('CREDIT_COSTS', [
-    // Workflow stages
-    'workflow_stage1' => 5,
-    'workflow_stage2' => 10,
-    'workflow_stage3' => 15,
-    'workflow_stage4' => 20,
-    'workflow_stage5' => 25,
+    // Workflow stages - Increased costs based on actual Gemini token usage
+    'workflow_stage1' => 125,  // Market Position Analysis - ~85K total tokens
+    'workflow_stage2' => 80,  // Competitive Intelligence - ~90K total tokens
+    'workflow_stage3' => 80,  // Content Strategy - ~100K total tokens
+    'workflow_stage4' => 100,  // Technical Roadmap - ~110K total tokens
+    'workflow_stage5' => 60,  // Executive Summary - ~120K total tokens
     
     // Competitor analysis
-    'competitor_analysis' => 30,
-    'comp:elite_full' => 100,
-    'comp:orchestrate' => 50,
-    'comp:analyze' => 30,
-    'comp:save_results' => 0,
-    'comp:load_results' => 0,
-    'comp:list_projects' => 0,
-    'comp:delete_results' => 0,
+    'competitor_analysis' => 60,
+    'comp:elite_full' => 225,
+    'comp:orchestrate' => 60,
+    'comp:analyze' => 45,
+    'comp:save_results' => 3,
+    'comp:load_results' => 3,
+    'comp:list_projects' => 3,
+    'comp:delete_results' => 3,
     
     // Fetcher
-    'fetcher_single' => 1,
-    'fetcher_multi' => 2,
-    'fetch:single' => 1,
+    'fetcher_single' => 6,
+    'fetcher_multi' => 10,
+    'fetch:single' => 6,
     
     // Content generation
-    'content_generate' => 15
+    'content_generate' => 45
 ]);
 
 /**
@@ -147,22 +147,25 @@ function getDbConnection() {
 
 /**
  * Log activity to database
+ * v28.8: Changed to use governance_logs table (activity_logs doesn't exist)
  */
 function logActivity($userId, $action, $details = []) {
     try {
         $db = getDB();
+        // v28.8: Use governance_logs table instead of activity_logs
         $stmt = $db->prepare("
-            INSERT INTO activity_logs (user_id, action, details, ip_address, created_at)
-            VALUES (:user_id, :action, :details, :ip, NOW())
+            INSERT INTO governance_logs (user_id, action_type, request_data, ip_address, created_at)
+            VALUES (?, ?, ?, ?, NOW())
         ");
         
         $stmt->execute([
-            'user_id' => $userId,
-            'action' => $action,
-            'details' => json_encode($details),
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+            $userId,
+            $action,
+            json_encode($details),
+            $_SERVER['REMOTE_ADDR'] ?? 'unknown'
         ]);
     } catch (Exception $e) {
+        // Silent fail - activity logging shouldn't block main operations
         error_log("Failed to log activity: " . $e->getMessage());
     }
 }

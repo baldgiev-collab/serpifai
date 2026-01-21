@@ -1,0 +1,481 @@
+<script>
+// V45 - RESTORED FULL AUTHORITY, PERFORMANCE & OPPORTUNITIES TABS
+console.log('[V45] UI_Tab_AuthPerf_V45.html LOADING...');
+window._v45_authperf_loaded = true;
+
+// ===========================================================================
+// AUTHORITY & INFLUENCE TAB - Elite v2.0
+// ===========================================================================
+function populateAuthorityInfluenceTab(data) {
+  console.log('🏆 Populating Authority Tab (Elite v2.0 - REAL DATA)...');
+
+  var metricsDiv = document.getElementById('comp-authority-metrics');
+
+  if (!metricsDiv) {
+    var panel = document.querySelector('[data-comp-panel="authority"]') || document.getElementById('panel-authorityInfluence');
+    if (panel) {
+      metricsDiv = document.createElement('div');
+      metricsDiv.id = 'comp-authority-metrics';
+      metricsDiv.className = 'comp-metrics-grid';
+      metricsDiv.style.width = '100%';
+      panel.insertBefore(metricsDiv, panel.firstChild);
+    }
+  }
+
+  if (!metricsDiv) {
+    console.warn('⚠️ Authority tab containers not found');
+    return;
+  }
+
+  var competitors = data.competitors || [];
+
+  if (competitors.length === 0) {
+    metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+    return;
+  }
+
+  // Extract REAL authority metrics
+  var authorityData = competitors.map(function(comp) {
+    var metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { content: {}, authority: {} };
+    var stages = comp.stages || {};
+    var opr = (stages.openPageRank && stages.openPageRank.data) || (comp.apiData && comp.apiData.openPageRank) || {};
+    var synth = comp.synthesized || {};
+    var content = synth.content || {};
+    var pm = comp.processedMetrics || {};
+
+    var pageRank = opr.page_rank_decimal || (metrics.authority && metrics.authority.pageRank) || 0;
+    var globalRank = opr.rank || (metrics.authority && metrics.authority.rank) || 0;
+    var internalLinks = (content.internalLinks && content.internalLinks.length) || (metrics.content && metrics.content.internalLinks) || 0;
+    var externalLinks = (content.externalLinks && content.externalLinks.length) || (metrics.content && metrics.content.externalLinks) || 0;
+    var backlinks = pm.backlinks || (metrics.authority && metrics.authority.refDomains * 10) || externalLinks * 2 || 0;
+    var refDomainsRaw = opr.referring_domains || pm.referringDomains || pm.refDomains || 0;
+    var refDomainsEstimated = Math.round(backlinks / 10) || Math.round(externalLinks * 0.3);
+    var refDomains = refDomainsRaw > 0 ? refDomainsRaw : refDomainsEstimated;
+    var refDomainsSource = refDomainsRaw > 0 ? 'API' : 'Estimated';
+
+    var topicalRelevance = 30;
+    var wordCount = (metrics.content && metrics.content.wordCount) || 0;
+    if (wordCount >= 3000) topicalRelevance += 25;
+    else if (wordCount >= 1500) topicalRelevance += 15;
+    if (internalLinks >= 20) topicalRelevance += 20;
+    else if (internalLinks >= 10) topicalRelevance += 10;
+    if (pageRank >= 5) topicalRelevance += 25;
+    else if (pageRank >= 3) topicalRelevance += 15;
+    topicalRelevance = Math.min(100, topicalRelevance);
+
+    var hasRealData = pageRank > 0 || internalLinks > 0;
+
+    return {
+      domain: comp.domain || comp.url,
+      pageRank: pageRank,
+      globalRank: globalRank,
+      internalLinks: internalLinks,
+      externalLinks: externalLinks,
+      refDomains: refDomains,
+      refDomainsSource: refDomainsSource,
+      backlinks: backlinks,
+      topicalRelevance: topicalRelevance,
+      wordCount: wordCount,
+      dataSource: pageRank > 0 ? 'OpenPageRank API' : (internalLinks > 0 ? 'PHP Fetcher' : 'Pending')
+    };
+  });
+
+  var avgPageRank = (authorityData.reduce(function(a, b) { return a + b.pageRank; }, 0) / authorityData.length);
+  var totalInternalLinks = authorityData.reduce(function(a, b) { return a + b.internalLinks; }, 0);
+  var totalExternalLinks = authorityData.reduce(function(a, b) { return a + b.externalLinks; }, 0);
+  var totalRefDomains = authorityData.reduce(function(a, b) { return a + b.refDomains; }, 0);
+  var totalBacklinks = authorityData.reduce(function(a, b) { return a + b.backlinks; }, 0);
+  var avgTopical = Math.round(authorityData.reduce(function(a, b) { return a + b.topicalRelevance; }, 0) / authorityData.length);
+
+  var html = '';
+  html += '<h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">🏆 Authority & Influence Analysis</h3>';
+  
+  // Header
+  html += '<div style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">';
+  html += '<p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: OpenPageRank API, PHP Fetcher Link Analysis</p>';
+  html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px;">';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg PageRank</div><div style="font-size: 24px; font-weight: 700;">' + avgPageRank.toFixed(1) + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Total Ref. Domains</div><div style="font-size: 24px; font-weight: 700;">' + totalRefDomains.toLocaleString() + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Total Backlinks</div><div style="font-size: 24px; font-weight: 700;">' + totalBacklinks.toLocaleString() + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Internal Links</div><div style="font-size: 24px; font-weight: 700;">' + totalInternalLinks + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">External Links</div><div style="font-size: 24px; font-weight: 700;">' + totalExternalLinks + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Avg Topical Auth</div><div style="font-size: 24px; font-weight: 700;">' + avgTopical + '%</div></div>';
+  html += '</div></div>';
+  
+  // Table
+  html += '<div style="overflow-x: auto;"><table class="comp-table" style="margin-bottom: 30px;"><thead><tr>';
+  html += '<th>Competitor</th><th>PageRank</th><th>Global Rank</th><th>Ref. Domains</th><th>Backlinks</th><th>Internal Links</th><th>External Links</th><th>Topical Auth</th><th>Data Source</th>';
+  html += '</tr></thead><tbody>';
+  
+  authorityData.forEach(function(auth) {
+    var refDomainsColor = auth.refDomains >= 1000 ? '#22c55e' : auth.refDomains >= 100 ? '#3b82f6' : auth.refDomains >= 10 ? '#f59e0b' : '#6b7280';
+    var backlinksColor = auth.backlinks >= 10000 ? '#22c55e' : auth.backlinks >= 1000 ? '#3b82f6' : auth.backlinks >= 100 ? '#f59e0b' : '#6b7280';
+    
+    html += '<tr>';
+    html += '<td><strong>' + auth.domain + '</strong></td>';
+    html += '<td><span style="font-weight: 700; color: ' + (auth.pageRank >= 5 ? '#22c55e' : auth.pageRank >= 3 ? '#3b82f6' : '#f59e0b') + ';">' + (auth.pageRank > 0 ? auth.pageRank.toFixed(1) : 'N/A') + '</span></td>';
+    html += '<td>' + (auth.globalRank > 0 ? '#' + auth.globalRank.toLocaleString() : 'N/A') + '</td>';
+    html += '<td style="text-align: center;"><div style="display: flex; align-items: center; justify-content: center; gap: 4px;"><span style="font-weight: 600; color: ' + refDomainsColor + ';">' + (auth.refDomains > 0 ? auth.refDomains.toLocaleString() : 'N/A') + '</span><span style="font-size: 9px; padding: 2px 4px; border-radius: 3px; background: ' + (auth.refDomainsSource === 'API' ? '#dcfce7' : '#fef3c7') + '; color: ' + (auth.refDomainsSource === 'API' ? '#166534' : '#92400e') + ';">' + auth.refDomainsSource + '</span></div></td>';
+    html += '<td style="text-align: center;"><span style="font-weight: 600; color: ' + backlinksColor + ';">' + (auth.backlinks > 0 ? auth.backlinks.toLocaleString() : 'N/A') + '</span></td>';
+    html += '<td style="text-align: center;">' + auth.internalLinks + '</td>';
+    html += '<td style="text-align: center;">' + auth.externalLinks + '</td>';
+    html += '<td><div style="display: flex; align-items: center; gap: 6px;"><div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;"><div style="width: ' + auth.topicalRelevance + '%; height: 100%; background: #eab308;"></div></div><span style="font-size: 11px; font-weight: 600;">' + auth.topicalRelevance + '%</span></div></td>';
+    html += '<td style="text-align: center;">' + (typeof getDataSourceBadge === 'function' ? getDataSourceBadge(auth.dataSource) : auth.dataSource) + '</td>';
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table></div>';
+  
+  // Charts
+  html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">';
+  html += '<div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">';
+  html += '<h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">📈 PageRank Comparison</h5>';
+  html += '<div style="height: 220px;"><canvas id="chart-authority-velocity"></canvas></div></div>';
+  html += '<div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">';
+  html += '<h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🔗 Link Architecture</h5>';
+  html += '<div style="height: 220px;"><canvas id="chart-authority-network"></canvas></div></div></div>';
+  
+  // Insights
+  var sorted = authorityData.slice().sort(function(a, b) { return b.pageRank - a.pageRank; });
+  var leader = sorted[0];
+  var totalLinks = authorityData.reduce(function(a, b) { return a + b.internalLinks + b.externalLinks; }, 0);
+  
+  html += '<div style="background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #eab308;">';
+  html += '<h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #92400e;">💡 Authority Building Insights</h5>';
+  html += '<ul style="margin: 0; padding-left: 20px;">';
+  html += '<li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;"><strong>Authority Leader:</strong> ' + (leader ? leader.domain : 'N/A') + ' with PageRank ' + (leader ? leader.pageRank.toFixed(1) : 0) + (leader && leader.globalRank ? ' (Global Rank: #' + leader.globalRank.toLocaleString() + ')' : '') + '</li>';
+  html += '<li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;"><strong>Industry Average:</strong> PageRank ' + avgPageRank.toFixed(1) + '. ' + (avgPageRank >= 5 ? 'High authority landscape - focus on quality backlinks.' : avgPageRank >= 3 ? 'Moderate authority - link building recommended.' : 'Lower authority market - opportunity for rapid gains.') + '</li>';
+  html += '<li style="margin-bottom: 8px; color: #78350f; line-height: 1.5;"><strong>Link Architecture:</strong> ' + totalLinks + ' total links analyzed. ' + (leader && leader.internalLinks >= 20 ? 'Strong internal linking structures present.' : 'Opportunity to improve internal link equity flow.') + '</li>';
+  html += '</ul></div>';
+
+  metricsDiv.innerHTML = html;
+  
+  setTimeout(function() {
+    if (typeof renderAuthorityCharts === 'function') {
+      renderAuthorityCharts(authorityData);
+    }
+  }, 300);
+
+  console.log('✅ Authority Tab populated successfully (V45)');
+}
+
+// ===========================================================================
+// PERFORMANCE & PREDICTIVE TAB - Elite v3.0
+// ===========================================================================
+function populatePerformancePredictiveTab(data) {
+  console.log('📈 Populating Performance Tab (Elite v3.0 - PageSpeed)...');
+
+  var metricsDiv = document.getElementById('comp-performance-metrics');
+
+  if (!metricsDiv) {
+    var panel = document.querySelector('[data-comp-panel="performance"]') || document.getElementById('panel-performancePredictive');
+    if (panel) {
+      metricsDiv = document.createElement('div');
+      metricsDiv.id = 'comp-performance-metrics';
+      metricsDiv.className = 'comp-metrics-grid';
+      metricsDiv.style.width = '100%';
+      panel.insertBefore(metricsDiv, panel.firstChild);
+    }
+  }
+
+  if (!metricsDiv) {
+    console.warn('⚠️ Performance tab containers not found');
+    return;
+  }
+
+  var competitors = data.competitors || [];
+
+  if (competitors.length === 0) {
+    metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+    return;
+  }
+
+  // Extract REAL performance metrics
+  var perfData = competitors.map(function(comp) {
+    var metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { technical: {}, content: {}, authority: {} };
+    var stages = comp.stages || {};
+    var apiData = comp.apiData || {};
+    var pageSpeedStage = (stages.pageSpeed && stages.pageSpeed.data) || {};
+    var pageSpeedAPI = apiData.pageSpeed || {};
+    var pageSpeed = Object.assign({}, pageSpeedAPI, pageSpeedStage);
+    var opr = (stages.openPageRank && stages.openPageRank.data) || apiData.openPageRank || {};
+
+    var scores = pageSpeed.scores || {};
+    var psMetrics = pageSpeed.metrics || {};
+    var cwv = pageSpeed.core_web_vitals || {};
+    var lhr = pageSpeed.lighthouseResult || {};
+    var audits = lhr.audits || {};
+    var categories = lhr.categories || {};
+
+    var fcp = psMetrics.first_contentful_paint || (audits['first-contentful-paint'] && audits['first-contentful-paint'].numericValue) || 0;
+    var lcp = cwv.lcp || psMetrics.largest_contentful_paint || (audits['largest-contentful-paint'] && audits['largest-contentful-paint'].numericValue) || 0;
+    var cls = cwv.cls || psMetrics.cumulative_layout_shift || (audits['cumulative-layout-shift'] && audits['cumulative-layout-shift'].numericValue) || 0;
+    var tbt = psMetrics.total_blocking_time || (audits['total-blocking-time'] && audits['total-blocking-time'].numericValue) || 0;
+    var tti = psMetrics.time_to_interactive || (audits['interactive'] && audits['interactive'].numericValue) || 0;
+
+    var performance = scores.performance || Math.round((categories.performance && categories.performance.score || 0) * 100) || (metrics.technical && metrics.technical.performance) || 0;
+    var seoScore = scores.seo || Math.round((categories.seo && categories.seo.score || 0) * 100) || (metrics.technical && metrics.technical.seo) || 0;
+    var accessibility = scores.accessibility || Math.round((categories.accessibility && categories.accessibility.score || 0) * 100) || (metrics.technical && metrics.technical.accessibility) || 0;
+
+    var hasPageSpeedData = performance > 0 || lcp > 0 || Object.keys(scores).length > 0;
+
+    var trafficQuality = 30;
+    if (performance >= 80) trafficQuality += 25;
+    else if (performance >= 60) trafficQuality += 15;
+    if (seoScore >= 80) trafficQuality += 20;
+    else if (seoScore >= 60) trafficQuality += 10;
+    if (metrics.content && metrics.content.wordCount >= 2000) trafficQuality += 15;
+    if (opr.page_rank_decimal >= 5) trafficQuality += 10;
+    trafficQuality = Math.min(100, trafficQuality);
+
+    var predictedRankDelta = 0;
+    if (performance >= 80 && seoScore >= 80) predictedRankDelta += 2;
+    if (metrics.content && metrics.content.wordCount >= 2000 && metrics.content.internalLinks >= 10) predictedRankDelta += 2;
+    if (opr.page_rank_decimal >= 6) predictedRankDelta += 1;
+    if (performance < 50) predictedRankDelta -= 2;
+    if (lcp > 4000) predictedRankDelta -= 1;
+
+    var dataSource = 'Pending';
+    if (hasPageSpeedData) dataSource = 'PageSpeed API';
+    else if (metrics.content && metrics.content.wordCount > 0) dataSource = 'PHP Fetcher';
+
+    return {
+      domain: comp.domain || comp.url,
+      trafficQuality: trafficQuality,
+      predictedRankDelta: predictedRankDelta,
+      performance: performance,
+      seo: seoScore,
+      accessibility: accessibility,
+      lcp: lcp > 0 ? (lcp / 1000).toFixed(2) : 'N/A',
+      fcp: fcp > 0 ? (fcp / 1000).toFixed(2) : 'N/A',
+      cls: cls > 0 ? cls.toFixed(3) : 'N/A',
+      tbt: tbt > 0 ? Math.round(tbt) : 'N/A',
+      tti: tti > 0 ? (tti / 1000).toFixed(1) : 'N/A',
+      pageRank: opr.page_rank_decimal || 0,
+      hasPageSpeedData: hasPageSpeedData,
+      dataSource: dataSource
+    };
+  });
+
+  var avgPerf = Math.round(perfData.reduce(function(a, b) { return a + b.performance; }, 0) / perfData.length);
+  var avgSeo = Math.round(perfData.reduce(function(a, b) { return a + b.seo; }, 0) / perfData.length);
+  var avgTraffic = Math.round(perfData.reduce(function(a, b) { return a + b.trafficQuality; }, 0) / perfData.length);
+  var goodLCP = perfData.filter(function(p) { return p.lcp !== 'N/A' && parseFloat(p.lcp) <= 2.5; }).length;
+  var hasRealPSData = perfData.filter(function(p) { return p.hasPageSpeedData; }).length;
+
+  var html = '';
+  html += '<h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">📊 Performance & Core Web Vitals Analysis</h3>';
+  
+  // Header
+  html += '<div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">';
+  html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">';
+  html += '<p style="margin: 0; font-size: 12px; opacity: 0.9;">📊 Data: Google PageSpeed Insights API | OpenPageRank API</p>';
+  html += '<span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 11px;">' + hasRealPSData + '/' + perfData.length + ' sites with PageSpeed data</span>';
+  html += '</div>';
+  html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px;">';
+  html += '<div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;"><div style="font-size: 11px; opacity: 0.85;">Avg Performance</div><div style="font-size: 22px; font-weight: 700;">' + avgPerf + '/100</div></div>';
+  html += '<div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;"><div style="font-size: 11px; opacity: 0.85;">Avg SEO</div><div style="font-size: 22px; font-weight: 700;">' + avgSeo + '/100</div></div>';
+  html += '<div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;"><div style="font-size: 11px; opacity: 0.85;">Good LCP</div><div style="font-size: 22px; font-weight: 700;">' + goodLCP + '/' + perfData.length + '</div></div>';
+  html += '<div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px;"><div style="font-size: 11px; opacity: 0.85;">Traffic Quality</div><div style="font-size: 22px; font-weight: 700;">' + avgTraffic + '/100</div></div>';
+  html += '</div></div>';
+  
+  // Table
+  html += '<div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; overflow-x: auto;">';
+  html += '<h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700;">📊 Detailed Performance Metrics</h4>';
+  html += '<table style="width: 100%; border-collapse: collapse; font-size: 12px;"><thead>';
+  html += '<tr style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">';
+  html += '<th style="text-align: left; padding: 12px 8px; border-bottom: 2px solid #6ee7b7;">Competitor</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">Perf</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">SEO</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">A11y</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">LCP</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">FCP</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">CLS</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">TBT</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">Rank Δ</th>';
+  html += '<th style="text-align: center; padding: 12px 6px; border-bottom: 2px solid #6ee7b7;">Source</th>';
+  html += '</tr></thead><tbody>';
+
+  function getScoreColor(score) { return score >= 90 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444'; }
+  function getLCPColor(lcp) { return lcp === 'N/A' ? '#9ca3af' : parseFloat(lcp) <= 2.5 ? '#22c55e' : parseFloat(lcp) <= 4 ? '#f59e0b' : '#ef4444'; }
+  function getFCPColor(fcp) { return fcp === 'N/A' ? '#9ca3af' : parseFloat(fcp) <= 1.8 ? '#22c55e' : parseFloat(fcp) <= 3 ? '#f59e0b' : '#ef4444'; }
+  function getCLSColor(cls) { return cls === 'N/A' ? '#9ca3af' : parseFloat(cls) <= 0.1 ? '#22c55e' : parseFloat(cls) <= 0.25 ? '#f59e0b' : '#ef4444'; }
+  function getTBTColor(tbt) { return tbt === 'N/A' ? '#9ca3af' : parseInt(tbt) <= 200 ? '#22c55e' : parseInt(tbt) <= 600 ? '#f59e0b' : '#ef4444'; }
+
+  perfData.forEach(function(perf, idx) {
+    var deltaColor = perf.predictedRankDelta > 0 ? '#22c55e' : perf.predictedRankDelta < 0 ? '#ef4444' : '#6b7280';
+    html += '<tr style="border-bottom: 1px solid #f1f5f9;' + (idx % 2 === 1 ? ' background: #f9fafb;' : '') + '">';
+    html += '<td style="padding: 12px 8px;"><div style="font-weight: 600; color: #1f2937;">' + perf.domain + '</div><div style="font-size: 10px; color: #666;">DA: ' + perf.pageRank.toFixed(1) + '</div></td>';
+    html += '<td style="text-align: center; padding: 12px 6px;"><span style="display: inline-block; width: 36px; padding: 4px; border-radius: 4px; font-weight: 700; color: white; background: ' + getScoreColor(perf.performance) + ';">' + (perf.performance || '-') + '</span></td>';
+    html += '<td style="text-align: center; padding: 12px 6px;"><span style="display: inline-block; width: 36px; padding: 4px; border-radius: 4px; font-weight: 700; color: white; background: ' + getScoreColor(perf.seo) + ';">' + (perf.seo || '-') + '</span></td>';
+    html += '<td style="text-align: center; padding: 12px 6px;"><span style="display: inline-block; width: 36px; padding: 4px; border-radius: 4px; font-weight: 700; color: white; background: ' + getScoreColor(perf.accessibility) + ';">' + (perf.accessibility || '-') + '</span></td>';
+    html += '<td style="text-align: center; padding: 12px 6px; color: ' + getLCPColor(perf.lcp) + '; font-weight: 600;">' + perf.lcp + (perf.lcp !== 'N/A' ? 's' : '') + '</td>';
+    html += '<td style="text-align: center; padding: 12px 6px; color: ' + getFCPColor(perf.fcp) + '; font-weight: 600;">' + perf.fcp + (perf.fcp !== 'N/A' ? 's' : '') + '</td>';
+    html += '<td style="text-align: center; padding: 12px 6px; color: ' + getCLSColor(perf.cls) + '; font-weight: 600;">' + perf.cls + '</td>';
+    html += '<td style="text-align: center; padding: 12px 6px; color: ' + getTBTColor(perf.tbt) + '; font-weight: 600;">' + perf.tbt + (perf.tbt !== 'N/A' ? 'ms' : '') + '</td>';
+    html += '<td style="text-align: center; padding: 12px 6px; color: ' + deltaColor + '; font-weight: 700;">' + (perf.predictedRankDelta > 0 ? '+' : '') + perf.predictedRankDelta + '</td>';
+    html += '<td style="text-align: center; padding: 12px 6px;">' + (typeof getDataSourceBadge === 'function' ? getDataSourceBadge(perf.dataSource) : perf.dataSource) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  html += '<div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 11px; color: #64748b;">';
+  html += '<strong>Legend:</strong> <span style="color: #22c55e;">● Good</span> | <span style="color: #f59e0b;">● Needs Work</span> | <span style="color: #ef4444;">● Poor</span> | LCP ≤2.5s | FCP ≤1.8s | CLS ≤0.1 | TBT ≤200ms</div>';
+  html += '</div>';
+  
+  // Charts
+  html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">';
+  html += '<div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">';
+  html += '<h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🔮 Predictive Rank Forecast</h5>';
+  html += '<div style="height: 220px;"><canvas id="chart-predictive-forecast"></canvas></div></div>';
+  html += '<div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">';
+  html += '<h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🎯 Performance vs Quality Matrix</h5>';
+  html += '<div style="height: 220px;"><canvas id="chart-predictive-quality"></canvas></div></div></div>';
+  
+  // Insights
+  var sorted = perfData.slice().sort(function(a, b) { return b.performance - a.performance; });
+  var leader = sorted[0];
+  
+  html += '<div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #10b981;">';
+  html += '<h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #065f46;">💡 Performance Intelligence Insights</h5>';
+  html += '<ul style="margin: 0; padding-left: 20px; line-height: 1.8;">';
+  html += '<li style="color: #047857;"><strong>Performance Leader:</strong> ' + (leader ? leader.domain : 'N/A') + ' with ' + (leader ? leader.performance : 0) + '/100 (LCP: ' + (leader ? leader.lcp : 'N/A') + ')</li>';
+  html += '<li style="color: #047857;"><strong>Industry Benchmark:</strong> Avg performance ' + avgPerf + '/100, SEO ' + avgSeo + '/100. ' + (avgPerf >= 80 ? 'High-performance landscape.' : avgPerf >= 60 ? 'Room for optimization.' : 'Technical opportunity - outperform with speed.') + '</li>';
+  html += '<li style="color: #047857;"><strong>Core Web Vitals:</strong> ' + goodLCP + ' sites pass LCP. ' + (goodLCP < perfData.length ? 'Technical edge available through CWV optimization.' : 'Strong baseline - focus on content & authority.') + '</li>';
+  html += '</ul></div>';
+
+  metricsDiv.innerHTML = html;
+  
+  setTimeout(function() {
+    if (typeof renderPredictiveCharts === 'function') {
+      renderPredictiveCharts(perfData);
+    }
+  }, 300);
+
+  console.log('✅ Performance Tab populated successfully (V45)');
+}
+
+// ===========================================================================
+// STRATEGIC OPPORTUNITIES TAB - Elite v2.0
+// ===========================================================================
+function populateStrategicOpportunitiesTab(data) {
+  console.log('🎯 Populating Strategic Opportunities Tab (Elite v2.0)...');
+
+  var metricsDiv = document.getElementById('comp-opportunities-metrics');
+
+  if (!metricsDiv) {
+    var panel = document.querySelector('[data-comp-panel="opportunities"]') || document.getElementById('panel-strategicOpportunities');
+    if (panel) {
+      metricsDiv = document.createElement('div');
+      metricsDiv.id = 'comp-opportunities-metrics';
+      metricsDiv.className = 'comp-metrics-grid';
+      metricsDiv.style.width = '100%';
+      panel.insertBefore(metricsDiv, panel.firstChild);
+    }
+  }
+
+  if (!metricsDiv) {
+    console.warn('⚠️ Opportunities tab containers not found');
+    return;
+  }
+
+  var competitors = data.competitors || [];
+
+  if (competitors.length === 0) {
+    metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+    return;
+  }
+
+  var opportunities = [];
+  
+  competitors.forEach(function(comp) {
+    var metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { content: {}, authority: {}, technical: {} };
+    var domain = comp.domain || comp.url;
+    
+    if ((metrics.content && metrics.content.wordCount || 0) < 1500) {
+      opportunities.push({ type: 'Content Gap', icon: '📝', target: domain, description: 'Thin content detected - opportunity to outrank with comprehensive content', impact: 'High', effort: 'Medium', priority: 90 });
+    }
+    if ((metrics.technical && metrics.technical.seo || 0) < 70) {
+      opportunities.push({ type: 'Technical SEO', icon: '🔧', target: domain, description: 'Technical SEO gaps - improve Core Web Vitals and on-page optimization', impact: 'Medium', effort: 'Low', priority: 75 });
+    }
+    if ((metrics.authority && metrics.authority.pageRank || 0) < 3) {
+      opportunities.push({ type: 'Authority Gap', icon: '⭐', target: domain, description: 'Low domain authority - strategic link building opportunity', impact: 'High', effort: 'High', priority: 85 });
+    }
+    var schemaCount = (metrics.content && metrics.content.schemaTypes && metrics.content.schemaTypes.length) || 0;
+    if (schemaCount < 2) {
+      opportunities.push({ type: 'Schema Gap', icon: '🏗️', target: domain, description: 'Limited structured data - implement comprehensive schema markup', impact: 'Medium', effort: 'Low', priority: 70 });
+    }
+  });
+
+  opportunities.sort(function(a, b) { return b.priority - a.priority; });
+
+  var highImpact = opportunities.filter(function(o) { return o.impact === 'High'; }).length;
+  var lowEffort = opportunities.filter(function(o) { return o.effort === 'Low'; }).length;
+
+  var html = '';
+  html += '<h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">🎯 Strategic Opportunities</h3>';
+  
+  // Header
+  html += '<div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">';
+  html += '<p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Competitive Intelligence Analysis</p>';
+  html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Total Opportunities</div><div style="font-size: 24px; font-weight: 700;">' + opportunities.length + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">High Impact</div><div style="font-size: 24px; font-weight: 700;">' + highImpact + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Quick Wins</div><div style="font-size: 24px; font-weight: 700;">' + lowEffort + '</div></div>';
+  html += '<div><div style="font-size: 12px; opacity: 0.85;">Competitors Analyzed</div><div style="font-size: 24px; font-weight: 700;">' + competitors.length + '</div></div>';
+  html += '</div></div>';
+  
+  // Opportunity cards
+  html += '<div style="display: grid; gap: 16px; margin-bottom: 24px;">';
+  opportunities.slice(0, 8).forEach(function(opp) {
+    var impactColor = opp.impact === 'High' ? '#ef4444' : opp.impact === 'Medium' ? '#f59e0b' : '#22c55e';
+    var impactBg = opp.impact === 'High' ? '#fee2e2' : opp.impact === 'Medium' ? '#fef3c7' : '#dcfce7';
+    var impactText = opp.impact === 'High' ? '#991b1b' : opp.impact === 'Medium' ? '#92400e' : '#166534';
+    
+    html += '<div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid ' + impactColor + ';">';
+    html += '<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">';
+    html += '<div style="display: flex; align-items: center; gap: 12px;">';
+    html += '<span style="font-size: 24px;">' + opp.icon + '</span>';
+    html += '<div><div style="font-weight: 700; font-size: 15px; color: #1f2937;">' + opp.type + '</div><div style="font-size: 12px; color: #6b7280;">' + opp.target + '</div></div>';
+    html += '</div>';
+    html += '<div style="display: flex; gap: 8px;">';
+    html += '<span style="background: ' + impactBg + '; color: ' + impactText + '; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;">' + opp.impact + ' Impact</span>';
+    html += '<span style="background: #f3f4f6; color: #374151; padding: 4px 10px; border-radius: 6px; font-size: 11px;">' + opp.effort + ' Effort</span>';
+    html += '</div></div>';
+    html += '<p style="margin: 0; font-size: 13px; color: #4b5563; line-height: 1.5;">' + opp.description + '</p>';
+    html += '</div>';
+  });
+  html += '</div>';
+  
+  if (opportunities.length === 0) {
+    html += '<div style="background: #f0fdf4; padding: 24px; border-radius: 16px; text-align: center;">';
+    html += '<div style="font-size: 48px; margin-bottom: 12px;">✅</div>';
+    html += '<h4 style="margin: 0 0 8px; color: #166534;">No Major Gaps Found</h4>';
+    html += '<p style="margin: 0; color: #15803d; font-size: 14px;">Your competitive landscape is well-optimized. Focus on incremental improvements.</p>';
+    html += '</div>';
+  }
+  
+  // Insights
+  html += '<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #10b981;">';
+  html += '<h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #065f46;">💡 Strategic Recommendations</h5>';
+  html += '<ul style="margin: 0; padding-left: 20px;">';
+  html += '<li style="margin-bottom: 8px; color: #047857; line-height: 1.5;"><strong>Quick Wins First:</strong> Target ' + lowEffort + ' low-effort opportunities for immediate gains</li>';
+  html += '<li style="margin-bottom: 8px; color: #047857; line-height: 1.5;"><strong>High Impact Focus:</strong> ' + highImpact + ' high-impact opportunities identified</li>';
+  html += '<li style="margin-bottom: 8px; color: #047857; line-height: 1.5;"><strong>Systematic Approach:</strong> Address opportunities by priority score for maximum ROI</li>';
+  html += '</ul></div>';
+
+  metricsDiv.innerHTML = html;
+
+  console.log('✅ Opportunities Tab populated successfully (V45)');
+}
+
+// Window exports
+window.populateAuthorityInfluenceTab = populateAuthorityInfluenceTab;
+window.populatePerformancePredictiveTab = populatePerformancePredictiveTab;
+window.populateStrategicOpportunitiesTab = populateStrategicOpportunitiesTab;
+
+console.log('[V45] UI_Tab_AuthPerf_V45 EXPORTS COMPLETE');
+console.log('[V45] populateAuthorityInfluenceTab:', typeof window.populateAuthorityInfluenceTab);
+console.log('[V45] populatePerformancePredictiveTab:', typeof window.populatePerformancePredictiveTab);
+console.log('[V45] populateStrategicOpportunitiesTab:', typeof window.populateStrategicOpportunitiesTab);
+</script>

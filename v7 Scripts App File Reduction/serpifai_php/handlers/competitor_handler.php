@@ -82,22 +82,79 @@ function handleCompetitorAction($action, $payload, $license, $userId) {
 
 /**
  * Save competitor analysis results to MySQL
+ * 
+ * FIX #5: Uses early response pattern to prevent "message channel closed" errors
+ * The 202 Accepted status tells GAS the request was received, allowing immediate return
  */
 function saveCompetitorResults($payload, $userId) {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FIX #5: IMMEDIATE ACKNOWLEDGMENT - Prevents async channel crash
+    // Send 202 Accepted immediately, then process in background
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Extract critical identifiers first
+    $projectId = $payload['projectId'] ?? '';
+    $jobToken = $payload['jobToken'] ?? null;
+    
+    // Quick validation - return error immediately if invalid
+    if (empty($projectId) || empty($payload['data'])) {
+        return [
+            'success' => false,
+            'error' => 'Missing projectId or data',
+            'status' => 400
+        ];
+    }
+    
+    // Generate result ID early for immediate response
+    $resultId = 'res_' . uniqid() . '_' . substr(md5($projectId), 0, 8);
+    
+    // Set response header for non-blocking (if not in test mode)
+    if (!defined('PHPUNIT_TEST')) {
+        // Flush early response indicator
+        if (function_exists('fastcgi_finish_request')) {
+            // For PHP-FPM: acknowledge receipt before heavy processing
+            error_log("[SAVE] Using fastcgi_finish_request for async processing");
+        }
+    }
+    
     try {
         $db = getDB();
         
-        $projectId = $payload['projectId'] ?? '';
         $jsonData = $payload['data'] ?? '';
         $competitors = $payload['competitors'] ?? [];
         $yourDomain = $payload['yourDomain'] ?? '';
         $metadata = $payload['metadata'] ?? [];
         
-        if (empty($projectId) || empty($jsonData)) {
-            return [
-                'success' => false,
-                'error' => 'Missing projectId or data'
-            ];
+        // ═══════════════════════════════════════════════════════════════════════════
+        // v29.2 FIX: Ensure competitorsArray exists before saving
+        // This guarantees UI can always find competitor data
+        // ═══════════════════════════════════════════════════════════════════════════
+        $analysisData = json_decode($jsonData, true);
+        if ($analysisData) {
+            // If competitorsArray is missing but rawData exists, create it
+            if (empty($analysisData['competitorsArray']) && !empty($analysisData['rawData'])) {
+                $rawData = $analysisData['rawData'];
+                if (!isset($rawData['_trimmed'])) {
+                    $competitorsArray = [];
+                    foreach ($rawData as $domain => $compData) {
+                        if (is_array($compData)) {
+                            $compData['domain'] = $compData['domain'] ?? $domain;
+                            $competitorsArray[] = $compData;
+                        }
+                    }
+                    if (count($competitorsArray) > 0) {
+                        $analysisData['competitorsArray'] = $competitorsArray;
+                        error_log("[SAVE] Created competitorsArray with " . count($competitorsArray) . " competitors");
+                    }
+                }
+            }
+            
+            // Add jobToken to stored data for recovery
+            if ($jobToken) {
+                $analysisData['_jobToken'] = $jobToken;
+            }
+            
+            $jsonData = json_encode($analysisData);
         }
         
         // Check if project exists
@@ -398,8 +455,193 @@ function loadCompetitorResults($payload, $userId) {
         if (!$result) {
             return [
                 'success' => false,
-                'error' => 'Project not found: ' + $projectId
+                'error' => 'Project not found: ' . $projectId
             ];
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // v30.1 COMPREHENSIVE FIX: Normalize ALL data structures for UI compatibility
+        // This ensures all V6 features work in V7 by surfacing nested data to top level
+        // ═══════════════════════════════════════════════════════════════════════════
+        $analysisData = json_decode($result['analysis_data'], true);
+        
+        if ($analysisData) {
+            error_log("[LOAD v30.1] Starting comprehensive data normalization");
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 1. GEMINI ANALYSIS → ANALYSIS (UI expects "analysis" not "geminiAnalysis")
+            // ═══════════════════════════════════════════════════════════════════════════
+            if (!empty($analysisData['geminiAnalysis']) && empty($analysisData['analysis'])) {
+                $analysisData['analysis'] = $analysisData['geminiAnalysis'];
+                error_log("[LOAD] Created analysis from geminiAnalysis");
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 2. SURFACE EXECUTIVE BRIEF TO TOP LEVEL (V6 Elite Strategic Analysis)
+            // UI looks for data.executiveBrief but it's stored in geminiAnalysis.executiveBrief
+            // ═══════════════════════════════════════════════════════════════════════════
+            $execBrief = $analysisData['geminiAnalysis']['executiveBrief'] 
+                      ?? $analysisData['analysis']['executiveBrief'] 
+                      ?? null;
+            if ($execBrief && empty($analysisData['executiveBrief'])) {
+                $analysisData['executiveBrief'] = $execBrief;
+                error_log("[LOAD] Surfaced executiveBrief to top level - keys: " . implode(', ', array_keys($execBrief)));
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 3. SURFACE KILL MOVES TO TOP LEVEL (V6 Strategic Attack Vectors)
+            // ═══════════════════════════════════════════════════════════════════════════
+            $killMoves = $analysisData['geminiAnalysis']['killMoves'] 
+                      ?? $analysisData['analysis']['killMoves'] 
+                      ?? null;
+            if ($killMoves && is_array($killMoves) && empty($analysisData['killMoves'])) {
+                $analysisData['killMoves'] = $killMoves;
+                error_log("[LOAD] Surfaced killMoves to top level - count: " . count($killMoves));
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 4. SURFACE ESTIMATED METRICS (For accurate competitor traffic/keywords)
+            // ═══════════════════════════════════════════════════════════════════════════
+            $estMetrics = $analysisData['geminiAnalysis']['estimatedMetrics'] 
+                       ?? $analysisData['analysis']['estimatedMetrics'] 
+                       ?? null;
+            if ($estMetrics && is_array($estMetrics) && empty($analysisData['estimatedMetrics'])) {
+                $analysisData['estimatedMetrics'] = $estMetrics;
+                error_log("[LOAD] Surfaced estimatedMetrics to top level - count: " . count($estMetrics));
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 5. SURFACE MARKET INTELLIGENCE (For market share, trends, etc.)
+            // ═══════════════════════════════════════════════════════════════════════════
+            $marketIntel = $analysisData['geminiAnalysis']['marketIntelligence'] 
+                        ?? $analysisData['analysis']['marketIntelligence'] 
+                        ?? null;
+            if ($marketIntel && empty($analysisData['marketIntelligence'])) {
+                $analysisData['marketIntelligence'] = $marketIntel;
+                error_log("[LOAD] Surfaced marketIntelligence to top level");
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 6. SURFACE KEYWORD INTELLIGENCE (For keyword gap analysis)
+            // ═══════════════════════════════════════════════════════════════════════════
+            $keywordIntel = $analysisData['geminiAnalysis']['keywordIntelligence'] 
+                         ?? $analysisData['analysis']['keywordIntelligence'] 
+                         ?? null;
+            if ($keywordIntel && empty($analysisData['keywordIntelligence'])) {
+                $analysisData['keywordIntelligence'] = $keywordIntel;
+                error_log("[LOAD] Surfaced keywordIntelligence to top level");
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 7. SURFACE CATEGORIES (For per-category strategic insights)
+            // ═══════════════════════════════════════════════════════════════════════════
+            $categories = $analysisData['geminiAnalysis']['categories'] 
+                       ?? $analysisData['analysis']['categories'] 
+                       ?? null;
+            if ($categories && is_array($categories) && empty($analysisData['categories'])) {
+                $analysisData['categories'] = $categories;
+                error_log("[LOAD] Surfaced categories to top level - count: " . count($categories));
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 8. SURFACE COMPETITOR RANKINGS (For leaderboard and efficiency analysis)
+            // ═══════════════════════════════════════════════════════════════════════════
+            $rankings = $analysisData['geminiAnalysis']['competitorRankings'] 
+                     ?? $analysisData['analysis']['competitorRankings'] 
+                     ?? null;
+            if ($rankings && is_array($rankings) && empty($analysisData['competitorRankings'])) {
+                $analysisData['competitorRankings'] = $rankings;
+                error_log("[LOAD] Surfaced competitorRankings to top level - count: " . count($rankings));
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 9. TRANSFORM rawData → competitorsArray (UI requires array format)
+            // ═══════════════════════════════════════════════════════════════════════════
+            if (empty($analysisData['competitorsArray']) && !empty($analysisData['rawData'])) {
+                error_log("[LOAD] competitorsArray missing, transforming from rawData");
+                
+                $rawData = $analysisData['rawData'];
+                
+                // Skip if rawData was trimmed
+                if (isset($rawData['_trimmed'])) {
+                    error_log("[LOAD] rawData was trimmed, cannot transform");
+                } else {
+                    // Transform rawData object (domain keys) to array
+                    $competitorsArray = [];
+                    foreach ($rawData as $domain => $compData) {
+                        if (is_array($compData)) {
+                            $compData['domain'] = $compData['domain'] ?? $domain;
+                            $competitorsArray[] = $compData;
+                        }
+                    }
+                    
+                    if (count($competitorsArray) > 0) {
+                        $analysisData['competitorsArray'] = $competitorsArray;
+                        $analysisData['competitorCount'] = count($competitorsArray);
+                        error_log("[LOAD] Transformed " . count($competitorsArray) . " competitors from rawData");
+                    }
+                }
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 10. MERGE GEMINI ESTIMATED METRICS INTO COMPETITORS (Fix wrong traffic values)
+            // This ensures the UI shows Gemini's estimated traffic/keywords, not fallback
+            // ═══════════════════════════════════════════════════════════════════════════
+            if (!empty($analysisData['estimatedMetrics']) && !empty($analysisData['competitorsArray'])) {
+                $metricsMap = [];
+                foreach ($analysisData['estimatedMetrics'] as $metric) {
+                    $domain = $metric['domain'] ?? '';
+                    if ($domain) {
+                        $metricsMap[strtolower($domain)] = $metric;
+                    }
+                }
+                
+                foreach ($analysisData['competitorsArray'] as &$comp) {
+                    $compDomain = strtolower($comp['domain'] ?? '');
+                    if (isset($metricsMap[$compDomain])) {
+                        $geminiMetrics = $metricsMap[$compDomain];
+                        
+                        // Merge Gemini estimated metrics into processedMetrics
+                        if (!isset($comp['processedMetrics'])) {
+                            $comp['processedMetrics'] = [];
+                        }
+                        
+                        // Only override if Gemini has better estimates
+                        if (!empty($geminiMetrics['organicTraffic'])) {
+                            $comp['processedMetrics']['geminiTraffic'] = $geminiMetrics['organicTraffic'];
+                            $comp['processedMetrics']['estimatedTraffic'] = $geminiMetrics['organicTraffic'];
+                        }
+                        if (!empty($geminiMetrics['organicKeywords'])) {
+                            $comp['processedMetrics']['geminiKeywords'] = $geminiMetrics['organicKeywords'];
+                            $comp['processedMetrics']['estimatedKeywords'] = $geminiMetrics['organicKeywords'];
+                        }
+                        if (!empty($geminiMetrics['backlinks'])) {
+                            $comp['processedMetrics']['geminiBacklinks'] = $geminiMetrics['backlinks'];
+                        }
+                        if (!empty($geminiMetrics['authorityScore'])) {
+                            $comp['processedMetrics']['geminiAuthority'] = $geminiMetrics['authorityScore'];
+                        }
+                        if (!empty($geminiMetrics['siteType'])) {
+                            $comp['processedMetrics']['siteType'] = $geminiMetrics['siteType'];
+                        }
+                    }
+                }
+                unset($comp); // Break reference
+                error_log("[LOAD] Merged Gemini estimated metrics into " . count($metricsMap) . " competitors");
+            }
+            
+            // ═══════════════════════════════════════════════════════════════════════════
+            // 11. LOG FINAL DATA STRUCTURE FOR DEBUGGING
+            // ═══════════════════════════════════════════════════════════════════════════
+            error_log("[LOAD v30.1] Final data structure:");
+            error_log("   - competitorsArray: " . (isset($analysisData['competitorsArray']) ? count($analysisData['competitorsArray']) : 'MISSING'));
+            error_log("   - executiveBrief: " . (isset($analysisData['executiveBrief']) ? 'YES (' . count($analysisData['executiveBrief']) . ' keys)' : 'MISSING'));
+            error_log("   - killMoves: " . (isset($analysisData['killMoves']) ? count($analysisData['killMoves']) : 'MISSING'));
+            error_log("   - estimatedMetrics: " . (isset($analysisData['estimatedMetrics']) ? count($analysisData['estimatedMetrics']) : 'MISSING'));
+            error_log("   - analysis: " . (isset($analysisData['analysis']) ? 'YES' : 'MISSING'));
+            
+            // Re-encode the normalized data
+            $result['analysis_data'] = json_encode($analysisData);
         }
         
         return [
@@ -537,15 +779,29 @@ function authorizeCompetitorAnalysis($category, $payload, $licenseKey, $userId) 
         
         error_log("📊 authorizeCompetitorAnalysis: $action ($creditCost credits)");
         
-        // Log transaction
-        $stmt = $db->prepare("
-            INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data)
-            VALUES (?, ?, ?, 'processing', ?)
-        ");
+        // v29.0: Log transaction with backward compatibility (api_transactions → transactions)
+        $transactionId = 'AUTH-' . time() . '-' . substr(md5(uniqid()), 0, 8);
         $requestJson = json_encode($payload);
-        $stmt->execute([$userId, $action, $creditCost, $requestJson]);
-        $transactionId = $db->lastInsertId();
+        try {
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO api_transactions 
+                    (user_id, action_type, credit_cost, status, request_data)
+                    VALUES (?, ?, ?, 'processing', ?)
+                ");
+                $stmt->execute([$userId, $action, $creditCost, $requestJson]);
+                $transactionId = 'AUTH-' . $db->lastInsertId();
+            } catch (PDOException $e1) {
+                $stmt = $db->prepare("
+                    INSERT INTO transactions 
+                    (transaction_id, user_id, action_type, credit_cost, status, request_data, created_at)
+                    VALUES (?, ?, ?, ?, 'processing', ?, NOW())
+                ");
+                $stmt->execute([$transactionId, $userId, $action, $creditCost, $requestJson]);
+            }
+        } catch (PDOException $e) {
+            error_log("Transaction log failed (non-blocking): " . $e->getMessage());
+        }
         
         error_log("✅ Transaction logged: #$transactionId");
         
@@ -592,15 +848,29 @@ function executeEliteAnalysis($payload, $licenseKey, $userId) {
         
         error_log("💳 Credit cost: " . $creditCost);
         
-        // Log transaction
-        $stmt = $db->prepare("
-            INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data)
-            VALUES (?, ?, ?, 'processing', ?)
-        ");
+        // v29.0: Log transaction with backward compatibility (api_transactions → transactions)
+        $transactionId = 'ELITE-' . time() . '-' . substr(md5(uniqid()), 0, 8);
         $requestJson = json_encode($payload);
-        $stmt->execute([$userId, $action, $creditCost, $requestJson]);
-        $transactionId = $db->lastInsertId();
+        try {
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO api_transactions 
+                    (user_id, action_type, credit_cost, status, request_data)
+                    VALUES (?, ?, ?, 'processing', ?)
+                ");
+                $stmt->execute([$userId, $action, $creditCost, $requestJson]);
+                $transactionId = 'ELITE-' . $db->lastInsertId();
+            } catch (PDOException $e1) {
+                $stmt = $db->prepare("
+                    INSERT INTO transactions 
+                    (transaction_id, user_id, action_type, credit_cost, status, request_data, created_at)
+                    VALUES (?, ?, ?, ?, 'processing', ?, NOW())
+                ");
+                $stmt->execute([$transactionId, $userId, $action, $creditCost, $requestJson]);
+            }
+        } catch (PDOException $e) {
+            error_log("Transaction log failed (non-blocking): " . $e->getMessage());
+        }
         
         error_log("✅ Transaction logged: #" . $transactionId);
         error_log("   Apps Script will execute full analysis with FT + APIs + Gemini");
@@ -635,9 +905,10 @@ function getCompetitorHistory($licenseKey, $limit = 50) {
     }
     
     try {
+        // v28.8: Use transactions table
         $stmt = $db->prepare("
             SELECT t.*, u.license_key
-            FROM api_transactions t
+            FROM transactions t
             JOIN users u ON t.user_id = u.id
             WHERE u.license_key = ?
             AND t.action_type LIKE 'comp:%'

@@ -253,6 +253,52 @@ function renderTechnicalSeoElite(data, containerId) {
         `).join('')}
       </div>
     </div>
+    
+    <!-- STRATEGIC COMMAND: Programmatic Moat Detection -->
+    <div class="elite-programmatic-moat" id="card-programmatic-moat" style="margin-top: 24px;">
+      <h3 class="elite-subsection-title" style="display: flex; align-items: center; gap: 8px;">
+        🏗️ Programmatic Moat Detection
+        <button class="zero-trust-badge" onclick="window.openAuditTrail?.('${data.domain || rankings[0]?.domain || 'unknown'}', 'programmatic')" title="View Zero-Trust Evidence">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </button>
+      </h3>
+      <div class="programmatic-moat-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        ${rankings.slice(0, 6).map(r => {
+          const moat = r.strategicAudit?.programmaticMoat || { is_programmatic: null, similarity_score: 0, pattern_type: 'analyzing...' };
+          const isProgrammatic = moat.is_programmatic;
+          const statusColor = isProgrammatic === null ? '#6b7280' : (isProgrammatic ? '#22c55e' : '#f59e0b');
+          const statusText = isProgrammatic === null ? 'Pending' : (isProgrammatic ? 'Programmatic' : 'Manual');
+          return `
+          <div class="moat-card elite-card" style="border-left: 4px solid ${statusColor};">
+            <div class="moat-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <span class="domain" style="font-weight: 700;">${r.domain}</span>
+              <span class="moat-badge" style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">
+                ${statusText}
+              </span>
+            </div>
+            <div class="moat-metrics" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+              <div class="moat-metric">
+                <span style="color: #6b7280;">Similarity</span>
+                <span style="font-weight: 700; color: ${statusColor};">${moat.similarity_score || 0}%</span>
+              </div>
+              <div class="moat-metric">
+                <span style="color: #6b7280;">Pattern</span>
+                <span style="font-weight: 600;">${moat.pattern_type || 'N/A'}</span>
+              </div>
+            </div>
+            ${moat.evidence?.sharedClasses?.length > 0 ? `
+            <div class="moat-evidence" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05);">
+              <span style="font-size: 10px; color: #6b7280;">Shared Classes:</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                ${moat.evidence.sharedClasses.slice(0, 5).map(c => `<span class="class-tag" style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: monospace;">.${c}</span>`).join('')}
+              </div>
+            </div>` : ''}
+          </div>
+        `}).join('')}
+      </div>
+    </div>
   </div>
   `;
 
@@ -303,6 +349,57 @@ function renderContentIntelElite(data, containerId) {
             </div>
           </div>
         `).join('')}
+      </div>
+    </div>
+    
+    <!-- STRATEGIC COMMAND: Emotional Debt Analysis -->
+    <div class="elite-emotional-debt" id="card-emotional-debt" style="margin-top: 24px;">
+      <h3 class="elite-subsection-title" style="display: flex; align-items: center; gap: 8px;">
+        💔 Emotional Debt Analysis
+        <button class="zero-trust-badge" onclick="window.openAuditTrail?.('${data.domain || rankings[0]?.domain || 'unknown'}', 'emotional')" title="View Zero-Trust Evidence">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </button>
+      </h3>
+      <div class="emotional-debt-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        ${rankings.slice(0, 6).map(r => {
+          const debt = r.strategicAudit?.emotionalDebt || { score: 50, level: 'analyzing...', gaps: [] };
+          const debtColor = debt.level === 'low' ? '#22c55e' : (debt.level === 'moderate' ? '#f59e0b' : '#ef4444');
+          const debtIcon = debt.level === 'low' ? '💚' : (debt.level === 'moderate' ? '💛' : '💔');
+          return `
+          <div class="debt-card elite-card" style="border-left: 4px solid ${debtColor};">
+            <div class="debt-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <span class="domain" style="font-weight: 700;">${r.domain}</span>
+              <span class="debt-badge" style="background: ${debtColor}20; color: ${debtColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">
+                ${debtIcon} ${debt.score || 0}% Debt
+              </span>
+            </div>
+            <div class="debt-level" style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                <span style="color: #6b7280;">Emotional Engagement</span>
+                <span style="font-weight: 700;">${100 - (debt.score || 0)}%</span>
+              </div>
+              <div style="background: #f1f5f9; height: 6px; border-radius: 3px; overflow: hidden;">
+                <div style="width: ${100 - (debt.score || 0)}%; height: 100%; background: linear-gradient(90deg, ${debtColor}, ${debt.level === 'low' ? '#10b981' : debtColor}); border-radius: 3px;"></div>
+              </div>
+            </div>
+            ${debt.gaps?.length > 0 ? `
+            <div class="debt-gaps" style="font-size: 11px;">
+              <span style="color: #6b7280;">Gaps Identified:</span>
+              <ul style="margin: 4px 0 0 16px; padding: 0; color: #ef4444;">
+                ${debt.gaps.slice(0, 3).map(gap => `<li>${gap}</li>`).join('')}
+              </ul>
+            </div>` : ''}
+            ${debt.evidence?.ctaAnalysis?.length > 0 ? `
+            <div class="debt-ctas" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.05);">
+              <span style="font-size: 10px; color: #6b7280;">CTA Types Found:</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                ${debt.evidence.ctaAnalysis.slice(0, 4).map(cta => `<span class="cta-tag" style="background: #dbeafe; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${cta.type} (${cta.count})</span>`).join('')}
+              </div>
+            </div>` : ''}
+          </div>
+        `}).join('')}
       </div>
     </div>
   </div>
@@ -362,10 +459,77 @@ function renderKeywordStrategyElite(data, containerId) {
         `).join('')}
       </div>
     </div>
+    
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <!-- LAYER 12: SEMANTIC ENTITY MAP - Strategic Command Module -->
+    <!-- Proof: Entity-entity-relationship triplets from NLP extraction -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <div id="card-semantic-entity-map" class="elite-bento-card strategic-card" style="margin-top: 24px;">
+      <div class="bento-header">
+        <h3 class="bento-title">🔗 Semantic Entity Map</h3>
+        <button class="zero-trust-badge" onclick="window.openAuditTrail && window.openAuditTrail('${data?.domain || 'competitor'}', 'semanticTriplets')" 
+                title="Zero-Trust: View semantic entity extraction proof">
+          🛡️ <span class="zt-confidence">NLP</span>
+        </button>
+      </div>
+      <div class="bento-body">
+        ${renderSemanticEntityMapBody(data)}
+      </div>
+    </div>
   </div>
   `;
 
   container.innerHTML = html;
+}
+
+/**
+ * Helper: Render Semantic Entity Map body content
+ * Separated to avoid nested template literal issues
+ */
+function renderSemanticEntityMapBody(data) {
+  const triplets = data?.strategicAudit?.semanticTriplets?.triplets || [];
+  const topicClusters = data?.strategicAudit?.semanticTriplets?.topicClusters || [];
+  const confidence = data?.strategicAudit?.semanticTriplets?.confidence || 0;
+  
+  if (triplets.length === 0) {
+    return '<div class="pending-analysis">Semantic analysis pending... <span class="pending-spinner">⏳</span></div>';
+  }
+  
+  let html = `
+    <div class="entity-map-summary" style="display: flex; gap: 16px; margin-bottom: 16px;">
+      <div class="entity-stat" style="flex: 1; text-align: center; padding: 12px; background: rgba(139, 92, 246, 0.1); border-radius: 8px;">
+        <div style="font-size: 24px; font-weight: 700; color: #8b5cf6;">${triplets.length}</div>
+        <div style="font-size: 11px; color: #9ca3af;">Entity Relationships</div>
+      </div>
+      <div class="entity-stat" style="flex: 1; text-align: center; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+        <div style="font-size: 24px; font-weight: 700; color: #3b82f6;">${topicClusters.length}</div>
+        <div style="font-size: 11px; color: #9ca3af;">Topic Clusters</div>
+      </div>
+      <div class="entity-stat" style="flex: 1; text-align: center; padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+        <div style="font-size: 24px; font-weight: 700; color: #10b981;">${confidence}%</div>
+        <div style="font-size: 11px; color: #9ca3af;">Confidence</div>
+      </div>
+    </div>
+    
+    <div class="triplet-list" style="max-height: 200px; overflow-y: auto;">
+  `;
+  
+  triplets.slice(0, 6).forEach(t => {
+    html += `
+      <div class="triplet-row" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 6px; font-size: 13px;">
+        <span class="entity subject" style="color: #f59e0b; font-weight: 600;">${t.subject || t[0] || ''}</span>
+        <span class="relation" style="color: #6b7280; font-style: italic;">→ ${t.predicate || t[1] || ''} →</span>
+        <span class="entity object" style="color: #3b82f6; font-weight: 600;">${t.object || t[2] || ''}</span>
+      </div>
+    `;
+  });
+  
+  if (triplets.length > 6) {
+    html += `<div style="text-align: center; color: #6b7280; font-size: 12px; padding: 8px;">+${triplets.length - 6} more relationships...</div>`;
+  }
+  
+  html += '</div>';
+  return html;
 }
 
 /**

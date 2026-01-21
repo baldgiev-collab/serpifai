@@ -1,0 +1,176 @@
+<!--
+  UI_Competitor_Card_Structure.html
+  INDIVIDUAL COMPETITOR CARD v1.0
+  
+  Card anatomy: Header (logo/name/rank), metric rows, expand toggle
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 27: INDIVIDUAL COMPETITOR CARD STRUCTURE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.comp-card {
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.comp-card:hover {
+  border-color: var(--accent-authority);
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.comp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--cmd-header-bg);
+  border-bottom: 1px solid var(--cmd-border);
+}
+
+.comp-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.comp-card-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--cmd-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--cmd-muted-text);
+}
+
+.comp-card-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 0;
+}
+
+.comp-card-domain {
+  font-size: 0.75rem;
+  color: var(--cmd-muted-text);
+  margin-top: 2px;
+}
+
+/* Card Body - Metrics */
+.comp-card-body {
+  padding: 0.875rem 1.25rem;
+}
+
+/* Card Footer - Expand Toggle */
+.comp-card-footer {
+  border-top: 1px solid var(--cmd-border);
+}
+
+.comp-card-expand {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--accent-authority);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.comp-card-expand:hover {
+  background: var(--cmd-header-bg);
+}
+
+.comp-card-expand-icon {
+  transition: transform 0.3s;
+}
+
+.comp-card.is-expanded .comp-card-expand-icon {
+  transform: rotate(180deg);
+}
+
+/* Theme: Aurora */
+[data-theme="aurora"] .comp-card {
+  backdrop-filter: blur(var(--cmd-blur));
+}
+
+/* Theme: Neon */
+[data-theme="neon"] .comp-card:hover {
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.2);
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPETITOR CARD RENDERER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CompetitorCard = {
+  
+  /**
+   * Render a single competitor card
+   */
+  render(competitor, rank) {
+    const cardId = `comp-card-${rank}`;
+    const name = competitor.name || competitor.domain || 'Unknown';
+    const domain = competitor.domain || '';
+    const initial = name.charAt(0).toUpperCase();
+    
+    const metrics = this.extractMetrics(competitor);
+    const metricsHtml = metrics.map(m => MetricRow.render(m)).join('');
+    
+    return `
+      <div class="comp-card" id="${cardId}">
+        <div class="comp-card-header">
+          <div class="comp-card-identity">
+            <div class="comp-card-logo">${initial}</div>
+            <div>
+              <h5 class="comp-card-name">${name}</h5>
+              ${domain ? `<span class="comp-card-domain">${domain}</span>` : ''}
+            </div>
+          </div>
+          ${RankingBadge.render(rank)}
+        </div>
+        <div class="comp-card-body">
+          ${metricsHtml}
+        </div>
+        <div class="comp-card-footer">
+          <button class="comp-card-expand" onclick="CompetitorCard.toggle('${cardId}')">
+            <span>More Details</span>
+            <span class="comp-card-expand-icon">▼</span>
+          </button>
+        </div>
+      </div>
+    `;
+  },
+  
+  extractMetrics(competitor) {
+    return [
+      { label: 'Traffic', value: competitor.traffic || 'N/A', type: 'neutral' },
+      { label: 'DA Score', value: competitor.da || competitor.domainAuthority || 'N/A', type: 'authority' },
+      { label: 'Content Gap', value: competitor.contentGap || 'N/A', percent: competitor.contentGapPercent, type: 'velocity' }
+    ];
+  },
+  
+  toggle(cardId) {
+    const card = document.getElementById(cardId);
+    card.classList.toggle('is-expanded');
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.CompetitorCard = CompetitorCard;
+}
+</script>

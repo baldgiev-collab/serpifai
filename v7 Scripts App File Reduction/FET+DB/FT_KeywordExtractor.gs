@@ -86,10 +86,111 @@ class KeywordExtractor {
     this.titleKeywords = new Set();
     this.h1Keywords = new Set();
     this.h2Keywords = new Set();
+    this.googleSuggestKeywords = [];
+    this.serpFeatures = [];
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // V34 FIX: Add Google Suggest API for real keyword expansion
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * V34: Fetch keyword suggestions from Google Suggest API
+   * @param {string} seedKeyword - Base keyword to expand
+   * @returns {Array} List of suggested keywords
+   */
+  fetchGoogleSuggestKeywords(seedKeyword) {
+    console.log(`   🔍 V34: Fetching Google Suggest for "${seedKeyword}"...`);
+    
+    try {
+      // Google Suggest API endpoint
+      const url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(seedKeyword)}`;
+      
+      const response = UrlFetchApp.fetch(url, {
+        muteHttpExceptions: true,
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      if (response.getResponseCode() === 200) {
+        const data = JSON.parse(response.getContentText());
+        const suggestions = data[1] || [];
+        
+        console.log(`   ✅ V34: Got ${suggestions.length} suggestions for "${seedKeyword}"`);
+        
+        return suggestions.map(suggestion => ({
+          keyword: suggestion,
+          source: 'google_suggest',
+          seedKeyword: seedKeyword,
+          type: this._classifyKeywordIntent(suggestion),
+          wordCount: suggestion.split(' ').length,
+          isLongTail: suggestion.split(' ').length >= 3
+        }));
+      }
+    } catch (e) {
+      console.log(`   ⚠️ V34: Google Suggest error: ${e.message}`);
+    }
+    
+    return [];
+  }
+  
+  /**
+   * V34: Classify keyword search intent
+   */
+  _classifyKeywordIntent(keyword) {
+    const kw = keyword.toLowerCase();
+    
+    for (const [intent, patterns] of Object.entries(KEYWORD_EXTRACTOR_CONFIG.INTENT_PATTERNS)) {
+      if (patterns.some(p => kw.includes(p))) {
+        return intent;
+      }
+    }
+    return 'informational';
+  }
+  
+  /**
+   * V34: Expand keywords using Google Suggest
+   * @param {Array} seedKeywords - Top keywords to expand
+   * @returns {Array} Expanded keyword list
+   */
+  expandWithGoogleSuggest(seedKeywords) {
+    console.log(`   🔍 V34: Expanding ${seedKeywords.length} keywords with Google Suggest...`);
+    
+    const expanded = [];
+    const maxSeeds = Math.min(10, seedKeywords.length); // Limit API calls
+    
+    for (let i = 0; i < maxSeeds; i++) {
+      const seed = seedKeywords[i];
+      const seedText = typeof seed === 'string' ? seed : seed.keyword;
+      
+      const suggestions = this.fetchGoogleSuggestKeywords(seedText);
+      expanded.push(...suggestions);
+      
+      // Rate limiting
+      if (i < maxSeeds - 1) {
+        Utilities.sleep(500);
+      }
+    }
+    
+    // Dedupe
+    const seen = new Set();
+    const unique = expanded.filter(kw => {
+      if (seen.has(kw.keyword.toLowerCase())) return false;
+      seen.add(kw.keyword.toLowerCase());
+      return true;
+    });
+    
+    console.log(`   ✅ V34: Expanded to ${unique.length} unique keywords`);
+    this.googleSuggestKeywords = unique;
+    
+    return unique;
   }
   
   /**
    * Extract keywords from multiple pages
+   * V34 ENHANCED: Now includes Google Suggest API expansion
    * @param {Array} pages - Array of page objects with html property
    * @returns {Object} Categorized keyword analysis
    */
@@ -116,6 +217,26 @@ class KeywordExtractor {
     
     // Categorize and build result
     const result = this._buildResult(startTime);
+    
+    // V34 ENHANCEMENT: Expand primary keywords with Google Suggest API
+    try {
+      if (result.primary && result.primary.length > 0 && typeof this.expandWithGoogleSuggest === 'function') {
+        const topKeywords = result.primary.slice(0, 5).map(k => k.keyword);
+        console.log(`🔍 V34: Expanding ${topKeywords.length} keywords with Google Suggest...`);
+        
+        const expanded = this.expandWithGoogleSuggest(topKeywords);
+        if (expanded.total > 0) {
+          result.googleSuggestKeywords = expanded.suggestions;
+          result.serpFeatures = expanded.serpFeatures || [];
+          result.dataSource = 'google_suggest_api';
+          result.counts.googleSuggest = expanded.total;
+          console.log(`✅ V34: Added ${expanded.total} Google Suggest keywords`);
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ V34: Google Suggest expansion failed: ${e.message}`);
+    }
+    
     console.log(`✅ KeywordExtractor: Extracted ${result.totalKeywords} keywords in ${result.processingTimeMs}ms`);
     
     return result;

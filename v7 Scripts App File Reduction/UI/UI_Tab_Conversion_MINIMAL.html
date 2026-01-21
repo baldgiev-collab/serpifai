@@ -1,0 +1,48 @@
+<script>
+// V44 MINIMAL TEST - Conversion Tab
+console.log('[V44-MINIMAL] UI_Tab_Conversion_MINIMAL.html LOADING...');
+window._v44_conversion_minimal_loaded = true;
+
+function populateConversionDataTab(data) {
+  console.log('[V44-MINIMAL] populateConversionDataTab called');
+  
+  let metricsDiv = document.getElementById('comp-conversion-metrics');
+  if (!metricsDiv) {
+    const panel = document.querySelector('[data-comp-panel="conversion"]');
+    if (panel) {
+      metricsDiv = document.createElement('div');
+      metricsDiv.id = 'comp-conversion-metrics';
+      panel.appendChild(metricsDiv);
+    }
+  }
+  
+  if (metricsDiv) {
+    metricsDiv.innerHTML = '<div style="padding:20px;background:#dcfce7;border-radius:8px;"><h3>✅ V44 Minimal Conversion Tab Loaded!</h3><p>This is a minimal test version.</p></div>';
+  }
+}
+
+function populateDistributionDataTab(data) {
+  console.log('[V44-MINIMAL] populateDistributionDataTab called');
+  
+  let metricsDiv = document.getElementById('comp-distribution-metrics');
+  if (!metricsDiv) {
+    const panel = document.querySelector('[data-comp-panel="distribution"]');
+    if (panel) {
+      metricsDiv = document.createElement('div');
+      metricsDiv.id = 'comp-distribution-metrics';
+      panel.appendChild(metricsDiv);
+    }
+  }
+  
+  if (metricsDiv) {
+    metricsDiv.innerHTML = '<div style="padding:20px;background:#dbeafe;border-radius:8px;"><h3>✅ V44 Minimal Distribution Tab Loaded!</h3><p>This is a minimal test version.</p></div>';
+  }
+}
+
+// Window exports
+window.populateConversionDataTab = populateConversionDataTab;
+window.populateDistributionDataTab = populateDistributionDataTab;
+
+console.log('[V44-MINIMAL] EXPORTS COMPLETE');
+console.log('[V44-MINIMAL] populateConversionDataTab:', typeof window.populateConversionDataTab);
+</script>

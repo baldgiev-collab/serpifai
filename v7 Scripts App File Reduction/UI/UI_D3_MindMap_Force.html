@@ -1,0 +1,152 @@
+<!--
+  UI_D3_MindMap_Force.html
+  MIND MAP FORCE-DIRECTED GRAPH v1.0
+  
+  Tab 6: 6 Pillars → 6 Clusters → 6 Keywords
+  Features: Solo mode, zoom/pan, theme-aware colors
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 18: MIND MAP D3 FORCE-DIRECTED GRAPH
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const MindMapForce = {
+  
+  simulation: null,
+  soloActive: null,
+  
+  /**
+   * Render force-directed mind map
+   */
+  render(container, data) {
+    const width = container.clientWidth;
+    const height = container.clientHeight - 52; // Account for header
+    const colors = ChartThemeColors.getColorScale();
+    
+    // Clear previous
+    d3.select(container).select('.chart-body').selectAll('*').remove();
+    
+    const svg = d3.select(container).select('.chart-body')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+    
+    const g = svg.append('g');
+    
+    // Zoom behavior
+    const zoom = d3.zoom()
+      .scaleExtent([0.3, 3])
+      .on('zoom', (e) => g.attr('transform', e.transform));
+    
+    svg.call(zoom);
+    
+    // Build nodes and links from data
+    const { nodes, links } = this.processData(data, colors);
+    
+    // Force simulation
+    this.simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+      .force('charge', d3.forceManyBody().strength(-200))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(d => d.radius + 5));
+    
+    // Links
+    const link = g.selectAll('.mindmap-link')
+      .data(links)
+      .join('line')
+      .attr('class', 'mindmap-link')
+      .attr('stroke', ChartThemeColors.getGridColor())
+      .attr('stroke-width', 1.5);
+    
+    // Nodes
+    const node = g.selectAll('.mindmap-node')
+      .data(nodes)
+      .join('g')
+      .attr('class', 'mindmap-node')
+      .style('cursor', 'pointer')
+      .call(this.drag(this.simulation))
+      .on('click', (e, d) => this.toggleSolo(d, node, link));
+    
+    node.append('circle')
+      .attr('r', d => d.radius)
+      .attr('fill', d => d.color);
+    
+    node.append('text')
+      .attr('dy', d => d.radius + 14)
+      .attr('text-anchor', 'middle')
+      .attr('fill', ChartThemeColors.getTextColor())
+      .attr('font-size', d => d.type === 'pillar' ? '12px' : '10px')
+      .attr('font-weight', d => d.type === 'pillar' ? '700' : '400')
+      .text(d => d.label.length > 15 ? d.label.slice(0, 15) + '...' : d.label);
+    
+    // Tick updates
+    this.simulation.on('tick', () => {
+      link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+  },
+  
+  /**
+   * Process pillars data into nodes/links
+   */
+  processData(data, colors) {
+    const nodes = [];
+    const links = [];
+    
+    const pillars = data.pillars || data.contentPillars || [];
+    
+    pillars.slice(0, 6).forEach((pillar, i) => {
+      const pillarId = `pillar-${i}`;
+      nodes.push({
+        id: pillarId, label: pillar.name || pillar.title,
+        type: 'pillar', radius: 24, color: colors[i % colors.length]
+      });
+      
+      const keywords = pillar.keywords || pillar.clusters || [];
+      keywords.slice(0, 6).forEach((kw, j) => {
+        const kwId = `kw-${i}-${j}`;
+        nodes.push({
+          id: kwId, label: typeof kw === 'string' ? kw : kw.keyword,
+          type: 'keyword', radius: 12, color: colors[i % colors.length]
+        });
+        links.push({ source: pillarId, target: kwId });
+      });
+    });
+    
+    return { nodes, links };
+  },
+  
+  /**
+   * Drag behavior
+   */
+  drag(simulation) {
+    return d3.drag()
+      .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+      .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; });
+  },
+  
+  /**
+   * Solo mode: Fade others on click
+   */
+  toggleSolo(d, nodeSelection, linkSelection) {
+    if (this.soloActive === d.id) {
+      // Reset
+      nodeSelection.style('opacity', 1);
+      linkSelection.style('opacity', 1);
+      this.soloActive = null;
+    } else {
+      // Solo this pillar
+      const pillarId = d.type === 'pillar' ? d.id : d.id.split('-').slice(0,2).join('-');
+      nodeSelection.style('opacity', n => n.id.startsWith(pillarId) || n.id === pillarId ? 1 : 0.15);
+      linkSelection.style('opacity', l => l.source.id.startsWith(pillarId) ? 1 : 0.1);
+      this.soloActive = d.id;
+    }
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.MindMapForce = MindMapForce;
+}
+</script>

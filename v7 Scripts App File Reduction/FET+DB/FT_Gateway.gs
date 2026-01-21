@@ -379,11 +379,23 @@ function checkUserStatus() {
 /**
  * Complete a transaction
  * Call this after successfully executing business logic
+ * 
+ * V7.4 FIX: Extract only lightweight metadata from result
+ * to prevent HTTP 400 from oversized gateway payloads
  */
 function completeTransaction(transactionId, result) {
+  // V7.4: Strip any heavy data that might cause HTTP 400
+  const lightweightResult = {
+    success: result?.success || true,
+    stage: result?.stage || 0,
+    projectId: result?.projectId || '',
+    timestamp: result?.timestamp || new Date().toISOString()
+    // DO NOT include: json, report, data, competitorAnalysisSummary, etc.
+  };
+  
   return callGateway('workflow:complete', {
     transactionId: transactionId,
-    result: result
+    result: lightweightResult
   });
 }
 

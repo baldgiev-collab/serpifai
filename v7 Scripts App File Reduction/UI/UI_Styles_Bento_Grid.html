@@ -1,0 +1,1074 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  UI_Styles_Bento_Grid.html
+  MODULAR BENTO GRID LAYOUT SYSTEM v1.0
+  
+  PURPOSE: Replace 50/50 split with responsive 12-column Bento Grid
+           - Fixed aspect ratio chart containers
+           - Forensic Card component with progressive disclosure
+           - Theme-conscious Aurora & Neon variants
+  
+  ARCHITECTURE:
+    - Left Span (Cols 1-4): Strategic Summary
+    - Center Span (Cols 5-9): Primary Visualization
+    - Right Span (Cols 10-12): Forensic Proof / DOM Snippets
+  
+  DATE: 2026-01-19
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. BENTO GRID INFRASTRUCTURE — 12-Column Foundation
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bento-grid-container {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+/* Anchor Zone Classes */
+.bento-span-left {
+  grid-column: 1 / 5; /* Columns 1-4 */
+}
+
+.bento-span-center {
+  grid-column: 5 / 10; /* Columns 5-9 */
+}
+
+.bento-span-right {
+  grid-column: 10 / 13; /* Columns 10-12 */
+}
+
+/* Full-width sections */
+.bento-span-full {
+  grid-column: 1 / 13;
+}
+
+/* Two-column chart layout */
+.bento-span-wide {
+  grid-column: 1 / 9; /* Columns 1-8 */
+}
+
+.bento-span-sidebar {
+  grid-column: 9 / 13; /* Columns 9-12 */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. BENTO SECTION — Replaces .report-section-with-chart
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bento-section {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: auto;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 0;
+  border-radius: 20px;
+  position: relative;
+  background: transparent;
+}
+
+/* Section Number Badge */
+.bento-section::before {
+  content: attr(data-section-num);
+  position: absolute;
+  top: -12px;
+  left: 24px;
+  background: linear-gradient(135deg, var(--accent-primary, #6366f1), var(--accent-secondary, #8b5cf6));
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  letter-spacing: 0.08em;
+  z-index: 20;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   3. FORENSIC CARD COMPONENT — Modular Data Display
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forensic-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    0 1px 4px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.forensic-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: var(--accent-primary, #6366f1);
+}
+
+/* Card Header — High-contrast title (WCAG AA) */
+.forensic-card-header {
+  padding: 1.25rem 1.5rem 1rem;
+  background: linear-gradient(135deg, 
+    var(--header-bg-from, #f8fafc) 0%, 
+    var(--header-bg-to, #f1f5f9) 100%);
+  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.forensic-card-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0 0 0.25rem 0;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+/* Sub-header — 1-line Sage-Architect insight */
+.forensic-card-insight {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+  line-height: 1.4;
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Card Body — Fixed-height chart area */
+.forensic-card-body {
+  flex: 1;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow proper flex shrinking */
+}
+
+/* Chart Container with Fixed Aspect Ratio */
+.forensic-chart-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 400px;
+  min-height: 280px;
+  background: var(--chart-bg, #fafbfc);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.forensic-chart-container canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* D3 Chart Containers */
+.forensic-chart-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Chart Action Bar — Appears on hover */
+.forensic-chart-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.forensic-card:hover .forensic-chart-actions {
+  opacity: 1;
+}
+
+.forensic-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  color: var(--text-secondary, #64748b);
+  backdrop-filter: blur(4px);
+}
+
+.forensic-action-btn:hover {
+  background: var(--accent-primary, #6366f1);
+  color: white;
+  border-color: var(--accent-primary, #6366f1);
+  transform: scale(1.1);
+}
+
+/* Card Footer — Inspect Source button */
+.forensic-card-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-subtle, #e5e7eb);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--footer-bg, #fafbfc);
+}
+
+.forensic-inspect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--accent-primary, #6366f1);
+  background: transparent;
+  border: 1px solid var(--accent-primary, #6366f1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.forensic-inspect-btn:hover {
+  background: var(--accent-primary, #6366f1);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.forensic-inspect-btn::before {
+  content: '🔍';
+  font-size: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   4. STRATEGIC SUMMARY CARD — Left Span Content
+   V8.1: Removed max-height constraint, content now fully scrollable
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.strategic-summary-card {
+  grid-column: 1 / 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  /* V8.1: Allow card to grow with content - no height restriction */
+  min-height: 400px;
+  max-height: none;
+  overflow: visible;
+}
+
+.strategic-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.strategic-summary-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--accent-primary, #6366f1), var(--accent-secondary, #8b5cf6));
+  border-radius: 10px;
+  font-size: 20px;
+}
+
+.strategic-summary-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+}
+
+/* Scrollable text content with custom scrollbar */
+.strategic-summary-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--text-secondary, #475569);
+}
+
+/* Custom thin scrollbar */
+.strategic-summary-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.strategic-summary-content::-webkit-scrollbar-track {
+  background: var(--border-subtle, #e5e7eb);
+  border-radius: 2px;
+}
+
+.strategic-summary-content::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary, #94a3b8);
+  border-radius: 2px;
+}
+
+.strategic-summary-content::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary, #6366f1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. PRIMARY VISUALIZATION CARD — Center Span
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.primary-viz-card {
+  grid-column: 5 / 10;
+}
+
+.primary-viz-card .forensic-chart-container {
+  aspect-ratio: 16 / 10;
+  max-height: 450px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   6. FORENSIC PROOF CARD — Right Span
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forensic-proof-card {
+  grid-column: 10 / 13;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  max-height: 500px;
+}
+
+.forensic-proof-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.forensic-proof-header::before {
+  content: '📋';
+  font-size: 16px;
+}
+
+.forensic-proof-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.forensic-proof-item {
+  padding: 0.75rem 1rem;
+  background: var(--proof-bg, #f8fafc);
+  border-radius: 10px;
+  border-left: 3px solid var(--accent-primary, #6366f1);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #475569);
+  transition: all 0.2s ease;
+}
+
+.forensic-proof-item:hover {
+  background: var(--proof-hover-bg, #f1f5f9);
+  transform: translateX(4px);
+}
+
+.forensic-proof-item strong {
+  color: var(--text-primary, #0f172a);
+  font-weight: 600;
+}
+
+/* DOM Snippet Container */
+.forensic-dom-snippet {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  font-size: 0.75rem;
+  background: var(--code-bg, #1e293b);
+  color: var(--code-text, #e2e8f0);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7. PROGRESSIVE DISCLOSURE — Accordion for Long Content
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bento-accordion {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.bento-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--accordion-header, #f8fafc);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  user-select: none;
+}
+
+.bento-accordion-header:hover {
+  background: var(--accordion-header-hover, #f1f5f9);
+}
+
+.bento-accordion-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bento-accordion-toggle {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--toggle-bg, #e5e7eb);
+  border-radius: 50%;
+  color: var(--text-secondary, #64748b);
+  transition: transform 0.3s ease;
+}
+
+.bento-accordion.expanded .bento-accordion-toggle {
+  transform: rotate(180deg);
+}
+
+.bento-accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.bento-accordion.expanded .bento-accordion-content {
+  max-height: 600px;
+}
+
+.bento-accordion-body {
+  padding: 1.25rem;
+  background: var(--card-bg, #ffffff);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   8. AURORA THEME — Glassmorphism + Emerald Accents
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="aurora"] .bento-section {
+  background: transparent;
+}
+
+[data-theme="aurora"] .forensic-card,
+[data-theme="aurora"] .strategic-summary-card,
+[data-theme="aurora"] .forensic-proof-card {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="aurora"] .forensic-card:hover {
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(52, 211, 153, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="aurora"] .forensic-card-header {
+  background: linear-gradient(135deg, 
+    rgba(15, 23, 42, 0.8) 0%, 
+    rgba(30, 41, 59, 0.7) 100%);
+  border-bottom-color: rgba(52, 211, 153, 0.15);
+}
+
+[data-theme="aurora"] .forensic-card-title {
+  color: #f0fdf4;
+}
+
+[data-theme="aurora"] .forensic-card-insight {
+  color: rgba(167, 243, 208, 0.8);
+}
+
+[data-theme="aurora"] .forensic-chart-container {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(52, 211, 153, 0.15);
+}
+
+[data-theme="aurora"] .forensic-card-footer {
+  background: rgba(15, 23, 42, 0.4);
+  border-top-color: rgba(52, 211, 153, 0.15);
+}
+
+[data-theme="aurora"] .forensic-inspect-btn {
+  color: #34d399;
+  border-color: #34d399;
+}
+
+[data-theme="aurora"] .forensic-inspect-btn:hover {
+  background: #34d399;
+  color: #0f172a;
+}
+
+/* Aurora Chart Accent Colors */
+[data-theme="aurora"] .forensic-action-btn:hover {
+  background: #34d399;
+  border-color: #34d399;
+}
+
+[data-theme="aurora"] .bento-section::before {
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+[data-theme="aurora"] .strategic-summary-icon {
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+[data-theme="aurora"] .forensic-proof-item {
+  background: rgba(15, 23, 42, 0.5);
+  border-left-color: #34d399;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+[data-theme="aurora"] .forensic-proof-item strong {
+  color: #34d399;
+}
+
+[data-theme="aurora"] .strategic-summary-content {
+  color: rgba(226, 232, 240, 0.85);
+}
+
+[data-theme="aurora"] .strategic-summary-content::-webkit-scrollbar-thumb {
+  background: rgba(52, 211, 153, 0.4);
+}
+
+[data-theme="aurora"] .strategic-summary-content::-webkit-scrollbar-thumb:hover {
+  background: #34d399;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   9. NEON THEME — Pure Black + Amber/Magenta High-Vibrancy
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="neon"] .bento-section {
+  background: transparent;
+}
+
+[data-theme="neon"] .forensic-card,
+[data-theme="neon"] .strategic-summary-card,
+[data-theme="neon"] .forensic-proof-card {
+  background: #000000;
+  border: 1px solid #F59E0B;
+  box-shadow: 
+    0 0 20px rgba(245, 158, 11, 0.15),
+    inset 0 1px 0 rgba(245, 158, 11, 0.1);
+}
+
+[data-theme="neon"] .forensic-card:hover {
+  border-color: #FBBF24;
+  box-shadow: 
+    0 0 40px rgba(245, 158, 11, 0.25),
+    0 0 60px rgba(236, 72, 153, 0.1),
+    inset 0 1px 0 rgba(251, 191, 36, 0.15);
+}
+
+[data-theme="neon"] .forensic-card-header {
+  background: linear-gradient(135deg, 
+    rgba(15, 15, 15, 1) 0%, 
+    rgba(25, 25, 25, 1) 100%);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="neon"] .forensic-card-title {
+  color: #FBBF24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+}
+
+[data-theme="neon"] .forensic-card-insight {
+  color: rgba(251, 191, 36, 0.7);
+}
+
+[data-theme="neon"] .forensic-chart-container {
+  background: #0a0a0a;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="neon"] .forensic-card-footer {
+  background: #050505;
+  border-top: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="neon"] .forensic-inspect-btn {
+  color: #EC4899;
+  border-color: #EC4899;
+}
+
+[data-theme="neon"] .forensic-inspect-btn:hover {
+  background: #EC4899;
+  color: #000000;
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.5);
+}
+
+/* Neon Chart Accent Colors — Magenta lines */
+[data-theme="neon"] .forensic-action-btn {
+  background: #0a0a0a;
+  border-color: #F59E0B;
+  color: #F59E0B;
+}
+
+[data-theme="neon"] .forensic-action-btn:hover {
+  background: #EC4899;
+  border-color: #EC4899;
+  color: #000000;
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.6);
+}
+
+[data-theme="neon"] .bento-section::before {
+  background: linear-gradient(135deg, #F59E0B, #EC4899);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.5);
+}
+
+[data-theme="neon"] .strategic-summary-icon {
+  background: linear-gradient(135deg, #F59E0B, #EC4899);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+[data-theme="neon"] .forensic-proof-item {
+  background: #0a0a0a;
+  border-left: 3px solid #EC4899;
+  color: rgba(251, 191, 36, 0.9);
+}
+
+[data-theme="neon"] .forensic-proof-item:hover {
+  background: #111111;
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.2);
+}
+
+[data-theme="neon"] .forensic-proof-item strong {
+  color: #EC4899;
+  text-shadow: 0 0 6px rgba(236, 72, 153, 0.3);
+}
+
+[data-theme="neon"] .strategic-summary-content {
+  color: rgba(251, 191, 36, 0.85);
+}
+
+[data-theme="neon"] .strategic-summary-content::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+[data-theme="neon"] .strategic-summary-content::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.5);
+}
+
+[data-theme="neon"] .strategic-summary-content::-webkit-scrollbar-thumb:hover {
+  background: #EC4899;
+}
+
+[data-theme="neon"] .forensic-dom-snippet {
+  background: #0a0a0a;
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   10. DARK THEME — Standard Dark Mode
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] .forensic-card,
+[data-theme="dark"] .strategic-summary-card,
+[data-theme="dark"] .forensic-proof-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .forensic-card:hover {
+  border-color: #6366f1;
+}
+
+[data-theme="dark"] .forensic-card-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .forensic-card-title {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .forensic-card-insight {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .forensic-chart-container {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .forensic-card-footer {
+  background: #0f172a;
+  border-top-color: #334155;
+}
+
+[data-theme="dark"] .forensic-proof-item {
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .forensic-proof-item strong {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .strategic-summary-content {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .forensic-action-btn {
+  background: #334155;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   11. RESPONSIVE BREAKPOINTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Large screens (≤1400px) — Stack center + right */
+@media (max-width: 1400px) {
+  .bento-section {
+    grid-template-columns: repeat(8, 1fr);
+  }
+  
+  .strategic-summary-card {
+    grid-column: 1 / 4;
+  }
+  
+  .primary-viz-card {
+    grid-column: 4 / 9;
+  }
+  
+  .forensic-proof-card {
+    grid-column: 1 / 9;
+    max-height: 300px;
+    flex-direction: row;
+    gap: 1.5rem;
+  }
+  
+  .forensic-proof-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .forensic-proof-item {
+    flex: 1 1 calc(33.333% - 1rem);
+  }
+}
+
+/* Medium screens (≤1024px) — 2-column layout */
+@media (max-width: 1024px) {
+  .bento-section {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1rem;
+  }
+  
+  .strategic-summary-card {
+    grid-column: 1 / 7;
+    max-height: 250px;
+  }
+  
+  .primary-viz-card {
+    grid-column: 1 / 7;
+  }
+  
+  .forensic-proof-card {
+    grid-column: 1 / 7;
+  }
+  
+  .forensic-proof-item {
+    flex: 1 1 calc(50% - 0.5rem);
+  }
+  
+  .primary-viz-card .forensic-chart-container {
+    max-height: 350px;
+  }
+}
+
+/* Small screens (≤768px) — Single column */
+@media (max-width: 768px) {
+  .bento-grid-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .bento-section {
+    grid-template-columns: 1fr;
+  }
+  
+  .strategic-summary-card,
+  .primary-viz-card,
+  .forensic-proof-card {
+    grid-column: 1 / -1;
+  }
+  
+  .forensic-chart-container {
+    aspect-ratio: 4 / 3;
+    min-height: 220px;
+    max-height: 300px;
+  }
+  
+  .forensic-card-header {
+    padding: 1rem 1.25rem;
+  }
+  
+  .forensic-card-body {
+    padding: 1rem;
+  }
+  
+  .forensic-proof-item {
+    flex: 1 1 100%;
+  }
+  
+  .bento-section::before {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   12. ANIMATIONS & MICRO-INTERACTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bentoFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bento-section {
+  animation: bentoFadeIn 0.5s ease-out forwards;
+}
+
+.bento-section:nth-child(1) { animation-delay: 0.05s; }
+.bento-section:nth-child(2) { animation-delay: 0.1s; }
+.bento-section:nth-child(3) { animation-delay: 0.15s; }
+.bento-section:nth-child(4) { animation-delay: 0.2s; }
+.bento-section:nth-child(5) { animation-delay: 0.25s; }
+.bento-section:nth-child(6) { animation-delay: 0.3s; }
+.bento-section:nth-child(7) { animation-delay: 0.35s; }
+.bento-section:nth-child(8) { animation-delay: 0.4s; }
+.bento-section:nth-child(9) { animation-delay: 0.45s; }
+.bento-section:nth-child(10) { animation-delay: 0.5s; }
+.bento-section:nth-child(11) { animation-delay: 0.55s; }
+.bento-section:nth-child(12) { animation-delay: 0.6s; }
+.bento-section:nth-child(13) { animation-delay: 0.65s; }
+.bento-section:nth-child(14) { animation-delay: 0.7s; }
+
+/* Pulse glow on new data */
+@keyframes forensicPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0.15); }
+}
+
+.forensic-card.has-new-data {
+  animation: forensicPulse 2s ease-in-out 3;
+}
+
+/* Chart loading shimmer */
+@keyframes chartShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.forensic-chart-loading {
+  background: linear-gradient(
+    90deg,
+    var(--chart-bg, #fafbfc) 0%,
+    var(--shimmer-color, #e5e7eb) 50%,
+    var(--chart-bg, #fafbfc) 100%
+  );
+  background-size: 200% 100%;
+  animation: chartShimmer 1.5s infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   13. BENTO LAYOUT — Elite Strategic Intelligence Overrides
+   V8.1: Full height, scrollable insights in left span
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Allow elite insights card to grow within strategic summary */
+.strategic-summary-card .elite-insights-card {
+  margin-top: 1rem;
+  overflow: visible;
+  max-height: none;
+}
+
+/* Make insights grid scrollable when content is long */
+.strategic-summary-card .insights-grid {
+  max-height: 600px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-tertiary, #94a3b8) var(--border-subtle, #e5e7eb);
+}
+
+.strategic-summary-card .insights-grid::-webkit-scrollbar {
+  width: 5px;
+}
+
+.strategic-summary-card .insights-grid::-webkit-scrollbar-track {
+  background: var(--border-subtle, #e5e7eb);
+  border-radius: 3px;
+}
+
+.strategic-summary-card .insights-grid::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary, #94a3b8);
+  border-radius: 3px;
+}
+
+.strategic-summary-card .insights-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary, #6366f1);
+}
+
+/* Ensure insight items are fully visible */
+.strategic-summary-card .elite-insight-item {
+  overflow: visible;
+}
+
+/* Fix finding text truncation */
+.strategic-summary-card .elite-insight-item .insight-finding {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  white-space: normal;
+}
+
+/* Theme-specific overrides for Aurora */
+[data-theme="aurora"] .strategic-summary-card .insights-grid::-webkit-scrollbar-track {
+  background: rgba(52, 211, 153, 0.1);
+}
+
+[data-theme="aurora"] .strategic-summary-card .insights-grid::-webkit-scrollbar-thumb {
+  background: rgba(52, 211, 153, 0.4);
+}
+
+/* Theme-specific overrides for Neon */
+[data-theme="neon"] .strategic-summary-card .insights-grid::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+[data-theme="neon"] .strategic-summary-card .insights-grid::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.5);
+}
+
+[data-theme="neon"] .strategic-summary-card .insights-grid::-webkit-scrollbar-thumb:hover {
+  background: #EC4899;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   14. DEFAULT PROOF STYLING — Visual distinction for placeholder data
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forensic-proof-item.default-proof {
+  opacity: 0.7;
+  border-left-color: var(--text-tertiary, #94a3b8);
+  background: var(--proof-bg, #f8fafc);
+}
+
+.forensic-proof-item.default-proof strong {
+  color: var(--text-secondary, #64748b);
+}
+
+[data-theme="dark"] .forensic-proof-item.default-proof {
+  opacity: 0.6;
+  background: rgba(30, 41, 59, 0.5);
+}
+
+[data-theme="neon"] .forensic-proof-item.default-proof {
+  opacity: 0.5;
+  border-left-color: rgba(245, 158, 11, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   15. LOADING PULSE ANIMATION — For chart loading states
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.forensic-chart-loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   16. BENTO GRID TOGGLE — Visual indicator when Bento is active
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bento-grid-active-indicator {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  padding: 6px 12px;
+  background: rgba(99, 102, 241, 0.9);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 16px;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bento-grid-active-indicator.visible {
+  opacity: 1;
+}
+</style>

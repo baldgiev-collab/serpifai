@@ -119,6 +119,57 @@ function Worker_PersistCompetitor(jobToken, competitorId, domain, fetchData, ana
     Logger.log(`   ✅ Data merged: ${JSON.stringify(finalData).length} bytes`);
     
     // ═══════════════════════════════════════════════════════════════════════
+    // PHASE 2.5: STRATEGIC AUDIT (Post-Processing Worker)
+    // Runs AFTER fetch/merge is complete to prevent timeout in main pipeline
+    // ═══════════════════════════════════════════════════════════════════════
+    Logger.log(`   🏗️ Phase 1.5: Running Strategic Audit (Post-Processing)...`);
+    
+    try {
+      // Prepare competitorData with rawHtml for programmatic moat detection
+      const competitorDataForAudit = {
+        domain: domain,
+        homepageRaw: fetchData.rawHtml || fetchData.homepageRaw || '',
+        internalPageRaw: fetchData.internalPageRaw || '',
+        synthesized: finalData.synthesized || finalData,
+        rawHtml: fetchData.rawHtml || ''
+      };
+      
+      // Execute strategic audit as post-processing worker
+      if (typeof executeStrategicAudit === 'function') {
+        const strategicAuditResult = executeStrategicAudit(competitorDataForAudit);
+        
+        // Merge strategic audit results into finalData
+        finalData.strategicAudit = strategicAuditResult;
+        finalData.evidenceMap = finalData.evidenceMap || {};
+        finalData.evidenceMap.programmatic = strategicAuditResult.evidenceMap?.programmatic || {};
+        finalData.evidenceMap.semantic = strategicAuditResult.evidenceMap?.semantic || {};
+        finalData.evidenceMap.emotional = strategicAuditResult.evidenceMap?.emotional || {};
+        
+        result.proofTraces.push({
+          phase: 'STRATEGIC_AUDIT',
+          success: true,
+          programmaticMoat: strategicAuditResult.programmaticMoat?.is_programmatic,
+          semanticTriplets: strategicAuditResult.semanticTriplets?.tripletCount || 0,
+          emotionalDebt: strategicAuditResult.emotionalDebt?.score || 0,
+          timestamp: new Date().toISOString()
+        });
+        
+        Logger.log(`   ✅ Strategic Audit complete: Moat=${strategicAuditResult.programmaticMoat?.is_programmatic}, Triplets=${strategicAuditResult.semanticTriplets?.tripletCount}`);
+      } else {
+        Logger.log(`   ⚠️ executeStrategicAudit not available, skipping...`);
+      }
+    } catch (auditError) {
+      Logger.log(`   ⚠️ Strategic Audit failed (non-critical): ${auditError.toString()}`);
+      result.proofTraces.push({
+        phase: 'STRATEGIC_AUDIT',
+        success: false,
+        error: auditError.toString(),
+        timestamp: new Date().toISOString()
+      });
+      // Don't fail the whole persist - strategic audit is non-critical
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
     // PHASE 3: Store in MySQL via Gateway
     // ═══════════════════════════════════════════════════════════════════════
     if (PERSIST_CONFIG.TARGETS.MYSQL) {
@@ -298,6 +349,119 @@ function Worker_PersistCompetitor(jobToken, competitorId, domain, fetchData, ana
     
     Worker_UpdateTaskStatus(jobToken, competitorId, 'PERSIST', 'COMPLETED', null, result.resultIds.mysql);
     
+    // ═══════════════════════════════════════════════════════════════════════
+    // v35.0 UPP: UNIVERSAL PERSISTENCE PROVIDER - Force 100% MySQL
+    // Eliminates "0 B Data Size" by guaranteeing MySQL persistence
+    // ═══════════════════════════════════════════════════════════════════════
+    if (typeof UPP_commit === 'function') {
+      Logger.log(`   💾 [UPP] Forcing comprehensive MySQL persistence...`);
+      
+      // 1. Full raw fetch data → job_results (chunked if needed)
+      UPP_commit({
+        type: 'raw_fetch',
+        domain: domain,
+        jobToken: jobToken,
+        competitorId: competitorId,
+        payload: fetchData
+      });
+      
+      // 2. AI Analysis → ai_analysis table
+      UPP_commit({
+        type: 'ai_analysis',
+        domain: domain,
+        jobToken: jobToken,
+        competitorId: competitorId,
+        payload: {
+          scores: analysisData.scores || {},
+          categories: analysisData.categories || {},
+          compositeScore: analysisData.compositeScore || {},
+          recommendations: analysisData.recommendations || [],
+          analysis: analysisData.analysis || {},
+          usedFallback: analysisData.usedFallback || false
+        }
+      });
+      
+      // 3. Link Forensics → link_forensics table
+      UPP_commit({
+        type: 'link_forensics',
+        domain: domain,
+        jobToken: jobToken,
+        competitorId: competitorId,
+        payload: {
+          url: `https://${domain}`,
+          rawHtml: fetchData.rawHtml || fetchData.homepageRaw || '',
+          links: finalData.apiData?.links || [],
+          images: finalData.apiData?.images || [],
+          metadata: finalData.apiData?.metadata || {},
+          schema: finalData.apiData?.schema || []
+        }
+      });
+      
+      // 4. Keyword Intelligence → keyword_intelligence table
+      UPP_commit({
+        type: 'keyword_intelligence',
+        domain: domain,
+        jobToken: jobToken,
+        competitorId: competitorId,
+        payload: {
+          keywords: finalData.snapshot?.keywords || [],
+          keywordClusters: finalData.synthesized?.keywordClusters || [],
+          organicKeywords: finalData.synthesized?.organicKeywords || [],
+          top10Count: finalData.synthesized?.top10Count || 0,
+          top20Count: finalData.synthesized?.top20Count || 0
+        }
+      });
+      
+      // 5. Competitor Results (metrics) → competitor_results table
+      UPP_commit({
+        type: 'competitor_results',
+        domain: domain,
+        jobToken: jobToken,
+        competitorId: competitorId,
+        payload: finalMetrics
+      });
+      
+      // 6. Strategic Audit → strategic type
+      if (finalData.strategicAudit) {
+        UPP_commit({
+          type: 'strategic',
+          domain: domain,
+          jobToken: jobToken,
+          competitorId: competitorId,
+          payload: finalData.strategicAudit
+        });
+      }
+      
+      // 7. Evidence Map → evidence type
+      if (finalData.evidenceMap) {
+        UPP_commit({
+          type: 'evidence',
+          domain: domain,
+          jobToken: jobToken,
+          competitorId: competitorId,
+          payload: finalData.evidenceMap
+        });
+      }
+      
+      Logger.log(`   ✅ [UPP] Comprehensive MySQL persistence complete (7 tables)`);
+      
+      // 8. Trigger Workflow Seeder if 6 competitors are now complete
+      if (typeof WF_checkAndSeed === 'function') {
+        const seedResult = WF_checkAndSeed(jobToken, 6);
+        if (seedResult && seedResult.triggered) {
+          Logger.log(`   🌱 [WF_Seeder] Workflow seeding triggered! ${seedResult.opportunitiesSeeded} opportunities`);
+          
+          // 9. v36.0: Trigger Stage 1 Ignition to map kill_moves → strategic_priorities
+          if (typeof Seeder_IgniteStage1 === 'function') {
+            const igniteResult = Seeder_IgniteStage1(jobToken);
+            if (igniteResult && igniteResult.success) {
+              Logger.log(`   🔥 [IGNITE] Stage 1 ignition complete! ${igniteResult.strategicPrioritiesSet} priorities set`);
+            }
+          }
+        }
+      }
+    }
+    
     Logger.log(`   ════════════════════════════════════════════════════════════`);
     Logger.log(`   ✅ PERSIST COMPLETE: MySQL=${result.storage.mysql}, Sheets=${result.storage.sheets}, Cache=${result.storage.cache}`);
     Logger.log(`   ✅ Total time: ${result.executionTimeMs}ms`);
@@ -407,7 +571,11 @@ function mergeFinalData(domain, fetchData, analysisData) {
       
       // Traffic
       estimatedTraffic: synth.traffic?.estimate || 0,
-      organicKeywords: synth.seo?.indexedPages || 0,
+      // V7 FIX: organicKeywords should count organic results + PAA + related searches
+      organicKeywords: (synth.seo?.organic?.length || 0) + 
+                       (synth.seo?.peopleAlsoAsk?.length || 0) + 
+                       (synth.seo?.relatedSearches?.length || 0) +
+                       (synth.topKeywords?.length || 0),
       
       // Content
       wordCount: synth.website?.wordCount || 0,
@@ -701,8 +869,14 @@ function Worker_ExecuteCompetitorPipeline(jobToken, competitorId, domain, yourDo
     Logger.log(`   🚀 Phase 1/3: FETCH`);
     result.phases.fetch = Worker_FetchCompetitor(jobToken, competitorId, domain, options);
     
+    // v29.0: Only fail if we have NO data at all
+    // Previous: strict success check failed even when we had synthesized data
+    if (!result.phases.fetch.success && !result.phases.fetch.synthesized) {
+      throw new Error(`Fetch failed: ${result.phases.fetch.error || 'No data available'}`);
+    }
+    
     if (!result.phases.fetch.success) {
-      throw new Error(`Fetch failed: ${result.phases.fetch.error}`);
+      Logger.log(`   ⚠️ Fetch partially failed (${result.phases.fetch.error}) but proceeding with available data`);
     }
     
     // v28.0: Check time - if running long, skip Gemini

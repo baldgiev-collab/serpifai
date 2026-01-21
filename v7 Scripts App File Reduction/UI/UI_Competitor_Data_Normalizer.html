@@ -1,0 +1,157 @@
+<!--
+  UI_Competitor_Data_Normalizer.html
+  COMPETITOR DATA NORMALIZER v1.0
+  
+  Transform raw competitor data for card display
+  Standardize traffic K/M/B, calculate percentages, sort by relevance
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 34: COMPETITOR DATA NORMALIZER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CompetitorDataNormalizer = {
+  
+  /**
+   * Normalize array of competitors
+   */
+  normalize(competitors) {
+    if (!Array.isArray(competitors)) return [];
+    
+    return competitors
+      .map(comp => this.normalizeOne(comp))
+      .sort((a, b) => b.relevanceScore - a.relevanceScore);
+  },
+  
+  /**
+   * Normalize single competitor
+   */
+  normalizeOne(comp) {
+    return {
+      name: comp.name || comp.domain || comp.competitor || 'Unknown',
+      domain: this.extractDomain(comp.domain || comp.url || comp.name),
+      traffic: this.normalizeTraffic(comp.traffic || comp.monthlyTraffic),
+      trafficRaw: this.parseTraffic(comp.traffic || comp.monthlyTraffic),
+      da: comp.da || comp.domainAuthority || comp.authority || null,
+      contentGap: this.normalizePercentage(comp.contentGap),
+      contentGapPercent: this.parsePercentage(comp.contentGap),
+      keywordOverlap: comp.keywordOverlap || comp.sharedKeywords || [],
+      backlinks: this.normalizeBacklinks(comp.backlinks || comp.backlinksProfile),
+      contentQuality: this.normalizePercentage(comp.contentQuality || comp.qualityScore),
+      citeability: comp.citeabilityScore || comp.citeability || null,
+      relevanceScore: this.calculateRelevance(comp),
+      raw: comp
+    };
+  },
+  
+  /**
+   * Normalize traffic to K/M/B format
+   */
+  normalizeTraffic(value) {
+    const num = this.parseTraffic(value);
+    if (num === null) return 'N/A';
+    
+    if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  },
+  
+  /**
+   * Parse traffic value to number
+   */
+  parseTraffic(value) {
+    if (typeof value === 'number') return value;
+    if (!value) return null;
+    
+    const str = String(value).toUpperCase().replace(/,/g, '');
+    const match = str.match(/([\d.]+)\s*([KMB])?/);
+    
+    if (!match) return null;
+    
+    let num = parseFloat(match[1]);
+    const suffix = match[2];
+    
+    if (suffix === 'K') num *= 1000;
+    if (suffix === 'M') num *= 1000000;
+    if (suffix === 'B') num *= 1000000000;
+    
+    return num;
+  },
+  
+  /**
+   * Normalize percentage display
+   */
+  normalizePercentage(value) {
+    const num = this.parsePercentage(value);
+    if (num === null) return 'N/A';
+    return num + '%';
+  },
+  
+  /**
+   * Parse percentage to number
+   */
+  parsePercentage(value) {
+    if (typeof value === 'number') return Math.round(value);
+    if (!value) return null;
+    
+    const match = String(value).match(/([\d.]+)/);
+    return match ? Math.round(parseFloat(match[1])) : null;
+  },
+  
+  /**
+   * Normalize backlinks object
+   */
+  normalizeBacklinks(backlinks) {
+    if (!backlinks) return { total: 0, referringDomains: 0 };
+    
+    return {
+      total: backlinks.total || backlinks.count || 0,
+      referringDomains: backlinks.referringDomains || backlinks.domains || 0
+    };
+  },
+  
+  /**
+   * Extract domain from URL or string
+   */
+  extractDomain(value) {
+    if (!value) return '';
+    
+    try {
+      if (value.includes('://')) {
+        return new URL(value).hostname.replace('www.', '');
+      }
+      return value.replace('www.', '').split('/')[0];
+    } catch {
+      return value;
+    }
+  },
+  
+  /**
+   * Calculate relevance score for sorting
+   */
+  calculateRelevance(comp) {
+    let score = 0;
+    
+    // Traffic weight
+    const traffic = this.parseTraffic(comp.traffic);
+    if (traffic) score += Math.min(traffic / 100000, 30);
+    
+    // DA weight
+    if (comp.da) score += comp.da * 0.3;
+    
+    // Content gap weight (higher gap = more relevant)
+    const gap = this.parsePercentage(comp.contentGap);
+    if (gap) score += gap * 0.2;
+    
+    // Citeability weight
+    if (comp.citeabilityScore) score += comp.citeabilityScore * 10;
+    
+    return Math.round(score);
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.CompetitorDataNormalizer = CompetitorDataNormalizer;
+}
+</script>

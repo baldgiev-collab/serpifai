@@ -1,0 +1,143 @@
+<!--
+  UI_Chart_Render_Verification.html
+  CHART RENDER VERIFICATION UTILITY v1.0
+  
+  Confirm all 14 sections render D3 charts correctly
+  Detects: empty canvases, missing SVG, black boxes, zero dimensions
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 37: CHART RENDER VERIFICATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ChartRenderVerifier = {
+  
+  // All 14 sections that should have charts
+  SECTION_IDS: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+  
+  // Expected minimum dimensions
+  MIN_WIDTH: 200,
+  MIN_HEIGHT: 200,
+  
+  /**
+   * Run verification on all chart containers
+   */
+  runVerification() {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('D3 CHART RENDER VERIFICATION — All 14 Sections');
+    console.log('═══════════════════════════════════════════════════════════\n');
+    
+    const results = { passed: 0, failed: 0, issues: [] };
+    
+    this.SECTION_IDS.forEach(sectionNum => {
+      const containerId = `chart-stage-${sectionNum}`;
+      const container = document.getElementById(containerId);
+      
+      if (!container) {
+        console.log(`  ⏭️ Section ${sectionNum}: Container not rendered`);
+        return;
+      }
+      
+      const checks = this.checkSection(sectionNum, container);
+      
+      if (checks.passed) {
+        console.log(`  ✅ Section ${sectionNum}: ${checks.summary}`);
+        results.passed++;
+      } else {
+        console.log(`  ❌ Section ${sectionNum}: ${checks.summary}`);
+        results.failed++;
+        results.issues.push({ section: sectionNum, ...checks });
+      }
+    });
+    
+    console.log('\n═══════════════════════════════════════════════════════════');
+    console.log(`RESULTS: ${results.passed} PASSED | ${results.failed} FAILED`);
+    console.log('═══════════════════════════════════════════════════════════');
+    
+    if (results.issues.length > 0) {
+      console.log('\n🔍 ISSUES DETECTED:');
+      results.issues.forEach(issue => {
+        console.log(`  Section ${issue.section}:`);
+        issue.problems.forEach(p => console.log(`    - ${p}`));
+      });
+    }
+    
+    return results;
+  },
+  
+  /**
+   * Check a single section's chart container
+   */
+  checkSection(sectionNum, container) {
+    const problems = [];
+    
+    // Check 1: SVG exists
+    const svg = container.querySelector('svg');
+    if (!svg) {
+      problems.push('No SVG element found');
+    }
+    
+    // Check 2: Container has dimensions
+    const rect = container.getBoundingClientRect();
+    if (rect.width < this.MIN_WIDTH) {
+      problems.push(`Width too small: ${rect.width}px`);
+    }
+    if (rect.height < this.MIN_HEIGHT) {
+      problems.push(`Height too small: ${rect.height}px`);
+    }
+    
+    // Check 3: SVG has content (not empty)
+    if (svg && svg.children.length === 0) {
+      problems.push('SVG is empty (no child elements)');
+    }
+    
+    // Check 4: Not hidden
+    const style = window.getComputedStyle(container);
+    if (style.display === 'none' || style.visibility === 'hidden') {
+      problems.push('Container is hidden');
+    }
+    
+    // Check 5: Background not pure black (black box detection)
+    if (style.backgroundColor === 'rgb(0, 0, 0)') {
+      problems.push('Background is pure black (possible rendering failure)');
+    }
+    
+    // Check 6: Fallback state not showing error
+    const errorState = container.querySelector('.chart-error');
+    if (errorState) {
+      problems.push('Error fallback state is visible');
+    }
+    
+    return {
+      passed: problems.length === 0,
+      problems,
+      summary: problems.length === 0 
+        ? `SVG ${svg?.children.length || 0} elements, ${Math.round(rect.width)}x${Math.round(rect.height)}px`
+        : problems[0]
+    };
+  },
+  
+  /**
+   * Quick check for hydration status
+   */
+  checkHydrationStatus() {
+    console.log('\n📊 HYDRATION STATUS:');
+    
+    this.SECTION_IDS.forEach(sectionNum => {
+      const container = document.getElementById(`chart-stage-${sectionNum}`);
+      if (!container) return;
+      
+      const hydrated = container.dataset.hydrated === 'true';
+      const status = hydrated ? '🟢' : '🔴';
+      console.log(`  ${status} Section ${sectionNum}: ${hydrated ? 'Hydrated' : 'Not hydrated'}`);
+    });
+  }
+};
+
+// Expose globally
+if (typeof window !== 'undefined') {
+  window.ChartRenderVerifier = ChartRenderVerifier;
+  console.log('💡 Run ChartRenderVerifier.runVerification() to check charts');
+  console.log('💡 Run ChartRenderVerifier.checkHydrationStatus() for hydration');
+}
+</script>

@@ -1,0 +1,135 @@
+<!--
+  UI_Chart_Data_Validator.html
+  CHART DATA VALIDATOR v1.0
+  
+  Validates dashboardCharts structure before render
+  Checks: array length, required fields, numeric values
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 33: CHART DATA VALIDATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ChartDataValidator = {
+  
+  /**
+   * Validate full dashboardCharts object
+   */
+  validate(data) {
+    const result = { valid: true, errors: [], warnings: [] };
+    
+    if (!data) {
+      result.valid = false;
+      result.errors.push('No chart data provided');
+      return result;
+    }
+    
+    // Validate heroMetrics
+    if (data.heroMetrics) {
+      this.validateHeroMetrics(data.heroMetrics, result);
+    } else {
+      result.warnings.push('heroMetrics not present - using defaults');
+    }
+    
+    // Validate chart arrays
+    const chartArrays = [
+      'customerFrustrationsChart',
+      'hiddenAspirationsChart',
+      'competitiveAdvantageMapChart',
+      'killMovesChart',
+      'aeoAnalysisChart',
+      'assetValuationChart'
+    ];
+    
+    chartArrays.forEach(chartName => {
+      if (data[chartName]) {
+        this.validateChartArray(chartName, data[chartName], result);
+      }
+    });
+    
+    return result;
+  },
+  
+  /**
+   * Validate heroMetrics object
+   */
+  validateHeroMetrics(metrics, result) {
+    const fields = ['citeabilityCoefficient', 'janitorRatio', 'moatAdjustedValuation'];
+    
+    fields.forEach(field => {
+      if (metrics[field] === undefined) {
+        result.warnings.push(`heroMetrics.${field} not present`);
+      } else if (typeof metrics[field] !== 'number') {
+        result.warnings.push(`heroMetrics.${field} should be numeric`);
+      }
+    });
+    
+    // Range validation
+    if (metrics.citeabilityCoefficient !== undefined) {
+      if (metrics.citeabilityCoefficient < 0 || metrics.citeabilityCoefficient > 1) {
+        result.warnings.push('citeabilityCoefficient should be 0-1');
+      }
+    }
+    
+    if (metrics.janitorRatio !== undefined) {
+      if (metrics.janitorRatio < 0 || metrics.janitorRatio > 100) {
+        result.warnings.push('janitorRatio should be 0-100');
+      }
+    }
+  },
+  
+  /**
+   * Validate a chart data array
+   */
+  validateChartArray(name, arr, result) {
+    if (!Array.isArray(arr)) {
+      result.errors.push(`${name} should be an array`);
+      return;
+    }
+    
+    if (arr.length === 0) {
+      result.warnings.push(`${name} is empty`);
+      return;
+    }
+    
+    // Check each item has required fields based on chart type
+    const requiredFields = this.getRequiredFields(name);
+    
+    arr.forEach((item, index) => {
+      requiredFields.forEach(field => {
+        if (item[field] === undefined) {
+          result.warnings.push(`${name}[${index}] missing ${field}`);
+        }
+      });
+    });
+  },
+  
+  /**
+   * Get required fields for each chart type
+   */
+  getRequiredFields(chartName) {
+    const fieldMap = {
+      'customerFrustrationsChart': ['label', 'intensity'],
+      'hiddenAspirationsChart': ['label', 'intensity'],
+      'competitiveAdvantageMapChart': ['dimension', 'yourBrand'],
+      'killMovesChart': ['target', 'impact'],
+      'aeoAnalysisChart': ['competitor', 'citeabilityScore'],
+      'assetValuationChart': ['competitor', 'organicTrustValue']
+    };
+    
+    return fieldMap[chartName] || ['label'];
+  },
+  
+  /**
+   * Check if data is renderable (valid or has only warnings)
+   */
+  isRenderable(data) {
+    const result = this.validate(data);
+    return result.valid || result.errors.length === 0;
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.ChartDataValidator = ChartDataValidator;
+}
+</script>

@@ -1,0 +1,1136 @@
+<!-- 
+  ═══════════════════════════════════════════════════════════════════════════
+  UI_ZeroTrust_Injection.html - ZERO-TRUST PROOF ICON INJECTOR
+  ═══════════════════════════════════════════════════════════════════════════
+  
+  SerpifAI Elite v22.0 - Universal Proof Icons for Every Metric
+  
+  PURPOSE:
+  - Wraps every metric value in .elite-metric-container
+  - Appends 🛡️ (Shield) or 🔍 (Magnifying Glass) icon
+  - On click: Opens AuditTrail side-panel modal
+  
+  INTEGRATION:
+  - Works with ELITE_UIRenderer.html
+  - Reads from competitor.evidenceMap
+  - Scales to ALL tabs (Market, Technical, Content, Keyword, Brand, etc.)
+  
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* ELITE METRIC CONTAINER - Wrapper for all provable metrics              */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  
+  .elite-metric-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+  }
+  
+  .elite-metric-value {
+    font-weight: 600;
+    color: inherit;
+  }
+  
+  .elite-proof-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  
+  .elite-proof-icon:hover {
+    opacity: 1;
+    background: rgba(245, 158, 11, 0.25);
+    transform: scale(1.1);
+  }
+  
+  .elite-proof-icon.verified {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+  
+  .elite-proof-icon.verified:hover {
+    background: rgba(34, 197, 94, 0.25);
+  }
+  
+  .elite-proof-icon.low-confidence {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  
+  /* Confidence indicator dot */
+  .elite-proof-icon::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: none;
+  }
+  
+  .elite-proof-icon[data-confidence="high"]::after {
+    display: block;
+    background: #22c55e;
+  }
+  
+  .elite-proof-icon[data-confidence="medium"]::after {
+    display: block;
+    background: #f59e0b;
+  }
+  
+  .elite-proof-icon[data-confidence="low"]::after {
+    display: block;
+    background: #ef4444;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* AUDIT TRAIL SIDE PANEL                                                  */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  
+  .audit-trail-sidepanel {
+    position: fixed;
+    top: 0;
+    right: -450px;
+    width: 450px;
+    height: 100vh;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
+    z-index: 10001;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .audit-trail-sidepanel.active {
+    right: 0;
+  }
+  
+  .audit-trail-sidepanel-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  
+  .audit-trail-sidepanel-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .sidepanel-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .sidepanel-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .sidepanel-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .sidepanel-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .sidepanel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  
+  /* Source Code Section */
+  .proof-source-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  
+  .proof-source-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  
+  .proof-source-title {
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .proof-source-code {
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #c9d1d9;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  
+  /* Parsing Logic Breadcrumb */
+  .proof-parsing-logic {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 4px solid #3b82f6;
+    border-radius: 0 8px 8px 0;
+    padding: 14px;
+    margin-bottom: 20px;
+  }
+  
+  .proof-parsing-logic h5 {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.7;
+  }
+  
+  .proof-parsing-steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+  }
+  
+  .proof-step {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .proof-step-arrow {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 14px;
+  }
+  
+  /* AI/RAG View Section */
+  .proof-rag-section {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.05));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  
+  .proof-rag-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  
+  .proof-rag-header h5 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  
+  .proof-rag-content {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  /* Confidence Meter */
+  .proof-confidence-meter {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  
+  .confidence-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  
+  .confidence-label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  
+  .confidence-value {
+    font-size: 20px;
+    font-weight: 800;
+  }
+  
+  .confidence-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .confidence-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  
+  /* D3 Mind Map Integration Tooltip */
+  .mindmap-proof-tooltip {
+    position: absolute;
+    background: #1e293b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 11px;
+    color: white;
+    max-width: 280px;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .mindmap-proof-tooltip.visible {
+    opacity: 1;
+  }
+  
+  .mindmap-proof-tooltip .tooltip-header {
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .mindmap-proof-tooltip .tooltip-source {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+  }
+</style>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ZERO-TRUST PROOF INJECTION ENGINE
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Initialize proof icons across all tabs
+   * Call this after rendering competitor data
+   */
+  function ZT_initializeProofIcons() {
+    console.log('[ZeroTrust] Initializing proof icons across all tabs...');
+    
+    // Create side panel if not exists
+    ZT_createSidePanel();
+    
+    // Scan for injectable metrics
+    ZT_injectProofIcons();
+    
+    console.log('[ZeroTrust] Proof icon initialization complete');
+  }
+  
+  /**
+   * Create the Audit Trail side panel
+   */
+  function ZT_createSidePanel() {
+    // Create backdrop
+    let backdrop = document.getElementById('zt-sidepanel-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'zt-sidepanel-backdrop';
+      backdrop.className = 'audit-trail-sidepanel-backdrop';
+      backdrop.onclick = ZT_closeSidePanel;
+      document.body.appendChild(backdrop);
+    }
+    
+    // Create side panel
+    let panel = document.getElementById('zt-sidepanel');
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'zt-sidepanel';
+      panel.className = 'audit-trail-sidepanel';
+      panel.innerHTML = `
+        <div class="sidepanel-header">
+          <h3>
+            <span>🛡️</span>
+            <span>Zero-Trust Audit Trail</span>
+          </h3>
+          <button class="sidepanel-close" onclick="ZT_closeSidePanel()">✕</button>
+        </div>
+        <div class="sidepanel-body" id="zt-sidepanel-body">
+          <!-- Dynamic content injected here -->
+        </div>
+      `;
+      document.body.appendChild(panel);
+    }
+  }
+  
+  /**
+   * Open the side panel with proof content
+   * @param {string} metricId - The metric ID to show proof for
+   * @param {Object} competitor - The competitor object with evidenceMap
+   * 
+   * v24.0: Falls back to ORACLE_STATE if competitor is empty
+   */
+  function ZT_openSidePanel(metricId, competitor) {
+    console.log('[ZeroTrust] Opening side panel for:', metricId);
+    
+    const backdrop = document.getElementById('zt-sidepanel-backdrop');
+    const panel = document.getElementById('zt-sidepanel');
+    const body = document.getElementById('zt-sidepanel-body');
+    
+    if (!panel || !body) {
+      console.error('[ZeroTrust] Side panel not found, creating...');
+      ZT_createSidePanel();
+      return ZT_openSidePanel(metricId, competitor);
+    }
+    
+    // v24.0: Ensure we have a competitor object
+    let activeCompetitor = competitor;
+    if (!activeCompetitor || !activeCompetitor.evidenceMap) {
+      // Try to find competitor from ORACLE_STATE
+      activeCompetitor = ZT_getCompetitorByDomain(competitor?.domain || '');
+      console.log('[ZeroTrust] Fetched competitor from state:', activeCompetitor?.domain);
+    }
+    
+    // If still no evidence, try to fetch it
+    if (!activeCompetitor?.evidenceMap) {
+      console.log('[ZeroTrust] No evidenceMap, showing loading state');
+      body.innerHTML = ZT_renderLoadingState(metricId);
+      backdrop?.classList.add('active');
+      panel.classList.add('active');
+      
+      // Attempt to load evidence asynchronously
+      ZT_loadEvidenceAsync(metricId, activeCompetitor?.domain, body);
+      return;
+    }
+    
+    // Get proof data
+    const proof = ZT_getProof(activeCompetitor, metricId);
+    
+    // Render proof content
+    body.innerHTML = ZT_renderProofContent(metricId, proof, activeCompetitor);
+    
+    // Show panel
+    backdrop?.classList.add('active');
+    panel.classList.add('active');
+  }
+  
+  /**
+   * Render loading state while fetching evidence
+   */
+  function ZT_renderLoadingState(metricId) {
+    return `
+      <div style="text-align: center; padding: 60px 20px;">
+        <div style="width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+        <h4 style="margin: 0 0 10px;">Loading Evidence...</h4>
+        <p style="opacity: 0.7; font-size: 13px;">Fetching proof for: ${metricId}</p>
+      </div>
+      <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+    `;
+  }
+  
+  /**
+   * Load evidence asynchronously from backend
+   */
+  function ZT_loadEvidenceAsync(metricId, domain, bodyElement) {
+    const jobToken = window.ORACLE_STATE?.jobToken;
+    
+    if (!jobToken) {
+      bodyElement.innerHTML = ZT_renderNoProofState(metricId, 'No job token available');
+      return;
+    }
+    
+    // Call backend to get evidence snippet
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success && result.evidence) {
+            // Store in ORACLE_STATE for future use
+            if (domain && window.ORACLE_STATE?.competitors?.[domain]) {
+              window.ORACLE_STATE.competitors[domain].evidenceMap = 
+                window.ORACLE_STATE.competitors[domain].evidenceMap || {};
+              window.ORACLE_STATE.competitors[domain].evidenceMap[metricId] = result.evidence;
+            }
+            
+            const proof = { found: true, ...result.evidence };
+            const comp = ZT_getCompetitorByDomain(domain);
+            bodyElement.innerHTML = ZT_renderProofContent(metricId, proof, comp);
+          } else {
+            bodyElement.innerHTML = ZT_renderNoProofState(metricId, result.message || 'Evidence not found');
+          }
+        })
+        .withFailureHandler(function(error) {
+          bodyElement.innerHTML = ZT_renderNoProofState(metricId, error.message || 'Failed to load evidence');
+        })
+        .getEvidenceSnippet(jobToken, domain, metricId);
+    } else {
+      bodyElement.innerHTML = ZT_renderNoProofState(metricId, 'Script bridge not available');
+    }
+  }
+  
+  /**
+   * Render no proof available state
+   */
+  function ZT_renderNoProofState(metricId, message) {
+    return `
+      <div style="text-align: center; padding: 60px 20px;">
+        <div style="font-size: 48px; margin-bottom: 20px;">🔍</div>
+        <h4 style="margin: 0 0 10px;">No Proof Available</h4>
+        <p style="opacity: 0.7; font-size: 13px;">${message}</p>
+        <div style="margin-top: 16px; font-size: 11px; opacity: 0.5;">Metric: ${metricId}</div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Close the side panel
+   */
+  function ZT_closeSidePanel() {
+    const backdrop = document.getElementById('zt-sidepanel-backdrop');
+    const panel = document.getElementById('zt-sidepanel');
+    
+    backdrop?.classList.remove('active');
+    panel?.classList.remove('active');
+  }
+  
+  /**
+   * Get proof data for a metric
+   */
+  function ZT_getProof(competitor, metricId) {
+    if (!competitor?.evidenceMap) {
+      return { found: false, message: 'No evidence map available' };
+    }
+    
+    const evidence = competitor.evidenceMap[metricId];
+    if (!evidence) {
+      return { found: false, message: `No proof for: ${metricId}` };
+    }
+    
+    return { found: true, ...evidence };
+  }
+  
+  /**
+   * Render proof content for the side panel
+   */
+  function ZT_renderProofContent(metricId, proof, competitor) {
+    if (!proof.found) {
+      return `
+        <div style="text-align: center; padding: 60px 20px;">
+          <div style="font-size: 48px; margin-bottom: 20px;">🔍</div>
+          <h4 style="margin: 0 0 10px;">No Proof Available</h4>
+          <p style="opacity: 0.7; font-size: 13px;">${proof.message}</p>
+        </div>
+      `;
+    }
+    
+    const confidenceColor = proof.confidence >= 90 ? '#22c55e' : 
+                            proof.confidence >= 70 ? '#84cc16' :
+                            proof.confidence >= 50 ? '#f59e0b' : '#ef4444';
+    
+    // Parse parsing logic steps
+    const parsingSteps = (proof.source || 'Unknown').split(' → ');
+    
+    // Check if this is a content metric (show RAG view)
+    const isContentMetric = metricId.startsWith('content.') || metricId === 'aeo.ragCleanView';
+    
+    return `
+      <!-- Metric Value -->
+      <div style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.05)); border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+        <div style="font-size: 12px; opacity: 0.7; margin-bottom: 8px;">${metricId}</div>
+        <div style="font-size: 24px; font-weight: 800; color: #22c55e;">
+          ${typeof proof.value === 'object' ? JSON.stringify(proof.value).substring(0, 50) : proof.value}
+        </div>
+        <div style="font-size: 11px; opacity: 0.6; margin-top: 6px;">
+          Competitor: ${competitor?.domain || 'Unknown'}
+        </div>
+      </div>
+      
+      <!-- Source Code View -->
+      <div class="proof-source-section">
+        <div class="proof-source-header">
+          <div class="proof-source-title">
+            <span>📄</span>
+            Raw HTML Source
+          </div>
+          <button onclick="ZT_copyToClipboard(this, 'proof-raw-code')" style="background: rgba(255,255,255,0.1); border: none; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+            📋 Copy
+          </button>
+        </div>
+        <div class="proof-source-code" id="proof-raw-code">${ZT_escapeHtml(proof.raw?.snippet || 'No raw snippet available')}</div>
+      </div>
+      
+      <!-- Parsing Logic Breadcrumb -->
+      <div class="proof-parsing-logic">
+        <h5>🔗 Parsing Logic Breadcrumb</h5>
+        <div class="proof-parsing-steps">
+          ${parsingSteps.map((step, i) => `
+            ${i > 0 ? '<span class="proof-step-arrow">→</span>' : ''}
+            <span class="proof-step">${step}</span>
+          `).join('')}
+        </div>
+      </div>
+      
+      ${isContentMetric ? `
+      <!-- AI/RAG View -->
+      <div class="proof-rag-section">
+        <div class="proof-rag-header">
+          <span style="font-size: 20px;">🤖</span>
+          <h5>AI/RAG Clean View</h5>
+          <span style="font-size: 10px; background: rgba(139, 92, 246, 0.3); padding: 2px 8px; border-radius: 10px;">LLM Readable</span>
+        </div>
+        <div class="proof-rag-content">${ZT_generateRAGView(competitor)}</div>
+      </div>
+      ` : ''}
+      
+      <!-- Confidence Meter -->
+      <div class="proof-confidence-meter">
+        <div class="confidence-header">
+          <span class="confidence-label">Proof Confidence</span>
+          <span class="confidence-value" style="color: ${confidenceColor}">${proof.confidence}%</span>
+        </div>
+        <div class="confidence-bar">
+          <div class="confidence-bar-fill" style="width: ${proof.confidence}%; background: ${confidenceColor};"></div>
+        </div>
+        <div style="margin-top: 10px; font-size: 11px; opacity: 0.7;">
+          ${proof.confidence >= 90 ? '✅ Verified - Direct extraction from source' :
+            proof.confidence >= 70 ? '👍 High - Reliable extraction method' :
+            proof.confidence >= 50 ? '⚠️ Medium - Some estimation involved' :
+            '❌ Low - Significant estimation or fallback'}
+        </div>
+      </div>
+      
+      <!-- Timestamp -->
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; opacity: 0.6; display: flex; justify-content: space-between;">
+        <span>Captured: ${new Date(proof.timestamp).toLocaleString()}</span>
+        <span>ZeroTrust v1.0</span>
+      </div>
+    `;
+  }
+  
+  /**
+   * Generate RAG-friendly clean view of content
+   */
+  function ZT_generateRAGView(competitor) {
+    const website = competitor?.synthesized?.website || {};
+    
+    let markdown = '';
+    if (website.title) markdown += `# ${website.title}\n\n`;
+    if (website.h1) markdown += `## ${website.h1}\n\n`;
+    if (website.description) markdown += `${website.description}\n\n`;
+    
+    const h2s = Array.isArray(website.h2) ? website.h2 : [];
+    h2s.slice(0, 5).forEach(h2 => {
+      markdown += `### ${h2}\n\n`;
+    });
+    
+    return markdown || 'No structured content available for RAG view';
+  }
+  
+  /**
+   * Inject proof icons into existing metrics
+   */
+  function ZT_injectProofIcons() {
+    // Find all data-metric elements
+    const metricElements = document.querySelectorAll('[data-metric-id]');
+    
+    metricElements.forEach(el => {
+      // Skip if already has proof icon
+      if (el.querySelector('.elite-proof-icon')) return;
+      
+      const metricId = el.getAttribute('data-metric-id');
+      const competitorDomain = el.getAttribute('data-competitor');
+      
+      // Create proof icon
+      const icon = document.createElement('button');
+      icon.className = 'elite-proof-icon';
+      icon.innerHTML = '🛡️';
+      icon.title = 'View proof';
+      icon.onclick = (e) => {
+        e.stopPropagation();
+        const competitor = ZT_getCompetitorByDomain(competitorDomain);
+        ZT_openSidePanel(metricId, competitor);
+      };
+      
+      // Wrap in container
+      el.classList.add('elite-metric-container');
+      el.appendChild(icon);
+    });
+    
+    console.log(`[ZeroTrust] Injected ${metricElements.length} proof icons`);
+  }
+  
+  /**
+   * Helper: Get competitor object by domain
+   * v24.0: Uses ORACLE_STATE first, then fallback to legacy sources
+   */
+  function ZT_getCompetitorByDomain(domain) {
+    // PRIORITY 1: Check ORACLE_STATE
+    if (window.ORACLE_STATE?.competitors?.[domain]) {
+      return window.ORACLE_STATE.competitors[domain];
+    }
+    
+    // PRIORITY 2: Legacy currentCompetitors array
+    const competitors = window.currentCompetitors || 
+                       window.competitorData?.competitors || 
+                       [];
+    const found = competitors.find(c => c.domain === domain);
+    if (found) return found;
+    
+    // PRIORITY 3: Return first available competitor if domain not found
+    // (fallback for when domain is empty or unknown)
+    if (!domain && Object.keys(window.ORACLE_STATE?.competitors || {}).length > 0) {
+      const firstDomain = Object.keys(window.ORACLE_STATE.competitors)[0];
+      return window.ORACLE_STATE.competitors[firstDomain];
+    }
+    
+    if (!domain && competitors.length > 0) {
+      return competitors[0];
+    }
+    
+    return {};
+  }
+  
+  /**
+   * Helper: Escape HTML for display
+   */
+  function ZT_escapeHtml(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+  
+  /**
+   * Helper: Copy to clipboard
+   */
+  function ZT_copyToClipboard(btn, elementId) {
+    const el = document.getElementById(elementId);
+    if (el) {
+      navigator.clipboard.writeText(el.textContent)
+        .then(() => {
+          const original = btn.textContent;
+          btn.textContent = '✅ Copied!';
+          setTimeout(() => btn.textContent = original, 2000);
+        });
+    }
+  }
+  
+  /**
+   * Create a metric with built-in proof icon
+   * Use this when rendering new metrics
+   * 
+   * @param {string} metricId - The metric identifier
+   * @param {*} value - The metric value
+   * @param {Object} competitor - The competitor object
+   * @param {Object} options - Display options
+   * @returns {string} HTML string
+   */
+  function ZT_createMetricWithProof(metricId, value, competitor, options = {}) {
+    const evidence = competitor?.evidenceMap?.[metricId];
+    const confidence = evidence?.confidence || 50;
+    
+    const confidenceClass = confidence >= 90 ? 'verified' : 
+                            confidence < 60 ? 'low-confidence' : '';
+    
+    const confidenceLevel = confidence >= 90 ? 'high' :
+                            confidence >= 60 ? 'medium' : 'low';
+    
+    const displayValue = typeof value === 'object' ? JSON.stringify(value) : value;
+    
+    return `
+      <span class="elite-metric-container" data-metric-id="${metricId}" data-competitor="${competitor?.domain || ''}">
+        <span class="elite-metric-value">${options.format ? options.format(displayValue) : displayValue}</span>
+        <button class="elite-proof-icon ${confidenceClass}" 
+                data-confidence="${confidenceLevel}"
+                onclick="ZT_openSidePanel('${metricId}', ZT_getCompetitorByDomain('${competitor?.domain || ''}'))"
+                title="View proof (${confidence}% confidence)">
+          🛡️
+        </button>
+      </span>
+    `;
+  }
+  
+  /**
+   * Create proof icon HTML for inline use in renderers
+   * Called by ELITE_UIRenderer when building card HTML
+   * 
+   * @param {string} metricId - The metric identifier
+   * @returns {string} HTML string for the proof icon button
+   */
+  function ZT_createProofIconHTML(metricId) {
+    if (!metricId) return '';
+    
+    // Get current competitor from global state
+    const competitor = window.currentActiveCompetitor || 
+                       window.competitorData?.competitors?.[0] || 
+                       {};
+    
+    const evidence = competitor?.evidenceMap?.[metricId];
+    const confidence = evidence?.confidence || 50;
+    
+    const confidenceClass = confidence >= 90 ? 'verified' : 
+                            confidence < 60 ? 'low-confidence' : '';
+    
+    const confidenceLevel = confidence >= 90 ? 'high' :
+                            confidence >= 60 ? 'medium' : 'low';
+    
+    // Use escaped quotes for onclick since this is embedded in HTML
+    return `
+      <button class="elite-proof-icon ${confidenceClass}" 
+              data-confidence="${confidenceLevel}"
+              data-metric-id="${metricId}"
+              onclick="ZT_handleProofClick(event, '${metricId}')"
+              title="View proof (${confidence}% confidence)">
+        🛡️
+      </button>
+    `;
+  }
+  
+  /**
+   * Handle proof icon click event
+   * Wrapper to find competitor and open side panel
+   */
+  function ZT_handleProofClick(event, metricId) {
+    event.stopPropagation();
+    
+    // Find the competitor from context
+    const container = event.target.closest('[data-competitor]');
+    const competitorDomain = container?.getAttribute('data-competitor') || '';
+    
+    const competitor = competitorDomain 
+      ? ZT_getCompetitorByDomain(competitorDomain)
+      : (window.currentActiveCompetitor || window.competitorData?.competitors?.[0] || {});
+    
+    ZT_openSidePanel(metricId, competitor);
+  }
+  
+  /**
+   * D3 Mind Map Integration
+   * Add hover tooltips showing source evidence
+   */
+  function ZT_initMindMapProofs(mindMapNodes, competitor) {
+    if (!mindMapNodes || !Array.isArray(mindMapNodes)) return;
+    
+    // Create tooltip element
+    let tooltip = document.getElementById('mindmap-proof-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'mindmap-proof-tooltip';
+      tooltip.className = 'mindmap-proof-tooltip';
+      document.body.appendChild(tooltip);
+    }
+    
+    // Attach hover handlers to each node
+    mindMapNodes.forEach(node => {
+      const metricId = node.metricId || `content.${node.type || 'unknown'}`;
+      const evidence = competitor?.evidenceMap?.[metricId];
+      
+      if (node.element) {
+        node.element.addEventListener('mouseenter', (e) => {
+          tooltip.innerHTML = `
+            <div class="tooltip-header">
+              <span>🛡️</span>
+              ${node.label || node.name}
+            </div>
+            <div>${evidence?.value || node.value || 'N/A'}</div>
+            ${evidence?.source ? `<div class="tooltip-source">📊 ${evidence.source}</div>` : ''}
+          `;
+          
+          tooltip.style.left = (e.pageX + 15) + 'px';
+          tooltip.style.top = (e.pageY - 10) + 'px';
+          tooltip.classList.add('visible');
+        });
+        
+        node.element.addEventListener('mouseleave', () => {
+          tooltip.classList.remove('visible');
+        });
+        
+        node.element.addEventListener('click', () => {
+          ZT_openSidePanel(metricId, competitor);
+        });
+      }
+    });
+  }
+  
+  // Expose functions globally
+  window.ZT_initializeProofIcons = ZT_initializeProofIcons;
+  window.ZT_openSidePanel = ZT_openSidePanel;
+  window.ZT_closeSidePanel = ZT_closeSidePanel;
+  window.ZT_createMetricWithProof = ZT_createMetricWithProof;
+  window.ZT_createProofIconHTML = ZT_createProofIconHTML;
+  window.ZT_handleProofClick = ZT_handleProofClick;
+  window.ZT_initMindMapProofs = ZT_initMindMapProofs;
+  
+  /**
+   * Open Audit Trail for Strategic Command metrics
+   * @param {string} domain - Competitor domain
+   * @param {string} metricType - 'programmatic', 'emotional', 'semantic', etc.
+   */
+  window.openAuditTrail = function(domain, metricType) {
+    console.log(`[AuditTrail] Opening for ${domain} / ${metricType}`);
+    
+    // Get competitor data from ORACLE_STATE or global
+    const competitor = window.ORACLE_STATE?.competitors?.[domain] || 
+                       window.competitorData?.competitors?.find(c => c.domain === domain) ||
+                       { domain: domain };
+    
+    // Get strategic audit data
+    const strategicAudit = competitor.strategicAudit || {};
+    const evidenceMap = competitor.evidenceMap || {};
+    
+    // Build evidence content based on metric type
+    let evidenceHtml = '';
+    
+    switch(metricType) {
+      case 'programmatic':
+        const moat = strategicAudit.programmaticMoat || {};
+        const moatEvidence = evidenceMap.programmatic || moat.evidence || {};
+        evidenceHtml = buildProgrammaticMoatEvidence(domain, moat, moatEvidence);
+        break;
+        
+      case 'emotional':
+        const debt = strategicAudit.emotionalDebt || {};
+        const emotionalEvidence = evidenceMap.emotional || debt.evidence || {};
+        evidenceHtml = buildEmotionalDebtEvidence(domain, debt, emotionalEvidence);
+        break;
+        
+      case 'semantic':
+        const triplets = strategicAudit.semanticTriplets || {};
+        const semanticEvidence = evidenceMap.semantic || triplets.evidence || {};
+        evidenceHtml = buildSemanticTripletsEvidence(domain, triplets, semanticEvidence);
+        break;
+        
+      default:
+        evidenceHtml = `<div style="padding: 20px; text-align: center;">No evidence available for ${metricType}</div>`;
+    }
+    
+    // Open in side panel
+    ZT_openSidePanel(`strategic.${metricType}`, competitor, evidenceHtml);
+  };
+  
+  /**
+   * Build evidence HTML for Programmatic Moat
+   */
+  function buildProgrammaticMoatEvidence(domain, moat, evidence) {
+    const statusColor = moat.is_programmatic ? '#22c55e' : '#f59e0b';
+    const statusText = moat.is_programmatic ? '✅ Programmatic (Template-Based)' : '⚠️ Manual Design';
+    
+    return `
+      <div class="evidence-section" style="padding: 16px;">
+        <h3 style="margin: 0 0 16px; color: #f59e0b; display: flex; align-items: center; gap: 8px;">
+          🏗️ Programmatic Moat Analysis
+          <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px;">${statusText}</span>
+        </h3>
+        
+        <div class="evidence-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div class="evidence-stat" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
+            <div style="font-size: 24px; font-weight: 700; color: ${statusColor};">${moat.similarity_score || 0}%</div>
+            <div style="font-size: 11px; color: #6b7280;">DOM Similarity</div>
+          </div>
+          <div class="evidence-stat" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
+            <div style="font-size: 18px; font-weight: 600;">${moat.pattern_type || 'Unknown'}</div>
+            <div style="font-size: 11px; color: #6b7280;">Pattern Type</div>
+          </div>
+        </div>
+        
+        ${evidence.sharedClasses?.length ? `
+        <div class="evidence-block" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #f59e0b; margin-bottom: 8px;">Shared CSS Classes (${evidence.sharedClasses.length}):</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            ${evidence.sharedClasses.slice(0, 15).map(c => `<code style="background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 10px;">.${c}</code>`).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        ${evidence.templateSignatures?.length ? `
+        <div class="evidence-block" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #22c55e; margin-bottom: 8px;">Template Signatures Detected:</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            ${evidence.templateSignatures.map(sig => `<code style="background: #064e3b; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${sig.framework}: ${sig.pattern}</code>`).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        <div class="evidence-footer" style="font-size: 10px; color: #6b7280; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+          Source: FT_Oracle_EliteDataSystem.gs → detectProgrammaticMoat()<br>
+          Confidence: ${moat.confidence || 0}%
+        </div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Build evidence HTML for Emotional Debt
+   */
+  function buildEmotionalDebtEvidence(domain, debt, evidence) {
+    const debtColor = debt.level === 'low' ? '#22c55e' : (debt.level === 'moderate' ? '#f59e0b' : '#ef4444');
+    const debtIcon = debt.level === 'low' ? '💚' : (debt.level === 'moderate' ? '💛' : '💔');
+    
+    return `
+      <div class="evidence-section" style="padding: 16px;">
+        <h3 style="margin: 0 0 16px; color: #f59e0b; display: flex; align-items: center; gap: 8px;">
+          💔 Emotional Debt Analysis
+          <span style="background: ${debtColor}20; color: ${debtColor}; padding: 4px 10px; border-radius: 12px; font-size: 11px;">${debtIcon} ${debt.level || 'Unknown'} Debt</span>
+        </h3>
+        
+        <div class="evidence-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div class="evidence-stat" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
+            <div style="font-size: 24px; font-weight: 700; color: ${debtColor};">${debt.score || 0}%</div>
+            <div style="font-size: 11px; color: #6b7280;">Emotional Debt Score</div>
+          </div>
+          <div class="evidence-stat" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
+            <div style="font-size: 18px; font-weight: 600;">${100 - (debt.score || 0)}%</div>
+            <div style="font-size: 11px; color: #6b7280;">Engagement Level</div>
+          </div>
+        </div>
+        
+        ${debt.gaps?.length ? `
+        <div class="evidence-block" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #ef4444; margin-bottom: 8px;">Gaps Identified:</div>
+          <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #fca5a5;">
+            ${debt.gaps.map(gap => `<li>${gap}</li>`).join('')}
+          </ul>
+        </div>
+        ` : ''}
+        
+        ${evidence.ctaAnalysis?.length ? `
+        <div class="evidence-block" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #22c55e; margin-bottom: 8px;">CTA Types Found:</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            ${evidence.ctaAnalysis.map(cta => `<span style="background: #1e40af; color: #93c5fd; padding: 2px 8px; border-radius: 12px; font-size: 10px;">${cta.type} (${cta.count})</span>`).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        ${evidence.toneIndicators?.length ? `
+        <div class="evidence-block" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #22c55e; margin-bottom: 8px;">Trust Signals Present:</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            ${evidence.toneIndicators.map(t => `<span style="background: #064e3b; color: #6ee7b7; padding: 2px 8px; border-radius: 12px; font-size: 10px;">✓ ${t.type}</span>`).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        <div class="evidence-footer" style="font-size: 10px; color: #6b7280; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+          Source: FT_Oracle_EliteDataSystem.gs → detectEmotionalDebt()<br>
+          Analysis: CTA patterns, trust signals, sentiment markers
+        </div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Build evidence HTML for Semantic Triplets
+   */
+  function buildSemanticTripletsEvidence(domain, triplets, evidence) {
+    return `
+      <div class="evidence-section" style="padding: 16px;">
+        <h3 style="margin: 0 0 16px; color: #f59e0b; display: flex; align-items: center; gap: 8px;">
+          🔗 Semantic Triplets Analysis
+          <span style="background: #6366f120; color: #a5b4fc; padding: 4px 10px; border-radius: 12px; font-size: 11px;">${triplets.tripletCount || 0} Triplets</span>
+        </h3>
+        
+        <div class="evidence-grid" style="margin-bottom: 16px;">
+          <div class="evidence-stat" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
+            <div style="font-size: 24px; font-weight: 700; color: #a5b4fc;">${triplets.tripletCount || 0}</div>
+            <div style="font-size: 11px; color: #6b7280;">Entity-Attribute-Value Patterns</div>
+          </div>
+        </div>
+        
+        ${triplets.triplets?.length ? `
+        <div class="evidence-block" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #a5b4fc; margin-bottom: 8px;">Sample Triplets:</div>
+          <div style="max-height: 200px; overflow-y: auto;">
+            ${triplets.triplets.slice(0, 10).map(t => `
+              <div style="background: #1e293b; padding: 8px; border-radius: 6px; margin-bottom: 4px; font-size: 11px;">
+                <span style="color: #22c55e;">${t.entity}</span>
+                <span style="color: #6b7280;"> → </span>
+                <span style="color: #f59e0b;">${t.attribute}</span>
+                <span style="color: #6b7280;"> → </span>
+                <span style="color: #93c5fd;">${t.value}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        ${evidence.headingPatterns?.length ? `
+        <div class="evidence-block" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; color: #22c55e; margin-bottom: 8px;">Source Headings:</div>
+          <ul style="margin: 0; padding-left: 20px; font-size: 11px; color: #9ca3af;">
+            ${evidence.headingPatterns.slice(0, 5).map(h => `<li>${h}</li>`).join('')}
+          </ul>
+        </div>
+        ` : ''}
+        
+        <div class="evidence-footer" style="font-size: 10px; color: #6b7280; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+          Source: FT_Oracle_EliteDataSystem.gs → detectSemanticTriplets()<br>
+          Extraction: H2/H3 headings, Schema.org entities, meta patterns
+        </div>
+      </div>
+    `;
+  }
+</script>

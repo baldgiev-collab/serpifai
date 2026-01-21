@@ -1,0 +1,116 @@
+<!--
+  UI_Components_Competitor_Card.html
+  VERTICAL COMPETITOR CARD COMPONENT v1.0
+  
+  Replaces horizontal tables with vertical card grid
+  BANNED: Vertical text, sticky columns, horizontal scroll
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 5: VERTICAL COMPETITOR CARD — Grid Layout
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.competitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  padding: 1rem 0;
+}
+
+.competitor-card {
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.competitor-card:hover {
+  border-color: var(--accent-authority);
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.competitor-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: var(--cmd-header-bg);
+  border-bottom: 1px solid var(--cmd-border);
+}
+
+.competitor-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 0;
+}
+
+.competitor-rank {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--accent-authority);
+  color: white;
+}
+
+.competitor-rank.rank-1 { background: #F59E0B; }
+.competitor-rank.rank-2 { background: #94A3B8; }
+.competitor-rank.rank-3 { background: #CD7F32; }
+
+/* Metric Rows */
+.competitor-metrics {
+  padding: 0.75rem 1.25rem;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--cmd-border);
+}
+
+.metric-row:last-child { border-bottom: none; }
+
+.metric-label {
+  font-size: 0.8125rem;
+  color: var(--cmd-muted-text);
+}
+
+.metric-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cmd-body-text);
+}
+
+/* Expand Toggle */
+.competitor-expand {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--cmd-border);
+  color: var(--accent-authority);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.competitor-expand:hover {
+  background: var(--cmd-border);
+}
+
+/* Theme: Aurora */
+[data-theme="aurora"] .competitor-card {
+  backdrop-filter: blur(var(--cmd-blur));
+}
+
+/* Theme: Neon */
+[data-theme="neon"] .competitor-card:hover {
+  box-shadow: var(--cmd-glow);
+}
+</style>

@@ -1,0 +1,116 @@
+<!--
+  UI_Competitor_Ranking_Badge.html
+  RANKING BADGE COMPONENT v1.0
+  
+  #1: Gold with glow | #2-3: Silver | #4+: Standard accent
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 30: RANKING BADGE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+/* Gold - Rank #1 */
+.rank-badge--gold {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  color: #FFFBEB;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.rank-badge--gold::before {
+  content: '👑';
+  font-size: 0.6875rem;
+  margin-right: 4px;
+}
+
+/* Silver - Rank #2-3 */
+.rank-badge--silver {
+  background: linear-gradient(135deg, #CBD5E1 0%, #94A3B8 100%);
+  color: #1E293B;
+  box-shadow: 0 2px 6px rgba(148, 163, 184, 0.3);
+}
+
+/* Bronze - Rank #3 only */
+.rank-badge--bronze {
+  background: linear-gradient(135deg, #D4A574 0%, #A67C52 100%);
+  color: #FFFBEB;
+  box-shadow: 0 2px 6px rgba(166, 124, 82, 0.3);
+}
+
+/* Standard - Rank #4+ */
+.rank-badge--standard {
+  background: var(--accent-authority);
+  color: white;
+}
+
+/* Neon theme glow enhancements */
+[data-theme="neon"] .rank-badge--gold {
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+}
+
+[data-theme="neon"] .rank-badge--silver {
+  box-shadow: 0 0 10px rgba(148, 163, 184, 0.4);
+}
+
+[data-theme="neon"] .rank-badge--standard {
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   RANKING BADGE RENDERER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const RankingBadge = {
+  
+  /**
+   * Render rank badge with appropriate styling
+   */
+  render(rank) {
+    const num = parseInt(rank, 10);
+    
+    if (num === 1) {
+      return `<span class="rank-badge rank-badge--gold">#1</span>`;
+    }
+    
+    if (num === 2) {
+      return `<span class="rank-badge rank-badge--silver">#2</span>`;
+    }
+    
+    if (num === 3) {
+      return `<span class="rank-badge rank-badge--bronze">#3</span>`;
+    }
+    
+    // #4 and beyond
+    return `<span class="rank-badge rank-badge--standard">#${num}</span>`;
+  },
+  
+  /**
+   * Get badge class for a given rank
+   */
+  getClass(rank) {
+    const num = parseInt(rank, 10);
+    if (num === 1) return 'rank-badge--gold';
+    if (num === 2) return 'rank-badge--silver';
+    if (num === 3) return 'rank-badge--bronze';
+    return 'rank-badge--standard';
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.RankingBadge = RankingBadge;
+}
+</script>

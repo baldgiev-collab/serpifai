@@ -351,10 +351,26 @@ function executeAction($action, $payload, $user, $license) {
     }
     
     // Job management actions (v28.4: Integrate job_handler.php for Cluster architecture)
+    // V7 FIX: Route job_recover_latest and job_get_results to upp_handler for workflow persistence
     if (strpos($action, 'job_') === 0) {
+        // Special routing for UPP-related job actions
+        $uppJobActions = ['job_recover_latest', 'job_get_results'];
+        if (in_array($action, $uppJobActions)) {
+            require_once __DIR__ . '/upp_handler.php';
+            $db = getDB();
+            return handleUppAction($action, $payload, $db);
+        }
+        // Standard job actions
         require_once __DIR__ . '/job_handler.php';
         $db = getDB();
         return handleJobAction($action, $payload, $db);
+    }
+    
+    // Universal Persistence Provider actions (v35.0: Force 100% MySQL persistence)
+    if (strpos($action, 'upp_') === 0 || strpos($action, 'wf_') === 0) {
+        require_once __DIR__ . '/upp_handler.php';
+        $db = getDB();
+        return handleUppAction($action, $payload, $db);
     }
     
     // Real Metrics actions (NEW - for real data extraction)
@@ -467,25 +483,45 @@ function logTransaction($userId, $action, $cost, $result) {
         $db = getDB();
         $transactionId = 'TXN-' . time() . '-' . substr(md5(uniqid()), 0, 8);
         
-        $stmt = $db->prepare("
-            INSERT INTO transactions (
-                transaction_id, user_id, action_type, credit_cost, 
-                status, request_data, response_data, created_at, completed_at
-            ) VALUES (?, ?, ?, ?, 'completed', ?, ?, NOW(), NOW())
-        ");
-        
-        $stmt->execute([
-            $transactionId,
-            $userId,
-            $action,
-            $cost,
-            json_encode(['action' => $action]),
-            json_encode($result)
-        ]);
+        // v29.0: Try api_transactions first (V6 production), fall back to transactions (V7)
+        try {
+            $stmt = $db->prepare("
+                INSERT INTO api_transactions (
+                    user_id, action_type, credit_cost, 
+                    status, request_data, response_data
+                ) VALUES (?, ?, ?, 'completed', ?, ?)
+            ");
+            
+            $stmt->execute([
+                $userId,
+                $action,
+                $cost,
+                json_encode(['action' => $action]),
+                json_encode($result)
+            ]);
+        } catch (PDOException $e1) {
+            // Fall back to transactions table (V7)
+            $stmt = $db->prepare("
+                INSERT INTO transactions (
+                    transaction_id, user_id, action_type, credit_cost, 
+                    status, request_data, response_data, created_at, completed_at
+                ) VALUES (?, ?, ?, ?, 'completed', ?, ?, NOW(), NOW())
+            ");
+            
+            $stmt->execute([
+                $transactionId,
+                $userId,
+                $action,
+                $cost,
+                json_encode(['action' => $action]),
+                json_encode($result)
+            ]);
+        }
         
         logActivity($userId, $action, ['transaction_id' => $transactionId, 'cost' => $cost]);
     } catch (Exception $e) {
-        error_log("Failed to log transaction: " . $e->getMessage());
+        // Non-blocking - transaction logging shouldn't fail the main request
+        error_log("Failed to log transaction (non-blocking): " . $e->getMessage());
     }
 }
 

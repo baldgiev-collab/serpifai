@@ -78,6 +78,7 @@ class BacklinkExtractor {
   
   /**
    * Extract backlinks for a domain
+   * V34 FIX: Multi-source REAL data fetching with fallback chain
    * @param {string} domain - Domain to analyze
    * @returns {Object} Backlink analysis
    */
@@ -92,25 +93,76 @@ class BacklinkExtractor {
     let backlinks = [];
     let referringDomains = [];
     let domainMetrics = null;
+    let dataSource = 'estimation';
     
-    // Strategy 1: Get domain metrics from OpenPageRank
-    console.log(`   📊 Strategy 1: Fetching domain metrics...`);
+    // Strategy 1: Get domain metrics from OpenPageRank (always do this)
+    console.log(`   📊 Strategy 1: Fetching domain metrics from OpenPageRank...`);
     domainMetrics = this._getDomainMetrics(domain);
     
-    // Strategy 2: Get backlinks from PHP Gateway
-    console.log(`   📊 Strategy 2: Fetching backlinks via gateway...`);
-    const gatewayResult = this._getBacklinksFromGateway(domain);
-    if (gatewayResult.success) {
-      backlinks = gatewayResult.backlinks;
-      referringDomains = gatewayResult.referringDomains;
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // V34 FIX: Multi-source backlink fetching with priority chain
+    // PRIORITY ORDER:
+    //   1. OpenLinkProfiler (free, good quality)
+    //   2. CommonCrawl (free, large dataset)
+    //   3. PHP Gateway (our custom scraper)
+    //   4. Estimation (V33 algorithm - LAST RESORT)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    // Strategy 2: Try OpenLinkProfiler (FREE, includes dofollow/nofollow)
+    console.log(`   📊 Strategy 2: Trying OpenLinkProfiler (free API)...`);
+    const olpResult = this._getBacklinksFromOpenLinkProfiler(domain);
+    if (olpResult.success && olpResult.backlinks.length > 0) {
+      backlinks = olpResult.backlinks;
+      referringDomains = olpResult.referringDomains;
+      dataSource = 'OpenLinkProfiler';
+      console.log(`   ✅ V34: Got ${backlinks.length} REAL backlinks from OpenLinkProfiler`);
     }
     
-    // If no backlinks from API, generate analysis from on-page signals
+    // Strategy 3: Try CommonCrawl (FREE, large dataset)
+    if (backlinks.length < 10) {
+      console.log(`   📊 Strategy 3: Trying CommonCrawl Index (free)...`);
+      const ccResult = this._getBacklinksFromCommonCrawl(domain);
+      if (ccResult.success && ccResult.backlinks.length > 0) {
+        // Merge with existing (dedupe)
+        const existingDomains = new Set(backlinks.map(bl => bl.sourceDomain));
+        const newBacklinks = ccResult.backlinks.filter(bl => !existingDomains.has(bl.sourceDomain));
+        backlinks = backlinks.concat(newBacklinks);
+        
+        const existingRefDomains = new Set(referringDomains.map(rd => rd.domain));
+        const newRefDomains = ccResult.referringDomains.filter(rd => !existingRefDomains.has(rd.domain));
+        referringDomains = referringDomains.concat(newRefDomains);
+        
+        dataSource = dataSource === 'estimation' ? 'CommonCrawl' : `${dataSource} + CommonCrawl`;
+        console.log(`   ✅ V34: Added ${newBacklinks.length} more backlinks from CommonCrawl`);
+      }
+    }
+    
+    // Strategy 4: Try PHP Gateway (our scraper)
+    if (backlinks.length < 10) {
+      console.log(`   📊 Strategy 4: Trying PHP Gateway...`);
+      const gatewayResult = this._getBacklinksFromGateway(domain);
+      if (gatewayResult.success && gatewayResult.backlinks.length > 0) {
+        const existingDomains = new Set(backlinks.map(bl => bl.sourceDomain));
+        const newBacklinks = gatewayResult.backlinks.filter(bl => !existingDomains.has(bl.sourceDomain));
+        backlinks = backlinks.concat(newBacklinks);
+        
+        const existingRefDomains = new Set(referringDomains.map(rd => rd.domain));
+        const newRefDomains = gatewayResult.referringDomains.filter(rd => !existingRefDomains.has(rd.domain));
+        referringDomains = referringDomains.concat(newRefDomains);
+        
+        dataSource = dataSource === 'estimation' ? 'PHP Gateway' : `${dataSource} + Gateway`;
+        console.log(`   ✅ V34: Added ${newBacklinks.length} more backlinks from Gateway`);
+      }
+    }
+    
+    // Strategy 5: FALLBACK - V33 Estimation Algorithm (only if APIs failed)
     if (backlinks.length === 0) {
-      console.log(`   📊 Strategy 3: Estimating from on-page signals...`);
+      console.log(`   📊 Strategy 5: FALLBACK - Using V33 estimation algorithm...`);
       const estimated = this._estimateBacklinks(domain);
       backlinks = estimated.backlinks;
       referringDomains = estimated.referringDomains;
+      dataSource = 'V33 Estimation (fallback)';
+      console.log(`   ⚠️ V34: Using estimated data - no real API data available`);
     }
     
     // Analyze backlink quality
@@ -121,6 +173,10 @@ class BacklinkExtractor {
       domain: domain,
       extractedAt: new Date().toISOString(),
       processingTimeMs: Date.now() - startTime,
+      
+      // V34: Data source indicator
+      dataSource: dataSource,
+      isRealData: dataSource !== 'V33 Estimation (fallback)',
       
       // Domain metrics
       domainMetrics: domainMetrics,
@@ -142,11 +198,13 @@ class BacklinkExtractor {
         uniqueReferringDomains: referringDomains.length,
         avgDomainAuthority: analysis.avgDomainAuthority,
         topLinkType: analysis.topLinkType,
-        dofollowRatio: analysis.dofollowRatio
+        dofollowRatio: analysis.dofollowRatio,
+        dataSource: dataSource,
+        isRealData: dataSource !== 'V33 Estimation (fallback)'
       }
     };
     
-    console.log(`✅ BacklinkExtractor: Found ${result.backlinkCount} backlinks from ${result.referringDomainCount} domains`);
+    console.log(`✅ BacklinkExtractor: Found ${result.backlinkCount} backlinks from ${result.referringDomainCount} domains (source: ${dataSource})`);
     return result;
   }
   
@@ -232,6 +290,202 @@ class BacklinkExtractor {
     }
     
     return { success: false, backlinks: [], referringDomains: [] };
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // V34 FIX: Add CommonCrawl API integration for REAL backlinks
+  // CommonCrawl is a free, open-source web crawl database
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Get backlinks from CommonCrawl Index (FREE API)
+   * Searches for pages that link TO the target domain
+   * @param {string} domain - Target domain
+   * @returns {Object} Backlink data from CommonCrawl
+   */
+  _getBacklinksFromCommonCrawl(domain) {
+    console.log(`      📊 V34: Fetching backlinks from CommonCrawl for ${domain}...`);
+    
+    try {
+      // Use the latest CC index
+      const ccIndexes = ['CC-MAIN-2024-51', 'CC-MAIN-2024-46', 'CC-MAIN-2024-42'];
+      let allBacklinks = [];
+      
+      for (const index of ccIndexes) {
+        if (allBacklinks.length >= BACKLINK_CONFIG.MAX_BACKLINKS) break;
+        
+        // Search for pages containing the domain as a link target
+        const searchUrl = `https://index.commoncrawl.org/${index}-index?url=*://*&filter==url:.*${encodeURIComponent(domain)}.*&output=json&limit=50`;
+        
+        try {
+          const response = UrlFetchApp.fetch(searchUrl, {
+            muteHttpExceptions: true,
+            timeout: 20000
+          });
+          
+          if (response.getResponseCode() === 200) {
+            const text = response.getContentText();
+            const lines = text.split('\n').filter(Boolean);
+            
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+                // This is a page that contains our domain - it's a backlink source
+                const sourceDomain = this._extractDomain(data.url);
+                
+                if (sourceDomain && sourceDomain !== domain && !sourceDomain.includes(domain)) {
+                  allBacklinks.push({
+                    sourceUrl: data.url,
+                    sourceDomain: sourceDomain,
+                    targetUrl: `https://${domain}/`,
+                    anchorText: '', // CC doesn't provide anchor text
+                    linkType: this._classifyLinkType(data.url, ''),
+                    isDofollow: true, // Assume dofollow by default
+                    domainAuthority: 0, // Would need separate API call
+                    firstSeen: data.timestamp ? this._parseCommonCrawlTimestamp(data.timestamp) : null,
+                    source: 'commoncrawl',
+                    isEstimated: false
+                  });
+                }
+              } catch (parseError) {
+                // Skip malformed lines
+              }
+            }
+            
+            console.log(`      ✅ V34: Found ${lines.length} potential backlinks from ${index}`);
+          }
+        } catch (indexError) {
+          console.log(`      ⚠️ V34: CommonCrawl ${index} error: ${indexError.message}`);
+        }
+        
+        Utilities.sleep(500); // Rate limiting
+      }
+      
+      // Dedupe by source domain
+      const seen = new Set();
+      const uniqueBacklinks = allBacklinks.filter(bl => {
+        if (seen.has(bl.sourceDomain)) return false;
+        seen.add(bl.sourceDomain);
+        return true;
+      });
+      
+      // Build referring domains list
+      const referringDomains = uniqueBacklinks.map(bl => ({
+        domain: bl.sourceDomain,
+        domainAuthority: 0, // Would need separate API
+        linkCount: 1,
+        linkType: bl.linkType,
+        isEstimated: false,
+        source: 'commoncrawl'
+      }));
+      
+      console.log(`      ✅ V34: CommonCrawl total: ${uniqueBacklinks.length} unique backlinks from ${referringDomains.length} domains`);
+      
+      return {
+        success: uniqueBacklinks.length > 0,
+        backlinks: uniqueBacklinks.slice(0, BACKLINK_CONFIG.MAX_BACKLINKS),
+        referringDomains: referringDomains,
+        source: 'CommonCrawl'
+      };
+      
+    } catch (e) {
+      console.log(`      ❌ V34: CommonCrawl error: ${e.message}`);
+      return { success: false, backlinks: [], referringDomains: [], source: 'CommonCrawl' };
+    }
+  }
+  
+  /**
+   * Parse CommonCrawl timestamp to ISO date
+   */
+  _parseCommonCrawlTimestamp(timestamp) {
+    try {
+      // CC timestamps are like: 20241215123456
+      const year = timestamp.substring(0, 4);
+      const month = timestamp.substring(4, 6);
+      const day = timestamp.substring(6, 8);
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // V34 FIX: Add OpenLinkProfiler API integration (FREE)
+  // OpenLinkProfiler provides free backlink data with dofollow/nofollow info
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Get backlinks from OpenLinkProfiler (FREE)
+   * @param {string} domain - Target domain
+   * @returns {Object} Backlink data
+   */
+  _getBacklinksFromOpenLinkProfiler(domain) {
+    console.log(`      📊 V34: Fetching backlinks from OpenLinkProfiler for ${domain}...`);
+    
+    try {
+      // OpenLinkProfiler API endpoint
+      const url = `https://openlinkprofiler.org/r/${encodeURIComponent(domain)}?format=json`;
+      
+      const response = UrlFetchApp.fetch(url, {
+        muteHttpExceptions: true,
+        timeout: 20000,
+        headers: {
+          'User-Agent': 'SerpifAI/1.0 (SEO Analysis Tool)',
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.getResponseCode() === 200) {
+        const data = JSON.parse(response.getContentText());
+        
+        if (data && data.links) {
+          const backlinks = (data.links || []).slice(0, BACKLINK_CONFIG.MAX_BACKLINKS).map(link => ({
+            sourceUrl: link.source_url || link.url || '',
+            sourceDomain: this._extractDomain(link.source_url || link.url || ''),
+            targetUrl: link.target_url || `https://${domain}/`,
+            anchorText: link.anchor || link.anchor_text || '',
+            linkType: this._classifyLinkType(link.source_url || '', link.anchor || ''),
+            isDofollow: link.nofollow !== true && link.rel !== 'nofollow',
+            domainAuthority: link.lv || link.link_value || 0,
+            firstSeen: link.first_seen || null,
+            source: 'openlinkprofiler',
+            isEstimated: false
+          }));
+          
+          // Build referring domains
+          const domainMap = {};
+          for (const bl of backlinks) {
+            if (!domainMap[bl.sourceDomain]) {
+              domainMap[bl.sourceDomain] = {
+                domain: bl.sourceDomain,
+                domainAuthority: bl.domainAuthority,
+                linkCount: 0,
+                linkType: bl.linkType,
+                source: 'openlinkprofiler'
+              };
+            }
+            domainMap[bl.sourceDomain].linkCount++;
+          }
+          
+          const referringDomains = Object.values(domainMap);
+          
+          console.log(`      ✅ V34: OpenLinkProfiler: ${backlinks.length} backlinks from ${referringDomains.length} domains`);
+          
+          return {
+            success: true,
+            backlinks: backlinks,
+            referringDomains: referringDomains,
+            source: 'OpenLinkProfiler',
+            totalBacklinks: data.total_backlinks || backlinks.length,
+            uniqueDomains: data.unique_domains || referringDomains.length
+          };
+        }
+      }
+    } catch (e) {
+      console.log(`      ⚠️ V34: OpenLinkProfiler error: ${e.message}`);
+    }
+    
+    return { success: false, backlinks: [], referringDomains: [], source: 'OpenLinkProfiler' };
   }
   
   /**

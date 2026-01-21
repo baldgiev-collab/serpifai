@@ -1,0 +1,155 @@
+<!--
+  UI_Accordion_Copy_Clipboard.html
+  COPY TO CLIPBOARD v1.0
+  
+  One-click copy of full Gemini response
+  Toast notification on success
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 24: COPY BUTTON + TOAST NOTIFICATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forensic-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid var(--cmd-border);
+  border-radius: 8px;
+  color: var(--cmd-muted-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.forensic-copy-btn:hover {
+  background: var(--accent-authority);
+  border-color: var(--accent-authority);
+  color: white;
+}
+
+.forensic-copy-btn.copied {
+  background: var(--accent-value);
+  border-color: var(--accent-value);
+  color: white;
+}
+
+/* Toast Notification */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.25rem;
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--accent-value);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  color: var(--cmd-body-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast-icon {
+  font-size: 1.125rem;
+}
+
+/* Theme: Neon */
+[data-theme="neon"] .toast {
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   COPY TO CLIPBOARD + TOAST
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const AccordionClipboard = {
+  
+  /**
+   * Copy content to clipboard
+   */
+  copy(contentId, buttonElement) {
+    const content = document.getElementById(contentId);
+    const text = content ? content.innerText : '';
+    
+    navigator.clipboard.writeText(text).then(() => {
+      // Update button
+      if (buttonElement) {
+        buttonElement.classList.add('copied');
+        buttonElement.innerHTML = '✓ Copied';
+        setTimeout(() => {
+          buttonElement.classList.remove('copied');
+          buttonElement.innerHTML = '📋 Copy';
+        }, 2000);
+      }
+      
+      // Show toast
+      this.showToast('Copied to clipboard!');
+    }).catch(err => {
+      this.showToast('Failed to copy', true);
+    });
+  },
+  
+  /**
+   * Show toast notification
+   */
+  showToast(message, isError = false) {
+    // Create container if needed
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    
+    // Create toast
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+      <span class="toast-icon">${isError ? '⚠️' : '✓'}</span>
+      <span>${message}</span>
+    `;
+    container.appendChild(toast);
+    
+    // Animate in
+    requestAnimationFrame(() => toast.classList.add('show'));
+    
+    // Remove after 3s
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  },
+  
+  /**
+   * Render copy button HTML
+   */
+  renderButton(contentId) {
+    return `<button class="forensic-copy-btn" onclick="AccordionClipboard.copy('${contentId}', this)">📋 Copy</button>`;
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.AccordionClipboard = AccordionClipboard;
+}
+</script>

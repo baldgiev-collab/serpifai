@@ -343,6 +343,30 @@ function saveToMySQLNormalized(projectName, projectData) {
     });
     
     if (result && result.success) {
+      // ═══════════════════════════════════════════════════════════════════════
+      // v36.0: UPP COMMIT - Persist project data to dedicated table
+      // ═══════════════════════════════════════════════════════════════════════
+      if (typeof UPP_commit === 'function') {
+        UPP_commit({
+          table: 'project_data',
+          project_id: projectId,
+          project_name: projectName,
+          brand_name: projectData.brandName || '',
+          your_domain: projectData.yourDomain || '',
+          competitor_list: projectData.competitorList || projectData.competitors || [],
+          strategic_priorities: projectData.strategicPriorities || [],
+          target_audience: projectData.targetAudience || '',
+          niche: projectData.niche || '',
+          settings: {
+            geminiModel: projectData.geminiModel,
+            includePageSpeed: projectData.includePageSpeed,
+            includeSerp: projectData.includeSerp
+          },
+          metadata: projectData._metadata || {}
+        });
+        Logger.log(`   🔄 UPP: Project data committed to project_data table`);
+      }
+      
       return {
         success: true,
         projectId: projectId,

@@ -1,0 +1,78 @@
+<!--
+  UI_Loading_Skeleton.html
+  SHIMMER SKELETON COMPONENT v1.0
+  
+  Theme-aware loading placeholders for charts, cards, and badges
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 3: SHIMMER SKELETON — Loading Placeholders
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--cmd-border) 0%,
+    var(--cmd-card-bg) 50%,
+    var(--cmd-border) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: 8px;
+}
+
+/* Chart skeleton — fixed 550px height */
+.skeleton-chart {
+  width: 100%;
+  height: 550px;
+  max-height: 550px;
+  aspect-ratio: 16/9;
+}
+
+/* Card skeleton */
+.skeleton-card {
+  width: 100%;
+  height: 180px;
+  border-radius: 16px;
+}
+
+/* Badge skeleton — inline metric */
+.skeleton-badge {
+  display: inline-block;
+  width: 80px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+/* Text line skeleton */
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 8px;
+}
+.skeleton-text.short { width: 40%; }
+.skeleton-text.medium { width: 70%; }
+.skeleton-text.full { width: 100%; }
+
+/* Theme overrides */
+[data-theme="aurora"] .skeleton {
+  background: linear-gradient(90deg,
+    rgba(52,211,153,0.1) 0%,
+    rgba(255,255,255,0.05) 50%,
+    rgba(52,211,153,0.1) 100%
+  );
+  background-size: 200% 100%;
+}
+
+[data-theme="neon"] .skeleton {
+  background: linear-gradient(90deg,
+    rgba(245,158,11,0.1) 0%,
+    #0A0A0A 50%,
+    rgba(245,158,11,0.1) 100%
+  );
+  background-size: 200% 100%;
+}
+</style>

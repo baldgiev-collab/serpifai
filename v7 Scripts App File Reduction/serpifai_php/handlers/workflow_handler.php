@@ -14,7 +14,7 @@ require_once __DIR__ . '/../config/db_config.php';
  */
 function executeWorkflowStage($stageNum, $payload, $licenseKey, $userId) {
     try {
-        $db = getDbConnection();
+        $db = getDB();
         
         // Determine action name
         $action = 'workflow_stage' . $stageNum;
@@ -22,21 +22,30 @@ function executeWorkflowStage($stageNum, $payload, $licenseKey, $userId) {
         // Get credit cost
         $creditCost = CREDIT_COSTS[$action] ?? 5; // Default 5 credits
         
-        // Log transaction start
-        $stmt = $db->prepare("
-            INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data, created_at)
-            VALUES (:user_id, :action, :cost, 'processing', :request, NOW())
-        ");
-        
-        $stmt->execute([
-            'user_id' => $userId,
-            'action' => $action,
-            'cost' => $creditCost,
-            'request' => json_encode($payload)
-        ]);
-        
-        $transactionId = $db->lastInsertId();
+        // v29.0: Try api_transactions first (V6 production), fall back to transactions (V7)
+        $transactionId = 'WF-' . time() . '-' . substr(md5(uniqid()), 0, 8);
+        try {
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO api_transactions 
+                    (user_id, action_type, credit_cost, status, request_data)
+                    VALUES (?, ?, ?, 'processing', ?)
+                ");
+                $stmt->execute([$userId, $action, $creditCost, json_encode($payload)]);
+                $transactionId = 'WF-' . $db->lastInsertId();
+            } catch (PDOException $e1) {
+                // Fall back to transactions (V7)
+                $stmt = $db->prepare("
+                    INSERT INTO transactions 
+                    (transaction_id, user_id, action_type, credit_cost, status, request_data, created_at)
+                    VALUES (?, ?, ?, ?, 'processing', ?, NOW())
+                ");
+                $stmt->execute([$transactionId, $userId, $action, $creditCost, json_encode($payload)]);
+            }
+        } catch (PDOException $e) {
+            // Non-blocking - logging shouldn't fail the workflow
+            error_log("Workflow transaction log failed (non-blocking): " . $e->getMessage());
+        }
         
         // Return success - Apps Script will execute the actual workflow
         return [
@@ -63,19 +72,20 @@ function executeWorkflowStage($stageNum, $payload, $licenseKey, $userId) {
  */
 function completeWorkflowTransaction($transactionId, $result, $licenseKey) {
     try {
-        $db = getDbConnection();
+        $db = getDB();
         
+        // v28.8: Use transactions table
         $stmt = $db->prepare("
-            UPDATE api_transactions 
+            UPDATE transactions 
             SET status = 'completed',
-                response_data = :response,
+                response_data = ?,
                 completed_at = NOW()
-            WHERE id = :id
+            WHERE transaction_id = ?
         ");
         
         $stmt->execute([
-            'response' => json_encode($result),
-            'id' => $transactionId
+            json_encode($result),
+            $transactionId
         ]);
         
         return [
@@ -98,38 +108,39 @@ function completeWorkflowTransaction($transactionId, $result, $licenseKey) {
  */
 function failWorkflowTransaction($transactionId, $errorMessage, $licenseKey) {
     try {
-        $db = getDbConnection();
+        $db = getDB();
         
-        // Update transaction status
+        // v28.8: Use transactions table
         $stmt = $db->prepare("
-            UPDATE api_transactions 
+            UPDATE transactions 
             SET status = 'failed',
-                error_message = :error,
+                error_message = ?,
                 completed_at = NOW()
-            WHERE id = :id
+            WHERE transaction_id = ?
         ");
         
         $stmt->execute([
-            'error' => $errorMessage,
-            'id' => $transactionId
+            $errorMessage,
+            $transactionId
         ]);
         
         // Get transaction details to refund credits
         $stmt = $db->prepare("
-            SELECT user_id, credit_cost FROM api_transactions WHERE id = :id
+            SELECT user_id, credit_cost FROM transactions WHERE transaction_id = ?
         ");
-        $stmt->execute(['id' => $transactionId]);
-        $row = $stmt->fetch();
+        $stmt->execute([$transactionId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($row) {
+            // v28.8: Use credits column (not credits_remaining)
             $stmt = $db->prepare("
                 UPDATE users 
-                SET credits_remaining = credits_remaining + :credits
-                WHERE id = :user_id
+                SET credits = credits + ?
+                WHERE id = ?
             ");
             $stmt->execute([
-                'credits' => $row['credit_cost'],
-                'user_id' => $row['user_id']
+                $row['credit_cost'],
+                $row['user_id']
             ]);
         }
         
@@ -152,24 +163,25 @@ function failWorkflowTransaction($transactionId, $errorMessage, $licenseKey) {
  */
 function getWorkflowHistory($licenseKey, $limit = 50) {
     try {
-        $db = getDbConnection();
+        $db = getDB();
         
+        // v28.8: Use transactions table
         $stmt = $db->prepare("
             SELECT t.*, u.license_key
-            FROM api_transactions t
+            FROM transactions t
             JOIN users u ON t.user_id = u.id
-            WHERE u.license_key = :license
+            WHERE u.license_key = ?
             AND t.action_type LIKE 'workflow%'
             ORDER BY t.created_at DESC
-            LIMIT :limit
+            LIMIT ?
         ");
         
         $stmt->execute([
-            'license' => $licenseKey,
-            'limit' => (int)$limit
+            $licenseKey,
+            (int)$limit
         ]);
         
-        $history = $stmt->fetchAll();
+        $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         return [
             'success' => true,

@@ -1,0 +1,110 @@
+<!--
+  UI_Chart_Theme_Colors.html
+  THEME-AWARE CHART COLOR UTILITY v1.0
+  
+  Provides D3-ready color palettes per theme
+  Ensures chart colors match Command Canvas tokens
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 16: THEME-AWARE CHART COLOR UTILITY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ChartThemeColors = {
+  
+  palettes: {
+    light: {
+      primary: ['#6366F1', '#8B5CF6', '#34D399', '#F59E0B', '#EC4899', '#22D3EE'],
+      background: '#FFFFFF',
+      gridLines: '#E2E8F0',
+      text: '#0F172A',
+      muted: '#64748B'
+    },
+    dark: {
+      primary: ['#A5B4FC', '#C084FC', '#34D399', '#FCD34D', '#F472B6', '#67E8F9'],
+      background: '#1E293B',
+      gridLines: '#334155',
+      text: '#F1F5F9',
+      muted: '#94A3B8'
+    },
+    aurora: {
+      primary: ['#34D399', '#059669', '#10B981', '#A7F3D0', '#60A5FA', '#818CF8'],
+      background: 'rgba(15, 23, 42, 0.8)',
+      gridLines: 'rgba(52, 211, 153, 0.2)',
+      text: '#34D399',
+      muted: '#94A3B8'
+    },
+    neon: {
+      primary: ['#F59E0B', '#EC4899', '#FFFFFF', '#60F0FF', '#FFD86B', '#A78BFA'],
+      background: '#0A0A0A',
+      gridLines: 'rgba(245, 158, 11, 0.15)',
+      text: '#F59E0B',
+      muted: '#E6EDF3'
+    }
+  },
+  
+  /**
+   * Get current theme from document
+   */
+  getCurrentTheme() {
+    const theme = document.documentElement.getAttribute('data-theme');
+    return this.palettes[theme] ? theme : 'light';
+  },
+  
+  /**
+   * Get palette for current theme
+   */
+  getPalette() {
+    return this.palettes[this.getCurrentTheme()];
+  },
+  
+  /**
+   * Get primary color array for D3 scales
+   */
+  getColorScale() {
+    return this.getPalette().primary;
+  },
+  
+  /**
+   * Get specific color by index
+   */
+  getColor(index) {
+    const colors = this.getColorScale();
+    return colors[index % colors.length];
+  },
+  
+  /**
+   * Get background color
+   */
+  getBackground() {
+    return this.getPalette().background;
+  },
+  
+  /**
+   * Get text color
+   */
+  getTextColor() {
+    return this.getPalette().text;
+  },
+  
+  /**
+   * Get grid line color
+   */
+  getGridColor() {
+    return this.getPalette().gridLines;
+  },
+  
+  /**
+   * Create D3 ordinal scale with theme colors
+   */
+  createD3Scale(d3, domain) {
+    return d3.scaleOrdinal()
+      .domain(domain)
+      .range(this.getColorScale());
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.ChartThemeColors = ChartThemeColors;
+}
+</script>

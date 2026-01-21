@@ -140,6 +140,15 @@ function callGeminiAPI($action, $payload) {
         'Content-Type: application/json'
     ]);
     
+    // V7.1 FIX: Extended timeouts for large Gemini responses (~65K chars = 90+ seconds)
+    curl_setopt($ch, CURLOPT_TIMEOUT, 300);         // 5 minute total timeout
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);   // 30 second connection timeout
+    
+    // Increase PHP execution time for long Gemini calls
+    @set_time_limit(600);  // 10 minutes max execution time
+    
+    error_log('Gemini API: Making request with 5 minute timeout, model=' . $model . ', prompt_length=' . strlen($prompt));
+    
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);

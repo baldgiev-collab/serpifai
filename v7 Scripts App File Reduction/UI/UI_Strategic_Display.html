@@ -10,11 +10,54 @@
    * ═══════════════════════════════════════════════════════════════════
    * Build Elite Strategic Display - NEW McKinsey/Bain Format
    * Handles executiveBrief, killMoves, competitorRankings, categories
+   * V33 FIX: Surface executiveBrief from multiple possible locations
    * ═══════════════════════════════════════════════════════════════════
    */
   function buildEliteStrategicDisplay(analysis, competitors) {
     let html = '';
     console.log('🏆 Building Elite Strategic Display...');
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // V33 FIX: Surface executiveBrief from multiple possible locations
+    // The brief could be in analysis.executiveBrief, analysis.geminiAnalysis.executiveBrief,
+    // analysis.analysis.executiveBrief, or window-level storage
+    // ═══════════════════════════════════════════════════════════════════
+    let executiveBrief = null;
+    let briefSource = 'none';
+    
+    if (analysis?.executiveBrief) {
+      executiveBrief = analysis.executiveBrief;
+      briefSource = 'analysis.executiveBrief';
+    } else if (analysis?.geminiAnalysis?.executiveBrief) {
+      executiveBrief = analysis.geminiAnalysis.executiveBrief;
+      briefSource = 'analysis.geminiAnalysis.executiveBrief';
+    } else if (analysis?.analysis?.executiveBrief) {
+      executiveBrief = analysis.analysis.executiveBrief;
+      briefSource = 'analysis.analysis.executiveBrief';
+    } else if (analysis?.eliteTabIntelligence?.executiveBrief) {
+      executiveBrief = analysis.eliteTabIntelligence.executiveBrief;
+      briefSource = 'analysis.eliteTabIntelligence.executiveBrief';
+    } else if (window.competitorIntelligenceData?.executiveBrief) {
+      executiveBrief = window.competitorIntelligenceData.executiveBrief;
+      briefSource = 'window.competitorIntelligenceData.executiveBrief';
+    } else if (window.competitorIntelligenceData?.geminiAnalysis?.executiveBrief) {
+      executiveBrief = window.competitorIntelligenceData.geminiAnalysis.executiveBrief;
+      briefSource = 'window.competitorIntelligenceData.geminiAnalysis.executiveBrief';
+    }
+    
+    // V33 FIX: Also look for killMoves in multiple locations
+    let killMoves = analysis?.killMoves || 
+                    analysis?.geminiAnalysis?.killMoves ||
+                    analysis?.analysis?.killMoves ||
+                    executiveBrief?.killMoves ||
+                    [];
+    
+    // v32.0 DEBUG: Log what we received
+    console.log('   📦 analysis keys:', analysis ? Object.keys(analysis) : 'NULL');
+    console.log('   📦 V33 executiveBrief source:', briefSource);
+    console.log('   📦 V33 executiveBrief found:', executiveBrief ? 'YES - keys: ' + Object.keys(executiveBrief).join(', ') : 'NO');
+    console.log('   📦 V33 killMoves count:', killMoves.length);
+    console.log('   📦 competitors count:', competitors ? competitors.length : 0);
 
     // ═══════════════════════════════════════════════════════════════════
     // 1. COMPETITIVE LEADERBOARD - Using competitorRankings or processedMetrics
@@ -69,30 +112,38 @@
 
     // ═══════════════════════════════════════════════════════════════════
     // 2. EXECUTIVE BRIEF - Strategic Overview
+    // V33 FIX: Use the surfaced executiveBrief variable, add fallback
     // ═══════════════════════════════════════════════════════════════════
-    if (analysis.executiveBrief) {
-      html += buildExecutiveBriefHTML(analysis.executiveBrief);
+    if (executiveBrief) {
+      console.log('   ✅ V33: Rendering Executive Brief from', briefSource);
+      html += buildExecutiveBriefHTML(executiveBrief);
+    } else {
+      console.warn('   ⚠️ V33: No Executive Brief found - showing placeholder');
+      html += buildMissingBriefPlaceholder(competitors);
     }
 
     // ═══════════════════════════════════════════════════════════════════
     // 2a-2e. ELITE OVERLAYS (JTBD, Loss Leader, Emotional Debt, etc.)
+    // V33 FIX: Use surfaced executiveBrief
     // ═══════════════════════════════════════════════════════════════════
-    if (analysis.executiveBrief) {
-      html += buildEliteOverlaysHTML(analysis.executiveBrief);
+    if (executiveBrief) {
+      html += buildEliteOverlaysHTML(executiveBrief);
     }
 
     // ═══════════════════════════════════════════════════════════════════
     // 3. KILL MOVES - Top strategic actions
+    // V33 FIX: Use surfaced killMoves
     // ═══════════════════════════════════════════════════════════════════
-    if (analysis.killMoves && analysis.killMoves.length > 0) {
-      html += window.buildKillMovesHTML ? window.buildKillMovesHTML(analysis.killMoves) : '';
+    if (killMoves && killMoves.length > 0) {
+      html += window.buildKillMovesHTML ? window.buildKillMovesHTML(killMoves) : '';
     }
 
     // ═══════════════════════════════════════════════════════════════════
     // 4. PRIORITIZED ROADMAP - Strategic phases
+    // V33 FIX: Use surfaced executiveBrief
     // ═══════════════════════════════════════════════════════════════════
-    if (analysis.executiveBrief?.prioritizedRoadmap && analysis.executiveBrief.prioritizedRoadmap.length > 0) {
-      html += buildRoadmapHTML(analysis.executiveBrief.prioritizedRoadmap);
+    if (executiveBrief?.prioritizedRoadmap && executiveBrief.prioritizedRoadmap.length > 0) {
+      html += buildRoadmapHTML(executiveBrief.prioritizedRoadmap);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -107,9 +158,38 @@
   }
 
   /**
+   * V33 FIX: Build placeholder for missing Executive Brief
+   */
+  function buildMissingBriefPlaceholder(competitors) {
+    const competitorNames = (competitors || []).slice(0, 3).map(c => c.domain || 'Unknown').join(', ');
+    return `
+      <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 24px; border-radius: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
+        <h4 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #92400e; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">⚠️</span>
+          Executive Brief Generating...
+        </h4>
+        <p style="margin: 0 0 16px; font-size: 14px; color: #78350f; line-height: 1.6;">
+          The AI-powered strategic brief for ${competitorNames || 'your competitors'} is being generated.
+          This typically takes 15-30 seconds during competitor analysis.
+        </p>
+        <div style="background: rgba(255,255,255,0.5); padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #92400e;">
+          <strong>💡 Tip:</strong> Re-run the competitor analysis to generate fresh strategic insights from Gemini AI.
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * Build Executive Brief section HTML
+   * v32.0: Added detailed logging
    */
   function buildExecutiveBriefHTML(brief) {
+    console.log('🎯 Building Executive Brief HTML...');
+    console.log('   📦 brief keys:', brief ? Object.keys(brief) : 'NULL');
+    console.log('   📦 landscapeOverview:', brief?.landscapeOverview ? 'PRESENT' : 'MISSING');
+    console.log('   📦 strategicOpportunities:', brief?.strategicOpportunities ? brief.strategicOpportunities.length + ' items' : 'MISSING');
+    console.log('   📦 criticalThreats:', brief?.criticalThreats ? brief.criticalThreats.length + ' items' : 'MISSING');
+    
     let html = `
             <div style="background: white; padding: 32px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-left: 4px solid #667eea;">
               <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 12px;">
@@ -281,9 +361,411 @@
     html += `</div></div>`;
     return html;
   }
+  
+  /**
+   * v23.3: Build display for Elite Tab Intelligence format
+   * Handles the new format with overview, marketIntelligence, keywordStrategy, etc.
+   * V35 FIX: Also include Executive Brief and Kill Moves when available
+   */
+  function buildEliteTabIntelligenceDisplay(eliteData, competitors) {
+    let html = '';
+    
+    // Header
+    html += `<div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 8px 25px rgba(99,102,241,0.3);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <span style="font-size: 28px;">🤖</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700;">Gemini Elite Intelligence</h3>
+        <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">v${eliteData.version || '11.1'}</span>
+      </div>
+      <p style="margin: 0; opacity: 0.9; font-size: 14px;">Deep competitive analysis powered by Gemini AI • ${competitors.length} competitors analyzed</p>
+    </div>`;
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // V35 FIX: Include Executive Brief if available (check multiple locations)
+    // ═══════════════════════════════════════════════════════════════════
+    let executiveBrief = eliteData.executiveBrief || 
+                         window.competitorIntelligenceData?.executiveBrief ||
+                         eliteData.analysis?.executiveBrief ||
+                         null;
+    
+    if (executiveBrief && Object.keys(executiveBrief).length > 0) {
+      console.log('   ✅ V35: Including Executive Brief in Elite Tab Intelligence display');
+      html += buildExecutiveBriefHTML(executiveBrief);
+    }
+    
+    // V35 FIX: Include Kill Moves if available
+    let killMoves = eliteData.killMoves || 
+                    window.competitorIntelligenceData?.killMoves ||
+                    executiveBrief?.killMoves ||
+                    [];
+    
+    if (killMoves && killMoves.length > 0 && window.buildKillMovesHTML) {
+      console.log('   ✅ V35: Including Kill Moves in Elite Tab Intelligence display');
+      html += window.buildKillMovesHTML(killMoves);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // V37: Include ALL Elite Overlays (JTBD, Loss Leader, Emotional Debt, etc.)
+    // These were missing from the display - now showing full 0.1% insights
+    // ═══════════════════════════════════════════════════════════════════
+    if (executiveBrief) {
+      console.log('   ✅ V37: Adding Elite Overlays (JTBD, Loss Leader, Emotional Debt, Time-to-Value, SEO Moat)');
+      
+      // Call window.buildEliteOverlaysHTML if available (from UI_Elite_Overlays.html)
+      if (typeof window.buildEliteOverlaysHTML === 'function') {
+        html += window.buildEliteOverlaysHTML(executiveBrief);
+      } else {
+        // Inline fallback - render available overlays directly
+        
+        // 1. JTBD Overlay
+        if (executiveBrief.jobsToBeDone && executiveBrief.jobsToBeDone.unmetJobs) {
+          html += buildJTBDInline(executiveBrief.jobsToBeDone);
+        }
+        
+        // 2. Loss Leader Analysis
+        if (executiveBrief.lossLeaderAnalysis) {
+          html += buildLossLeaderInline(executiveBrief.lossLeaderAnalysis);
+        }
+        
+        // 3. Emotional Debt Audit
+        if (executiveBrief.emotionalDebtAudit) {
+          html += buildEmotionalDebtInline(executiveBrief.emotionalDebtAudit);
+        }
+        
+        // 4. Time-to-Value Comparison
+        if (executiveBrief.timeToValueComparison) {
+          html += buildTimeToValueInline(executiveBrief.timeToValueComparison);
+        }
+        
+        // 5. Programmatic SEO Moat
+        if (executiveBrief.programmaticSEOMoat) {
+          html += buildSEOMoatInline(executiveBrief.programmaticSEOMoat);
+        }
+      }
+    }
+    
+    // V37: Removed redundant sections that were duplicating info:
+    // - Competitive Landscape Overview (already in main brief)
+    // - Market Intelligence (already in other tabs)
+    // - Strategic Intelligence Summary cards (just placeholders)
+    // - Quick Stats Grid (6 Competitors, 20 Tabs, etc. - not useful)
+    
+    return html;
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // V37: Inline Elite Overlay Builders (fallback if UI_Elite_Overlays.html not loaded)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  function buildJTBDInline(jtbd) {
+    let html = `<div style="background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
+      <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #92400e; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 28px;">🎯</span> Jobs-to-be-Done (JTBD) Overlay
+      </h4>
+      <p style="margin: 0 0 20px; font-size: 14px; color: #a16207;">Competitors don't just compete on features—they compete to solve specific struggles.</p>`;
+    
+    if (jtbd.unmetJobs && jtbd.unmetJobs.length > 0) {
+      html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">`;
+      jtbd.unmetJobs.forEach(job => {
+        html += `<div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+          <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 10px;">🏢 ${job.competitor}</div>
+          <div style="margin-bottom: 10px;"><div style="font-size: 11px; color: #9ca3af; text-transform: uppercase;">Unmet Job</div>
+            <p style="margin: 4px 0; font-size: 14px; font-weight: 600; color: #1f2937;">"${job.unmetJob}"</p></div>
+          <div style="margin-bottom: 10px;"><div style="font-size: 11px; color: #9ca3af; text-transform: uppercase;">Frustration</div>
+            <p style="margin: 4px 0; font-size: 13px; color: #dc2626;">${job.frustration}</p></div>
+          ${job.ourSolution ? `<div style="background: #ecfdf5; padding: 12px; border-radius: 8px;"><div style="font-size: 11px; color: #059669; font-weight: 600;">✅ OUR SOLUTION</div>
+            <p style="margin: 4px 0 0; font-size: 13px; color: #047857;">${job.ourSolution}</p></div>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    if (jtbd.jtbdOpportunity) {
+      html += `<div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 20px; border-radius: 12px;">
+        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">🏆 BIGGEST JTBD OPPORTUNITY</div>
+        <p style="margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5;">"${jtbd.jtbdOpportunity}"</p>
+      </div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+  
+  function buildLossLeaderInline(lossLeader) {
+    let html = `<div style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; border-left: 4px solid #3b82f6;">
+      <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #1e40af; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 28px;">💰</span> Loss Leader & Profit Center Analysis
+      </h4>
+      <p style="margin: 0 0 20px; font-size: 14px; color: #3b82f6;">Elite SaaS companies give something away free to capture leads, then charge for high-value work.</p>`;
+    
+    if (lossLeader.competitorStrategies && lossLeader.competitorStrategies.length > 0) {
+      html += `<div style="margin-bottom: 20px; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: white; border-radius: 12px; overflow: hidden;">
+          <thead><tr style="background: #f8fafc;">
+            <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Competitor</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Loss Leader</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">Profit Center</th>
+            <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">CAC Impact</th>
+          </tr></thead><tbody>`;
+      lossLeader.competitorStrategies.forEach(s => {
+        html += `<tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 12px; font-weight: 500;">${s.competitor}</td>
+          <td style="padding: 12px; color: #6b7280;">${s.lossLeader}</td><td style="padding: 12px; color: #059669; font-weight: 500;">${s.profitCenter}</td>
+          <td style="padding: 12px; font-size: 12px; color: #6b7280;">${s.cacImpact}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
+    if (lossLeader.suggestedLossLeader) {
+      const t = lossLeader.suggestedLossLeader;
+      html += `<div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 24px; border-radius: 12px;">
+        <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; opacity: 0.9; margin-bottom: 12px;">🚀 RECOMMENDED LOSS LEADER TOOL</div>
+        <h5 style="margin: 0 0 8px; font-size: 18px; font-weight: 700;">${t.tool}</h5>
+        <p style="margin: 0; opacity: 0.9; font-size: 14px; line-height: 1.5;">${t.description}</p>
+      </div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+  
+  function buildEmotionalDebtInline(emotional) {
+    let html = `<div style="background: linear-gradient(135deg, #fce7f3 0%, #fdf2f8 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; border-left: 4px solid #ec4899;">
+      <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #9d174d; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 28px;">💔</span> Emotional Debt Audit
+      </h4>
+      <p style="margin: 0 0 20px; font-size: 14px; color: #be185d;">Turn competitor frustrations into your brand promises.</p>`;
+    
+    if (emotional.competitorDebts && emotional.competitorDebts.length > 0) {
+      html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 20px;">`;
+      emotional.competitorDebts.forEach(debt => {
+        html += `<div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+          <div style="font-weight: 600; color: #202124; margin-bottom: 8px;">${debt.competitor}</div>
+          ${debt.negativePatterns ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px;">
+            ${debt.negativePatterns.map(p => `<span style="background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 4px; font-size: 11px;">❌ ${p}</span>`).join('')}
+          </div>` : ''}
+          <div style="background: #fef2f2; padding: 8px; border-radius: 6px;">
+            <span style="font-size: 11px; color: #b91c1c; font-weight: 600;">EMOTIONAL DEBT:</span>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #7f1d1d;">"${debt.emotionalDebt}"</p>
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    if (emotional.brandPromises && emotional.brandPromises.length > 0) {
+      html += `<h5 style="font-size: 14px; color: #059669; margin: 0 0 12px; font-weight: 600;">✨ Your Counter-Positioning Brand Promises</h5>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">`;
+      emotional.brandPromises.forEach(p => {
+        html += `<div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 16px; border-radius: 12px; border: 1px solid #a7f3d0;">
+          <div style="font-size: 12px; color: #666; margin-bottom: 10px;">vs. ${p.againstCompetitor}</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div><span style="font-size: 10px; color: #b91c1c; text-transform: uppercase;">Their Weakness</span>
+              <p style="margin: 4px 0; font-size: 13px; color: #dc2626; font-weight: 500;">"${p.theirWeakness}"</p></div>
+            <div><span style="font-size: 10px; color: #059669; text-transform: uppercase;">Your Promise</span>
+              <p style="margin: 4px 0; font-size: 13px; color: #047857; font-weight: 600;">"${p.ourPromise}"</p></div>
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+  
+  function buildTimeToValueInline(ttv) {
+    let html = `<div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; border-left: 4px solid #22c55e;">
+      <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 28px;">⚡</span> Time-to-Value Comparison
+      </h4>
+      <p style="margin: 0 0 20px; font-size: 14px; color: #16a34a;">Onboarding speed & first "Aha Moment" analysis.</p>`;
+    
+    if (ttv.competitors && ttv.competitors.length > 0) {
+      html += `<div style="margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: white; border-radius: 12px; overflow: hidden;">
+          <thead><tr style="background: #f8fafc;">
+            <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Competitor</th>
+            <th style="padding: 10px; text-align: center; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Speed</th>
+            <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Key Friction</th>
+            <th style="padding: 10px; text-align: left; font-weight: 600; color: #666; border-bottom: 2px solid #e2e8f0;">Time to Value</th>
+          </tr></thead><tbody>`;
+      ttv.competitors.forEach(c => {
+        const speedColor = c.onboardingSpeed === 'Fast' ? '#22c55e' : c.onboardingSpeed === 'Slow' ? '#ef4444' : '#f59e0b';
+        const speedIcon = c.onboardingSpeed === 'Fast' ? '🚀' : c.onboardingSpeed === 'Slow' ? '🐢' : '🚶';
+        html += `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px; font-weight: 500;">${c.competitor}</td>
+          <td style="padding: 10px; text-align: center;"><span style="background: ${speedColor}20; color: ${speedColor}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">${speedIcon} ${c.onboardingSpeed}</span></td>
+          <td style="padding: 10px; color: #6b7280; font-size: 12px;">${c.friction}</td>
+          <td style="padding: 10px; font-weight: 500; color: #374151;">${c.timeToValue}</td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+    }
+    if (ttv.ourAdvantage) {
+      html += `<div style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 20px; border-radius: 12px;">
+        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 8px;">⚡ OUR 10X ADVANTAGE</div>
+        <p style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.5;">${ttv.ourAdvantage}</p>
+      </div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+  
+  function buildSEOMoatInline(moat) {
+    if (!moat || !moat.opportunity) return '';
+    const opp = moat.opportunity;
+    let html = `<div style="background: linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%); padding: 32px; border-radius: 16px; margin-bottom: 24px; border-left: 4px solid #8b5cf6;">
+      <h4 style="margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #5b21b6; display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 28px;">🏰</span> Programmatic SEO Moat
+      </h4>
+      <p style="margin: 0 0 20px; font-size: 14px; color: #7c3aed;">Build 1,000+ pages without writing them manually.</p>
+      <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+          <div><span style="font-size: 11px; color: #8b5cf6; text-transform: uppercase; font-weight: 600;">PAGE ARCHITECTURE</span>
+            <h5 style="margin: 8px 0; font-size: 18px; font-weight: 700; color: #202124;">"${opp.pageArchitecture}"</h5>
+            ${opp.variables ? `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+              ${opp.variables.map(v => `<span style="background: #8b5cf620; color: #8b5cf6; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;">[${v}]</span>`).join('')}
+            </div>` : ''}
+          </div>
+          <div style="text-align: center; border-left: 1px solid #e5e7eb; padding-left: 20px;">
+            <div style="font-size: 36px; font-weight: 700; color: #8b5cf6;">${opp.estimatedPages || '500'}+</div>
+            <div style="font-size: 12px; color: #666;">Automated Pages</div>
+            ${opp.expectedTrafficLift ? `<div style="margin-top: 12px; background: #ecfdf5; padding: 8px; border-radius: 6px;"><span style="font-size: 11px; color: #059669;">📈 ${opp.expectedTrafficLift}</span></div>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+    return html;
+  }
+  
+  function buildEliteOverviewSection(overview, competitors) {
+    let html = `<div style="background: white; padding: 24px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+      <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700; color: #1e293b;">📊 Competitive Landscape Overview</h4>`;
+    
+    if (Array.isArray(overview) && overview.length > 0 && overview[0].domain) {
+      html += `<div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <thead>
+            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+              <th style="padding: 12px; text-align: left; font-weight: 600;">Competitor</th>
+              <th style="padding: 12px; text-align: center;">Composite Score</th>
+              <th style="padding: 12px; text-align: center;">Authority</th>
+              <th style="padding: 12px; text-align: center;">Content</th>
+              <th style="padding: 12px; text-align: center;">Technical</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${overview.slice(0, 6).map((comp, idx) => `
+              <tr style="border-bottom: 1px solid #e5e7eb; ${idx === 0 ? 'background: #fef3c7;' : ''}">
+                <td style="padding: 12px; font-weight: 600;">${comp.domain || 'N/A'}</td>
+                <td style="padding: 12px; text-align: center;"><span style="background: ${getScoreColor(comp.compositeScore)}; color: white; padding: 4px 12px; border-radius: 20px; font-weight: 600;">${comp.compositeScore || 'N/A'}</span></td>
+                <td style="padding: 12px; text-align: center; color: ${getScoreTextColor(comp.authorityScore)};">${comp.authorityScore || 'N/A'}</td>
+                <td style="padding: 12px; text-align: center; color: ${getScoreTextColor(comp.contentScore)};">${comp.contentScore || 'N/A'}</td>
+                <td style="padding: 12px; text-align: center; color: ${getScoreTextColor(comp.technicalScore)};">${comp.technicalScore || 'N/A'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    } else if (overview.competitorRankings) {
+      html += `<p style="color: #64748b; line-height: 1.7;">${typeof overview.competitorRankings === 'string' ? overview.competitorRankings : JSON.stringify(overview.competitorRankings)}</p>`;
+    }
+    
+    html += `</div>`;
+    return html;
+  }
+  
+  function buildEliteMarketSection(market) {
+    let html = `<div style="background: linear-gradient(135deg, #ecfeff, #cffafe); padding: 24px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #06b6d4;">
+      <h4 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #0891b2;">🌍 Market Intelligence</h4>`;
+    
+    if (market.categoryMapping?.primaryCategory) {
+      html += `<div style="margin-bottom: 12px;"><strong>Primary Category:</strong> ${market.categoryMapping.primaryCategory}</div>`;
+    }
+    if (market.categoryMapping?.subCategories?.length > 0) {
+      html += `<div style="margin-bottom: 12px;"><strong>Sub-categories:</strong> ${market.categoryMapping.subCategories.join(', ')}</div>`;
+    }
+    if (market.narrativeAudit?.recommendedNarrative) {
+      html += `<div style="background: white; padding: 12px; border-radius: 8px; margin-top: 12px;">
+        <strong style="color: #0e7490;">💡 Recommended Narrative:</strong>
+        <p style="margin: 8px 0 0; color: #334155; line-height: 1.6;">${market.narrativeAudit.recommendedNarrative}</p>
+      </div>`;
+    }
+    
+    html += `</div>`;
+    return html;
+  }
+  
+  function buildEliteTabCard(tabKey, tabData) {
+    const tabIcons = {
+      'keywordStrategy': '🔑',
+      'contentStrategy': '📝',
+      'brandPosition': '🏆',
+      'opportunities': '💎',
+      'technicalSeo': '⚙️',
+      'authority': '👑'
+    };
+    const tabNames = {
+      'keywordStrategy': 'Keyword Strategy',
+      'contentStrategy': 'Content Strategy',
+      'brandPosition': 'Brand Position',
+      'opportunities': 'Opportunities',
+      'technicalSeo': 'Technical SEO',
+      'authority': 'Authority'
+    };
+    
+    const icon = tabIcons[tabKey] || '📊';
+    const name = tabNames[tabKey] || tabKey;
+    
+    // Extract key insights from tab data
+    let insightText = '';
+    if (Array.isArray(tabData) && tabData[0]) {
+      const first = tabData[0];
+      insightText = `Top: ${first.domain || 'N/A'} • Score: ${first.score || first.brandStrengthScore || first.technicalScore || 'N/A'}`;
+    } else if (tabData.summary) {
+      insightText = tabData.summary.substring(0, 120) + '...';
+    } else if (tabData.keyInsights?.length > 0) {
+      insightText = tabData.keyInsights[0];
+    } else if (tabData.recommendations?.length > 0) {
+      insightText = tabData.recommendations[0];
+    }
+    
+    return `<div style="background: #f8fafc; padding: 16px; border-radius: 10px; border-left: 3px solid #6366f1;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <span style="font-size: 20px;">${icon}</span>
+        <span style="font-weight: 600; color: #1e293b;">${name}</span>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">${insightText || 'Data available - click tab to view details'}</p>
+    </div>`;
+  }
+  
+  function buildEliteQuickStats(eliteData, competitors) {
+    const stats = [
+      { label: 'Competitors Analyzed', value: competitors.length, icon: '🎯' },
+      { label: 'Intelligence Tabs', value: Object.keys(eliteData).filter(k => !['version', 'generatedAt', 'niche', 'competitorCount', 'generationTimeMs'].includes(k)).length, icon: '📊' },
+      { label: 'Niche Detected', value: eliteData.niche || 'Auto', icon: '🔍' },
+      { label: 'Generation Time', value: eliteData.generationTimeMs ? `${eliteData.generationTimeMs}ms` : 'N/A', icon: '⚡' }
+    ];
+    
+    return `<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px;">
+      ${stats.map(s => `<div style="background: white; padding: 16px; border-radius: 10px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div style="font-size: 24px; margin-bottom: 4px;">${s.icon}</div>
+        <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">${s.value}</div>
+        <div style="font-size: 11px; color: #64748b;">${s.label}</div>
+      </div>`).join('')}
+    </div>`;
+  }
+  
+  function getScoreColor(score) {
+    if (!score || isNaN(score)) return '#94a3b8';
+    if (score >= 80) return '#059669';
+    if (score >= 60) return '#3b82f6';
+    if (score >= 40) return '#f59e0b';
+    return '#ef4444';
+  }
+  
+  function getScoreTextColor(score) {
+    if (!score || isNaN(score)) return '#64748b';
+    if (score >= 70) return '#059669';
+    if (score >= 50) return '#3b82f6';
+    return '#f59e0b';
+  }
 
   // Export functions globally
   window.buildEliteStrategicDisplay = buildEliteStrategicDisplay;
+  window.buildEliteTabIntelligenceDisplay = buildEliteTabIntelligenceDisplay;
   window.buildExecutiveBriefHTML = buildExecutiveBriefHTML;
   window.buildRoadmapHTML = buildRoadmapHTML;
   window.buildCategoryInsightsHTML = buildCategoryInsightsHTML;

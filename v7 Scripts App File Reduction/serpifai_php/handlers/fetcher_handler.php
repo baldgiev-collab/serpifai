@@ -1,9 +1,35 @@
 <?php
 /**
- * Fetcher Handler
+ * Fetcher Handler v31.0
  * Routes URL fetching and extraction requests
  * Handles caching for fetched content
+ * 
+ * v31.0: Added comprehensive error logging for HTTP 500 debugging
  */
+
+// v31.0: Emergency error handler to catch and log ALL errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("[FETCHER ERROR] [$errno] $errstr in $errfile on line $errline");
+    return false; // Let PHP handle it too
+});
+
+set_exception_handler(function($e) {
+    error_log("[FETCHER EXCEPTION] " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    error_log("[FETCHER EXCEPTION TRACE] " . $e->getTraceAsString());
+    
+    // Return JSON error instead of crashing with 500
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Server exception: ' . $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine()
+    ]);
+    exit;
+});
+
+error_log("[FETCHER v31.0] Handler loaded at " . date('Y-m-d H:i:s'));
 
 require_once __DIR__ . '/../config/db_config.php';
 
@@ -22,6 +48,18 @@ function setCacheValue($key, $value, $ttl = 3600) {
  * Fetch single URL
  */
 function fetchSingleUrl($url, $options, $licenseKey, $userId) {
+    // v29.1: Add diagnostic logging
+    error_log("[FETCHER] fetchSingleUrl START - URL: $url");
+    
+    // Validate URL
+    if (empty($url)) {
+        error_log("[FETCHER] ERROR: Empty URL provided");
+        return [
+            'success' => false,
+            'error' => 'URL is required'
+        ];
+    }
+    
     // Check cache first
     $cacheKey = 'fetch_' . md5($url . json_encode($options));
     $cached = getCacheValue($cacheKey);
@@ -48,19 +86,34 @@ function fetchSingleUrl($url, $options, $licenseKey, $userId) {
         $action = 'fetch:single';
         $creditCost = CREDIT_COSTS[$action] ?? 1;
         
-        // Log transaction
-        $stmt = $db->prepare("
-            INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data)
-            VALUES (?, ?, ?, 'processing', ?)
-        ");
-        $requestJson = json_encode(['url' => $url, 'options' => $options]);
-        $stmt->bindValue(1, $userId, PDO::PARAM_INT);
-        $stmt->bindValue(2, $action, PDO::PARAM_STR);
-        $stmt->bindValue(3, $creditCost, PDO::PARAM_INT);
-        $stmt->bindValue(4, $requestJson, PDO::PARAM_STR);
-        $stmt->execute();
-        $transactionId = $db->lastInsertId();
+        // v29.0: Try to log transaction but don't let it block fetching
+        // Use api_transactions (V6 production) first, fall back to transactions (V7)
+        $transactionId = 'FETCH-' . time() . '-' . substr(md5($url), 0, 8);
+        try {
+            $requestJson = json_encode(['url' => $url, 'options' => $options]);
+            
+            // Try api_transactions first (V6 production schema)
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO api_transactions 
+                    (user_id, action_type, credit_cost, status, request_data)
+                    VALUES (?, ?, ?, 'processing', ?)
+                ");
+                $stmt->execute([$userId, $action, $creditCost, $requestJson]);
+                $transactionId = 'TX-' . $db->lastInsertId();
+            } catch (PDOException $e1) {
+                // api_transactions failed, try transactions (V7 schema)
+                $stmt = $db->prepare("
+                    INSERT INTO transactions 
+                    (transaction_id, user_id, action_type, credit_cost, status, request_data, created_at)
+                    VALUES (?, ?, ?, ?, 'processing', ?, NOW())
+                ");
+                $stmt->execute([$transactionId, $userId, $action, $creditCost, $requestJson]);
+            }
+        } catch (PDOException $e) {
+            // Transaction logging failed - continue anyway, fetching is more important
+            error_log('Transaction log failed (non-blocking): ' . $e->getMessage());
+        }
         
         // Actually fetch the URL with browser-like headers to avoid 403
         $ch = curl_init($url);
@@ -253,19 +306,33 @@ function fetchMultipleUrls($urls, $options, $licenseKey, $userId) {
         $urlCount = count($urls);
         $creditCost = $urlCount * (CREDIT_COSTS['fetch:single'] ?? 1);
         
-        // Log transaction
-        $stmt = $db->prepare("
-            INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data)
-            VALUES (?, ?, ?, 'processing', ?)
-        ");
-        $requestJson = json_encode(['urls' => $urls, 'options' => $options]);
-        $stmt->bindValue(1, $userId, PDO::PARAM_INT);
-        $stmt->bindValue(2, $action, PDO::PARAM_STR);
-        $stmt->bindValue(3, $creditCost, PDO::PARAM_INT);
-        $stmt->bindValue(4, $requestJson, PDO::PARAM_STR);
-        $stmt->execute();
-        $transactionId = $db->lastInsertId();
+        // v29.0: Try to log transaction with backward compatibility
+        $transactionId = 'FETCHM-' . time() . '-' . substr(md5(implode(',', $urls)), 0, 8);
+        try {
+            $requestJson = json_encode(['urls' => $urls, 'options' => $options]);
+            
+            // Try api_transactions first (V6 production schema)
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO api_transactions 
+                    (user_id, action_type, credit_cost, status, request_data)
+                    VALUES (?, ?, ?, 'processing', ?)
+                ");
+                $stmt->execute([$userId, $action, $creditCost, $requestJson]);
+                $transactionId = 'TXM-' . $db->lastInsertId();
+            } catch (PDOException $e1) {
+                // api_transactions failed, try transactions (V7 schema)
+                $stmt = $db->prepare("
+                    INSERT INTO transactions 
+                    (transaction_id, user_id, action_type, credit_cost, status, request_data, created_at)
+                    VALUES (?, ?, ?, ?, 'processing', ?, NOW())
+                ");
+                $stmt->execute([$transactionId, $userId, $action, $creditCost, $requestJson]);
+            }
+        } catch (PDOException $e) {
+            // Transaction logging failed - continue anyway
+            error_log('Transaction log failed (non-blocking): ' . $e->getMessage());
+        }
         
         return [
             'success' => true,
@@ -303,19 +370,32 @@ function extractContent($url, $extractType, $options, $licenseKey, $userId) {
         $action = 'fetch:extract_' . $extractType;
         $creditCost = CREDIT_COSTS[$action] ?? 2;
         
-        // Log transaction
-        $stmt = $db->prepare("
-            INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data)
-            VALUES (?, ?, ?, 'processing', ?)
-        ");
-        $requestJson = json_encode(['url' => $url, 'type' => $extractType, 'options' => $options]);
-        $stmt->bindValue(1, $userId, PDO::PARAM_INT);
-        $stmt->bindValue(2, $action, PDO::PARAM_STR);
-        $stmt->bindValue(3, $creditCost, PDO::PARAM_INT);
-        $stmt->bindValue(4, $requestJson, PDO::PARAM_STR);
-        $stmt->execute();
-        $transactionId = $db->lastInsertId();
+        // v29.0: Try to log transaction with backward compatibility
+        $transactionId = 'EXT-' . time() . '-' . substr(md5($url . $extractType), 0, 8);
+        try {
+            $requestJson = json_encode(['url' => $url, 'type' => $extractType, 'options' => $options]);
+            
+            // Try api_transactions first (V6 production)
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO api_transactions 
+                    (user_id, action_type, credit_cost, status, request_data)
+                    VALUES (?, ?, ?, 'processing', ?)
+                ");
+                $stmt->execute([$userId, $action, $creditCost, $requestJson]);
+                $transactionId = 'TXE-' . $db->lastInsertId();
+            } catch (PDOException $e1) {
+                // Fall back to transactions (V7)
+                $stmt = $db->prepare("
+                    INSERT INTO transactions 
+                    (transaction_id, user_id, action_type, credit_cost, status, request_data, created_at)
+                    VALUES (?, ?, ?, ?, 'processing', ?, NOW())
+                ");
+                $stmt->execute([$transactionId, $userId, $action, $creditCost, $requestJson]);
+            }
+        } catch (PDOException $e) {
+            error_log('Transaction log failed (non-blocking): ' . $e->getMessage());
+        }
         
         return [
             'success' => true,
@@ -352,19 +432,32 @@ function fetchCompetitorBenchmark($url, $options, $licenseKey, $userId) {
         $action = 'fetch:competitor';
         $creditCost = CREDIT_COSTS[$action] ?? 3;
         
-        // Log transaction
-        $stmt = $db->prepare("
-            INSERT INTO api_transactions 
-            (user_id, action_type, credit_cost, status, request_data)
-            VALUES (?, ?, ?, 'processing', ?)
-        ");
-        $requestJson = json_encode(['url' => $url, 'options' => $options]);
-        $stmt->bindValue(1, $userId, PDO::PARAM_INT);
-        $stmt->bindValue(2, $action, PDO::PARAM_STR);
-        $stmt->bindValue(3, $creditCost, PDO::PARAM_INT);
-        $stmt->bindValue(4, $requestJson, PDO::PARAM_STR);
-        $stmt->execute();
-        $transactionId = $db->lastInsertId();
+        // v29.0: Try to log transaction with backward compatibility
+        $transactionId = 'COMP-' . time() . '-' . substr(md5($url), 0, 8);
+        try {
+            $requestJson = json_encode(['url' => $url, 'options' => $options]);
+            
+            // Try api_transactions first (V6 production)
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO api_transactions 
+                    (user_id, action_type, credit_cost, status, request_data)
+                    VALUES (?, ?, ?, 'processing', ?)
+                ");
+                $stmt->execute([$userId, $action, $creditCost, $requestJson]);
+                $transactionId = 'TXC-' . $db->lastInsertId();
+            } catch (PDOException $e1) {
+                // Fall back to transactions (V7)
+                $stmt = $db->prepare("
+                    INSERT INTO transactions 
+                    (transaction_id, user_id, action_type, credit_cost, status, request_data, created_at)
+                    VALUES (?, ?, ?, ?, 'processing', ?, NOW())
+                ");
+                $stmt->execute([$transactionId, $userId, $action, $creditCost, $requestJson]);
+            }
+        } catch (PDOException $e) {
+            error_log('Transaction log failed (non-blocking): ' . $e->getMessage());
+        }
         
         return [
             'success' => true,
@@ -402,36 +495,58 @@ function cacheFetchResult($cacheKey, $result, $licenseKey) {
  * Handle fetcher action routing
  */
 function handleFetcherAction($action, $payload, $licenseKey, $userId) {
-    switch ($action) {
-        case 'fetch:single':
-        case 'fetch_single':
-        case 'fetcher_single':
-            return fetchSingleUrl($payload['url'], $payload['options'] ?? [], $licenseKey, $userId);
-            
-        case 'fetch:multi':
-        case 'fetch_multi':
-            return fetchMultipleUrls($payload['urls'], $payload['options'] ?? [], $licenseKey, $userId);
-            
-        case 'fetch:extract_headings':
-        case 'fetch:extract_metadata':
-        case 'fetch:extract_opengraph':
-        case 'fetch:extract_schema':
-        case 'fetch:extract_links':
-            $extractType = str_replace('fetch:extract_', '', $action);
-            return extractContent($payload['url'], $extractType, $payload['options'] ?? [], $licenseKey, $userId);
-            
-        case 'fetch:competitor':
-        case 'fetch_competitor':
-            return fetchCompetitorBenchmark($payload['url'], $payload['options'] ?? [], $licenseKey, $userId);
-            
-        case 'fetch:cache':
-            return cacheFetchResult($payload['cacheKey'], $payload['result'], $licenseKey);
-            
-        default:
-            return [
-                'success' => false,
-                'error' => 'Unknown fetcher action: ' . $action
-            ];
+    // v29.1: Add debug logging for troubleshooting HTTP 500 errors
+    error_log("[FETCHER] handleFetcherAction called - Action: $action, UserId: $userId");
+    error_log("[FETCHER] Payload: " . json_encode($payload));
+    
+    try {
+        switch ($action) {
+            case 'fetch:single':
+            case 'fetch_single':
+            case 'fetcher_single':
+                error_log("[FETCHER] Routing to fetchSingleUrl for: " . ($payload['url'] ?? 'NO_URL'));
+                return fetchSingleUrl($payload['url'], $payload['options'] ?? [], $licenseKey, $userId);
+                
+            case 'fetch:multi':
+            case 'fetch_multi':
+                return fetchMultipleUrls($payload['urls'], $payload['options'] ?? [], $licenseKey, $userId);
+                
+            case 'fetch:extract_headings':
+            case 'fetch:extract_metadata':
+            case 'fetch:extract_opengraph':
+            case 'fetch:extract_schema':
+            case 'fetch:extract_links':
+                $extractType = str_replace('fetch:extract_', '', $action);
+                return extractContent($payload['url'], $extractType, $payload['options'] ?? [], $licenseKey, $userId);
+                
+            case 'fetch:competitor':
+            case 'fetch_competitor':
+                return fetchCompetitorBenchmark($payload['url'], $payload['options'] ?? [], $licenseKey, $userId);
+                
+            case 'fetch:cache':
+                return cacheFetchResult($payload['cacheKey'], $payload['result'], $licenseKey);
+                
+            default:
+                error_log("[FETCHER] Unknown action: $action");
+                return [
+                    'success' => false,
+                    'error' => 'Unknown fetcher action: ' . $action
+                ];
+        }
+    } catch (Exception $e) {
+        error_log("[FETCHER] Exception in handleFetcherAction: " . $e->getMessage());
+        error_log("[FETCHER] Stack trace: " . $e->getTraceAsString());
+        return [
+            'success' => false,
+            'error' => 'Fetcher exception: ' . $e->getMessage()
+        ];
+    } catch (Error $e) {
+        error_log("[FETCHER] Fatal error in handleFetcherAction: " . $e->getMessage());
+        error_log("[FETCHER] Stack trace: " . $e->getTraceAsString());
+        return [
+            'success' => false,
+            'error' => 'Fetcher fatal error: ' . $e->getMessage()
+        ];
     }
 }
 

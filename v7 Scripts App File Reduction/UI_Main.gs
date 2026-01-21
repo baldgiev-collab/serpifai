@@ -53,6 +53,389 @@
     }
   }
 
+  // ============================================================================
+  // V7.1 DIAGNOSTIC TEST: Run this from Script Editor to test Stage 1 directly
+  // ============================================================================
+  
+  /**
+   * DIAGNOSTIC: Test Stage 1 execution directly from Apps Script
+   * Run this from the Script Editor (Run > testStage1Direct)
+   * This bypasses the browser completely to isolate the issue
+   */
+  function testStage1Direct() {
+    Logger.log('========================================');
+    Logger.log('🧪 V7.5 STAGE 1 DIRECT TEST');
+    Logger.log('========================================');
+    
+    const testPayload = {
+      stageNum: 1,
+      projectId: 'Serpifai',  // Use actual project name
+      model: 'gemini-3-flash-preview',  // Latest model
+      _fetchCompetitorDataFromMySQL: true
+    };
+    
+    Logger.log('📦 Test payload: ' + JSON.stringify(testPayload));
+    Logger.log('📦 Payload size: ' + JSON.stringify(testPayload).length + ' bytes');
+    
+    try {
+      const startTime = Date.now();
+      const result = runWorkflowStage(testPayload);
+      const duration = Date.now() - startTime;
+      
+      const resultStr = JSON.stringify(result);
+      Logger.log('⏱️ Duration: ' + duration + 'ms');
+      Logger.log('📦 Result size: ' + resultStr.length + ' bytes');
+      Logger.log('📦 Result keys: ' + Object.keys(result).join(', '));
+      Logger.log('✅ Result preview: ' + resultStr.substring(0, 500));
+      
+      // V7.5: Check if result would cause HTTP 400
+      if (resultStr.length > 50000) {
+        Logger.log('🚨 CRITICAL: Result exceeds 50KB limit! Would cause HTTP 400');
+        Logger.log('   Actual size: ' + (resultStr.length / 1024).toFixed(2) + ' KB');
+      } else {
+        Logger.log('✅ Result size OK: ' + (resultStr.length / 1024).toFixed(2) + ' KB (under 50KB limit)');
+      }
+      
+      return result;
+    } catch (error) {
+      Logger.log('❌ Error: ' + error.toString());
+      Logger.log('   Stack: ' + error.stack);
+      return { success: false, error: error.toString() };
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════════════
+  // V7.3 CHUNKED HYDRATION SYSTEM
+  // ════════════════════════════════════════════════════════════════════════════════════
+  // PROBLEM: google.script.run has ~50KB response limit → HTTP 400
+  // SOLUTION: Split responses into chunks, each under 50KB
+  // 
+  // Flow:
+  // 1. loadStageResultsMeta() → ~500 bytes (metadata only)
+  // 2. loadStageResultsReport() → 5-20KB (report text only)
+  // 3. loadStageResultsJson() → 10-30KB (JSON only, chunked if needed)
+  // ════════════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * V7.10 CHUNK 1: Load metadata only (super lightweight ~500 bytes)
+   * Returns: success, hasData, reportLength, jsonKeyCount, timestamp
+   * V7.10 FIX: Check CacheService FIRST, then fallback to MySQL
+   */
+  function loadStageResultsMeta(projectId, stageNum) {
+    try {
+      Logger.log('📊 loadStageResultsMeta V7.10: project=' + projectId + ', stage=' + stageNum);
+      
+      // =========================================================================
+      // V7.10 FIX: Check CacheService FIRST (instant, bypasses MySQL latency)
+      // =========================================================================
+      try {
+        const cache = CacheService.getUserCache();
+        const cacheKey = 'stage_' + projectId + '_' + stageNum;
+        
+        const cachedReport = cache.get(cacheKey + '_report');
+        const cachedJsonStr = cache.get(cacheKey + '_json');
+        const cachedMetaStr = cache.get(cacheKey + '_meta');
+        
+        if (cachedReport || cachedJsonStr) {
+          Logger.log('✅ V7.10: Found data in CacheService!');
+          const cachedJson = cachedJsonStr ? JSON.parse(cachedJsonStr) : {};
+          const cachedMeta = cachedMetaStr ? JSON.parse(cachedMetaStr) : {};
+          
+          return {
+            success: true,
+            hasData: true,
+            stage: stageNum,
+            projectId: projectId,
+            reportLength: (cachedReport || '').length,
+            jsonKeyCount: Object.keys(cachedJson).length,
+            model: cachedMeta.model || 'unknown',
+            timestamp: cachedMeta.timestamp || new Date().toISOString(),
+            source: 'cache',
+            _chunkedHydration: true
+          };
+        }
+        Logger.log('   Cache miss, trying MySQL...');
+      } catch (cacheError) {
+        Logger.log('   Cache check error: ' + cacheError.toString());
+      }
+      
+      // V7.8 FIX: Recover job_token from ScriptProperties for better query matching
+      let jobToken = '';
+      try {
+        const props = PropertiesService.getScriptProperties();
+        jobToken = props.getProperty('UPP_CURRENT_JOB_TOKEN') || '';
+        if (jobToken) {
+          Logger.log('   🔑 Recovered job_token: ' + jobToken.substring(0, 20) + '...');
+        }
+      } catch (e) {
+        Logger.log('   ⚠️ Could not recover job_token: ' + e.toString());
+      }
+      
+      // V7.8 FIX: Pass both project_id AND job_token for maximum match probability
+      const result = callGateway('job_get_results', {
+        project_id: projectId,
+        job_token: jobToken,
+        stage: stageNum
+      });
+      
+      if (!result || !result.success) {
+        Logger.log('⚠️ No saved results for Stage ' + stageNum);
+        Logger.log('   Source checked: ' + (result?.source || 'unknown'));
+        return { success: false, hasData: false, stage: stageNum };
+      }
+      
+      Logger.log('✅ Found results from source: ' + (result.source || 'mysql'));
+      
+      const jsonData = result.json || result.data?.json || {};
+      const reportData = result.report || result.analysis_text || result.data?.report || '';
+      
+      // Store full data in CacheService for subsequent chunk calls
+      const cache = CacheService.getUserCache();
+      const cacheKey = 'stage_' + projectId + '_' + stageNum;
+      
+      try {
+        // Store report and json separately (cache has 100KB limit per key)
+        cache.put(cacheKey + '_report', reportData, 300); // 5 min TTL
+        cache.put(cacheKey + '_json', JSON.stringify(jsonData), 300);
+        cache.put(cacheKey + '_meta', JSON.stringify({
+          model: result.model || 'unknown',
+          timestamp: result.timestamp || new Date().toISOString()
+        }), 300);
+        Logger.log('✅ Cached stage data for chunked retrieval');
+      } catch (cacheError) {
+        Logger.log('⚠️ Cache storage failed (data too large): ' + cacheError.toString());
+        // If cache fails, we'll fetch fresh in chunk calls
+      }
+      
+      // Return lightweight metadata only
+      const metaResponse = {
+        success: true,
+        hasData: true,
+        stage: stageNum,
+        projectId: projectId,
+        reportLength: reportData.length,
+        jsonKeyCount: Object.keys(jsonData).length,
+        model: result.model || 'unknown',
+        timestamp: result.timestamp || new Date().toISOString(),
+        source: 'mysql',
+        _chunkedHydration: true
+      };
+      
+      const metaSize = JSON.stringify(metaResponse).length;
+      Logger.log('📊 Meta response size: ' + metaSize + ' bytes');
+      
+      return metaResponse;
+      
+    } catch (error) {
+      Logger.log('❌ loadStageResultsMeta error: ' + error.toString());
+      return { success: false, error: error.toString(), stage: stageNum };
+    }
+  }
+  
+  /**
+   * V7.8 CHUNK 2: Load report text only
+   * Typically 5-20KB, well under 50KB limit
+   */
+  function loadStageResultsReport(projectId, stageNum) {
+    try {
+      Logger.log('📄 loadStageResultsReport: project=' + projectId + ', stage=' + stageNum);
+      
+      // Try cache first
+      const cache = CacheService.getUserCache();
+      const cacheKey = 'stage_' + projectId + '_' + stageNum;
+      let reportData = cache.get(cacheKey + '_report');
+      let metaStr = cache.get(cacheKey + '_meta');
+      
+      if (reportData) {
+        Logger.log('✅ Report loaded from cache (' + reportData.length + ' chars)');
+        const meta = metaStr ? JSON.parse(metaStr) : {};
+        return {
+          success: true,
+          stage: stageNum,
+          projectId: projectId,
+          report: reportData,
+          model: meta.model || 'unknown',
+          timestamp: meta.timestamp || new Date().toISOString(),
+          source: 'cache'
+        };
+      }
+      
+      // V7.8 FIX: Recover job_token for better query matching
+      let jobToken = '';
+      try {
+        jobToken = PropertiesService.getScriptProperties().getProperty('UPP_CURRENT_JOB_TOKEN') || '';
+      } catch (e) {}
+      
+      // Cache miss - fetch fresh from MySQL
+      Logger.log('⚠️ Cache miss, fetching fresh from MySQL');
+      const result = callGateway('job_get_results', {
+        project_id: projectId,
+        job_token: jobToken,
+        stage: stageNum
+      });
+      
+      if (!result || !result.success) {
+        return { success: false, error: 'No saved results', stage: stageNum };
+      }
+      
+      reportData = result.report || result.analysis_text || result.data?.report || '';
+      
+      const reportResponse = {
+        success: true,
+        stage: stageNum,
+        projectId: projectId,
+        report: reportData,
+        model: result.model || 'unknown',
+        timestamp: result.timestamp || new Date().toISOString(),
+        source: 'mysql'
+      };
+      
+      const reportSize = JSON.stringify(reportResponse).length;
+      Logger.log('📄 Report response size: ' + (reportSize / 1024).toFixed(2) + ' KB');
+      
+      return reportResponse;
+      
+    } catch (error) {
+      Logger.log('❌ loadStageResultsReport error: ' + error.toString());
+      return { success: false, error: error.toString(), stage: stageNum };
+    }
+  }
+  
+  /**
+   * V7.8 CHUNK 3: Load JSON data only
+   * Typically 10-30KB. If over 40KB, returns subset with continuation token.
+   */
+  function loadStageResultsJson(projectId, stageNum, chunkIndex) {
+    chunkIndex = chunkIndex || 0;
+    
+    try {
+      Logger.log('🗂️ loadStageResultsJson: project=' + projectId + ', stage=' + stageNum + ', chunk=' + chunkIndex);
+      
+      // Try cache first
+      const cache = CacheService.getUserCache();
+      const cacheKey = 'stage_' + projectId + '_' + stageNum;
+      let jsonStr = cache.get(cacheKey + '_json');
+      let jsonData;
+      
+      if (jsonStr) {
+        Logger.log('✅ JSON loaded from cache');
+        jsonData = JSON.parse(jsonStr);
+      } else {
+        // V7.8 FIX: Recover job_token for better query matching
+        let jobToken = '';
+        try {
+          jobToken = PropertiesService.getScriptProperties().getProperty('UPP_CURRENT_JOB_TOKEN') || '';
+        } catch (e) {}
+        
+        // Cache miss - fetch fresh
+        Logger.log('⚠️ Cache miss, fetching fresh from MySQL');
+        const result = callGateway('job_get_results', {
+          project_id: projectId,
+          job_token: jobToken,
+          stage: stageNum
+        });
+        
+        if (!result || !result.success) {
+          return { success: false, error: 'No saved results', stage: stageNum };
+        }
+        
+        jsonData = result.json || result.data?.json || {};
+      }
+      
+      const fullJsonStr = JSON.stringify(jsonData);
+      const fullSize = fullJsonStr.length;
+      Logger.log('🗂️ Full JSON size: ' + (fullSize / 1024).toFixed(2) + ' KB');
+      
+      // If under 35KB, return full JSON (leave room for wrapper)
+      if (fullSize < 35000) {
+        return {
+          success: true,
+          stage: stageNum,
+          projectId: projectId,
+          json: jsonData,
+          isComplete: true,
+          chunkIndex: 0,
+          totalChunks: 1,
+          source: jsonStr ? 'cache' : 'mysql'
+        };
+      }
+      
+      // JSON too large - chunk it by top-level keys
+      const keys = Object.keys(jsonData);
+      const KEYS_PER_CHUNK = 5;
+      const totalChunks = Math.ceil(keys.length / KEYS_PER_CHUNK);
+      
+      const startIdx = chunkIndex * KEYS_PER_CHUNK;
+      const endIdx = Math.min(startIdx + KEYS_PER_CHUNK, keys.length);
+      const chunkKeys = keys.slice(startIdx, endIdx);
+      
+      const chunkData = {};
+      chunkKeys.forEach(function(key) {
+        chunkData[key] = jsonData[key];
+      });
+      
+      Logger.log('🗂️ Returning chunk ' + chunkIndex + '/' + totalChunks + ' with keys: ' + chunkKeys.join(', '));
+      
+      return {
+        success: true,
+        stage: stageNum,
+        projectId: projectId,
+        json: chunkData,
+        isComplete: (chunkIndex >= totalChunks - 1),
+        chunkIndex: chunkIndex,
+        totalChunks: totalChunks,
+        nextChunk: (chunkIndex < totalChunks - 1) ? chunkIndex + 1 : null,
+        source: 'chunked'
+      };
+      
+    } catch (error) {
+      Logger.log('❌ loadStageResultsJson error: ' + error.toString());
+      return { success: false, error: error.toString(), stage: stageNum };
+    }
+  }
+  
+  /**
+   * Load workflow stage results from MySQL for UI hydration
+   * ⚠️ DEPRECATED for direct UI calls due to 50KB limit
+   * Use loadStageResultsMeta/Report/Json instead for chunked hydration
+   * Still available for server-side calls between GS files
+   */
+  function loadWorkflowStageResults(projectId, stageNum) {
+    try {
+      Logger.log('💎 loadWorkflowStageResults: project=' + projectId + ', stage=' + stageNum);
+      Logger.log('⚠️ WARNING: This function may cause HTTP 400 for large responses!');
+      Logger.log('   Use chunked hydration (loadStageResultsMeta/Report/Json) for UI calls');
+      
+      // Call gateway to fetch saved stage results
+      const result = callGateway('job_get_results', {
+        project_id: projectId,
+        stage: stageNum
+      });
+      
+      if (!result || !result.success) {
+        Logger.log('⚠️ No saved results for Stage ' + stageNum);
+        return { success: false, error: 'No saved results', stage: stageNum };
+      }
+      
+      // Return structured data for UI rendering
+      Logger.log('✅ Loaded Stage ' + stageNum + ' from MySQL');
+      return {
+        success: true,
+        stage: stageNum,
+        projectId: projectId,
+        json: result.json || result.data?.json || {},
+        report: result.report || result.analysis_text || result.data?.report || '',
+        model: result.model || 'unknown',
+        timestamp: result.timestamp || new Date().toISOString(),
+        source: 'mysql'
+      };
+      
+    } catch (error) {
+      Logger.log('❌ loadWorkflowStageResults error: ' + error.toString());
+      return { success: false, error: error.toString(), stage: stageNum };
+    }
+  }
+
   /**
   * Show main sidebar
   */
@@ -222,12 +605,25 @@
   * Include HTML files (for template system)
   * Auto-prepends UI/ folder prefix if not already present
   * Uses createTemplateFromFile to process nested scriptlets recursively
+  * V42.0 - Added try-catch with error logging for diagnostics
   */
   function include(name) {
-    // Auto-prepend UI/ folder if not already present
+    // V42.0 - Added diagnostics
     const filePath = name.startsWith('UI/') ? name : 'UI/' + name;
-    // Use template evaluation to process nested <?!= include() ?> calls
-    return HtmlService.createTemplateFromFile(filePath).evaluate().getContent();
+    try {
+      const content = HtmlService.createTemplateFromFile(filePath).evaluate().getContent();
+      // V42: Only log for problematic files
+      if (name.includes('Conversion') || name.includes('Audience') || name.includes('AuthPerf')) {
+        console.log('[V42] include() SUCCESS: ' + filePath + ' (' + content.length + ' chars)');
+      }
+      return content;
+    } catch (e) {
+      console.error('[V42] include() FAILED for: ' + filePath);
+      console.error('[V42] Error: ' + e.message);
+      console.error('[V42] Stack: ' + e.stack);
+      // Return error comment so page still loads
+      return '<!-- V42 INCLUDE ERROR: ' + filePath + ' - ' + e.message.replace(/--/g, '==') + ' -->';
+    }
   }
 
   /**
@@ -354,8 +750,15 @@
     let payload = null;
     let projectId = null;
     
+    // V7.5 DIAGNOSTIC: Track execution flow to find HTTP 400 source
+    const diagnosticLog = [];
+    function diagLog(msg) {
+      Logger.log(msg);
+      diagnosticLog.push({ time: new Date().toISOString(), msg: msg });
+    }
+    
     try {
-      Logger.log('🔗 runWorkflowStage called with ' + arguments.length + ' arguments');
+      diagLog('🔗 runWorkflowStage called with ' + arguments.length + ' arguments');
       
       // PATTERN DETECTION
       if (arguments.length === 0 || !arg1) {
@@ -380,6 +783,34 @@
       }
       else {
         throw new Error('Invalid calling pattern');
+      }
+      
+      // ============================================================================
+      // V7 FIX: FALLBACK PROJECT ID EXTRACTION
+      // If projectId is still empty, try to extract from multiple sources
+      // ============================================================================
+      if (!projectId || projectId.trim() === '') {
+        // Fallback 1: Check formData for alternative keys
+        projectId = formData?.projectName || formData?.project || formData?.brandName;
+        
+        // Fallback 2: Check UserProperties for last active project
+        if (!projectId || projectId.trim() === '') {
+          try {
+            const userProps = PropertiesService.getUserProperties();
+            projectId = userProps.getProperty('ACTIVE_PROJECT_ID') || 
+                        userProps.getProperty('lastActiveProject') ||
+                        userProps.getProperty('currentProjectId');
+            if (projectId) {
+              Logger.log('📌 ProjectId recovered from UserProperties: ' + projectId);
+            }
+          } catch (propError) {
+            Logger.log('⚠️ Could not read UserProperties: ' + propError.toString());
+          }
+        }
+        
+        if (projectId) {
+          Logger.log('✅ ProjectId extracted via fallback: ' + projectId);
+        }
       }
       
       // ============================================================================
@@ -436,12 +867,43 @@
       mergedData.model = selectedModel;
       
       // ============================================================================
+      // V7 FIX: STRIP HEAVY COMPETITOR DATA TO PREVENT HTTP 400
+      // The competitor data should be fetched directly from MySQL by the workflow stage
+      // NOT passed through the gateway HTTP request (which has a ~6MB limit)
+      // ============================================================================
+      const lightweightPayload = Object.assign({}, mergedData);
+      
+      // Remove ALL heavy data fields that can cause HTTP 400
+      delete lightweightPayload.competitorAnalysis;
+      delete lightweightPayload.competitors;
+      delete lightweightPayload.fullAnalysis;
+      delete lightweightPayload.rawData;
+      delete lightweightPayload.eliteTabIntelligence;
+      delete lightweightPayload.geminiAnalysis;
+      delete lightweightPayload.strategicInsights;
+      delete lightweightPayload.contentAnalysis;
+      delete lightweightPayload.keywordData;
+      delete lightweightPayload.backlinkData;
+      delete lightweightPayload.technicalData;
+      delete lightweightPayload.marketIntelligence;
+      delete lightweightPayload.opportunityMatrix;
+      delete lightweightPayload.competitorData;
+      
+      // Add flag to tell workflow to fetch data from MySQL
+      lightweightPayload._fetchCompetitorDataFromMySQL = true;
+      lightweightPayload._lightweightMode = true;
+      
+      const payloadSize = JSON.stringify(lightweightPayload).length;
+      Logger.log('📦 LIGHTWEIGHT PAYLOAD SIZE: ' + (payloadSize / 1024).toFixed(2) + ' KB');
+      Logger.log('   (Full data stripped to prevent HTTP 400)');
+      
+      // ============================================================================
       // CALL GATEWAY WITH CREDIT VALIDATION
       // ============================================================================
       Logger.log('🚀 Calling gateway for workflow:stage' + stageNum);
       
       // First, check authorization and get transaction ID
-      const authResult = executeWorkflowStage(stageNum, mergedData); // From UI_Gateway.gs
+      const authResult = executeWorkflowStage(stageNum, lightweightPayload); // From UI_Gateway.gs
       
       if (!authResult.success) {
         throw new Error(authResult.error || 'Workflow authorization failed');
@@ -457,6 +919,9 @@
       let stageResult;
       
       try {
+        // V7 FIX: Add transactionId to mergedData for UPP_commit
+        mergedData._transactionId = transactionId;
+        
         // Call appropriate stage handler from DB_WF_Router.gs
         switch(stageNum) {
           case 1:
@@ -479,17 +944,58 @@
         }
         
         // Mark transaction as complete
-        completeTransaction(transactionId, stageResult);
+        // V7.4 FIX: Only pass lightweight confirmation, NOT the full stageResult (which is 20-50KB)
+        // The full data is already saved to MySQL by the workflow stage
+        const lightweightConfirmation = {
+          success: stageResult.success,
+          stage: stageResult.stage || stageNum,
+          projectId: stageResult.projectId || projectId,
+          timestamp: stageResult.timestamp || new Date().toISOString(),
+          // DO NOT include: json, report, competitorAnalysisSummary, etc.
+        };
+        completeTransaction(transactionId, lightweightConfirmation);
         
         Logger.log('✅ Stage ' + stageNum + ' completed successfully');
         
-        return {
+        // ══════════════════════════════════════════════════════════════════════════════
+        // V7.2 NUCLEAR FIX: POINTER-ONLY RESPONSE
+        // ══════════════════════════════════════════════════════════════════════════════
+        // The HTTP 400 error occurs because google.script.run has a ~50KB limit.
+        // Stage 1 returns ~20-40KB of JSON + report, which exceeds this limit.
+        // 
+        // SOLUTION: Return ONLY a lightweight pointer (~200 bytes).
+        // The UI will call hydrateStage1FromDatabase() to fetch the full data
+        // from MySQL in a SEPARATE request that doesn't have size limits.
+        // 
+        // Data is ALREADY saved to MySQL by the workflow stage before we get here,
+        // so hydration will always find the data.
+        // ══════════════════════════════════════════════════════════════════════════════
+        
+        const pointerResponse = {
           success: true,
           stage: stageNum,
-          data: stageResult,
+          projectId: projectId,
+          jobToken: stageResult.jobToken || '',
           credits: authResult.creditCost,
-          timestamp: new Date().toISOString()
+          timestamp: stageResult.timestamp || new Date().toISOString(),
+          // V7.2: Tell UI to hydrate from database (NOT from this response)
+          _hydrateFromDatabase: true,
+          message: 'Stage ' + stageNum + ' completed. Hydrating results from database...'
         };
+        
+        const pointerSize = JSON.stringify(pointerResponse).length;
+        diagLog('📦 V7.2 POINTER-ONLY RESPONSE: ' + pointerSize + ' bytes');
+        diagLog('   (Full data saved to MySQL, UI will hydrate separately)');
+        
+        // V7.5 SAFETY CHECK: Verify response is actually small
+        if (pointerSize > 10000) {
+          diagLog('🚨 CRITICAL: Pointer response is too large! ' + pointerSize + ' bytes');
+          diagLog('   Keys in response: ' + Object.keys(pointerResponse).join(', '));
+          // Return minimal emergency response
+          return { success: true, stage: stageNum, projectId: projectId, _hydrateFromDatabase: true };
+        }
+        
+        return pointerResponse;
         
       } catch (stageError) {
         // Mark transaction as failed (refunds credits)
@@ -499,10 +1005,16 @@
       }
       
     } catch (error) {
-      Logger.log('❌ Workflow error: ' + error.toString());
+      diagLog('❌ Workflow error: ' + error.toString());
       
-      // Format error for user display
-      return showErrorToUser(error);
+      // V7.5 FIX: Return minimal error response to prevent HTTP 400
+      // Large error objects with stack traces can exceed 50KB limit
+      return {
+        success: false,
+        stage: stageNum || 0,
+        error: (error.toString() || 'Unknown error').substring(0, 500), // Truncate long errors
+        _hydrateFromDatabase: false
+      };
     }
   }
 
@@ -583,12 +1095,15 @@
         // CRITICAL: Use actual projectId from projectContext for proper data association
         const actualProjectId = safeProjectContext.projectId || safeProjectContext.brandName || 'comp-' + Date.now();
         
+        // v31.4 FIX: Always bypass cache for fresh analysis data
         const config = {
           competitors: safeCompetitors,
           projectContext: safeProjectContext,
           yourDomain: safeProjectContext.brandName || 'Your Site',
           projectId: actualProjectId,  // Use actual project ID for proper save/load
-          spreadsheetId: spreadsheetId
+          spreadsheetId: spreadsheetId,
+          bypassCache: true,  // v31.4: Force fresh data, no stale cache
+          forceRefresh: true  // v31.4: Force full re-analysis
         };
         
         Logger.log('📡 Calling COMP_orchestrateAnalysis with config:');
@@ -680,14 +1195,18 @@
             analysisResult.competitors = competitorsArray.map(function(comp) {
               if (!comp.processedMetrics) comp.processedMetrics = {};
               // Ensure all required metrics have safe defaults
-              comp.processedMetrics.authorityScore = Number(comp.processedMetrics.authorityScore) || 30;
-              comp.processedMetrics.organicKeywords = Number(comp.processedMetrics.organicKeywords) || 1000;
-              comp.processedMetrics.organicTraffic = Number(comp.processedMetrics.organicTraffic) || 500;
-              comp.processedMetrics.estimatedTraffic = Number(comp.processedMetrics.estimatedTraffic) || 500;
-              comp.processedMetrics.backlinks = Number(comp.processedMetrics.backlinks) || 5000;
-              comp.processedMetrics.estimatedBacklinks = Number(comp.processedMetrics.estimatedBacklinks) || 5000;
-              comp.processedMetrics.refDomains = Number(comp.processedMetrics.refDomains) || 500;
-              comp.processedMetrics.estimatedRefDomains = Number(comp.processedMetrics.estimatedRefDomains) || 500;
+              // v32.0 FIX: Use authority-based calculations instead of hardcoded 5000
+              const auth = Number(comp.processedMetrics.authorityScore) || 30;
+              comp.processedMetrics.authorityScore = auth;
+              comp.processedMetrics.organicKeywords = Number(comp.processedMetrics.organicKeywords) || Math.round(Math.pow(10, 0.04 * auth + 2));
+              comp.processedMetrics.organicTraffic = Number(comp.processedMetrics.organicTraffic) || Math.round(comp.processedMetrics.organicKeywords * (auth >= 50 ? 3 : 1.5));
+              comp.processedMetrics.estimatedTraffic = Number(comp.processedMetrics.estimatedTraffic) || comp.processedMetrics.organicTraffic;
+              // v32.0: Calculate backlinks from authority (formula: 10^(0.068*auth+1.6))
+              const blCalc = Math.round(Math.pow(10, 0.068 * auth + 1.6));
+              comp.processedMetrics.backlinks = Number(comp.processedMetrics.backlinks) || blCalc;
+              comp.processedMetrics.estimatedBacklinks = Number(comp.processedMetrics.estimatedBacklinks) || blCalc;
+              comp.processedMetrics.refDomains = Number(comp.processedMetrics.refDomains) || Math.round(blCalc * 0.05);
+              comp.processedMetrics.estimatedRefDomains = Number(comp.processedMetrics.estimatedRefDomains) || Math.round(blCalc * 0.05);
               return comp;
             });
           }
@@ -757,12 +1276,15 @@
       geminiAnalysis.estimatedMetrics.forEach(function(est) {
         if (est.domain) {
           const cleanDomain = est.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+          // v32.0 FIX: Calculate backlinks from authority instead of hardcoding 5000
+          const estAuth = est.authorityScore || 30;
+          const blCalc = est.backlinks || Math.round(Math.pow(10, 0.068 * estAuth + 1.6));
           geminiEstimates[cleanDomain] = {
-            authorityScore: est.authorityScore || 30,
+            authorityScore: estAuth,
             organicKeywords: est.organicKeywords || 1000,
             organicTraffic: est.organicTraffic || 500,
-            backlinks: est.backlinks || 5000,
-            refDomains: est.refDomains || 500,
+            backlinks: blCalc,
+            refDomains: est.refDomains || Math.round(blCalc * 0.05),
             siteType: est.siteType || 'unknown',
             confidence: est.confidence || 'Medium',
             isGeminiEstimate: true
@@ -885,7 +1407,48 @@
       const serpResultCount = (serper.organic || []).length;
       
       // CHECK: Do we have Gemini estimates for this domain?
-      const geminiEst = geminiEstimates[cleanDomain] || geminiEstimates[domain] || null;
+      let geminiEst = geminiEstimates[cleanDomain] || geminiEstimates[domain] || null;
+      
+      // ═══════════════════════════════════════════════════════════════════════════
+      // v31.1 FIX: If no geminiEst from estimatedMetrics array, check synthesized data
+      // CRITICAL: Prioritize factors.geminiEstimate (actual Gemini 450K) over estimate (CTR 20K)
+      // v32.0: Use authority-based backlinks instead of hardcoded 5000
+      // ═══════════════════════════════════════════════════════════════════════════
+      if (!geminiEst && (synthesized?.traffic?.factors?.geminiEstimate > 0 || synthesized?.traffic?.estimate > 0)) {
+        const geminiTrafficValue = synthesized.traffic.factors?.geminiEstimate || synthesized.traffic.estimate || 0;
+        const synthAuth = synthesized.authority?.pageRank ? Math.round(synthesized.authority.pageRank * 10) : 30;
+        const synthBlCalc = synthesized.traffic.factors?.indexedPages || Math.round(Math.pow(10, 0.068 * synthAuth + 1.6));
+        Logger.log('      💎 [v31.1] Found Gemini data in synthesized.traffic for ' + cleanDomain + ': ' + geminiTrafficValue.toLocaleString());
+        geminiEst = {
+          isGeminiEstimate: true,
+          organicTraffic: geminiTrafficValue,  // v31.1: Use geminiEstimate first!
+          organicKeywords: synthesized.traffic.factors?.keywordCount || 
+                          synthesized.seo?.indexedPages || 1000,
+          authorityScore: synthAuth,
+          backlinks: synthBlCalc,
+          refDomains: Math.round(synthBlCalc * 0.05),
+          confidence: 'Medium',
+          siteType: synthesized.geminiEnrichment?.niche || 'digital marketing'
+        };
+      }
+      
+      // v31.1 FIX: Also check comp.processedMetrics.geminiTraffic (from DB_COMP_Main.gs)
+      // v32.0: Use authority-based backlinks instead of hardcoded 5000
+      if (!geminiEst && comp.processedMetrics?.geminiTraffic > 0) {
+        Logger.log('      💎 [v31.1] Found Gemini data in processedMetrics for ' + cleanDomain);
+        const pmAuth = comp.processedMetrics.authorityScore || 30;
+        const pmBlCalc = comp.processedMetrics.backlinks || Math.round(Math.pow(10, 0.068 * pmAuth + 1.6));
+        geminiEst = {
+          isGeminiEstimate: true,
+          organicTraffic: comp.processedMetrics.geminiTraffic,
+          organicKeywords: comp.processedMetrics.geminiKeywords || comp.processedMetrics.organicKeywords || 1000,
+          authorityScore: pmAuth,
+          backlinks: pmBlCalc,
+          refDomains: comp.processedMetrics.refDomains || Math.round(pmBlCalc * 0.05),
+          confidence: 'Medium',
+          siteType: comp.processedMetrics.siteType || 'digital marketing'
+        };
+      }
       
       // CRITICAL: Initialize ALL variables with safe defaults BEFORE the if/else
       // This prevents "Cannot read properties of undefined (reading 'toLocaleString')" errors
@@ -899,6 +1462,7 @@
       if (geminiEst && geminiEst.isGeminiEstimate) {
         // ═══════════════════════════════════════════════════════════════════
         // USE GEMINI AI ESTIMATES (v8.0)
+        // v32.0: Use authority-based backlinks fallback
         // ═══════════════════════════════════════════════════════════════════
         Logger.log('      🤖 Using Gemini estimates for ' + cleanDomain);
         
@@ -906,8 +1470,10 @@
         authorityScore = Number(geminiEst.authorityScore) || 30;
         estimatedOrganicKeywords = Number(geminiEst.organicKeywords) || 1000;
         estimatedTraffic = Number(geminiEst.organicTraffic) || 500;
-        estimatedBacklinks = Number(geminiEst.backlinks) || 5000;
-        estimatedRefDomains = Number(geminiEst.refDomains) || 500;
+        // v32.0 FIX: Calculate backlinks from authority instead of hardcoded 5000
+        const gemAuthFallbackBl = Math.round(Math.pow(10, 0.068 * authorityScore + 1.6));
+        estimatedBacklinks = Number(geminiEst.backlinks) || gemAuthFallbackBl;
+        estimatedRefDomains = Number(geminiEst.refDomains) || Math.round(gemAuthFallbackBl * 0.05);
         confidenceLevel = geminiEst.confidence || 'Medium';
         
         comp.processedMetrics.estimationMethod = 'Gemini AI';

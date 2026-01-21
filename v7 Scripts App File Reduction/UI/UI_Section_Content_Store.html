@@ -1,0 +1,145 @@
+<!--
+  UI_Section_Content_Store.html
+  SECTION CONTENT STORE v1.0
+  
+  Store full section content for "Inspect Source" modal
+  Implementation: window._sectionContentStore[sectionNum]
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 35: SECTION CONTENT STORE FOR MODAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SectionContentStore = {
+  
+  /**
+   * Initialize store
+   */
+  init() {
+    if (!window._sectionContentStore) {
+      window._sectionContentStore = {};
+    }
+    return this;
+  },
+  
+  /**
+   * Store content for a section
+   */
+  set(sectionNum, content) {
+    this.init();
+    
+    window._sectionContentStore[sectionNum] = {
+      content: content,
+      timestamp: Date.now(),
+      wordCount: this.countWords(content),
+      metadata: this.extractMetadata(content)
+    };
+    
+    return this;
+  },
+  
+  /**
+   * Get content for a section
+   */
+  get(sectionNum) {
+    this.init();
+    return window._sectionContentStore[sectionNum] || null;
+  },
+  
+  /**
+   * Get raw content string
+   */
+  getContent(sectionNum) {
+    const stored = this.get(sectionNum);
+    return stored ? stored.content : null;
+  },
+  
+  /**
+   * Check if section has stored content
+   */
+  has(sectionNum) {
+    this.init();
+    return !!window._sectionContentStore[sectionNum];
+  },
+  
+  /**
+   * Clear content for a section
+   */
+  clear(sectionNum) {
+    this.init();
+    delete window._sectionContentStore[sectionNum];
+    return this;
+  },
+  
+  /**
+   * Clear all stored content
+   */
+  clearAll() {
+    window._sectionContentStore = {};
+    return this;
+  },
+  
+  /**
+   * Get all stored section numbers
+   */
+  getSections() {
+    this.init();
+    return Object.keys(window._sectionContentStore).map(Number).sort((a, b) => a - b);
+  },
+  
+  /**
+   * Count words in content
+   */
+  countWords(content) {
+    if (!content) return 0;
+    const text = typeof content === 'string' ? content : JSON.stringify(content);
+    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  },
+  
+  /**
+   * Extract basic metadata from content
+   */
+  extractMetadata(content) {
+    const text = typeof content === 'string' ? content : '';
+    
+    return {
+      hasJson: text.includes('{') && text.includes('}'),
+      hasMarkdown: text.includes('##') || text.includes('**'),
+      sectionCount: (text.match(/^##\s/gm) || []).length,
+      listItems: (text.match(/^[-*]\s/gm) || []).length
+    };
+  },
+  
+  /**
+   * Store parsed analysis for section
+   */
+  storeParsedAnalysis(sectionNum, parsedData) {
+    this.init();
+    
+    const existing = this.get(sectionNum) || {};
+    
+    window._sectionContentStore[sectionNum] = {
+      ...existing,
+      parsed: parsedData,
+      parsedAt: Date.now()
+    };
+    
+    return this;
+  },
+  
+  /**
+   * Get parsed analysis for section
+   */
+  getParsed(sectionNum) {
+    const stored = this.get(sectionNum);
+    return stored ? stored.parsed : null;
+  }
+};
+
+// Auto-initialize
+SectionContentStore.init();
+
+if (typeof window !== 'undefined') {
+  window.SectionContentStore = SectionContentStore;
+}
+</script>

@@ -1,0 +1,157 @@
+<!--
+  UI_Chart_Fallback_States.html
+  CHART FALLBACK STATES v1.0
+  
+  Handle Loading, No Data, Error edge cases
+  Theme-aware styling for all states
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 20: CHART FALLBACK STATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chart-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.chart-fallback-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.chart-fallback-text {
+  font-size: 1rem;
+  color: var(--cmd-muted-text);
+  margin: 0 0 1rem 0;
+  max-width: 300px;
+}
+
+/* Loading State */
+.chart-fallback--loading .chart-fallback-icon {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* No Data State */
+.chart-fallback--nodata {
+  background: var(--cmd-header-bg);
+  border-radius: 12px;
+  margin: 1rem;
+}
+
+.chart-fallback--nodata .chart-fallback-icon {
+  opacity: 0.4;
+}
+
+/* Error State */
+.chart-fallback--error {
+  background: rgba(236, 72, 153, 0.05);
+  border: 1px dashed var(--accent-danger);
+  border-radius: 12px;
+  margin: 1rem;
+}
+
+.chart-fallback--error .chart-fallback-icon {
+  color: var(--accent-danger);
+}
+
+.chart-fallback--error .chart-fallback-text {
+  color: var(--accent-danger);
+}
+
+/* Retry Button */
+.btn-retry {
+  padding: 0.625rem 1.25rem;
+  background: var(--accent-authority);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-retry:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* Theme: Neon */
+[data-theme="neon"] .chart-fallback--error {
+  background: rgba(236, 72, 153, 0.1);
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.2);
+}
+
+[data-theme="neon"] .btn-retry {
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
+/* Theme: Aurora */
+[data-theme="aurora"] .chart-fallback {
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="aurora"] .chart-fallback-text {
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   FALLBACK STATE RENDERERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ChartFallback = {
+  
+  loading(message = 'Loading visualization...') {
+    return `
+      <div class="chart-fallback chart-fallback--loading">
+        <span class="chart-fallback-icon">⏳</span>
+        <p class="chart-fallback-text">${message}</p>
+      </div>
+    `;
+  },
+  
+  noData(message = 'Awaiting analysis data...') {
+    return `
+      <div class="chart-fallback chart-fallback--nodata">
+        <span class="chart-fallback-icon">📊</span>
+        <p class="chart-fallback-text">${message}</p>
+      </div>
+    `;
+  },
+  
+  error(message = 'Chart failed to render', onRetry) {
+    const retryId = `retry-${Date.now()}`;
+    setTimeout(() => {
+      const btn = document.getElementById(retryId);
+      if (btn && onRetry) btn.onclick = onRetry;
+    }, 0);
+    
+    return `
+      <div class="chart-fallback chart-fallback--error">
+        <span class="chart-fallback-icon">⚠️</span>
+        <p class="chart-fallback-text">${message}</p>
+        <button id="${retryId}" class="btn-retry">Retry</button>
+      </div>
+    `;
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.ChartFallback = ChartFallback;
+}
+</script>

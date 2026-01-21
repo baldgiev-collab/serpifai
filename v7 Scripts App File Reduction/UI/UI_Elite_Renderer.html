@@ -126,6 +126,7 @@ function renderEliteCompetitorDashboard(data, containerId, options = {}) {
 
 /**
  * Render all dashboard components
+ * v30.0 FIX: Restored V6 Elite overlays (JTBD, Loss Leader, Emotional Debt, etc.)
  */
 function renderDashboardComponents(data, options) {
   // Render Executive Summary
@@ -149,16 +150,68 @@ function renderDashboardComponents(data, options) {
   if (strategicContainer) {
     let strategicHtml = '';
     
-    if (typeof renderEliteKillMoves === 'function' && data.killMoves) {
+    // ═══════════════════════════════════════════════════════════════════
+    // 1. KILL MOVES - Entity-Based SEO Strategy
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderEliteKillMoves === 'function' && data.killMoves && data.killMoves.length > 0) {
       strategicHtml += renderEliteKillMoves(data.killMoves);
     }
     
-    if (typeof renderEliteOpportunities === 'function' && data.opportunities) {
-      strategicHtml += renderEliteOpportunities(data.opportunities);
+    // ═══════════════════════════════════════════════════════════════════
+    // 2. STRATEGIC OPPORTUNITIES (pass full executiveBrief!)
+    // v30.0 FIX: V7 was passing data.opportunities, V6 passes executiveBrief
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderEliteOpportunities === 'function' && data.executiveBrief) {
+      strategicHtml += renderEliteOpportunities(data.executiveBrief);
     }
     
-    if (typeof renderCompetitiveRoadmap === 'function' && data.roadmap) {
-      strategicHtml += renderCompetitiveRoadmap(data.roadmap);
+    // ═══════════════════════════════════════════════════════════════════
+    // 3. JOBS-TO-BE-DONE (JTBD) OVERLAY - V6 Elite Feature
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderJobsToBeDone === 'function' && data.executiveBrief?.jobsToBeDone) {
+      strategicHtml += renderJobsToBeDone(data.executiveBrief.jobsToBeDone);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 4. LOSS LEADER ANALYSIS - V6 Elite Feature
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderLossLeaderAnalysis === 'function' && data.executiveBrief?.lossLeaderAnalysis) {
+      strategicHtml += renderLossLeaderAnalysis(data.executiveBrief.lossLeaderAnalysis);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 5. EMOTIONAL DEBT AUDIT - V6 Elite Feature
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderEmotionalDebtAudit === 'function' && data.executiveBrief?.emotionalDebtAudit) {
+      strategicHtml += renderEmotionalDebtAudit(data.executiveBrief.emotionalDebtAudit);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 6. TIME-TO-VALUE COMPARISON - V6 Elite Feature
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderTimeToValue === 'function' && data.executiveBrief?.timeToValueComparison) {
+      strategicHtml += renderTimeToValue(data.executiveBrief.timeToValueComparison);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 7. PROGRAMMATIC SEO MOAT - V6 Elite Feature
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderProgrammaticMoat === 'function' && data.executiveBrief?.programmaticMoat) {
+      strategicHtml += renderProgrammaticMoat(data.executiveBrief.programmaticMoat);
+    }
+    if (typeof renderProgrammaticSEOMoat === 'function' && data.executiveBrief?.programmaticSEOMoat) {
+      strategicHtml += renderProgrammaticSEOMoat(data.executiveBrief.programmaticSEOMoat);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // 8. COMPETITIVE ROADMAP
+    // ═══════════════════════════════════════════════════════════════════
+    if (typeof renderCompetitiveRoadmap === 'function') {
+      if (data.roadmap) {
+        strategicHtml += renderCompetitiveRoadmap(data.roadmap);
+      } else if (data.executiveBrief?.prioritizedRoadmap) {
+        strategicHtml += renderCompetitiveRoadmap({ phases: data.executiveBrief.prioritizedRoadmap });
+      }
     }
     
     strategicContainer.innerHTML = strategicHtml;

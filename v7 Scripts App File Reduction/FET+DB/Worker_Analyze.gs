@@ -207,6 +207,46 @@ function Worker_AnalyzeCompetitor(jobToken, competitorId, domain, fetchData, you
       }, resultId);
       
       Logger.log(`   💾 Analysis stored: ${resultId}`);
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // v36.0: UPP COMMIT - Persist AI analysis to MySQL
+      // ═══════════════════════════════════════════════════════════════════════
+      if (typeof UPP_commit === 'function') {
+        // AI Analysis table (Gemini strategic insights)
+        UPP_commit({
+          table: 'ai_analysis',
+          job_token: jobToken,
+          domain: domain,
+          competitor_id: competitorId,
+          model_used: ANALYZE_CONFIG.MODEL,
+          analysis_type: 'competitor_intelligence',
+          categories: result.categories,
+          scores: result.scores,
+          composite_score: result.compositeScore,
+          recommendations: result.recommendations,
+          kill_moves: result.analysis.killMoves || result.analysis.strategicAdvantages || [],
+          content_gaps: result.analysis.contentGaps || [],
+          authority_signals: result.analysis.authoritySignals || [],
+          used_fallback: result.usedFallback || false
+        });
+        
+        // Keyword Intelligence (if keywords extracted)
+        if (result.analysis.keywords || result.analysis.keywordOpportunities) {
+          UPP_commit({
+            table: 'keyword_intelligence',
+            job_token: jobToken,
+            domain: domain,
+            competitor_id: competitorId,
+            primary_keywords: result.analysis.keywords?.primary || [],
+            secondary_keywords: result.analysis.keywords?.secondary || [],
+            long_tail_opportunities: result.analysis.keywordOpportunities || [],
+            keyword_gaps: result.analysis.keywordGaps || []
+          });
+        }
+        
+        Logger.log(`   🔄 UPP: Data committed to ai_analysis + keyword_intelligence`);
+      }
+      
     } catch (storeError) {
       Logger.log(`   ⚠️ Storage warning: ${storeError.toString()}`);
     }

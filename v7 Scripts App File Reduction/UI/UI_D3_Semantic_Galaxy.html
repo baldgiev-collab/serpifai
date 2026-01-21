@@ -1,0 +1,160 @@
+<!--
+  UI_D3_Semantic_Galaxy.html
+  SEMANTIC GALAXY VISUALIZATION v1.0
+  
+  Tab 12: Topic clusters as "solar system"
+  Central topic = Sun, clusters orbit, black holes = gaps
+-->
+<style>
+.galaxy-blackhole {
+  animation: blackholePulse 2s ease-in-out infinite;
+}
+
+@keyframes blackholePulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 19: SEMANTIC GALAXY VISUALIZATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SemanticGalaxy = {
+  
+  /**
+   * Render galaxy visualization
+   */
+  render(container, data) {
+    const width = container.clientWidth;
+    const height = container.clientHeight - 52;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const colors = ChartThemeColors.getColorScale();
+    
+    d3.select(container).select('.chart-body').selectAll('*').remove();
+    
+    const svg = d3.select(container).select('.chart-body')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+    
+    const g = svg.append('g');
+    
+    // Zoom
+    svg.call(d3.zoom().scaleExtent([0.5, 2]).on('zoom', e => g.attr('transform', e.transform)));
+    
+    // Process data
+    const { sun, planets, blackholes } = this.processData(data);
+    
+    // Draw orbit rings
+    const maxRadius = Math.min(width, height) / 2 - 60;
+    const orbitRadii = planets.map((_, i) => (i + 1) * (maxRadius / (planets.length + 1)));
+    
+    g.selectAll('.orbit-ring')
+      .data(orbitRadii)
+      .join('circle')
+      .attr('cx', centerX)
+      .attr('cy', centerY)
+      .attr('r', d => d)
+      .attr('fill', 'none')
+      .attr('stroke', ChartThemeColors.getGridColor())
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '4,4');
+    
+    // Central Sun
+    const sunGroup = g.append('g').attr('transform', `translate(${centerX},${centerY})`);
+    
+    sunGroup.append('circle')
+      .attr('r', 35)
+      .attr('fill', colors[0])
+      .attr('filter', 'url(#glow)');
+    
+    sunGroup.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 5)
+      .attr('fill', '#FFF')
+      .attr('font-size', '11px')
+      .attr('font-weight', '700')
+      .text(sun.label.slice(0, 12));
+    
+    // Planets (topic clusters)
+    planets.forEach((planet, i) => {
+      const angle = (i / planets.length) * Math.PI * 2 - Math.PI / 2;
+      const radius = orbitRadii[i] || maxRadius * 0.6;
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      
+      const planetG = g.append('g').attr('transform', `translate(${x},${y})`);
+      
+      planetG.append('circle')
+        .attr('r', 14 + planet.weight * 4)
+        .attr('fill', colors[(i + 1) % colors.length])
+        .style('cursor', 'pointer');
+      
+      planetG.append('text')
+        .attr('dy', 28)
+        .attr('text-anchor', 'middle')
+        .attr('fill', ChartThemeColors.getTextColor())
+        .attr('font-size', '10px')
+        .text(planet.label.slice(0, 14));
+    });
+    
+    // Black Holes (opportunity gaps)
+    blackholes.forEach((hole, i) => {
+      const angle = ((i + 0.5) / blackholes.length) * Math.PI * 2;
+      const x = centerX + Math.cos(angle) * (maxRadius * 0.85);
+      const y = centerY + Math.sin(angle) * (maxRadius * 0.85);
+      
+      const holeG = g.append('g')
+        .attr('class', 'galaxy-blackhole')
+        .attr('transform', `translate(${x},${y})`);
+      
+      holeG.append('circle')
+        .attr('r', 18)
+        .attr('fill', '#1E1E1E')
+        .attr('stroke', '#EC4899')
+        .attr('stroke-width', 2);
+      
+      holeG.append('text')
+        .attr('dy', 32)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#EC4899')
+        .attr('font-size', '9px')
+        .attr('font-weight', '600')
+        .text(hole.label.slice(0, 12));
+    });
+    
+    // Glow filter
+    const defs = svg.append('defs');
+    const filter = defs.append('filter').attr('id', 'glow');
+    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+    filter.append('feMerge').selectAll('feMergeNode')
+      .data(['blur', 'SourceGraphic']).join('feMergeNode').attr('in', d => d);
+  },
+  
+  /**
+   * Process data into sun/planets/blackholes
+   */
+  processData(data) {
+    const topics = data.semanticTopics || data.clusters || data.topics || [];
+    const gaps = data.opportunityGaps || data.blackholes || [];
+    
+    return {
+      sun: { label: data.centralTopic || data.domain || 'Core Topic' },
+      planets: topics.slice(0, 8).map(t => ({
+        label: t.name || t.topic || t,
+        weight: t.relevance || t.weight || 1
+      })),
+      blackholes: gaps.slice(0, 4).map(g => ({
+        label: g.name || g.gap || g
+      }))
+    };
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.SemanticGalaxy = SemanticGalaxy;
+}
+</script>

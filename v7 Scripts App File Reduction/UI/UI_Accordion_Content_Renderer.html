@@ -1,0 +1,151 @@
+<!--
+  UI_Accordion_Content_Renderer.html
+  ACCORDION CONTENT RENDERER v1.0
+  
+  Markdown → HTML conversion with syntax highlighting
+  Theme-aware tables and code blocks
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 22: MARKDOWN CONTENT STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forensic-content h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 1.5rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--cmd-border);
+}
+
+.forensic-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cmd-header-text);
+  margin: 1.25rem 0 0.5rem;
+}
+
+.forensic-content p {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--cmd-body-text);
+  margin: 0 0 1rem;
+}
+
+.forensic-content ul, .forensic-content ol {
+  padding-left: 1.5rem;
+  margin: 0 0 1rem;
+}
+
+.forensic-content li {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--cmd-body-text);
+  margin-bottom: 0.375rem;
+}
+
+/* Code Blocks */
+.forensic-content pre {
+  background: var(--cmd-header-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.forensic-content code {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  color: var(--accent-velocity);
+}
+
+.forensic-content pre code {
+  color: var(--cmd-body-text);
+}
+
+/* Tables */
+.forensic-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.forensic-content th {
+  background: var(--cmd-header-bg);
+  color: var(--cmd-header-text);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--cmd-border);
+}
+
+.forensic-content td {
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--cmd-border);
+  color: var(--cmd-body-text);
+}
+
+.forensic-content tr:nth-child(even) {
+  background: var(--cmd-header-bg);
+}
+
+/* Bold/Strong */
+.forensic-content strong {
+  font-weight: 700;
+  color: var(--cmd-header-text);
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARKDOWN RENDERER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const AccordionContentRenderer = {
+  
+  /**
+   * Convert Gemini markdown to styled HTML
+   */
+  render(markdown) {
+    if (!markdown) return '<p>No content available.</p>';
+    
+    let html = markdown
+      // Headers
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      // Bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Code blocks
+      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+      // Inline code
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      // Unordered lists
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      // Ordered lists
+      .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+      // Paragraphs (double newline)
+      .replace(/\n\n/g, '</p><p>')
+      // Line breaks
+      .replace(/\n/g, '<br>');
+    
+    // Wrap in paragraph if not already
+    if (!html.startsWith('<')) {
+      html = '<p>' + html + '</p>';
+    }
+    
+    // Wrap consecutive <li> in <ul>
+    html = html.replace(/(<li>.*?<\/li>)+/gs, '<ul>$&</ul>');
+    
+    return html;
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.AccordionContentRenderer = AccordionContentRenderer;
+}
+</script>

@@ -1,0 +1,1550 @@
+<!-- 
+  ═══════════════════════════════════════════════════════════════════════════
+  UI_Tab_StrategicCommand.html - 0.1% TIER STRATEGIC INTELLIGENCE UI
+  ═══════════════════════════════════════════════════════════════════════════
+  
+  SerpifAI Elite v23.0 - Strategic Command Layer UI Components
+  
+  CARDS:
+  1. 🏗️ Programmatic Moat (Tab: Technical SEO / Section: Infrastructure)
+  2. 💔 Emotional Debt (Tab: Content Intelligence / Section: Quality)
+  3. 🧠 Semantic Triplets (Tab: Keyword Strategy / Section: Entity Graph)
+  4. 🎯 AEO Opportunity Gap (Tab: Opportunity / Section: Action Plan)
+  
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* PROGRAMMATIC MOAT CARD                                                  */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  
+  .strategic-moat-card {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 20px;
+    color: white;
+  }
+  
+  .moat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .moat-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  
+  .moat-title-icon {
+    font-size: 24px;
+  }
+  
+  .moat-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  
+  .moat-badge.fortress { background: linear-gradient(135deg, #ef4444, #dc2626); }
+  .moat-badge.strong { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .moat-badge.moderate { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  .moat-badge.weak { background: linear-gradient(135deg, #64748b, #475569); }
+  
+  .ssi-gauge-container {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .ssi-gauge {
+    width: 120px;
+    height: 120px;
+    position: relative;
+  }
+  
+  .ssi-gauge svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  
+  .ssi-gauge-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 8;
+  }
+  
+  .ssi-gauge-fill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s ease;
+  }
+  
+  .ssi-gauge-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  
+  .ssi-gauge-value .number {
+    font-size: 28px;
+    font-weight: 800;
+  }
+  
+  .ssi-gauge-value .label {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+  
+  .ssi-details {
+    flex: 1;
+  }
+  
+  .ssi-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .ssi-detail-row:last-child {
+    border-bottom: none;
+  }
+  
+  .ssi-detail-label {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  
+  .ssi-detail-value {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  
+  /* Template Signatures Section */
+  .template-signatures {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 16px;
+  }
+  
+  .template-signatures-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  
+  .template-signatures-title {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.8;
+  }
+  
+  .signature-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .signature-tag {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    color: #60a5fa;
+  }
+  
+  .signature-tag .count {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 1px 5px;
+    margin-left: 4px;
+    font-size: 9px;
+  }
+  
+  /* Side-by-Side Proof Section */
+  .moat-proof-section {
+    margin-top: 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  
+  .moat-proof-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  
+  .moat-proof-title {
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .moat-proof-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .moat-proof-column {
+    background: #0d1117;
+    border-radius: 8px;
+    padding: 10px;
+  }
+  
+  .moat-proof-column-header {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 8px;
+  }
+  
+  .moat-proof-code {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 10px;
+    line-height: 1.5;
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  
+  .moat-proof-code .highlight {
+    background: rgba(59, 130, 246, 0.3);
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* EMOTIONAL DEBT HEATMAP CARD                                             */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  
+  .emotional-debt-card {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 20px;
+    color: white;
+  }
+  
+  .emotional-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .emotional-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  
+  .emotional-score-ring {
+    width: 80px;
+    height: 80px;
+    position: relative;
+  }
+  
+  .emotional-score-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  
+  .emotional-score-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 22px;
+    font-weight: 800;
+  }
+  
+  /* Friction Heatmap Grid */
+  .friction-heatmap {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  
+  .friction-cell {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .friction-cell::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+  }
+  
+  .friction-cell.high::before { background: linear-gradient(90deg, #ef4444, #dc2626); }
+  .friction-cell.medium::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+  .friction-cell.low::before { background: linear-gradient(90deg, #22c55e, #16a34a); }
+  
+  .friction-cell-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .friction-cell-title {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .friction-cell-score {
+    font-size: 18px;
+    font-weight: 800;
+  }
+  
+  .friction-cell.high .friction-cell-score { color: #ef4444; }
+  .friction-cell.medium .friction-cell-score { color: #f59e0b; }
+  .friction-cell.low .friction-cell-score { color: #22c55e; }
+  
+  .friction-cell-impact {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 4px;
+  }
+  
+  /* Emotional Tone Indicator */
+  .emotional-tone-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .emotional-tone-header {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    opacity: 0.8;
+  }
+  
+  .emotional-tone-bar {
+    height: 8px;
+    background: linear-gradient(90deg, #ef4444 0%, #64748b 50%, #22c55e 100%);
+    border-radius: 4px;
+    position: relative;
+    margin-bottom: 8px;
+  }
+  
+  .emotional-tone-marker {
+    position: absolute;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .emotional-tone-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    opacity: 0.6;
+  }
+  
+  /* High Friction Paragraph Evidence */
+  .friction-evidence {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #ef4444;
+    border-radius: 0 10px 10px 0;
+    padding: 14px;
+    margin-top: 16px;
+  }
+  
+  .friction-evidence-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  
+  .friction-evidence-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ef4444;
+  }
+  
+  .friction-evidence-badge {
+    background: rgba(239, 68, 68, 0.2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    color: #ef4444;
+  }
+  
+  .friction-evidence-text {
+    font-size: 12px;
+    line-height: 1.6;
+    opacity: 0.9;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    position: relative;
+  }
+  
+  .friction-evidence-text .highlight-jargon {
+    background: rgba(239, 68, 68, 0.3);
+    border-radius: 2px;
+    padding: 0 3px;
+    color: #fca5a5;
+  }
+  
+  .friction-evidence-text .highlight-passive {
+    background: rgba(245, 158, 11, 0.3);
+    border-radius: 2px;
+    padding: 0 3px;
+    color: #fcd34d;
+  }
+  
+  /* Jargon Examples */
+  .jargon-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  
+  .jargon-tag {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  
+  /* Recommendations */
+  .friction-recommendations {
+    margin-top: 16px;
+  }
+  
+  .friction-rec-title {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .friction-rec-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .friction-rec-priority {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  
+  .friction-rec-priority.high { background: #ef4444; }
+  .friction-rec-priority.medium { background: #f59e0b; }
+  .friction-rec-priority.low { background: #22c55e; }
+  
+  .friction-rec-content {
+    flex: 1;
+  }
+  
+  .friction-rec-issue {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .friction-rec-action {
+    font-size: 11px;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* SEMANTIC TRIPLETS CARD                                                  */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  
+  .semantic-triplets-card {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    padding: 20px;
+    color: white;
+  }
+  
+  .triplet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .triplet-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  
+  .triplet-stats {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .triplet-stat {
+    background: rgba(168, 85, 247, 0.2);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    color: #c4b5fd;
+  }
+  
+  .triplet-graph-container {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    min-height: 180px;
+  }
+  
+  .triplet-graph-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  
+  .triplet-mini-network {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .expand-graph-btn {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  
+  .expand-graph-btn:hover {
+    transform: scale(1.05);
+  }
+  
+  .entity-ranking {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .entity-ranking-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    opacity: 0.9;
+  }
+  
+  .entity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .entity-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .entity-rank {
+    width: 24px;
+    font-size: 10px;
+    opacity: 0.6;
+  }
+  
+  .entity-name {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+  
+  .entity-bar {
+    width: 80px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  
+  .entity-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  
+  .entity-count {
+    width: 30px;
+    font-size: 10px;
+    text-align: right;
+    opacity: 0.7;
+  }
+  
+  .triplet-relationships {
+    background: rgba(168, 85, 247, 0.1);
+    border-left: 3px solid #a855f7;
+    border-radius: 0 10px 10px 0;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .triplet-relationships-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  
+  .relationship-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .relationship-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+  
+  .rel-subject {
+    background: rgba(59, 130, 246, 0.2);
+    padding: 3px 8px;
+    border-radius: 12px;
+    color: #93c5fd;
+  }
+  
+  .rel-predicate {
+    opacity: 0.7;
+    font-style: italic;
+  }
+  
+  .rel-object {
+    background: rgba(34, 197, 94, 0.2);
+    padding: 3px 8px;
+    border-radius: 12px;
+    color: #86efac;
+  }
+  
+  .triplet-insight {
+    background: rgba(168, 85, 247, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  /* AEO OPPORTUNITY GAP CARD                                                */
+  /* ═══════════════════════════════════════════════════════════════════════ */
+  
+  .aeo-opportunity-card {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 20px;
+    color: white;
+  }
+  
+  .aeo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .aeo-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  
+  .aeo-score-ring {
+    position: relative;
+    width: 90px;
+    height: 90px;
+  }
+  
+  .aeo-score-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  
+  .aeo-score-value .score-number {
+    font-size: 24px;
+    font-weight: 800;
+  }
+  
+  .aeo-score-value .score-label {
+    font-size: 9px;
+    opacity: 0.6;
+    text-transform: uppercase;
+  }
+  
+  .aeo-steals-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .aeo-steals-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  
+  .aeo-steals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .aeo-steal-item {
+    display: flex;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  
+  .steal-rank {
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  
+  .steal-content {
+    flex: 1;
+  }
+  
+  .steal-keyword {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  
+  .steal-meta {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  
+  .steal-probability {
+    font-size: 10px;
+    color: #22c55e;
+  }
+  
+  .steal-traffic {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+  
+  .steal-traffic.high { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+  .steal-traffic.medium { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+  .steal-traffic.low { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+  
+  .steal-action {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+  
+  .no-steals {
+    text-align: center;
+    opacity: 0.5;
+    font-size: 12px;
+    padding: 20px;
+  }
+  
+  .aeo-weaknesses-section {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+    border-radius: 0 10px 10px 0;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .aeo-weaknesses-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  
+  .aeo-weaknesses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .aeo-weakness-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .weakness-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+  
+  .weakness-indicator.high { background: #ef4444; }
+  .weakness-indicator.medium { background: #f59e0b; }
+  .weakness-indicator.low { background: #22c55e; }
+  
+  .weakness-content {
+    flex: 1;
+  }
+  
+  .weakness-type {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .weakness-opportunity {
+    font-size: 11px;
+    opacity: 0.7;
+    color: #86efac;
+    margin-top: 2px;
+  }
+  
+  .aeo-recommendations {
+    margin-top: 16px;
+  }
+  
+  .aeo-rec-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  
+  .aeo-rec-item {
+    display: flex;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    align-items: flex-start;
+  }
+  
+  .aeo-rec-priority {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  
+  .aeo-rec-priority.high { background: #ef4444; }
+  .aeo-rec-priority.medium { background: #f59e0b; }
+  .aeo-rec-priority.low { background: #22c55e; }
+  
+  .aeo-rec-content {
+    flex: 1;
+  }
+  
+  .aeo-rec-title {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .aeo-rec-action {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+  
+  .aeo-rec-impact {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-top: 4px;
+    font-style: italic;
+  }
+</style>
+
+<script>
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STRATEGIC COMMAND UI RENDERERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Render Programmatic Moat Card for Technical SEO tab
+   * @param {Object} moatData - Result from detectProgrammaticMoat()
+   * @param {string} domain - Competitor domain
+   * @returns {string} HTML string
+   */
+  function renderProgrammaticMoatCard(moatData, domain) {
+    if (!moatData) {
+      return `<div class="strategic-moat-card"><p style="opacity:0.5;">No moat data available</p></div>`;
+    }
+    
+    const ssi = moatData.structuralSimilarityIndex || 0;
+    const moatStrength = moatData.moatStrength || 'none';
+    const moatType = (moatData.moatType || 'unknown').replace(/-/g, ' ');
+    
+    // SSI gauge color
+    const ssiColor = ssi >= 80 ? '#ef4444' : ssi >= 60 ? '#f59e0b' : ssi >= 40 ? '#22c55e' : '#64748b';
+    const circumference = 2 * Math.PI * 45;
+    const dashOffset = circumference - (ssi / 100) * circumference;
+    
+    // Template signatures
+    const signatures = (moatData.templateSignatures || []).slice(0, 8);
+    
+    // Evidence snippets
+    const homepageSnippet = moatData.evidence?.homepageSnippet || 'No snippet available';
+    const internalSnippet = moatData.evidence?.internalSnippet || 'Internal page not analyzed';
+    
+    return `
+      <div class="strategic-moat-card">
+        <div class="moat-header">
+          <div class="moat-title">
+            <span class="moat-title-icon">🏗️</span>
+            <span>Programmatic Moat</span>
+          </div>
+          <div class="moat-badge ${moatStrength}">${moatStrength}</div>
+        </div>
+        
+        <div class="ssi-gauge-container">
+          <div class="ssi-gauge">
+            <svg viewBox="0 0 100 100">
+              <circle class="ssi-gauge-bg" cx="50" cy="50" r="45"/>
+              <circle class="ssi-gauge-fill" cx="50" cy="50" r="45" 
+                      stroke="${ssiColor}"
+                      stroke-dasharray="${circumference}"
+                      stroke-dashoffset="${dashOffset}"/>
+            </svg>
+            <div class="ssi-gauge-value">
+              <div class="number" style="color: ${ssiColor}">${ssi}%</div>
+              <div class="label">SSI</div>
+            </div>
+          </div>
+          
+          <div class="ssi-details">
+            <div class="ssi-detail-row">
+              <span class="ssi-detail-label">Moat Type</span>
+              <span class="ssi-detail-value" style="text-transform: capitalize;">${moatType}</span>
+            </div>
+            <div class="ssi-detail-row">
+              <span class="ssi-detail-label">Template Detected</span>
+              <span class="ssi-detail-value">${moatData.detected ? '✅ Yes' : '❌ No'}</span>
+            </div>
+            <div class="ssi-detail-row">
+              <span class="ssi-detail-label">Repeating Patterns</span>
+              <span class="ssi-detail-value">${(moatData.repeatingPatterns || []).length}</span>
+            </div>
+            <div class="ssi-detail-row">
+              <span class="ssi-detail-label">Domain</span>
+              <span class="ssi-detail-value">${domain || 'Unknown'}</span>
+            </div>
+          </div>
+        </div>
+        
+        ${signatures.length > 0 ? `
+        <div class="template-signatures">
+          <div class="template-signatures-header">
+            <span class="template-signatures-title">🔍 Template Signatures Detected</span>
+            <button class="elite-proof-icon" onclick="ZT_openSidePanel?.('technical.programmaticMoat', ZT_getCompetitorByDomain?.('${domain}'))" title="View full proof">🛡️</button>
+          </div>
+          <div class="signature-list">
+            ${signatures.map(sig => `
+              <span class="signature-tag">
+                .${sig.className}
+                <span class="count">×${sig.occurrences}</span>
+              </span>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        <div class="moat-proof-section">
+          <div class="moat-proof-header">
+            <span class="moat-proof-title">
+              <span>📄</span>
+              Side-by-Side Structure Proof
+            </span>
+          </div>
+          <div class="moat-proof-grid">
+            <div class="moat-proof-column">
+              <div class="moat-proof-column-header">Homepage</div>
+              <div class="moat-proof-code">${_escapeHtmlForCard(homepageSnippet)}</div>
+            </div>
+            <div class="moat-proof-column">
+              <div class="moat-proof-column-header">Internal Page</div>
+              <div class="moat-proof-code">${_escapeHtmlForCard(internalSnippet)}</div>
+            </div>
+          </div>
+        </div>
+        
+        ${moatData.recommendations?.length > 0 ? `
+        <div style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; font-size: 12px;">
+          <strong>💡 Strategic Insight:</strong> ${moatData.recommendations[0]}
+        </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Render Emotional Debt Heatmap Card for Content Intelligence tab
+   * @param {Object} emotionalData - Result from auditEmotionalResonance()
+   * @param {string} domain - Competitor domain
+   * @returns {string} HTML string
+   */
+  function renderEmotionalDebtCard(emotionalData, domain) {
+    if (!emotionalData) {
+      return `<div class="emotional-debt-card"><p style="opacity:0.5;">No emotional debt data available</p></div>`;
+    }
+    
+    const score = emotionalData.emotionalDebtScore || 0;
+    const factors = emotionalData.frictionFactors || {};
+    
+    // Score ring color
+    const scoreColor = score >= 60 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#22c55e';
+    const circumference = 2 * Math.PI * 35;
+    const dashOffset = circumference - (score / 100) * circumference;
+    
+    // Emotional tone position (0-100 scale, 50 = neutral)
+    const toneValence = emotionalData.frictionFactors?.emotionalValence?.valence || 0;
+    const tonePosition = 50 + (toneValence / 2); // Convert -100..100 to 0..100
+    
+    // High friction paragraph
+    const worstParagraph = emotionalData.evidence?.worstParagraph || '';
+    const jargonExamples = emotionalData.evidence?.jargonExamples || [];
+    
+    // Recommendations
+    const recommendations = (emotionalData.recommendations || []).slice(0, 3);
+    
+    return `
+      <div class="emotional-debt-card">
+        <div class="emotional-header">
+          <div class="emotional-title">
+            <span style="font-size: 24px;">💔</span>
+            <span>Emotional Debt</span>
+          </div>
+          <div class="emotional-score-ring">
+            <svg viewBox="0 0 80 80">
+              <circle fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6" cx="40" cy="40" r="35"/>
+              <circle fill="none" stroke="${scoreColor}" stroke-width="6" cx="40" cy="40" r="35"
+                      stroke-linecap="round"
+                      stroke-dasharray="${circumference}"
+                      stroke-dashoffset="${dashOffset}"
+                      transform="rotate(-90 40 40)"/>
+            </svg>
+            <div class="emotional-score-value" style="color: ${scoreColor}">${score}</div>
+          </div>
+        </div>
+        
+        <div class="friction-heatmap">
+          ${_renderFrictionCell('Jargon Density', factors.jargon)}
+          ${_renderFrictionCell('Passive Voice', factors.passiveVoice)}
+          ${_renderFrictionCell('Complexity', factors.complexity)}
+          ${_renderFrictionCell('Readability', factors.readability)}
+        </div>
+        
+        <div class="emotional-tone-section">
+          <div class="emotional-tone-header">Emotional Tone Spectrum</div>
+          <div class="emotional-tone-bar">
+            <div class="emotional-tone-marker" style="left: ${tonePosition}%"></div>
+          </div>
+          <div class="emotional-tone-labels">
+            <span>Negative</span>
+            <span>Neutral</span>
+            <span>Positive</span>
+          </div>
+        </div>
+        
+        ${worstParagraph ? `
+        <div class="friction-evidence">
+          <div class="friction-evidence-header">
+            <span class="friction-evidence-title">⚠️ Highest Friction Paragraph</span>
+            <span class="friction-evidence-badge">AI View Flagged</span>
+          </div>
+          <div class="friction-evidence-text">
+            ${_highlightFrictionInText(worstParagraph, jargonExamples)}
+          </div>
+          
+          ${jargonExamples.length > 0 ? `
+          <div class="jargon-examples">
+            <span style="font-size: 10px; opacity: 0.6; margin-right: 4px;">Jargon:</span>
+            ${jargonExamples.slice(0, 6).map(j => `<span class="jargon-tag">${j}</span>`).join('')}
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+        
+        ${recommendations.length > 0 ? `
+        <div class="friction-recommendations">
+          <div class="friction-rec-title">
+            <span>💡</span>
+            Friction Reduction Actions
+          </div>
+          ${recommendations.map(rec => `
+            <div class="friction-rec-item">
+              <div class="friction-rec-priority ${rec.priority}"></div>
+              <div class="friction-rec-content">
+                <div class="friction-rec-issue">${rec.issue}</div>
+                <div class="friction-rec-action">${rec.action}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+        
+        <div style="margin-top: 16px; text-align: right;">
+          <button class="elite-proof-icon" onclick="ZT_openSidePanel?.('content.emotionalDebt', ZT_getCompetitorByDomain?.('${domain}'))" title="View full proof" style="width: auto; padding: 6px 12px;">
+            🛡️ View Evidence
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Render individual friction cell for heatmap
+   * @private
+   */
+  function _renderFrictionCell(title, factorData) {
+    if (!factorData) {
+      return `<div class="friction-cell low"><div class="friction-cell-header"><span class="friction-cell-title">${title}</span><span class="friction-cell-score">N/A</span></div></div>`;
+    }
+    
+    const level = (factorData.label || 'Low').toLowerCase();
+    const score = factorData.score || 0;
+    const impact = factorData.impact || '';
+    
+    return `
+      <div class="friction-cell ${level}">
+        <div class="friction-cell-header">
+          <span class="friction-cell-title">${title}</span>
+          <span class="friction-cell-score">${score}%</span>
+        </div>
+        <div class="friction-cell-impact">${impact}</div>
+      </div>
+    `;
+  }
+
+  /**
+   * Highlight jargon and friction in text
+   * @private
+   */
+  function _highlightFrictionInText(text, jargonWords) {
+    let result = _escapeHtmlForCard(text);
+    
+    // Highlight jargon words
+    jargonWords.forEach(word => {
+      const regex = new RegExp(`\\b(${word})\\b`, 'gi');
+      result = result.replace(regex, '<span class="highlight-jargon">$1</span>');
+    });
+    
+    // Highlight passive voice patterns
+    const passivePatterns = /\b(is|are|was|were|been)\s+(\w+ed)\b/gi;
+    result = result.replace(passivePatterns, '<span class="highlight-passive">$1 $2</span>');
+    
+    return result;
+  }
+
+  /**
+   * Escape HTML for safe display
+   * @private
+   */
+  function _escapeHtmlForCard(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .substring(0, 500);
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SEMANTIC TRIPLETS CARD - D3.js Mind Map Ready
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Render Semantic Triplets Card for Keyword Strategy tab
+   * @param {Object} tripletData - Result from reconstructSemanticTriplets()
+   * @param {string} domain - Competitor domain
+   * @returns {string} HTML string
+   */
+  function renderSemanticTripletsCard(tripletData, domain) {
+    if (!tripletData) {
+      return `<div class="semantic-triplets-card"><p style="opacity:0.5;">No semantic triplet data available</p></div>`;
+    }
+    
+    const nodes = tripletData.graphData?.nodes || [];
+    const links = tripletData.graphData?.links || [];
+    const topEntities = Object.entries(tripletData.entities || {})
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8);
+    
+    const totalTriplets = tripletData.triplets?.length || 0;
+    const relationships = (tripletData.relationships || []).slice(0, 5);
+    
+    return `
+      <div class="semantic-triplets-card">
+        <div class="triplet-header">
+          <div class="triplet-title">
+            <span style="font-size: 24px;">🧠</span>
+            <span>Semantic Entity Map</span>
+          </div>
+          <div class="triplet-stats">
+            <span class="triplet-stat">${totalTriplets} Triplets</span>
+            <span class="triplet-stat">${nodes.length} Nodes</span>
+          </div>
+        </div>
+        
+        <!-- D3.js Mind Map Container -->
+        <div class="triplet-graph-container" id="tripletGraph_${domain?.replace(/\./g, '_')}">
+          <div class="triplet-graph-placeholder">
+            <div class="triplet-mini-network">
+              ${_renderMiniNetwork(nodes.slice(0, 6), links.slice(0, 8))}
+            </div>
+            <button class="expand-graph-btn" onclick="expandSemanticGraph?.('${domain}', ${JSON.stringify(tripletData.graphData).replace(/"/g, '&quot;')})">
+              🔍 Expand Mind Map
+            </button>
+          </div>
+        </div>
+        
+        <!-- Entity Strength Ranking -->
+        <div class="entity-ranking">
+          <div class="entity-ranking-title">
+            <span>🏆</span>
+            Entity Strength Ranking
+          </div>
+          <div class="entity-list">
+            ${topEntities.map(([entity, data], idx) => `
+              <div class="entity-row">
+                <span class="entity-rank">#${idx + 1}</span>
+                <span class="entity-name">${entity}</span>
+                <div class="entity-bar">
+                  <div class="entity-bar-fill" style="width: ${Math.min(100, data.count * 20)}%; background: ${_getEntityColor(data.count)}"></div>
+                </div>
+                <span class="entity-count">${data.count}×</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        
+        <!-- Key Relationships -->
+        ${relationships.length > 0 ? `
+        <div class="triplet-relationships">
+          <div class="triplet-relationships-title">
+            <span>🔗</span>
+            Key Relationships
+          </div>
+          <div class="relationship-list">
+            ${relationships.map(rel => `
+              <div class="relationship-item">
+                <span class="rel-subject">${rel.from}</span>
+                <span class="rel-predicate">${rel.relation}</span>
+                <span class="rel-object">${rel.to}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        ${tripletData.recommendations?.length > 0 ? `
+        <div class="triplet-insight">
+          <strong>💡</strong> ${tripletData.recommendations[0].insight}
+        </div>
+        ` : ''}
+        
+        <div style="margin-top: 16px; text-align: right;">
+          <button class="elite-proof-icon" onclick="ZT_openSidePanel?.('keywords.semanticTriplets', ZT_getCompetitorByDomain?.('${domain}'))" title="View full proof" style="width: auto; padding: 6px 12px;">
+            🛡️ View Evidence
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Render mini network preview
+   * @private
+   */
+  function _renderMiniNetwork(nodes, links) {
+    if (!nodes.length) return '<div style="opacity: 0.5; text-align: center;">No network data</div>';
+    
+    // Generate simple SVG preview
+    const width = 240;
+    const height = 160;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    // Position nodes in a circle
+    const angleStep = (2 * Math.PI) / nodes.length;
+    const radius = Math.min(width, height) / 3;
+    
+    const nodePositions = nodes.map((node, i) => ({
+      ...node,
+      x: centerX + Math.cos(angleStep * i) * radius,
+      y: centerY + Math.sin(angleStep * i) * radius
+    }));
+    
+    // Create SVG
+    let svg = `<svg width="${width}" height="${height}" style="overflow: visible;">`;
+    
+    // Draw links
+    links.forEach(link => {
+      const source = nodePositions.find(n => n.id === link.source);
+      const target = nodePositions.find(n => n.id === link.target);
+      if (source && target) {
+        svg += `<line x1="${source.x}" y1="${source.y}" x2="${target.x}" y2="${target.y}" 
+                       stroke="rgba(255,255,255,0.2)" stroke-width="1"/>`;
+      }
+    });
+    
+    // Draw nodes
+    nodePositions.forEach(node => {
+      const size = Math.min(15, 5 + node.strength * 2);
+      svg += `<circle cx="${node.x}" cy="${node.y}" r="${size}" fill="${node.color || '#3b82f6'}" opacity="0.8"/>`;
+      svg += `<text x="${node.x}" y="${node.y + size + 10}" fill="white" font-size="8" text-anchor="middle" opacity="0.7">
+                ${(node.label || '').substring(0, 10)}
+              </text>`;
+    });
+    
+    svg += '</svg>';
+    return svg;
+  }
+  
+  /**
+   * Get entity color based on strength
+   * @private
+   */
+  function _getEntityColor(count) {
+    if (count > 4) return '#ef4444';
+    if (count > 2) return '#f59e0b';
+    return '#22c55e';
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AEO OPPORTUNITY GAP CARD
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Render AEO Opportunity Gap Card for Opportunity tab
+   * @param {Object} aeoData - Result from identifyAEOOpportunityGaps()
+   * @param {string} domain - Competitor domain
+   * @returns {string} HTML string
+   */
+  function renderAEOOpportunityCard(aeoData, domain) {
+    if (!aeoData) {
+      return `<div class="aeo-opportunity-card"><p style="opacity:0.5;">No AEO opportunity data available</p></div>`;
+    }
+    
+    const score = aeoData.totalOpportunityScore || 0;
+    const steals = aeoData.prioritizedSteals || [];
+    const weaknesses = aeoData.competitorWeaknesses || [];
+    
+    // Score color
+    const scoreColor = score >= 60 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444';
+    const circumference = 2 * Math.PI * 40;
+    const dashOffset = circumference - (score / 100) * circumference;
+    
+    return `
+      <div class="aeo-opportunity-card">
+        <div class="aeo-header">
+          <div class="aeo-title">
+            <span style="font-size: 24px;">🎯</span>
+            <span>AEO Citation Steals</span>
+          </div>
+          <div class="aeo-score-ring">
+            <svg width="90" height="90" viewBox="0 0 90 90">
+              <circle fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6" cx="45" cy="45" r="40"/>
+              <circle fill="none" stroke="${scoreColor}" stroke-width="6" cx="45" cy="45" r="40"
+                      stroke-linecap="round"
+                      stroke-dasharray="${circumference}"
+                      stroke-dashoffset="${dashOffset}"
+                      transform="rotate(-90 45 45)"/>
+            </svg>
+            <div class="aeo-score-value">
+              <div class="score-number" style="color: ${scoreColor}">${score}</div>
+              <div class="score-label">OPP</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Prioritized Steals -->
+        <div class="aeo-steals-section">
+          <div class="aeo-steals-header">
+            <span>⚡</span>
+            Priority Citation Steals
+          </div>
+          <div class="aeo-steals-list">
+            ${steals.length > 0 ? steals.map((steal, idx) => `
+              <div class="aeo-steal-item">
+                <div class="steal-rank">${idx + 1}</div>
+                <div class="steal-content">
+                  <div class="steal-keyword">${steal.keyword}</div>
+                  <div class="steal-meta">
+                    <span class="steal-probability">${steal.stealProbability} capture</span>
+                    <span class="steal-traffic ${steal.trafficPotential.toLowerCase()}">${steal.trafficPotential} traffic</span>
+                  </div>
+                  <div class="steal-action">${steal.action}</div>
+                </div>
+              </div>
+            `).join('') : '<div class="no-steals">No high-priority opportunities found</div>'}
+          </div>
+        </div>
+        
+        <!-- Competitor Weaknesses -->
+        ${weaknesses.length > 0 ? `
+        <div class="aeo-weaknesses-section">
+          <div class="aeo-weaknesses-header">
+            <span>🔓</span>
+            Competitor Vulnerabilities
+          </div>
+          <div class="aeo-weaknesses-list">
+            ${weaknesses.slice(0, 3).map(weakness => `
+              <div class="aeo-weakness-item ${weakness.severity}">
+                <div class="weakness-indicator ${weakness.severity}"></div>
+                <div class="weakness-content">
+                  <div class="weakness-type">${weakness.description}</div>
+                  <div class="weakness-opportunity">${weakness.opportunity}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        <!-- Key Recommendations -->
+        ${aeoData.recommendations?.length > 0 ? `
+        <div class="aeo-recommendations">
+          <div class="aeo-rec-header">
+            <span>💡</span>
+            Strategic Actions
+          </div>
+          ${aeoData.recommendations.slice(0, 2).map(rec => `
+            <div class="aeo-rec-item">
+              <div class="aeo-rec-priority ${rec.priority}"></div>
+              <div class="aeo-rec-content">
+                <div class="aeo-rec-title">${rec.title}</div>
+                <div class="aeo-rec-action">${rec.action}</div>
+                <div class="aeo-rec-impact">${rec.expectedImpact}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+        
+        <div style="margin-top: 16px; text-align: right;">
+          <button class="elite-proof-icon" onclick="ZT_openSidePanel?.('opportunity.aeoGap', ZT_getCompetitorByDomain?.('${domain}'))" title="View full proof" style="width: auto; padding: 6px 12px;">
+            🛡️ View Evidence
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+
+  // Expose renderers globally
+  window.renderProgrammaticMoatCard = renderProgrammaticMoatCard;
+  window.renderEmotionalDebtCard = renderEmotionalDebtCard;
+  window.renderSemanticTripletsCard = renderSemanticTripletsCard;
+  window.renderAEOOpportunityCard = renderAEOOpportunityCard;
+</script>

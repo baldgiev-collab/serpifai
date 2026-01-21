@@ -1,0 +1,146 @@
+<!--
+  UI_Stage1_Forensic_Accordion.html
+  STRATEGIC PROOF ACCORDION v1.0
+  
+  Collapsible full Gemini response container
+  Default: Collapsed | Toggle: 300ms smooth animation
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 21: STRATEGIC PROOF ACCORDION CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.forensic-accordion {
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 1.25rem;
+}
+
+/* Accordion Header */
+.forensic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.forensic-header:hover {
+  background: var(--cmd-header-bg);
+}
+
+.forensic-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.forensic-title-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 0;
+}
+
+.forensic-chevron {
+  width: 24px;
+  height: 24px;
+  transition: transform 0.3s ease;
+  color: var(--cmd-muted-text);
+}
+
+.forensic-accordion.is-open .forensic-chevron {
+  transform: rotate(180deg);
+}
+
+/* Accordion Body */
+.forensic-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.forensic-accordion.is-open .forensic-body {
+  max-height: 5000px;
+}
+
+.forensic-content {
+  padding: 0 1.5rem 1.5rem;
+  border-top: 1px solid var(--cmd-border);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .forensic-header {
+    padding: 0.875rem 1rem;
+  }
+  
+  .forensic-content {
+    padding: 0 1rem 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 25: ACCORDION THEME STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Theme: Light */
+[data-theme="light"] .forensic-accordion {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Theme: Dark */
+[data-theme="dark"] .forensic-accordion {
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+[data-theme="dark"] .forensic-accordion.is-open {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* Theme: Aurora - Glassmorphism */
+[data-theme="aurora"] .forensic-accordion {
+  backdrop-filter: blur(var(--cmd-blur));
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+[data-theme="aurora"] .forensic-accordion.is-open {
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+[data-theme="aurora"] .forensic-content {
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="aurora"] .forensic-title-text {
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+
+/* Theme: Neon - Amber glow on expand */
+[data-theme="neon"] .forensic-accordion {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="neon"] .forensic-accordion.is-open {
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+[data-theme="neon"] .forensic-title-text {
+  color: #F59E0B;
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCORDION TOGGLE LOGIC
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function toggleForensicAccordion(element) {
+  const accordion = element.closest('.forensic-accordion');
+  accordion.classList.toggle('is-open');
+}
+</script>

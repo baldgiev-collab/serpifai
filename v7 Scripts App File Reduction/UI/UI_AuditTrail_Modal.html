@@ -1,0 +1,1145 @@
+<!-- 
+  ═══════════════════════════════════════════════════════════════════════════
+  UI_AuditTrail_Modal.html - ZERO-TRUST PROOF CITATIONS UI
+  ═══════════════════════════════════════════════════════════════════════════
+  
+  SerpifAI Elite v1.0 - Every Metric Has Raw Evidence
+  
+  This component provides:
+  1. Modal overlay with evidence details
+  2. Source code viewer with syntax highlighting
+  3. Parsing logic breadcrumb trail
+  4. Confidence indicators
+  5. Proof icons (magnifying glass/shield) for metrics
+  
+  USAGE:
+  - openAEOAuditTrail() - Opens the AEO evidence modal
+  - showProofModal(metricId) - Opens proof for any metric
+  - attachProofIcons() - Adds proof icons to existing metric cards
+  
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* Audit Trail Modal Styles */
+  .audit-trail-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+  
+  .audit-trail-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .audit-trail-modal {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9) translateY(20px);
+    transition: transform 0.3s ease;
+    color: white;
+  }
+  
+  .audit-trail-overlay.active .audit-trail-modal {
+    transform: scale(1) translateY(0);
+  }
+  
+  .audit-modal-header {
+    padding: 24px 28px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .audit-modal-header h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .audit-modal-header h2 .icon {
+    font-size: 28px;
+  }
+  
+  .audit-modal-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  
+  .audit-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .audit-modal-body {
+    padding: 28px;
+    max-height: calc(85vh - 120px);
+    overflow-y: auto;
+  }
+  
+  /* Evidence Section */
+  .evidence-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .evidence-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .evidence-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .evidence-section-title .badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  
+  .confidence-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  
+  .confidence-high { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+  .confidence-good { background: rgba(132, 204, 22, 0.2); color: #84cc16; }
+  .confidence-medium { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+  .confidence-low { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+  
+  /* Source Code Viewer */
+  .source-code-viewer {
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  
+  .source-code-header {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .source-code-header span {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  
+  .source-code-header button {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  
+  .source-code-content {
+    padding: 16px;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #c9d1d9;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  /* Parsing Logic Breadcrumb */
+  .parsing-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding: 14px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 10px;
+    border-left: 4px solid #3b82f6;
+  }
+  
+  .breadcrumb-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  
+  .breadcrumb-step .step-icon {
+    width: 20px;
+    height: 20px;
+    background: #3b82f6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+  
+  .breadcrumb-arrow {
+    color: rgba(255, 255, 255, 0.4);
+  }
+  
+  /* Value Display */
+  .evidence-value-display {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+  
+  .evidence-value-display .value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #22c55e;
+  }
+  
+  .evidence-value-display .label {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+  
+  /* Proof Icon Button (for attaching to metrics) */
+  .proof-icon-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  
+  .proof-icon-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  
+  .proof-icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  /* Criteria Cards in Modal */
+  .criteria-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+  
+  .criteria-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 18px;
+    border-left: 4px solid var(--criteria-color, #f59e0b);
+  }
+  
+  .criteria-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  
+  .criteria-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .criteria-card-score {
+    font-size: 20px;
+    font-weight: 800;
+  }
+  
+  .criteria-card-details {
+    font-size: 12px;
+    opacity: 0.8;
+    line-height: 1.5;
+  }
+</style>
+
+<script>
+  // Global evidence storage for current session
+  window.currentEvidenceMap = window.currentEvidenceMap || {};
+  window.currentCompetitors = window.currentCompetitors || [];
+  
+  // Loading state for evidence fetching
+  let _auditTrailFetchInProgress = false;
+
+  /**
+   * Open the AEO Audit Trail Modal
+   * Shows evidence for all AEO-related metrics
+   * 
+   * v24.0: Uses ORACLE_STATE first, then falls back to database pointer fetch
+   * v24.1: Added Diagnostic Shield with jobToken recovery
+   */
+  function openAEOAuditTrail() {
+    console.log('[AuditTrail] Opening AEO evidence modal...');
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FIX #4: DIAGNOSTIC SHIELD - Ensure jobToken is available before proceeding
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (!window.ORACLE_STATE?.jobToken) {
+      console.log('[AuditTrail] No jobToken in ORACLE_STATE, attempting recovery...');
+      attemptJobTokenRecovery();
+    }
+    
+    // PRIORITY 1: Check ORACLE_STATE (global memory)
+    let competitors = getCompetitorsFromOracleState();
+    
+    // PRIORITY 2: Fallback to legacy window.currentCompetitors
+    if (!competitors || competitors.length === 0) {
+      competitors = window.currentCompetitors || window.competitorData?.competitors || [];
+      console.log('[AuditTrail] ORACLE_STATE empty, trying legacy sources');
+    }
+    
+    // If still empty, show diagnostic and attempt database pointer fetch
+    if (!competitors || competitors.length === 0) {
+      console.warn('[AuditTrail] No competitor data in memory');
+      showAuditTrailDiagnostic();
+      
+      // Attempt to fetch evidence from database using pointer
+      attemptEvidencePointerFetch();
+      return;
+    }
+    
+    console.log(`[AuditTrail] Found ${competitors.length} competitors in state`);
+    
+    // Build modal content
+    const modalHtml = buildAEOAuditTrailContent(competitors);
+    
+    // Create or update overlay
+    showAuditTrailModal(modalHtml);
+  }
+  
+  /**
+   * FIX #4: Attempt to recover jobToken from multiple sources
+   * Called when ORACLE_STATE.jobToken is null
+   * 
+   * PRIORITY 1: Check window.ORACLE_STATE
+   * PRIORITY 2: Check localStorage
+   * PRIORITY 3: Call google.script.run.recoverJobToken
+   */
+  function attemptJobTokenRecovery() {
+    console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+    console.log('[AuditTrail] FIX #4: DIAGNOSTIC SHIELD - Token Recovery');
+    console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+    
+    window.ORACLE_STATE = window.ORACLE_STATE || { competitors: {}, evidencePointers: {} };
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 1: Check ORACLE_STATE.jobToken (may already exist)
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (window.ORACLE_STATE.jobToken) {
+      console.log(`[AuditTrail] ✅ PRIORITY 1: Token already in ORACLE_STATE: ${window.ORACLE_STATE.jobToken}`);
+      return true;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 2: localStorage cache (survives page refresh)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const cachedToken = localStorage.getItem('ORACLE_lastJobToken') || localStorage.getItem('oracle_last_token');
+    const cachedTime = localStorage.getItem('ORACLE_lastJobTime');
+    
+    if (cachedToken) {
+      // Check if token is recent (less than 2 hours old)
+      const cacheAge = cachedTime ? Date.now() - new Date(cachedTime).getTime() : Infinity;
+      const twoHours = 2 * 60 * 60 * 1000;
+      
+      if (cacheAge < twoHours) {
+        window.ORACLE_STATE.jobToken = cachedToken;
+        console.log(`[AuditTrail] ✅ PRIORITY 2: Recovered from localStorage: ${cachedToken}`);
+        console.log(`[AuditTrail]    Age: ${Math.round(cacheAge / 60000)} minutes`);
+        return true;
+      } else {
+        console.log(`[AuditTrail] ⚠️ PRIORITY 2: Cached token expired (${Math.round(cacheAge / 60000)}min old)`);
+      }
+    } else {
+      console.log('[AuditTrail] ⚠️ PRIORITY 2: No token in localStorage');
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIORITY 3: Query server for recent job (FIX #3 SQL query)
+    // ═══════════════════════════════════════════════════════════════════════════
+    const projectIdInput = document.getElementById('projectId') || 
+                           document.getElementById('projectSelect') ||
+                           document.querySelector('[name="projectId"]');
+    const projectId = projectIdInput?.value || localStorage.getItem('ORACLE_projectId');
+    
+    if (projectId && typeof google !== 'undefined' && google.script?.run) {
+      console.log(`[AuditTrail] 🔍 PRIORITY 3: Server recovery for project: ${projectId}`);
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success && result.jobToken) {
+            window.ORACLE_STATE.jobToken = result.jobToken;
+            localStorage.setItem('ORACLE_lastJobToken', result.jobToken);
+            localStorage.setItem('oracle_last_token', result.jobToken);
+            localStorage.setItem('ORACLE_lastJobTime', new Date().toISOString());
+            console.log(`[AuditTrail] ✅ PRIORITY 3 SUCCESS: ${result.jobToken} (source: ${result.source})`);
+            
+            // If we recovered, try opening the modal again
+            console.log('[AuditTrail] Re-opening modal with recovered token...');
+            setTimeout(() => openAEOAuditTrail(), 100);
+          } else {
+            console.warn(`[AuditTrail] ❌ PRIORITY 3 FAILED: ${result.error || 'Unknown error'}`);
+            console.log('[AuditTrail] Recovery attempts:', result.recoveryAttempts);
+            showNoTokenError();
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.error('[AuditTrail] ❌ Server token recovery error:', err);
+          showNoTokenError();
+        })
+        .recoverJobToken(projectId);
+      
+      return false; // Async - will callback
+    }
+    
+    console.error('[AuditTrail] ❌ ALL 3 PRIORITIES FAILED - No job token available');
+    return false;
+  }
+  
+  /**
+   * Show "No job token available" error only after all 3 recovery attempts fail
+   */
+  function showNoTokenError() {
+    const errorHtml = `
+      <div style="padding: 40px; text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
+        <h3 style="color: #ef4444; margin-bottom: 8px;">No Job Token Available</h3>
+        <p style="color: #6b7280;">All 3 recovery attempts failed:</p>
+        <ul style="text-align: left; max-width: 400px; margin: 16px auto; color: #9ca3af;">
+          <li>✗ ORACLE_STATE (in-memory)</li>
+          <li>✗ localStorage (cached token)</li>
+          <li>✗ MySQL job_registry (server query)</li>
+        </ul>
+        <p style="color: #f59e0b; margin-top: 16px;">Please run an analysis first.</p>
+      </div>
+    `;
+    showAuditTrailModal(errorHtml);
+  }
+  
+  /**
+   * Get competitors from ORACLE_STATE
+   * @returns {Array} Array of competitor objects
+   */
+  function getCompetitorsFromOracleState() {
+    if (!window.ORACLE_STATE?.competitors) {
+      console.log('[AuditTrail] ORACLE_STATE not initialized');
+      return [];
+    }
+    
+    const domains = Object.keys(window.ORACLE_STATE.competitors);
+    if (domains.length === 0) {
+      console.log('[AuditTrail] ORACLE_STATE.competitors is empty');
+      return [];
+    }
+    
+    // Convert ORACLE_STATE map to array
+    return domains.map(domain => ({
+      domain: domain,
+      ...window.ORACLE_STATE.competitors[domain]
+    }));
+  }
+  
+  /**
+   * Show diagnostic info when no data is available
+   * ENHANCED: Shows Last MySQL Sync and Data Size
+   */
+  function showAuditTrailDiagnostic() {
+    const oracleState = window.ORACLE_STATE || {};
+    const diagnosticInfo = {
+      oracleStateVersion: oracleState.version || 'N/A',
+      oracleJobToken: oracleState.jobToken || 'null',
+      oracleCompetitorCount: Object.keys(oracleState.competitors || {}).length,
+      oracleStateKeys: Object.keys(oracleState.competitors || {}),
+      legacyCompetitorsCount: (window.currentCompetitors || []).length,
+      competitorDataExists: !!window.competitorData,
+      lastMySQLSync: oracleState._lastMySQLSync || 'Unknown',
+      totalDataSize: oracleState._totalDataSize || 0
+    };
+    
+    console.log('[AuditTrail DEBUG]', diagnosticInfo);
+    
+    // Show loading modal with diagnostic
+    const diagnosticHtml = `
+      <div class="audit-trail-modal">
+        <div class="audit-modal-header">
+          <h2>
+            <span class="icon">⚠️</span>
+            Loading Evidence...
+          </h2>
+          <button class="audit-modal-close" onclick="closeAuditTrailModal()">✕</button>
+        </div>
+        <div class="audit-modal-body" style="text-align: center; padding: 40px;">
+          <div class="audit-loading-spinner" id="audit-loading-spinner" style="margin-bottom: 20px;">
+            <div style="width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+          </div>
+          <p style="margin-bottom: 24px; opacity: 0.8;">Fetching evidence from database...</p>
+          
+          <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 16px; text-align: left; font-size: 12px; font-family: monospace;">
+            <div style="color: #f59e0b; margin-bottom: 8px;">[DEBUG] Diagnostic Info:</div>
+            <div>ORACLE_STATE.version: ${diagnosticInfo.oracleStateVersion}</div>
+            <div>ORACLE_STATE.jobToken: ${diagnosticInfo.oracleJobToken}</div>
+            <div>ORACLE_STATE.competitors: ${diagnosticInfo.oracleCompetitorCount} domains</div>
+            <div>Domains: [${diagnosticInfo.oracleStateKeys.join(', ') || 'none'}]</div>
+            <div>Legacy currentCompetitors: ${diagnosticInfo.legacyCompetitorsCount}</div>
+            <div>window.competitorData exists: ${diagnosticInfo.competitorDataExists}</div>
+            <div style="margin-top: 8px; color: #22c55e;">Last MySQL Sync: ${diagnosticInfo.lastMySQLSync}</div>
+            <div style="color: #22c55e;">Data Size: ${formatBytes(diagnosticInfo.totalDataSize)}</div>
+          </div>
+          
+          <button onclick="closeAuditTrailModal(); ORACLE_STATE_debug?.();" 
+                  style="margin-top: 20px; background: rgba(255,255,255,0.1); border: none; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+            Close & Log Debug
+          </button>
+        </div>
+      </div>
+      <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+      </style>
+    `;
+    
+    showAuditTrailModal(diagnosticHtml, true);
+  }
+  
+  /**
+   * Format bytes to human-readable size
+   */
+  function formatBytes(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+  
+  /**
+   * THIN UI: Attempt to fetch evidence from database using on-demand strategy
+   * Fetches competitors ONE AT A TIME to avoid 3.6MB channel crash
+   */
+  function attemptEvidencePointerFetch() {
+    if (_auditTrailFetchInProgress) {
+      console.log('[AuditTrail] Fetch already in progress');
+      return;
+    }
+    
+    const jobToken = window.ORACLE_STATE?.jobToken;
+    if (!jobToken) {
+      console.warn('[AuditTrail] No jobToken available for database fetch');
+      updateAuditTrailError('No job token available. Run an analysis first.');
+      return;
+    }
+    
+    console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+    console.log('[AuditTrail] THIN UI: Starting on-demand evidence fetch');
+    console.log('[AuditTrail] jobToken:', jobToken);
+    console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+    
+    _auditTrailFetchInProgress = true;
+    
+    // Fetch minimal evidence data from database
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          _auditTrailFetchInProgress = false;
+          onEvidenceFetchComplete(result);
+        })
+        .withFailureHandler(function(error) {
+          _auditTrailFetchInProgress = false;
+          console.error('[AuditTrail] Evidence fetch failed:', error);
+          updateAuditTrailError('Failed to fetch evidence: ' + (error.message || error));
+        })
+        .getForensicEvidenceLight(jobToken);
+    } else {
+      _auditTrailFetchInProgress = false;
+      console.error('[AuditTrail] google.script.run not available');
+      updateAuditTrailError('Script bridge not available');
+    }
+  }
+  
+  /**
+   * Handle evidence fetch completion - THIN UI version
+   * Detects fetchMode: 'on_demand' and triggers per-competitor fetching
+   */
+  function onEvidenceFetchComplete(result) {
+    console.log('[AuditTrail] Evidence fetch complete:', result);
+    
+    if (!result || !result.success) {
+      updateAuditTrailError(result?.message || 'No evidence data returned');
+      return;
+    }
+    
+    // THIN UI: Check if we need to fetch competitors on-demand
+    if (result.fetchMode === 'on_demand' && Array.isArray(result.competitors)) {
+      console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+      console.log('[AuditTrail] THIN UI: On-demand mode detected');
+      console.log('[AuditTrail] Competitors to fetch:', result.competitors.length);
+      console.table(result.competitors);
+      console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+      
+      // Update MySQL sync metadata
+      window.ORACLE_STATE._lastMySQLSync = new Date().toISOString();
+      window.ORACLE_STATE._totalDataSize = 0;
+      
+      // Start fetching competitors one at a time
+      fetchCompetitorsSequentially(result.competitors, result.jobToken);
+      return;
+    }
+    
+    // Legacy: Store fetched data in ORACLE_STATE (full payload mode)
+    if (Array.isArray(result.competitors)) {
+      result.competitors.forEach(comp => {
+        if (comp.domain && typeof window.ORACLE_STATE_setCompetitor === 'function') {
+          window.ORACLE_STATE_setCompetitor(comp.domain, comp, comp.resultId);
+        }
+      });
+    }
+    
+    // Rebuild modal with real data
+    const competitors = getCompetitorsFromOracleState();
+    if (competitors.length > 0) {
+      const modalHtml = buildAEOAuditTrailContent(competitors);
+      showAuditTrailModal(modalHtml);
+    } else {
+      updateAuditTrailError('Evidence data parsed but no competitors found');
+    }
+  }
+  
+  /**
+   * THIN UI: Fetch competitors one at a time to avoid channel crash
+   * Shows progress as each competitor loads (~500KB per fetch)
+   */
+  async function fetchCompetitorsSequentially(competitorList, jobToken) {
+    const total = competitorList.length;
+    let loaded = 0;
+    let totalBytes = 0;
+    
+    console.log('[AuditTrail] Starting sequential fetch of', total, 'competitors');
+    
+    for (const compInfo of competitorList) {
+      const domain = compInfo.domain || compInfo.competitor_domain;
+      if (!domain) continue;
+      
+      // Update progress in modal
+      updateFetchProgress(loaded + 1, total, domain);
+      
+      try {
+        const competitorData = await fetchSingleCompetitor(jobToken, domain);
+        
+        if (competitorData && competitorData.success) {
+          // Track data size
+          const dataSize = JSON.stringify(competitorData.data || {}).length;
+          totalBytes += dataSize;
+          
+          console.log(`[AuditTrail] ✓ Loaded ${domain} (${formatBytes(dataSize)})`);
+          
+          // Store in ORACLE_STATE
+          if (typeof window.ORACLE_STATE_setCompetitor === 'function') {
+            window.ORACLE_STATE_setCompetitor(domain, competitorData.data, competitorData.resultId);
+          } else {
+            window.ORACLE_STATE.competitors[domain] = competitorData.data;
+          }
+          
+          loaded++;
+        } else {
+          console.warn(`[AuditTrail] ✗ Failed to load ${domain}:`, competitorData?.message);
+        }
+      } catch (error) {
+        console.error(`[AuditTrail] Error fetching ${domain}:`, error);
+      }
+    }
+    
+    // Update metadata
+    window.ORACLE_STATE._totalDataSize = totalBytes;
+    window.ORACLE_STATE._lastMySQLSync = new Date().toISOString();
+    
+    console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+    console.log('[AuditTrail] THIN UI: Fetch complete');
+    console.log('[AuditTrail] Loaded:', loaded, '/', total, 'competitors');
+    console.log('[AuditTrail] Total data:', formatBytes(totalBytes));
+    console.log('[AuditTrail] ═══════════════════════════════════════════════════');
+    
+    // Rebuild modal with real data
+    const competitors = getCompetitorsFromOracleState();
+    if (competitors.length > 0) {
+      const modalHtml = buildAEOAuditTrailContent(competitors);
+      showAuditTrailModal(modalHtml);
+    } else {
+      updateAuditTrailError(`Loaded ${loaded}/${total} but no valid data found`);
+    }
+  }
+  
+  /**
+   * Fetch a single competitor's data from database
+   * Returns Promise that resolves with competitor data (~500KB)
+   */
+  function fetchSingleCompetitor(jobToken, domain) {
+    return new Promise((resolve, reject) => {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          .fetchCompetitorAnalysis(jobToken, domain);
+      } else {
+        reject(new Error('google.script.run not available'));
+      }
+    });
+  }
+  
+  /**
+   * Update loading modal with fetch progress
+   */
+  function updateFetchProgress(current, total, currentDomain) {
+    const spinner = document.getElementById('audit-loading-spinner');
+    const progressPct = Math.round((current / total) * 100);
+    
+    if (spinner) {
+      spinner.innerHTML = `
+        <div style="text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 8px;">📥</div>
+          <div style="font-size: 18px; font-weight: 600; color: #f59e0b;">${current} / ${total}</div>
+          <div style="font-size: 12px; opacity: 0.7; margin-top: 4px;">${currentDomain}</div>
+          <div style="width: 200px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 12px auto 0;">
+            <div style="width: ${progressPct}%; height: 100%; background: linear-gradient(90deg, #f59e0b, #22c55e); border-radius: 3px; transition: width 0.3s;"></div>
+          </div>
+        </div>
+      `;
+    }
+    
+    const body = document.querySelector('#audit-trail-overlay .audit-modal-body p');
+    if (body) {
+      body.textContent = `Fetching competitor ${current} of ${total}...`;
+    }
+  }
+  
+  /**
+   * Update modal with error message
+   */
+  function updateAuditTrailError(message) {
+    const spinner = document.getElementById('audit-loading-spinner');
+    if (spinner) {
+      spinner.innerHTML = '<div style="font-size: 48px;">❌</div>';
+    }
+    
+    const body = document.querySelector('#audit-trail-overlay .audit-modal-body p');
+    if (body) {
+      body.textContent = message;
+      body.style.color = '#ef4444';
+    }
+  }
+  
+  /**
+   * Show the audit trail modal overlay
+   */
+  function showAuditTrailModal(contentHtml, isLoading = false) {
+    let overlay = document.getElementById('audit-trail-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'audit-trail-overlay';
+      overlay.className = 'audit-trail-overlay';
+      overlay.onclick = function(e) {
+        if (e.target === overlay) closeAuditTrailModal();
+      };
+      document.body.appendChild(overlay);
+    }
+    
+    // If contentHtml is already a full modal, use it directly
+    if (contentHtml.includes('audit-trail-modal')) {
+      overlay.innerHTML = contentHtml;
+    } else {
+      // Wrap content in modal structure
+      overlay.innerHTML = `
+        <div class="audit-trail-modal">
+          <div class="audit-modal-header">
+            <h2>
+              <span class="icon">🔬</span>
+              Zero-Trust Audit Trail
+              <span style="font-size: 12px; font-weight: 500; background: linear-gradient(135deg, #f59e0b, #d97706); padding: 4px 12px; border-radius: 20px; margin-left: 8px;">AEO Evidence</span>
+            </h2>
+            <button class="audit-modal-close" onclick="closeAuditTrailModal()">✕</button>
+          </div>
+          <div class="audit-modal-body">
+            ${contentHtml}
+          </div>
+        </div>
+      `;
+    }
+    
+    // Show modal
+    requestAnimationFrame(() => overlay.classList.add('active'));
+  }
+  
+  /**
+   * Close the Audit Trail Modal
+   */
+  function closeAuditTrailModal() {
+    const overlay = document.getElementById('audit-trail-overlay');
+    if (overlay) {
+      overlay.classList.remove('active');
+    }
+  }
+  
+  /**
+   * Build AEO Audit Trail content
+   */
+  function buildAEOAuditTrailContent(competitors) {
+    const comp = competitors[0]; // Focus on first competitor for detailed view
+    const synthesized = comp?.synthesized || {};
+    const website = synthesized.website || {};
+    
+    // Calculate AEO score inline
+    const aeo = synthesized.aeoReadiness || calculateRAGReadyScoreInline?.(comp) || { totalScore: 0, status: 'N/A' };
+    
+    return `
+      <!-- Summary Header -->
+      <div class="evidence-section" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));">
+        <div class="evidence-section-header">
+          <div class="evidence-section-title">
+            <span>🤖</span>
+            AEO RAG-Ready Score Analysis
+            <span class="badge">Competitor: ${comp?.domain || 'Unknown'}</span>
+          </div>
+          <div class="confidence-badge confidence-high">95% Confidence</div>
+        </div>
+        
+        <div class="evidence-value-display">
+          <div class="value">${aeo.totalScore || 0}</div>
+          <div>
+            <div class="label">Total AEO Score</div>
+            <div style="font-size: 12px; color: ${aeo.statusColor || '#f59e0b'}; font-weight: 700;">${aeo.status || 'N/A'} Readiness</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Criteria Breakdown -->
+      <div class="criteria-grid">
+        <!-- Criteria A: Heading Logic -->
+        <div class="criteria-card" style="--criteria-color: #3b82f6;">
+          <div class="criteria-card-header">
+            <div class="criteria-card-title">
+              <span style="background: #3b82f6; width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">A</span>
+              Heading Logic
+            </div>
+            <div class="criteria-card-score" style="color: #3b82f6;">${aeo.breakdown?.criteriaA || 0}/40</div>
+          </div>
+          <div class="criteria-card-details">
+            Question-format headings detected: ${aeo.evidence?.questionHeadingsCount || 0}<br>
+            Total headings analyzed: ${(website.h2?.length || 0) + (website.h3?.length || 0)}
+          </div>
+        </div>
+        
+        <!-- Criteria B: Schema Bonus -->
+        <div class="criteria-card" style="--criteria-color: #22c55e;">
+          <div class="criteria-card-header">
+            <div class="criteria-card-title">
+              <span style="background: #22c55e; width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">B</span>
+              Schema Bonus
+            </div>
+            <div class="criteria-card-score" style="color: #22c55e;">${aeo.breakdown?.criteriaB || 0}/40</div>
+          </div>
+          <div class="criteria-card-details">
+            Schema types: ${(aeo.evidence?.schemaTypes || website.schemaTypes || []).join(', ') || 'None detected'}<br>
+            <span style="color: ${website.schemaTypes?.length > 0 ? '#22c55e' : '#ef4444'};">
+              ${website.schemaTypes?.length > 0 ? '✅ Structured data found' : '❌ No schema markup'}
+            </span>
+          </div>
+        </div>
+        
+        <!-- Criteria C: Readability -->
+        <div class="criteria-card" style="--criteria-color: #f59e0b;">
+          <div class="criteria-card-header">
+            <div class="criteria-card-title">
+              <span style="background: #f59e0b; width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">C</span>
+              Readability Ratio
+            </div>
+            <div class="criteria-card-score" style="color: #f59e0b;">${aeo.breakdown?.criteriaC || 0}/20</div>
+          </div>
+          <div class="criteria-card-details">
+            Estimated ratio: ${aeo.evidence?.estimatedRatio || 'N/A'}%<br>
+            Word count: ${website.wordCount || 0} words
+          </div>
+        </div>
+      </div>
+      
+      <!-- Source Code Evidence -->
+      <div class="evidence-section" style="margin-top: 24px;">
+        <div class="evidence-section-header">
+          <div class="evidence-section-title">
+            <span>📄</span>
+            Raw Evidence: Heading Analysis
+          </div>
+        </div>
+        
+        <div class="source-code-viewer">
+          <div class="source-code-header">
+            <span>HTML Headings Extracted</span>
+            <button onclick="copyEvidenceToClipboard(this)">📋 Copy</button>
+          </div>
+          <div class="source-code-content" id="evidence-headings-code">
+${formatHeadingsForEvidence(website.h2, website.h3)}
+          </div>
+        </div>
+        
+        <!-- Parsing Logic Breadcrumb -->
+        <div class="parsing-breadcrumb">
+          <div class="breadcrumb-step">
+            <span class="step-icon">1</span>
+            <span>Oracle Fetcher</span>
+          </div>
+          <span class="breadcrumb-arrow">→</span>
+          <div class="breadcrumb-step">
+            <span class="step-icon">2</span>
+            <span>H2/H3 Extraction</span>
+          </div>
+          <span class="breadcrumb-arrow">→</span>
+          <div class="breadcrumb-step">
+            <span class="step-icon">3</span>
+            <span>Question Pattern Match</span>
+          </div>
+          <span class="breadcrumb-arrow">→</span>
+          <div class="breadcrumb-step">
+            <span class="step-icon">4</span>
+            <span>Score Calculation</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Schema Evidence -->
+      <div class="evidence-section">
+        <div class="evidence-section-header">
+          <div class="evidence-section-title">
+            <span>🏷️</span>
+            Raw Evidence: Schema Detection
+          </div>
+        </div>
+        
+        <div class="source-code-viewer">
+          <div class="source-code-header">
+            <span>JSON-LD Schema Types</span>
+            <button onclick="copyEvidenceToClipboard(this)">📋 Copy</button>
+          </div>
+          <div class="source-code-content" id="evidence-schema-code">
+${formatSchemaForEvidence(website.schemaTypes)}
+          </div>
+        </div>
+        
+        <div class="parsing-breadcrumb">
+          <div class="breadcrumb-step">
+            <span class="step-icon">1</span>
+            <span>Oracle Fetcher</span>
+          </div>
+          <span class="breadcrumb-arrow">→</span>
+          <div class="breadcrumb-step">
+            <span class="step-icon">2</span>
+            <span>JSON-LD Parse</span>
+          </div>
+          <span class="breadcrumb-arrow">→</span>
+          <div class="breadcrumb-step">
+            <span class="step-icon">3</span>
+            <span>@type Extraction</span>
+          </div>
+          <span class="breadcrumb-arrow">→</span>
+          <div class="breadcrumb-step">
+            <span class="step-icon">4</span>
+            <span>FAQ/HowTo/Org Match</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Timestamp & Metadata -->
+      <div style="margin-top: 24px; padding: 14px; background: rgba(255,255,255,0.05); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 12px; opacity: 0.7;">
+        <div>
+          <strong>Data Source:</strong> SerpifAI Oracle Fetcher v22.0 + PHP Gateway
+        </div>
+        <div>
+          <strong>Extraction Time:</strong> ${new Date().toLocaleString()}
+        </div>
+        <div>
+          <strong>Proof System:</strong> Zero-Trust v1.0
+        </div>
+      </div>
+    `;
+  }
+  
+  /**
+   * Format headings for evidence display
+   */
+  function formatHeadingsForEvidence(h2Tags, h3Tags) {
+    const h2 = Array.isArray(h2Tags) ? h2Tags : (h2Tags ? [h2Tags] : []);
+    const h3 = Array.isArray(h3Tags) ? h3Tags : (h3Tags ? [h3Tags] : []);
+    
+    let output = '/* H2 Headings */\n';
+    if (h2.length > 0) {
+      h2.forEach((h, i) => {
+        const isQuestion = /^(what|why|how|when|where|who|which|can|should|does|do|is|are|will)\s/i.test(h) || h.includes('?');
+        output += `${i + 1}. "${h}" ${isQuestion ? '← QUESTION FORMAT ✓' : ''}\n`;
+      });
+    } else {
+      output += 'No H2 headings detected\n';
+    }
+    
+    output += '\n/* H3 Headings */\n';
+    if (h3.length > 0) {
+      h3.slice(0, 10).forEach((h, i) => {
+        const isQuestion = /^(what|why|how|when|where|who|which|can|should|does|do|is|are|will)\s/i.test(h) || h.includes('?');
+        output += `${i + 1}. "${h}" ${isQuestion ? '← QUESTION FORMAT ✓' : ''}\n`;
+      });
+      if (h3.length > 10) {
+        output += `... and ${h3.length - 10} more\n`;
+      }
+    } else {
+      output += 'No H3 headings detected\n';
+    }
+    
+    return output;
+  }
+  
+  /**
+   * Format schema for evidence display
+   */
+  function formatSchemaForEvidence(schemaTypes) {
+    const types = Array.isArray(schemaTypes) ? schemaTypes : [];
+    
+    if (types.length === 0) {
+      return '/* No JSON-LD Schema Detected */\n\n❌ This page has no structured data markup.\nAI crawlers will have difficulty understanding the content context.';
+    }
+    
+    let output = '/* Detected Schema.org Types */\n\n';
+    types.forEach((type, i) => {
+      const isAEOBonus = ['FAQPage', 'HowTo', 'Organization', 'LocalBusiness'].includes(type);
+      output += `${i + 1}. @type: "${type}"`;
+      if (isAEOBonus) {
+        if (type === 'FAQPage') output += ' → +15 AEO points';
+        else if (type === 'HowTo') output += ' → +15 AEO points';
+        else if (['Organization', 'LocalBusiness'].includes(type)) output += ' → +10 AEO points';
+      }
+      output += '\n';
+    });
+    
+    return output;
+  }
+  
+  /**
+   * Copy evidence to clipboard
+   */
+  function copyEvidenceToClipboard(btn) {
+    const codeBlock = btn.closest('.source-code-viewer').querySelector('.source-code-content');
+    if (codeBlock) {
+      navigator.clipboard.writeText(codeBlock.textContent)
+        .then(() => {
+          const originalText = btn.textContent;
+          btn.textContent = '✅ Copied!';
+          setTimeout(() => btn.textContent = originalText, 2000);
+        })
+        .catch(err => console.error('Copy failed:', err));
+    }
+  }
+  
+  /**
+   * Show proof modal for any metric
+   * @param {string} metricId - The metric identifier
+   * @param {Object} evidenceData - Optional evidence data
+   */
+  function showProofModal(metricId, evidenceData) {
+    console.log('[AuditTrail] Showing proof for:', metricId);
+    
+    // If it's an AEO metric, use the AEO modal
+    if (metricId.startsWith('aeo')) {
+      openAEOAuditTrail();
+      return;
+    }
+    
+    // TODO: Implement generic proof modal for other metrics
+    showToast?.('🔍 Proof view for ' + metricId + ' coming soon');
+  }
+  
+  /**
+   * Create a proof icon button element
+   * @param {string} metricId - Metric identifier
+   * @returns {HTMLElement} Button element
+   */
+  function createProofIconButton(metricId) {
+    const btn = document.createElement('button');
+    btn.className = 'proof-icon-btn';
+    btn.title = 'View raw evidence';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      showProofModal(metricId);
+    };
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M21 21l-4.35-4.35"/>
+      </svg>
+    `;
+    return btn;
+  }
+  
+  // Expose functions globally
+  window.openAEOAuditTrail = openAEOAuditTrail;
+  window.closeAuditTrailModal = closeAuditTrailModal;
+  window.showProofModal = showProofModal;
+  window.createProofIconButton = createProofIconButton;
+</script>

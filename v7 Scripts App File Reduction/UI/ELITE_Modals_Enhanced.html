@@ -1541,11 +1541,20 @@ window._showMindMapView = function(domain) {
 // ============================================
 // KEYWORD CLUSTERING VISUALIZATION MODAL
 // V9.0: ELITE DATA ENRICHER INTEGRATION - Always shows enriched data
+// V38.1: Added window storage fallback for 4th+ competitor modal fix
 // Features: Primary/Semantic/Longtail/Secondary clustering, metrics, visual map
 // ============================================
 window.showKeywordClusteringModal = function(domain, encodedData) {
   try {
-    const data = JSON.parse(decodeURIComponent(encodedData));
+    // V38.1: Use window storage if available (fixes 4th+ competitor modal issue)
+    let data;
+    if (window._competitorModalData?.[domain]?.keywordClustering) {
+      data = window._competitorModalData[domain].keywordClustering;
+      console.log(`[V38.1] Using window storage for keyword clustering: ${domain}`);
+    } else {
+      data = JSON.parse(decodeURIComponent(encodedData));
+    }
+    
     const breakdown = data.breakdown || {};
     const clusters = data.clusters || [];
     // PRIORITY: keywordsEnriched from FT_EnrichWithRealMetrics has REAL KD/SV data

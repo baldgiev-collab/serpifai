@@ -1,0 +1,97 @@
+<!--
+  UI_Stage1_Chart_Stage.html
+  FIXED-HEIGHT CHART STAGE v1.0
+  
+  550px max-height "anchor" that never stretches
+  Contains D3 canvas with overflow protection
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 13: FIXED-HEIGHT CHART CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.interactive-stage {
+  height: 550px;
+  max-height: 550px;
+  min-height: 400px;
+  overflow: hidden;
+  position: relative;
+  border-radius: 16px;
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  margin: 1.25rem 0;
+}
+
+/* Inner chart canvas */
+.chart-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.chart-canvas svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Chart header bar */
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem 1.25rem;
+  background: var(--cmd-header-bg);
+  border-bottom: 1px solid var(--cmd-border);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+
+.chart-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 0;
+}
+
+/* Chart body (below header) */
+.chart-body {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .interactive-stage {
+    height: 400px;
+    max-height: 400px;
+    min-height: 300px;
+  }
+  
+  .chart-body {
+    top: 48px;
+  }
+}
+
+/* Theme: Aurora */
+[data-theme="aurora"] .interactive-stage {
+  backdrop-filter: blur(var(--cmd-blur));
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+/* Theme: Neon */
+[data-theme="neon"] .interactive-stage {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+[data-theme="neon"] .interactive-stage:hover {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+</style>

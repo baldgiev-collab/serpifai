@@ -10,9 +10,142 @@
  * ✓ Populate competitor intelligence tabs
  * ✓ Map data for UI rendering
  * 
- * @version 6.0.0-elite
+ * @version 6.1.0-elite (v30.1 normalization sync)
  * ═══════════════════════════════════════════════════════════════════════════
  */
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * v30.1 GAS NORMALIZATION - Mirrors PHP competitor_handler.php normalization
+ * Ensures consistent data structure whether loading from Sheets or MySQL
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+function normalizeCompetitorData(rawData) {
+  if (!rawData || typeof rawData !== 'object') {
+    return rawData;
+  }
+  
+  const data = Object.assign({}, rawData);
+  
+  // 1. GEMINI ANALYSIS → ANALYSIS (UI expects "analysis" not "geminiAnalysis")
+  if (data.geminiAnalysis && !data.analysis) {
+    data.analysis = data.geminiAnalysis;
+    Logger.log('[NORMALIZE] Created analysis from geminiAnalysis');
+  }
+  
+  // 2. SURFACE EXECUTIVE BRIEF TO TOP LEVEL
+  const execBrief = data.geminiAnalysis?.executiveBrief || data.analysis?.executiveBrief;
+  if (execBrief && !data.executiveBrief) {
+    data.executiveBrief = execBrief;
+    Logger.log('[NORMALIZE] Surfaced executiveBrief to top level');
+  }
+  
+  // 3. SURFACE KILL MOVES TO TOP LEVEL
+  const killMoves = data.geminiAnalysis?.killMoves || data.analysis?.killMoves;
+  if (killMoves && Array.isArray(killMoves) && !data.killMoves) {
+    data.killMoves = killMoves;
+    Logger.log('[NORMALIZE] Surfaced killMoves to top level');
+  }
+  
+  // 4. SURFACE ESTIMATED METRICS
+  const estMetrics = data.geminiAnalysis?.estimatedMetrics || data.analysis?.estimatedMetrics;
+  if (estMetrics && Array.isArray(estMetrics) && !data.estimatedMetrics) {
+    data.estimatedMetrics = estMetrics;
+    Logger.log('[NORMALIZE] Surfaced estimatedMetrics to top level');
+  }
+  
+  // 5. SURFACE MARKET INTELLIGENCE
+  const marketIntel = data.geminiAnalysis?.marketIntelligence || data.analysis?.marketIntelligence;
+  if (marketIntel && !data.marketIntelligence) {
+    data.marketIntelligence = marketIntel;
+  }
+  
+  // 6. SURFACE KEYWORD INTELLIGENCE
+  const keywordIntel = data.geminiAnalysis?.keywordIntelligence || data.analysis?.keywordIntelligence;
+  if (keywordIntel && !data.keywordIntelligence) {
+    data.keywordIntelligence = keywordIntel;
+  }
+  
+  // 7. SURFACE CATEGORIES
+  const categories = data.geminiAnalysis?.categories || data.analysis?.categories;
+  if (categories && Array.isArray(categories) && !data.categories) {
+    data.categories = categories;
+  }
+  
+  // 8. SURFACE COMPETITOR RANKINGS
+  const rankings = data.geminiAnalysis?.competitorRankings || data.analysis?.competitorRankings;
+  if (rankings && Array.isArray(rankings) && !data.competitorRankings) {
+    data.competitorRankings = rankings;
+  }
+  
+  // 9. TRANSFORM rawData → competitorsArray (UI requires array format)
+  if (!data.competitorsArray || !Array.isArray(data.competitorsArray) || data.competitorsArray.length === 0) {
+    if (data.rawData && typeof data.rawData === 'object' && !data.rawData._trimmed) {
+      const competitorsArray = [];
+      for (const domain in data.rawData) {
+        if (data.rawData.hasOwnProperty(domain)) {
+          const compData = data.rawData[domain];
+          if (compData && typeof compData === 'object') {
+            compData.domain = compData.domain || domain;
+            competitorsArray.push(compData);
+          }
+        }
+      }
+      if (competitorsArray.length > 0) {
+        data.competitorsArray = competitorsArray;
+        data.competitorCount = competitorsArray.length;
+        Logger.log('[NORMALIZE] Transformed ' + competitorsArray.length + ' competitors from rawData');
+      }
+    }
+  }
+  
+  // 10. MERGE GEMINI ESTIMATED METRICS INTO COMPETITORS (Fix wrong traffic values)
+  if (data.estimatedMetrics && Array.isArray(data.estimatedMetrics) && 
+      data.competitorsArray && Array.isArray(data.competitorsArray)) {
+    
+    const metricsMap = {};
+    data.estimatedMetrics.forEach(function(metric) {
+      const domain = (metric.domain || '').toLowerCase();
+      if (domain) {
+        metricsMap[domain] = metric;
+      }
+    });
+    
+    data.competitorsArray.forEach(function(comp) {
+      const compDomain = (comp.domain || '').toLowerCase();
+      if (metricsMap[compDomain]) {
+        const geminiMetrics = metricsMap[compDomain];
+        
+        if (!comp.processedMetrics) {
+          comp.processedMetrics = {};
+        }
+        
+        // Merge Gemini estimated metrics
+        if (geminiMetrics.organicTraffic) {
+          comp.processedMetrics.geminiTraffic = geminiMetrics.organicTraffic;
+          comp.processedMetrics.estimatedTraffic = geminiMetrics.organicTraffic;
+        }
+        if (geminiMetrics.organicKeywords) {
+          comp.processedMetrics.geminiKeywords = geminiMetrics.organicKeywords;
+          comp.processedMetrics.estimatedKeywords = geminiMetrics.organicKeywords;
+        }
+        if (geminiMetrics.backlinks) {
+          comp.processedMetrics.geminiBacklinks = geminiMetrics.backlinks;
+        }
+        if (geminiMetrics.authorityScore) {
+          comp.processedMetrics.geminiAuthority = geminiMetrics.authorityScore;
+        }
+        if (geminiMetrics.siteType) {
+          comp.processedMetrics.siteType = geminiMetrics.siteType;
+        }
+      }
+    });
+    
+    Logger.log('[NORMALIZE] Merged Gemini metrics into competitors');
+  }
+  
+  return data;
+}
 
 /**
  * Main function called when user selects project from dropdown
@@ -125,40 +258,45 @@ function loadCompetitorAnalysis(projectName) {
             try {
               const jsonData = row[7];  // Column 8 = JSON Data (Full)
               if (jsonData && typeof jsonData === 'string' && jsonData.trim().startsWith('{')) {
-                const fullData = JSON.parse(jsonData);
+                let fullData = JSON.parse(jsonData);
                 Logger.log('   ✅ Loaded from "📊 Master_Projects" sheet');
+                
+                // ═══════════════════════════════════════════════════════════════
+                // v30.1 CRITICAL FIX: Apply same normalization as PHP
+                // This ensures consistent data structure regardless of source
+                // ═══════════════════════════════════════════════════════════════
+                fullData = normalizeCompetitorData(fullData);
+                
                 Logger.log('   📊 Has analysis: ' + !!fullData.analysis);
                 Logger.log('   📊 Has eliteTabIntelligence: ' + !!(fullData.eliteTabIntelligence || fullData.analysis?.eliteTabIntelligence));
-                Logger.log('   📊 Competitors object keys: ' + Object.keys(fullData.competitors || {}).length);
+                Logger.log('   📊 Has competitorsArray: ' + !!(fullData.competitorsArray));
                 
-                // CRITICAL FIX: Check for competitorsArray first, then fall back to competitors object
-                let competitorsArray = [];
+                // Use normalized competitorsArray
+                let competitorsArray = fullData.competitorsArray || [];
                 
-                if (fullData.competitorsArray && Array.isArray(fullData.competitorsArray) && fullData.competitorsArray.length > 0) {
-                  competitorsArray = fullData.competitorsArray;
-                  Logger.log('   ✅ Using competitorsArray (pre-transformed)');
-                } else if (fullData.rawData && typeof fullData.rawData === 'object') {
-                  competitorsArray = Object.values(fullData.rawData);
-                  Logger.log('   ℹ️ Using rawData values');
-                } else if (fullData.competitors && typeof fullData.competitors === 'object' && !Array.isArray(fullData.competitors)) {
-                  // Convert competitors object to array
-                  competitorsArray = Object.entries(fullData.competitors).map(([domain, data]) => ({
-                    domain: domain,
-                    ...data
-                  }));
-                  Logger.log('   ℹ️ Converted competitors object to array');
-                } else if (Array.isArray(fullData.competitors)) {
-                  competitorsArray = fullData.competitors;
-                  Logger.log('   ℹ️ Using competitors array directly');
+                // Fallback if still empty
+                if (competitorsArray.length === 0) {
+                  if (fullData.rawData && typeof fullData.rawData === 'object') {
+                    competitorsArray = Object.values(fullData.rawData);
+                    Logger.log('   ℹ️ Fallback to rawData values');
+                  } else if (fullData.competitors && typeof fullData.competitors === 'object' && !Array.isArray(fullData.competitors)) {
+                    competitorsArray = Object.entries(fullData.competitors).map(([domain, data]) => ({
+                      domain: domain,
+                      ...data
+                    }));
+                    Logger.log('   ℹ️ Fallback to converted competitors object');
+                  } else if (Array.isArray(fullData.competitors)) {
+                    competitorsArray = fullData.competitors;
+                    Logger.log('   ℹ️ Fallback to competitors array');
+                  }
                 }
                 
                 // Log data quality for first competitor
                 if (competitorsArray.length > 0) {
                   const first = competitorsArray[0];
                   Logger.log('   📊 First competitor: ' + first.domain);
-                  Logger.log('      synthesized: ' + (!!first.synthesized));
-                  Logger.log('      apiData: ' + (!!first.apiData));
-                  Logger.log('      stages: ' + (!!first.stages));
+                  Logger.log('      geminiTraffic: ' + (first.processedMetrics?.geminiTraffic || 'NOT SET'));
+                  Logger.log('      geminiKeywords: ' + (first.processedMetrics?.geminiKeywords || 'NOT SET'));
                 }
                 
                 return {
@@ -167,6 +305,14 @@ function loadCompetitorAnalysis(projectName) {
                   count: competitorsArray.length,
                   analysis: fullData.analysis || {},
                   geminiAnalysis: fullData.analysis || {},
+                  // Include all surfaced data from normalization
+                  executiveBrief: fullData.executiveBrief || null,
+                  killMoves: fullData.killMoves || null,
+                  estimatedMetrics: fullData.estimatedMetrics || null,
+                  marketIntelligence: fullData.marketIntelligence || null,
+                  keywordIntelligence: fullData.keywordIntelligence || null,
+                  categories: fullData.categories || null,
+                  competitorRankings: fullData.competitorRankings || null,
                   // CRITICAL: Include eliteTabIntelligence for ALL 15 tabs
                   eliteTabIntelligence: fullData.eliteTabIntelligence || fullData.analysis?.eliteTabIntelligence || null,
                   overview: fullData.overview || null,
@@ -174,7 +320,7 @@ function loadCompetitorAnalysis(projectName) {
                   dataIntegrity: fullData.dataIntegrity || null,
                   yourDomain: fullData.yourDomain || '',
                   timestamp: row[1] || new Date().toISOString(),
-                  source: 'Master_Projects sheet'
+                  source: 'Master_Projects sheet (normalized)'
                 };
               }
             } catch (parseError) {
@@ -210,36 +356,35 @@ function loadCompetitorAnalysis(projectName) {
             try {
               const jsonData = row[7];  // Column 8 = JSON Data
               if (jsonData && typeof jsonData === 'string' && jsonData.trim().startsWith('{')) {
-                const fullAnalysis = JSON.parse(jsonData);
-                Logger.log('   ✅ Loaded full analysis from "Competitor Analysis" sheet');
-                Logger.log('   📊 Has geminiAnalysis: ' + !!fullAnalysis.geminiAnalysis);
-                Logger.log('   📊 Has eliteTabIntelligence: ' + !!fullAnalysis.eliteTabIntelligence);
+                let fullAnalysis = JSON.parse(jsonData);
+                Logger.log('   ✅ Loaded from "Competitor Analysis" sheet');
+                
+                // ═══════════════════════════════════════════════════════════════
+                // v30.1 CRITICAL FIX: Apply same normalization as PHP
+                // This ensures consistent data structure regardless of source
+                // ═══════════════════════════════════════════════════════════════
+                fullAnalysis = normalizeCompetitorData(fullAnalysis);
+                
+                Logger.log('   📊 Has analysis: ' + !!fullAnalysis.analysis);
                 Logger.log('   📊 Has competitorsArray: ' + !!fullAnalysis.competitorsArray);
-                Logger.log('   📊 Has rawData: ' + !!fullAnalysis.rawData);
                 
-                // ═══════════════════════════════════════════════════════════════
-                // CRITICAL FIX: Prefer competitorsArray (pre-transformed) over rawData
-                // competitorsArray has synthesized, apiData, stages, processedMetrics
-                // rawData may only have domain keys without full nested structures
-                // ═══════════════════════════════════════════════════════════════
-                let competitorsToReturn = [];
+                // Use normalized competitorsArray
+                let competitorsToReturn = fullAnalysis.competitorsArray || [];
                 
-                if (fullAnalysis.competitorsArray && Array.isArray(fullAnalysis.competitorsArray) && fullAnalysis.competitorsArray.length > 0) {
-                  competitorsToReturn = fullAnalysis.competitorsArray;
-                  Logger.log('   ✅ Using competitorsArray (pre-transformed with synthesized/apiData)');
-                } else if (fullAnalysis.rawData && typeof fullAnalysis.rawData === 'object') {
-                  competitorsToReturn = Object.values(fullAnalysis.rawData);
-                  Logger.log('   ⚠️ Falling back to rawData (may lack synthesized/apiData)');
+                // Fallback if still empty
+                if (competitorsToReturn.length === 0) {
+                  if (fullAnalysis.rawData && typeof fullAnalysis.rawData === 'object') {
+                    competitorsToReturn = Object.values(fullAnalysis.rawData);
+                    Logger.log('   ⚠️ Fallback to rawData values');
+                  }
                 }
                 
                 // Log data quality for first competitor
                 if (competitorsToReturn.length > 0) {
                   const first = competitorsToReturn[0];
-                  Logger.log('   📊 First competitor loaded: ' + first.domain);
-                  Logger.log('      Has synthesized: ' + (!!first.synthesized) + ', keys: ' + (first.synthesized ? Object.keys(first.synthesized).join(',') : 'N/A'));
-                  Logger.log('      Has apiData: ' + (!!first.apiData) + ', keys: ' + (first.apiData ? Object.keys(first.apiData).join(',') : 'N/A'));
-                  Logger.log('      Has stages: ' + (!!first.stages) + ', keys: ' + (first.stages ? Object.keys(first.stages).join(',') : 'N/A'));
-                  Logger.log('      Has processedMetrics: ' + !!first.processedMetrics);
+                  Logger.log('   📊 First competitor: ' + first.domain);
+                  Logger.log('      geminiTraffic: ' + (first.processedMetrics?.geminiTraffic || 'NOT SET'));
+                  Logger.log('      geminiKeywords: ' + (first.processedMetrics?.geminiKeywords || 'NOT SET'));
                 }
                 
                 // Return complete data structure with ALL saved fields
@@ -247,18 +392,24 @@ function loadCompetitorAnalysis(projectName) {
                   success: true,
                   competitors: competitorsToReturn,
                   count: competitorsToReturn.length,
-                  analysis: fullAnalysis.geminiAnalysis || fullAnalysis.insights || {},
-                  geminiAnalysis: fullAnalysis.geminiAnalysis || {},
+                  analysis: fullAnalysis.analysis || fullAnalysis.geminiAnalysis || {},
+                  geminiAnalysis: fullAnalysis.analysis || {},
+                  // Include all surfaced data from normalization
+                  executiveBrief: fullAnalysis.executiveBrief || null,
+                  killMoves: fullAnalysis.killMoves || null,
+                  estimatedMetrics: fullAnalysis.estimatedMetrics || null,
+                  marketIntelligence: fullAnalysis.marketIntelligence || null,
+                  keywordIntelligence: fullAnalysis.keywordIntelligence || null,
+                  categories: fullAnalysis.categories || null,
+                  competitorRankings: fullAnalysis.competitorRankings || null,
                   // CRITICAL: Include eliteTabIntelligence for ALL 15 tabs
-                  eliteTabIntelligence: fullAnalysis.eliteTabIntelligence || fullAnalysis.geminiAnalysis?.eliteTabIntelligence || null,
-                  // Include overview and dashboardCharts for chart rendering
+                  eliteTabIntelligence: fullAnalysis.eliteTabIntelligence || fullAnalysis.analysis?.eliteTabIntelligence || null,
                   overview: fullAnalysis.overview || null,
                   dashboardCharts: fullAnalysis.dashboardCharts || null,
-                  // Include dataIntegrity for validation
                   dataIntegrity: fullAnalysis.dataIntegrity || null,
                   yourDomain: fullAnalysis.yourDomain || '',
                   timestamp: row[1] || fullAnalysis.timestamp,
-                  source: 'Competitor Analysis sheet'
+                  source: 'Competitor Analysis sheet (normalized)'
                 };
               }
             } catch (parseError) {

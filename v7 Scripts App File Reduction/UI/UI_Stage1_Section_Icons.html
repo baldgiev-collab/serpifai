@@ -1,0 +1,68 @@
+<!--
+  UI_Stage1_Section_Icons.html
+  SECTION ICON MAPPING v1.0
+  
+  Maps all 14 Stage 1 sections to semantic icons + accent colors
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 10: SECTION ICON MAPPING SYSTEM
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SectionIconMap = {
+  
+  // Section ID → { icon, accent, title }
+  sections: {
+    1:  { icon: '🎯', accent: 'authority', title: 'Customer Intelligence' },
+    2:  { icon: '🔧', accent: 'value',     title: 'Jobs To Be Done' },
+    3:  { icon: '⚔️', accent: 'danger',    title: 'Competitive Warfare' },
+    4:  { icon: '🌊', accent: 'velocity',  title: 'Blue Ocean Opportunities' },
+    5:  { icon: '🏛️', accent: 'authority', title: 'Brand Positioning' },
+    6:  { icon: '📚', accent: 'value',     title: 'Content Pillars' },
+    7:  { icon: '🏰', accent: 'value',     title: 'Strategic Moat' },
+    8:  { icon: '📋', accent: 'velocity',  title: 'Action Plan' },
+    9:  { icon: '🤖', accent: 'authority', title: 'AEO Citation Readiness' },
+    10: { icon: '💰', accent: 'value',     title: 'Asset Valuation' },
+    11: { icon: '⚠️', accent: 'danger',    title: 'Algorithmic Risk' },
+    12: { icon: '🕳️', accent: 'velocity',  title: 'Semantic Galaxy' },
+    13: { icon: '🚀', accent: 'danger',    title: 'Strategic Imperatives' },
+    14: { icon: '🔗', accent: 'authority', title: 'Cross-Stage Prep' }
+  },
+  
+  /**
+   * Get section metadata by ID
+   */
+  get(sectionId) {
+    const id = parseInt(sectionId, 10);
+    return this.sections[id] || { icon: '📊', accent: 'neutral', title: `Section ${id}` };
+  },
+  
+  /**
+   * Get CSS accent class
+   */
+  getAccentClass(sectionId) {
+    const { accent } = this.get(sectionId);
+    return `accent-${accent}`;
+  },
+  
+  /**
+   * Render section header HTML
+   */
+  renderHeader(sectionId, customTitle) {
+    const { icon, title } = this.get(sectionId);
+    const displayTitle = customTitle || title;
+    
+    return `
+      <div class="hero-section-header">
+        <span class="hero-section-icon">${icon}</span>
+        <h3 class="hero-section-title">${displayTitle}</h3>
+      </div>
+    `;
+  }
+};
+
+// Export for use
+if (typeof window !== 'undefined') {
+  window.SectionIconMap = SectionIconMap;
+}
+</script>

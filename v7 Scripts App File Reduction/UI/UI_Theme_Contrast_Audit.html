@@ -1,0 +1,161 @@
+<!--
+  UI_Theme_Contrast_Audit.html
+  THEME CONTRAST AUDIT UTILITY v1.0
+  
+  Verify all 4 themes pass WCAG AA (4.5:1 contrast ratio)
+  Run in browser console for automated testing
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 36: THEME CONTRAST AUDIT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ThemeContrastAudit = {
+  
+  // WCAG AA minimum ratios
+  WCAG_AA_NORMAL: 4.5,
+  WCAG_AA_LARGE: 3.0,
+  
+  // Theme color definitions
+  themes: {
+    light: {
+      headerBg: '#FFFFFF',
+      headerText: '#0F172A',
+      cardBg: '#F8FAFC',
+      bodyText: '#1E293B',
+      mutedText: '#64748B'
+    },
+    dark: {
+      headerBg: '#312E81',
+      headerText: '#F1F5F9',
+      cardBg: '#1E293B',
+      bodyText: '#E2E8F0',
+      mutedText: '#94A3B8'
+    },
+    aurora: {
+      headerBg: '#0F172A',
+      headerText: '#34D399',
+      cardBg: '#1E293B',
+      bodyText: '#F1F5F9',
+      mutedText: '#94A3B8'
+    },
+    neon: {
+      headerBg: '#000000',
+      headerText: '#F59E0B',
+      cardBg: '#0A0A0A',
+      bodyText: '#E6EDF3',
+      mutedText: '#94A3B8'
+    }
+  },
+  
+  /**
+   * Run full audit on all themes
+   */
+  runAudit() {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('WCAG AA CONTRAST AUDIT — All Themes');
+    console.log('═══════════════════════════════════════════════════════════\n');
+    
+    const results = { passed: 0, failed: 0, warnings: [] };
+    
+    Object.entries(this.themes).forEach(([themeName, colors]) => {
+      console.log(`\n📋 ${themeName.toUpperCase()} THEME:`);
+      console.log('───────────────────────────────────────');
+      
+      // Test header text on header bg
+      this.testPair('Header Text', colors.headerText, colors.headerBg, results);
+      
+      // Test body text on card bg
+      this.testPair('Body Text', colors.bodyText, colors.cardBg, results);
+      
+      // Test muted text on card bg
+      this.testPair('Muted Text', colors.mutedText, colors.cardBg, results, true);
+    });
+    
+    console.log('\n═══════════════════════════════════════════════════════════');
+    console.log(`RESULTS: ${results.passed} PASSED | ${results.failed} FAILED`);
+    console.log('═══════════════════════════════════════════════════════════');
+    
+    if (results.warnings.length > 0) {
+      console.log('\n⚠️ WARNINGS:');
+      results.warnings.forEach(w => console.log(`  - ${w}`));
+    }
+    
+    return results;
+  },
+  
+  /**
+   * Test a single color pair
+   */
+  testPair(name, foreground, background, results, isLargeText = false) {
+    const ratio = this.getContrastRatio(foreground, background);
+    const required = isLargeText ? this.WCAG_AA_LARGE : this.WCAG_AA_NORMAL;
+    const passed = ratio >= required;
+    
+    const status = passed ? '✅' : '❌';
+    console.log(`  ${status} ${name}: ${ratio.toFixed(2)}:1 (min ${required}:1)`);
+    
+    if (passed) {
+      results.passed++;
+    } else {
+      results.failed++;
+      results.warnings.push(`${name}: ${ratio.toFixed(2)}:1 < ${required}:1`);
+    }
+    
+    return passed;
+  },
+  
+  /**
+   * Calculate contrast ratio between two colors
+   */
+  getContrastRatio(color1, color2) {
+    const lum1 = this.getLuminance(color1);
+    const lum2 = this.getLuminance(color2);
+    
+    const lighter = Math.max(lum1, lum2);
+    const darker = Math.min(lum1, lum2);
+    
+    return (lighter + 0.05) / (darker + 0.05);
+  },
+  
+  /**
+   * Calculate relative luminance
+   */
+  getLuminance(hex) {
+    const rgb = this.hexToRgb(hex);
+    
+    const r = this.sRGBtoLinear(rgb.r / 255);
+    const g = this.sRGBtoLinear(rgb.g / 255);
+    const b = this.sRGBtoLinear(rgb.b / 255);
+    
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  },
+  
+  /**
+   * Convert sRGB to linear
+   */
+  sRGBtoLinear(value) {
+    return value <= 0.03928
+      ? value / 12.92
+      : Math.pow((value + 0.055) / 1.055, 2.4);
+  },
+  
+  /**
+   * Convert hex to RGB
+   */
+  hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+  }
+};
+
+// Auto-run on load if in dev mode
+if (typeof window !== 'undefined') {
+  window.ThemeContrastAudit = ThemeContrastAudit;
+  console.log('💡 Run ThemeContrastAudit.runAudit() to check contrast ratios');
+}
+</script>

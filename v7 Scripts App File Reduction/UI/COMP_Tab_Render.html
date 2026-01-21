@@ -27,12 +27,247 @@
   };
 
   /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * v31.3 DATA NORMALIZER - Ensures V6 Elite features work in V7
+   * Mirrors PHP competitor_handler.php v30.1 normalization
+   * v31.3: Added SERP data normalization (PAA, Related Searches, Organic)
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  function normalizeCompetitorData(data) {
+    if (!data) return data;
+    
+    console.log('🔄 [v31.3] Normalizing competitor data for UI compatibility...');
+    
+    // 1. GEMINI ANALYSIS → ANALYSIS (UI expects "analysis" not "geminiAnalysis")
+    if (data.geminiAnalysis && !data.analysis) {
+      data.analysis = data.geminiAnalysis;
+      console.log('   ✅ Created analysis from geminiAnalysis');
+    }
+    
+    // 2. SURFACE EXECUTIVE BRIEF TO TOP LEVEL
+    const execBrief = data.geminiAnalysis?.executiveBrief || data.analysis?.executiveBrief;
+    if (execBrief && !data.executiveBrief) {
+      data.executiveBrief = execBrief;
+      console.log('   ✅ Surfaced executiveBrief to top level - keys:', Object.keys(execBrief));
+    }
+    
+    // 3. SURFACE KILL MOVES TO TOP LEVEL
+    const killMoves = data.geminiAnalysis?.killMoves || data.analysis?.killMoves;
+    if (killMoves && Array.isArray(killMoves) && !data.killMoves) {
+      data.killMoves = killMoves;
+      console.log('   ✅ Surfaced killMoves to top level - count:', killMoves.length);
+    }
+    
+    // 4. SURFACE ESTIMATED METRICS
+    const estMetrics = data.geminiAnalysis?.estimatedMetrics || data.analysis?.estimatedMetrics;
+    if (estMetrics && Array.isArray(estMetrics) && !data.estimatedMetrics) {
+      data.estimatedMetrics = estMetrics;
+      console.log('   ✅ Surfaced estimatedMetrics to top level - count:', estMetrics.length);
+    }
+    
+    // 5. SURFACE MARKET INTELLIGENCE
+    const marketIntel = data.geminiAnalysis?.marketIntelligence || data.analysis?.marketIntelligence;
+    if (marketIntel && !data.marketIntelligence) {
+      data.marketIntelligence = marketIntel;
+      console.log('   ✅ Surfaced marketIntelligence to top level');
+    }
+    
+    // 6. SURFACE KEYWORD INTELLIGENCE
+    const keywordIntel = data.geminiAnalysis?.keywordIntelligence || data.analysis?.keywordIntelligence;
+    if (keywordIntel && !data.keywordIntelligence) {
+      data.keywordIntelligence = keywordIntel;
+      console.log('   ✅ Surfaced keywordIntelligence to top level');
+    }
+    
+    // 7. SURFACE CATEGORIES
+    const categories = data.geminiAnalysis?.categories || data.analysis?.categories;
+    if (categories && Array.isArray(categories) && !data.categories) {
+      data.categories = categories;
+      console.log('   ✅ Surfaced categories to top level - count:', categories.length);
+    }
+    
+    // 8. SURFACE COMPETITOR RANKINGS
+    const rankings = data.geminiAnalysis?.competitorRankings || data.analysis?.competitorRankings;
+    if (rankings && Array.isArray(rankings) && !data.competitorRankings) {
+      data.competitorRankings = rankings;
+      console.log('   ✅ Surfaced competitorRankings to top level - count:', rankings.length);
+    }
+    
+    // 9. TRANSFORM rawData → competitors array
+    if ((!data.competitors || data.competitors.length === 0) && data.rawData && typeof data.rawData === 'object') {
+      console.log('   🔄 competitorsArray missing, transforming from rawData...');
+      const competitorsArray = [];
+      Object.entries(data.rawData).forEach(([domain, compData]) => {
+        if (typeof compData === 'object' && !compData._trimmed) {
+          compData.domain = compData.domain || domain;
+          competitorsArray.push(compData);
+        }
+      });
+      if (competitorsArray.length > 0) {
+        data.competitors = competitorsArray;
+        console.log('   ✅ Transformed', competitorsArray.length, 'competitors from rawData');
+      }
+    }
+    
+    // 10. USE competitorsArray if competitors is empty
+    if ((!data.competitors || data.competitors.length === 0) && data.competitorsArray && data.competitorsArray.length > 0) {
+      data.competitors = data.competitorsArray;
+      console.log('   ✅ Used competitorsArray as competitors - count:', data.competitors.length);
+    }
+    
+    // 11. MERGE GEMINI ESTIMATED METRICS INTO COMPETITORS
+    if (data.estimatedMetrics && Array.isArray(data.estimatedMetrics) && data.competitors && data.competitors.length > 0) {
+      const metricsMap = {};
+      data.estimatedMetrics.forEach(metric => {
+        const domain = (metric.domain || '').toLowerCase();
+        if (domain) metricsMap[domain] = metric;
+      });
+      
+      let mergedCount = 0;
+      data.competitors.forEach(comp => {
+        const compDomain = (comp.domain || '').toLowerCase();
+        const geminiMetrics = metricsMap[compDomain];
+        if (geminiMetrics) {
+          comp.processedMetrics = comp.processedMetrics || {};
+          if (geminiMetrics.organicTraffic) {
+            comp.processedMetrics.geminiTraffic = geminiMetrics.organicTraffic;
+            comp.processedMetrics.estimatedTraffic = geminiMetrics.organicTraffic;
+          }
+          if (geminiMetrics.organicKeywords) {
+            comp.processedMetrics.geminiKeywords = geminiMetrics.organicKeywords;
+            comp.processedMetrics.estimatedKeywords = geminiMetrics.organicKeywords;
+          }
+          if (geminiMetrics.backlinks) {
+            comp.processedMetrics.geminiBacklinks = geminiMetrics.backlinks;
+          }
+          if (geminiMetrics.authorityScore) {
+            comp.processedMetrics.geminiAuthority = geminiMetrics.authorityScore;
+          }
+          if (geminiMetrics.siteType) {
+            comp.processedMetrics.siteType = geminiMetrics.siteType;
+          }
+          mergedCount++;
+        }
+      });
+      if (mergedCount > 0) {
+        console.log('   ✅ Merged Gemini estimated metrics into', mergedCount, 'competitors');
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v31.3 FIX: NORMALIZE SERP DATA FOR EACH COMPETITOR
+    // The data is in synthesized.serpFeatures but UI expects it in apiData.serper
+    // Also surface PAA and Related Searches from all possible locations
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (data.competitors && data.competitors.length > 0) {
+      let serpNormalizedCount = 0;
+      data.competitors.forEach(comp => {
+        // Ensure apiData.serper structure exists
+        if (!comp.apiData) comp.apiData = {};
+        if (!comp.apiData.serper) comp.apiData.serper = {};
+        
+        // SOURCE 1: synthesized.serpFeatures (Gemini-generated)
+        const serpFeatures = comp.synthesized?.serpFeatures || {};
+        
+        // SOURCE 2: synthesized.seo (PAA from keyword profiles)
+        const seoData = comp.synthesized?.seo || {};
+        
+        // SOURCE 3: stages.serper.data (direct API response)
+        const stagesSerper = comp.stages?.serper?.data || {};
+        
+        // MERGE PAA from all sources (dedupe by question)
+        const allPAA = [];
+        const seenQuestions = new Set();
+        
+        [serpFeatures.peopleAlsoAsk, seoData.peopleAlsoAsk, stagesSerper.peopleAlsoAsk, comp.apiData.serper.peopleAlsoAsk].forEach(paaSource => {
+          if (Array.isArray(paaSource)) {
+            paaSource.forEach(paa => {
+              const q = paa?.question || paa;
+              if (q && !seenQuestions.has(q.toLowerCase())) {
+                seenQuestions.add(q.toLowerCase());
+                allPAA.push(typeof paa === 'string' ? { question: paa } : paa);
+              }
+            });
+          }
+        });
+        
+        // MERGE Related Searches from all sources
+        const allRelated = [];
+        const seenRelated = new Set();
+        
+        [serpFeatures.relatedSearches, seoData.relatedSearches, stagesSerper.relatedSearches, comp.apiData.serper.relatedSearches].forEach(relSource => {
+          if (Array.isArray(relSource)) {
+            relSource.forEach(rel => {
+              const q = rel?.query || rel;
+              if (q && !seenRelated.has(q.toLowerCase())) {
+                seenRelated.add(q.toLowerCase());
+                allRelated.push(typeof rel === 'string' ? { query: rel } : rel);
+              }
+            });
+          }
+        });
+        
+        // MERGE Organic results
+        const allOrganic = stagesSerper.organic || comp.apiData.serper.organic || seoData.organic || [];
+        
+        // Apply normalized SERP data
+        if (allPAA.length > 0) {
+          comp.apiData.serper.peopleAlsoAsk = allPAA;
+          // Also update synthesized for consistency
+          if (!comp.synthesized) comp.synthesized = {};
+          if (!comp.synthesized.seo) comp.synthesized.seo = {};
+          comp.synthesized.seo.peopleAlsoAsk = allPAA;
+        }
+        
+        if (allRelated.length > 0) {
+          comp.apiData.serper.relatedSearches = allRelated;
+          if (!comp.synthesized) comp.synthesized = {};
+          if (!comp.synthesized.seo) comp.synthesized.seo = {};
+          comp.synthesized.seo.relatedSearches = allRelated;
+        }
+        
+        if (allOrganic.length > 0) {
+          comp.apiData.serper.organic = allOrganic;
+        }
+        
+        // Also ensure stages.serper.data is populated for legacy code
+        if (!comp.stages) comp.stages = {};
+        if (!comp.stages.serper) comp.stages.serper = { success: true, data: {} };
+        comp.stages.serper.data.peopleAlsoAsk = allPAA;
+        comp.stages.serper.data.relatedSearches = allRelated;
+        comp.stages.serper.data.organic = allOrganic;
+        
+        if (allPAA.length > 0 || allRelated.length > 0) {
+          serpNormalizedCount++;
+        }
+      });
+      
+      if (serpNormalizedCount > 0) {
+        console.log('   ✅ [v31.3] Normalized SERP data for', serpNormalizedCount, 'competitors');
+      }
+    }
+    
+    console.log('🔄 [v31.3] Normalization complete. Final structure:');
+    console.log('   - competitors:', data.competitors?.length || 0);
+    console.log('   - analysis:', !!data.analysis);
+    console.log('   - executiveBrief:', !!data.executiveBrief);
+    console.log('   - killMoves:', data.killMoves?.length || 0);
+    console.log('   - estimatedMetrics:', data.estimatedMetrics?.length || 0);
+    
+    return data;
+  }
+
+  /**
    * Render complete competitor intelligence UI
    * Updated to use existing HTML structure from components_competitors.html
+   * v31.3: Added data normalization for V6 Elite features + SERP data
    */
   window.renderCompetitorIntelligence = function(data) {
     try {
       console.log('🎨 Rendering Competitor Intelligence UI with data:', data);
+      
+      // v30.2: NORMALIZE DATA BEFORE RENDERING
+      data = normalizeCompetitorData(data);
 
       // ═══════════════════════════════════════════════════════════════════════════
       // CRITICAL: Remove any stale data warning banners FIRST
@@ -126,19 +361,47 @@
 
       if (hasGeminiData) {
         console.log('📊 ELITE FORMAT DETECTED: Populating tabs from Gemini Analysis...');
+        
+        // V42.0: DIAGNOSTIC - Check if scripts loaded at all
+        console.log('[V42] SCRIPT LOAD FLAGS:');
+        console.log('   window._v42_test_loaded:', window._v42_test_loaded);
+        console.log('   window._v41_conversion_loaded:', window._v41_conversion_loaded);
+        console.log('   window._v41_audience_loaded:', window._v41_audience_loaded);
+        console.log('   window._v41_authperf_loaded:', window._v41_authperf_loaded);
+        console.log('   testV42Function:', typeof window.testV42Function);
+        
+        // V38.8: DIAGNOSTIC - Log function availability for problematic tabs
+        console.log('🔍 [V38.8] TAB FUNCTION AVAILABILITY CHECK:');
+        console.log('   populateCategoryIntelligenceTab:', typeof populateCategoryIntelligenceTab);
+        console.log('   populateBrandPositioningTab:', typeof populateBrandPositioningTab);
+        console.log('   populateTechnicalSEOTab:', typeof populateTechnicalSEOTab);
+        console.log('   populateContentIntelligenceTab:', typeof populateContentIntelligenceTab);
+        console.log('   populateKeywordStrategyTab:', typeof populateKeywordStrategyTab);
+        console.log('   populateContentSystemsTab:', typeof populateContentSystemsTab);
+        console.log('   populateConversionDataTab:', typeof populateConversionDataTab, '| window:', typeof window.populateConversionDataTab);
+        console.log('   populateDistributionDataTab:', typeof populateDistributionDataTab);
+        console.log('   populateAudienceIntelligenceTab:', typeof populateAudienceIntelligenceTab, '| window:', typeof window.populateAudienceIntelligenceTab);
+        console.log('   populateGeoAeoIntelligenceTab:', typeof populateGeoAeoIntelligenceTab);
+        console.log('   populateAuthorityInfluenceTab:', typeof populateAuthorityInfluenceTab, '| window:', typeof window.populateAuthorityInfluenceTab);
+        console.log('   populatePerformancePredictiveTab:', typeof populatePerformancePredictiveTab);
+        console.log('   populateStrategicOpportunitiesTab:', typeof populateStrategicOpportunitiesTab);
+        console.log('   populateScoringEngineTab:', typeof populateScoringEngineTab);
+        console.log('🔍 [V38.8] END FUNCTION CHECK');
+        
         if (typeof populateCategoryIntelligenceTab === 'function') populateCategoryIntelligenceTab(data);
         if (typeof populateBrandPositioningTab === 'function') populateBrandPositioningTab(data);
         if (typeof populateTechnicalSEOTab === 'function') populateTechnicalSEOTab(data);
         if (typeof populateContentIntelligenceTab === 'function') populateContentIntelligenceTab(data);
         if (typeof populateKeywordStrategyTab === 'function') populateKeywordStrategyTab(data);
         if (typeof populateContentSystemsTab === 'function') populateContentSystemsTab(data);
-        if (typeof populateConversionDataTab === 'function') populateConversionDataTab(data);
-        if (typeof populateDistributionDataTab === 'function') populateDistributionDataTab(data);
-        if (typeof populateAudienceIntelligenceTab === 'function') populateAudienceIntelligenceTab(data);
-        if (typeof populateGeoAeoIntelligenceTab === 'function') populateGeoAeoIntelligenceTab(data);
-        if (typeof populateAuthorityInfluenceTab === 'function') populateAuthorityInfluenceTab(data);
-        if (typeof populatePerformancePredictiveTab === 'function') populatePerformancePredictiveTab(data);
-        if (typeof populateStrategicOpportunitiesTab === 'function') populateStrategicOpportunitiesTab(data);
+        // V43: Use window. for modular tab functions
+        if (typeof window.populateConversionDataTab === 'function') window.populateConversionDataTab(data);
+        if (typeof window.populateDistributionDataTab === 'function') window.populateDistributionDataTab(data);
+        if (typeof window.populateAudienceIntelligenceTab === 'function') window.populateAudienceIntelligenceTab(data);
+        if (typeof window.populateGeoAeoIntelligenceTab === 'function') window.populateGeoAeoIntelligenceTab(data);
+        if (typeof window.populateAuthorityInfluenceTab === 'function') window.populateAuthorityInfluenceTab(data);
+        if (typeof window.populatePerformancePredictiveTab === 'function') window.populatePerformancePredictiveTab(data);
+        if (typeof window.populateStrategicOpportunitiesTab === 'function') window.populateStrategicOpportunitiesTab(data);
         if (typeof populateScoringEngineTab === 'function') populateScoringEngineTab(data);
       } else if (data.analysis && data.analysis.categories && Array.isArray(data.analysis.categories)) {
         if (typeof populateAllTabsFromCategories === 'function') {
@@ -151,13 +414,14 @@
         if (data.intelligence.categoryIntelligence && typeof populateCategoryIntelligenceTab === 'function') populateCategoryIntelligenceTab(data);
         if (data.intelligence.brandPositioning && typeof populateBrandPositioningTab === 'function') populateBrandPositioningTab(data);
         if (data.intelligence.contentSystems && typeof populateContentSystemsTab === 'function') populateContentSystemsTab(data);
-        if (data.intelligence.conversionData && typeof populateConversionDataTab === 'function') populateConversionDataTab(data);
-        if (data.intelligence.distributionData && typeof populateDistributionDataTab === 'function') populateDistributionDataTab(data);
-        if (data.intelligence.audienceIntelligence && typeof populateAudienceIntelligenceTab === 'function') populateAudienceIntelligenceTab(data);
-        if (data.intelligence.geoAeoIntelligence && typeof populateGeoAeoIntelligenceTab === 'function') populateGeoAeoIntelligenceTab(data);
-        if (data.intelligence.authorityInfluence && typeof populateAuthorityInfluenceTab === 'function') populateAuthorityInfluenceTab(data);
-        if (data.intelligence.performancePredictive && typeof populatePerformancePredictiveTab === 'function') populatePerformancePredictiveTab(data);
-        if (data.intelligence.strategicOpportunities && typeof populateStrategicOpportunitiesTab === 'function') populateStrategicOpportunitiesTab(data);
+        // V43: Use window. for modular tab functions
+        if (data.intelligence.conversionData && typeof window.populateConversionDataTab === 'function') window.populateConversionDataTab(data);
+        if (data.intelligence.distributionData && typeof window.populateDistributionDataTab === 'function') window.populateDistributionDataTab(data);
+        if (data.intelligence.audienceIntelligence && typeof window.populateAudienceIntelligenceTab === 'function') window.populateAudienceIntelligenceTab(data);
+        if (data.intelligence.geoAeoIntelligence && typeof window.populateGeoAeoIntelligenceTab === 'function') window.populateGeoAeoIntelligenceTab(data);
+        if (data.intelligence.authorityInfluence && typeof window.populateAuthorityInfluenceTab === 'function') window.populateAuthorityInfluenceTab(data);
+        if (data.intelligence.performancePredictive && typeof window.populatePerformancePredictiveTab === 'function') window.populatePerformancePredictiveTab(data);
+        if (data.intelligence.strategicOpportunities && typeof window.populateStrategicOpportunitiesTab === 'function') window.populateStrategicOpportunitiesTab(data);
         if (data.intelligence.scoringEngine && typeof populateScoringEngineTab === 'function') populateScoringEngineTab(data);
       } else {
         console.log('⚠️ No structured data found for tab population - attempting fallback...');

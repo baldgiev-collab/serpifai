@@ -1,0 +1,137 @@
+<!--
+  UI_Chart_Action_Bar.html
+  CHART ACTION BAR v1.0
+  
+  Overlay buttons: Save PNG, Fullscreen, Info
+  Positioned top-right of chart container
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 17: CHART ACTION BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.chart-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chart-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+}
+
+.chart-action-btn:hover {
+  background: var(--accent-authority);
+  border-color: var(--accent-authority);
+  color: white;
+}
+
+.chart-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Tooltip */
+.chart-action-btn[title] {
+  position: relative;
+}
+
+/* Theme: Neon glow on hover */
+[data-theme="neon"] .chart-action-btn:hover {
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHART ACTION FUNCTIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ChartActions = {
+  
+  /**
+   * Render action bar HTML
+   */
+  render(chartId) {
+    return `
+      <div class="chart-actions">
+        <button class="chart-action-btn" title="Download PNG" onclick="ChartActions.downloadPNG('${chartId}')">💾</button>
+        <button class="chart-action-btn" title="Fullscreen" onclick="ChartActions.fullscreen('${chartId}')">⛶</button>
+        <button class="chart-action-btn" title="Chart Info" onclick="ChartActions.showInfo('${chartId}')">ℹ️</button>
+      </div>
+    `;
+  },
+  
+  /**
+   * Download chart as PNG
+   */
+  downloadPNG(chartId) {
+    const container = document.getElementById(chartId);
+    const svg = container.querySelector('svg');
+    if (!svg) return alert('No chart to download');
+    
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    canvas.width = svg.clientWidth * 2;
+    canvas.height = svg.clientHeight * 2;
+    ctx.scale(2, 2);
+    
+    img.onload = () => {
+      ctx.fillStyle = ChartThemeColors.getBackground();
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      const link = document.createElement('a');
+      link.download = `chart-${chartId}-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  },
+  
+  /**
+   * Open chart in fullscreen modal
+   */
+  fullscreen(chartId) {
+    const container = document.getElementById(chartId);
+    if (container.requestFullscreen) {
+      container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) {
+      container.webkitRequestFullscreen();
+    }
+  },
+  
+  /**
+   * Show chart methodology info
+   */
+  showInfo(chartId) {
+    const info = {
+      'mindmap': 'Force-directed graph showing content pillars and their keyword clusters.',
+      'galaxy': 'Semantic visualization of topic relationships and opportunity gaps.',
+      'default': 'Interactive visualization of analysis data.'
+    };
+    
+    const type = chartId.includes('mindmap') ? 'mindmap' : 
+                 chartId.includes('galaxy') ? 'galaxy' : 'default';
+    
+    alert(info[type]);
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.ChartActions = ChartActions;
+}
+</script>

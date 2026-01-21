@@ -1,0 +1,143 @@
+<!--
+  UI_Responsive_Breakpoint_Test.html
+  RESPONSIVE BREAKPOINT TESTING UTILITY v1.0
+  
+  Test layouts at key breakpoints: 1400px, 1024px, 768px
+  Validates grid columns, chart heights, card layouts
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 38: RESPONSIVE BREAKPOINT TESTING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const ResponsiveBreakpointTest = {
+  
+  // Key breakpoints from Command Canvas design
+  BREAKPOINTS: {
+    ultrawide: { width: 1400, expectedCardCols: 3, chartHeight: 550 },
+    desktop: { width: 1024, expectedCardCols: 2, chartHeight: 550 },
+    tablet: { width: 768, expectedCardCols: 1, chartHeight: 400 }
+  },
+  
+  /**
+   * Run tests at current viewport
+   */
+  runCurrentViewportTest() {
+    const width = window.innerWidth;
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log(`RESPONSIVE TEST — Current Viewport: ${width}px`);
+    console.log('═══════════════════════════════════════════════════════════\n');
+    
+    const breakpoint = this.getBreakpointName(width);
+    console.log(`📐 Detected Breakpoint: ${breakpoint.toUpperCase()}`);
+    
+    return this.runLayoutChecks(breakpoint);
+  },
+  
+  /**
+   * Get breakpoint name from width
+   */
+  getBreakpointName(width) {
+    if (width >= 1400) return 'ultrawide';
+    if (width >= 1024) return 'desktop';
+    return 'tablet';
+  },
+  
+  /**
+   * Run layout validation checks
+   */
+  runLayoutChecks(breakpoint) {
+    const expected = this.BREAKPOINTS[breakpoint];
+    const results = { passed: 0, failed: 0, checks: [] };
+    
+    // Check 1: Competitor Card Grid Columns
+    const cardGrid = document.querySelector('.competitor-card-grid');
+    if (cardGrid) {
+      const style = window.getComputedStyle(cardGrid);
+      const cols = style.gridTemplateColumns.split(' ').length;
+      const check = {
+        name: 'Card Grid Columns',
+        expected: expected.expectedCardCols,
+        actual: cols,
+        passed: cols === expected.expectedCardCols
+      };
+      results.checks.push(check);
+      check.passed ? results.passed++ : results.failed++;
+      console.log(`  ${check.passed ? '✅' : '❌'} ${check.name}: ${cols} cols (expected ${expected.expectedCardCols})`);
+    }
+    
+    // Check 2: Chart Stage Height
+    const chartStage = document.querySelector('.chart-stage');
+    if (chartStage) {
+      const rect = chartStage.getBoundingClientRect();
+      const tolerance = 50; // Allow 50px tolerance
+      const check = {
+        name: 'Chart Stage Height',
+        expected: expected.chartHeight,
+        actual: Math.round(rect.height),
+        passed: Math.abs(rect.height - expected.chartHeight) <= tolerance
+      };
+      results.checks.push(check);
+      check.passed ? results.passed++ : results.failed++;
+      console.log(`  ${check.passed ? '✅' : '❌'} ${check.name}: ${check.actual}px (expected ~${expected.chartHeight}px)`);
+    }
+    
+    // Check 3: Command Canvas Zone Order
+    const canvas = document.querySelector('.command-canvas');
+    if (canvas) {
+      const zones = canvas.querySelectorAll('.hero-verdict, .chart-stage, .forensic-accordion');
+      const check = {
+        name: 'Canvas Zone Order',
+        expected: 3,
+        actual: zones.length,
+        passed: zones.length === 3
+      };
+      results.checks.push(check);
+      check.passed ? results.passed++ : results.failed++;
+      console.log(`  ${check.passed ? '✅' : '❌'} ${check.name}: ${zones.length} zones found`);
+    }
+    
+    // Check 4: No Horizontal Overflow
+    const body = document.body;
+    const hasOverflow = body.scrollWidth > body.clientWidth;
+    const check = {
+      name: 'No Horizontal Overflow',
+      expected: false,
+      actual: hasOverflow,
+      passed: !hasOverflow
+    };
+    results.checks.push(check);
+    check.passed ? results.passed++ : results.failed++;
+    console.log(`  ${check.passed ? '✅' : '❌'} ${check.name}: ${hasOverflow ? 'OVERFLOW DETECTED' : 'Clean'}`);
+    
+    console.log('\n═══════════════════════════════════════════════════════════');
+    console.log(`RESULTS: ${results.passed} PASSED | ${results.failed} FAILED`);
+    console.log('═══════════════════════════════════════════════════════════');
+    
+    return results;
+  },
+  
+  /**
+   * Simulate a breakpoint (for DevTools testing)
+   */
+  logBreakpointGuide() {
+    console.log('\n📱 BREAKPOINT TESTING GUIDE:');
+    console.log('────────────────────────────────────────');
+    console.log('  DevTools → Toggle Device Toolbar (Ctrl+Shift+M)');
+    console.log('  Set these widths to test each breakpoint:\n');
+    
+    Object.entries(this.BREAKPOINTS).forEach(([name, config]) => {
+      console.log(`  ${name.toUpperCase()}: ${config.width}px`);
+      console.log(`    → Cards: ${config.expectedCardCols} columns`);
+      console.log(`    → Chart: ${config.chartHeight}px height\n`);
+    });
+  }
+};
+
+// Expose globally
+if (typeof window !== 'undefined') {
+  window.ResponsiveBreakpointTest = ResponsiveBreakpointTest;
+  console.log('💡 Run ResponsiveBreakpointTest.runCurrentViewportTest()');
+  console.log('💡 Run ResponsiveBreakpointTest.logBreakpointGuide() for help');
+}
+</script>

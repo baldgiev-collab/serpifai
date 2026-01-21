@@ -1,0 +1,144 @@
+<!--
+  UI_D3_Hydration.html
+  D3.JS HYDRATION FIX v1.0
+  
+  Task 14: IntersectionObserver lazy-load (50% visible trigger)
+  Task 15: Data handoff verification + shimmer fallback
+-->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 14 & 15: D3.JS HYDRATION ENGINE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const D3Hydration = {
+  
+  observers: new Map(),
+  renderedCharts: new Set(),
+  
+  /**
+   * Initialize chart hydration with IntersectionObserver
+   */
+  init(containerSelector, renderFn, data) {
+    const containers = document.querySelectorAll(containerSelector);
+    
+    containers.forEach(container => {
+      const chartId = container.id || `chart-${Date.now()}`;
+      container.id = chartId;
+      
+      // Show skeleton while waiting
+      this.showSkeleton(container);
+      
+      // Verify data exists (Task 15)
+      if (!this.verifyData(data, container)) return;
+      
+      // Create observer (Task 14)
+      const observer = new IntersectionObserver(
+        (entries) => this.handleIntersection(entries, renderFn, data),
+        { threshold: 0.5, rootMargin: '50px' }
+      );
+      
+      observer.observe(container);
+      this.observers.set(chartId, observer);
+    });
+  },
+  
+  /**
+   * Handle visibility intersection
+   */
+  handleIntersection(entries, renderFn, data) {
+    entries.forEach(entry => {
+      const container = entry.target;
+      const chartId = container.id;
+      
+      if (entry.isIntersecting && !this.renderedCharts.has(chartId)) {
+        // Visible and not yet rendered
+        this.hideSkeleton(container);
+        try {
+          renderFn(container, data);
+          this.renderedCharts.add(chartId);
+        } catch (err) {
+          this.showError(container, err.message);
+        }
+      }
+    });
+  },
+  
+  /**
+   * Task 15: Verify data exists before render
+   */
+  verifyData(data, container) {
+    if (!data) {
+      this.showNoData(container, 'Awaiting analysis data...');
+      return false;
+    }
+    
+    if (!data.dashboardCharts && !data.chartData && !data.nodes) {
+      this.showNoData(container, 'No chart data available');
+      return false;
+    }
+    
+    return true;
+  },
+  
+  /**
+   * Show shimmer skeleton
+   */
+  showSkeleton(container) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'skeleton skeleton-chart';
+    skeleton.setAttribute('data-skeleton', 'true');
+    container.appendChild(skeleton);
+  },
+  
+  /**
+   * Hide skeleton
+   */
+  hideSkeleton(container) {
+    const skeleton = container.querySelector('[data-skeleton]');
+    if (skeleton) skeleton.remove();
+  },
+  
+  /**
+   * Show "No Data" state
+   */
+  showNoData(container, message) {
+    this.hideSkeleton(container);
+    container.innerHTML = `
+      <div class="chart-fallback chart-fallback--nodata">
+        <span class="chart-fallback-icon">📊</span>
+        <p class="chart-fallback-text">${message}</p>
+      </div>
+    `;
+  },
+  
+  /**
+   * Show error state with retry
+   */
+  showError(container, message) {
+    this.hideSkeleton(container);
+    container.innerHTML = `
+      <div class="chart-fallback chart-fallback--error">
+        <span class="chart-fallback-icon">⚠️</span>
+        <p class="chart-fallback-text">Chart failed to render</p>
+        <button class="btn-retry" onclick="location.reload()">Retry</button>
+      </div>
+    `;
+  },
+  
+  /**
+   * Cleanup observers on destroy
+   */
+  destroy(chartId) {
+    const observer = this.observers.get(chartId);
+    if (observer) {
+      observer.disconnect();
+      this.observers.delete(chartId);
+    }
+    this.renderedCharts.delete(chartId);
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.D3Hydration = D3Hydration;
+}
+</script>

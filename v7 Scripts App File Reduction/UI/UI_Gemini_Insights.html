@@ -34,21 +34,22 @@
     console.log(`🔍 Extracting Gemini insights for tab: ${tabName}`);
 
     // Map tabs to their corresponding Gemini category IDs AND Elite intelligence keys
+    // v23.2 FIX: Aligned with FT_GenerateEliteTabIntelligence keys from FT_Pipeline.gs
     const tabToCategoryMap = {
-      'content': { names: ['Content Strategy', 'Content Intelligence', 'Content', 'Content Strategy & Quality'], id: 4, eliteKey: 'contentStrategy' },
+      'content': { names: ['Content Strategy', 'Content Intelligence', 'Content', 'Content Strategy & Quality'], id: 4, eliteKey: 'contentStrategy', altKeys: ['contentIntelligence'] },
       'technical': { names: ['Technical SEO', 'Technical SEO Analysis'], id: 3, eliteKey: 'technicalSeo' },
-      'keywords': { names: ['Keyword Strategy', 'Keyword Strategy Analysis'], id: 5, eliteKey: 'keywordIntelligence' },
+      'keywords': { names: ['Keyword Strategy', 'Keyword Strategy Analysis'], id: 5, eliteKey: 'keywordStrategy', altKeys: ['keywordIntelligence'] },
       'market': { names: ['Market Position', 'Market Position Intelligence'], id: 1, eliteKey: 'marketIntelligence' },
-      'brand': { names: ['Brand Strategy', 'Brand Strategy & Messaging'], id: 2, eliteKey: 'brandStrategy' },
-      'systems': { names: ['Content Production', 'Content Production Systems'], id: 6, eliteKey: 'contentSystems' },
+      'brand': { names: ['Brand Strategy', 'Brand Strategy & Messaging'], id: 2, eliteKey: 'brandPosition', altKeys: ['brandStrategy'] },
+      'systems': { names: ['Content Production', 'Content Production Systems'], id: 6, eliteKey: 'contentOperations', altKeys: ['contentSystems'] },
       'conversion': { names: ['Conversion Optimization', 'Conversion'], id: 7, eliteKey: 'conversionMonetization' },
       'distribution': { names: ['User Experience', 'UX', 'Distribution'], id: 8, eliteKey: 'distributionVisibility' },
-      'audience': { names: ['Link Building', 'Audience', 'Audience Psychology', 'Link Building Strategy'], id: 9, eliteKey: 'audienceIntelligence' },
+      'audience': { names: ['Link Building', 'Audience', 'Audience Psychology', 'Link Building Strategy'], id: 9, eliteKey: 'audienceIntelligence', altKeys: ['audienceIntel'] },
       'geo': { names: ['Local SEO', 'GEO', 'AEO', 'Local SEO (if applicable)'], id: 10, eliteKey: 'geoAeo' },
-      'authority': { names: ['Social Media', 'Authority', 'Authority & Trust', 'Social Media Integration'], id: 11, eliteKey: 'authorityTrust' },
+      'authority': { names: ['Social Media', 'Authority', 'Authority & Trust', 'Social Media Integration'], id: 11, eliteKey: 'authority', altKeys: ['authorityTrust'] },
       'performance': { names: ['Analytics', 'Performance', 'Performance & Metrics', 'Analytics & Tracking'], id: 12, eliteKey: 'performance' },
-      'opportunity': { names: ['Technology Stack', 'Strategic Opportunities', 'Paid Search', 'Competitive Gaps', 'Paid Search Strategy'], ids: [13, 14], eliteKey: 'strategicOpportunities' },
-      'scoring': { names: ['Content Distribution', 'Actionable Recommendations', 'Scoring', 'Content Distribution & Promotion'], id: 15, eliteKey: 'scoringEngine' }
+      'opportunity': { names: ['Technology Stack', 'Strategic Opportunities', 'Paid Search', 'Competitive Gaps', 'Paid Search Strategy'], ids: [13, 14], eliteKey: 'opportunities', altKeys: ['strategicOpportunities'] },
+      'scoring': { names: ['Content Distribution', 'Actionable Recommendations', 'Scoring', 'Content Distribution & Promotion'], id: 15, eliteKey: 'overview', altKeys: ['scoringEngine'] }
     };
 
     // Get category mapping for this tab
@@ -62,10 +63,25 @@
     const analysis = data.analysis || data.geminiAnalysis || data.eliteTabIntelligence || {};
 
     // ELITE FORMAT: Try to extract from specific intelligence objects FIRST
+    // v23.2 FIX: Also check altKeys for backward compatibility
     if (mapping.eliteKey) {
-      const eliteData = analysis[mapping.eliteKey] || 
-                       data.eliteTabIntelligence?.[mapping.eliteKey] ||
-                       data.analysis?.[mapping.eliteKey];
+      // Try primary key first
+      let eliteData = analysis[mapping.eliteKey] || 
+                      data.eliteTabIntelligence?.[mapping.eliteKey] ||
+                      data.analysis?.[mapping.eliteKey];
+      
+      // If not found, try alternate keys
+      if ((!eliteData || Object.keys(eliteData).length === 0) && mapping.altKeys) {
+        for (const altKey of mapping.altKeys) {
+          eliteData = analysis[altKey] || 
+                      data.eliteTabIntelligence?.[altKey] ||
+                      data.analysis?.[altKey];
+          if (eliteData && Object.keys(eliteData).length > 0) {
+            console.log(`✅ Found Elite data via altKey: ${altKey} for tab: ${tabName}`);
+            break;
+          }
+        }
+      }
       
       if (eliteData && Object.keys(eliteData).length > 0) {
         console.log(`✅ Found Elite intelligence data for ${tabName}: ${mapping.eliteKey}`);
@@ -229,30 +245,134 @@
 
   /**
    * Generic renderer for Elite Intelligence data
+   * v23.3 FIX: Enhanced to handle actual Elite tab data structures (competitor arrays, metrics, etc.)
    */
   function renderGenericEliteInsights(data, tabName) {
     let html = `<h4 style="margin: 0 0 16px; color: #1e293b; font-size: 16px;">📊 ${tabName.charAt(0).toUpperCase() + tabName.slice(1)} Intelligence</h4>`;
     
-    const priorityKeys = ['summary', 'overview', 'recommendations', 'insights', 'findings', 'opportunities', 'gaps', 'analysis'];
+    // Check if data is empty or just contains metadata
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      return html + '<div style="color: #64748b; font-size: 14px; padding: 16px; background: white; border-radius: 10px;">No data available for this section.</div>';
+    }
+    
+    // v23.3: Handle competitor array data (most common Elite format)
+    if (Array.isArray(data) && data.length > 0 && data[0]?.domain) {
+      html += renderCompetitorComparisonTable(data, tabName);
+      return html;
+    }
+    
+    // v23.3: Handle objects with competitor arrays inside
+    const competitorKeys = ['competitors', 'competitorAnalysis', 'brandAnalysis', 'technicalScores', 'contentMetrics', 'authorityScores', 'performanceScores'];
+    for (const key of competitorKeys) {
+      if (Array.isArray(data[key]) && data[key].length > 0 && data[key][0]?.domain) {
+        html += `<div style="font-weight: 600; color: #6366f1; margin-bottom: 12px; font-size: 14px;">📊 ${formatKeyName(key)}</div>`;
+        html += renderCompetitorComparisonTable(data[key], tabName);
+        break;
+      }
+    }
+    
+    // Priority keys for summary/insights text
+    const priorityKeys = ['summary', 'overview', 'recommendations', 'insights', 'findings', 'opportunities', 'gaps', 'analysis', 'strategicInsights', 'keyInsights', 'actionItems'];
     
     for (const key of priorityKeys) {
       if (data[key]) {
         const value = data[key];
-        if (typeof value === 'string') {
-          html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
-            <div style="font-weight: 600; color: #475569; margin-bottom: 6px;">${key.charAt(0).toUpperCase() + key.slice(1)}</div>
-            <div style="font-size: 14px; color: #1e293b;">${value}</div>
+        if (typeof value === 'string' && value.length > 10) {
+          html += `<div style="background: linear-gradient(135deg, #eef2ff, #e0e7ff); padding: 16px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #6366f1;">
+            <div style="font-weight: 600; color: #4f46e5; margin-bottom: 6px;">💡 ${formatKeyName(key)}</div>
+            <div style="font-size: 14px; color: #1e293b; line-height: 1.6;">${value}</div>
           </div>`;
         } else if (Array.isArray(value) && value.length > 0) {
-          html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
-            <div style="font-weight: 600; color: #475569; margin-bottom: 8px;">${key.charAt(0).toUpperCase() + key.slice(1)}</div>
-            ${value.slice(0, 5).map(item => `<div style="font-size: 13px; color: #374151; margin-bottom: 4px; padding-left: 12px; border-left: 2px solid #e5e7eb;">• ${typeof item === 'string' ? item : JSON.stringify(item)}</div>`).join('')}
+          html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="font-weight: 600; color: #475569; margin-bottom: 8px;">🎯 ${formatKeyName(key)}</div>
+            ${value.slice(0, 8).map(item => `<div style="font-size: 13px; color: #374151; margin-bottom: 6px; padding-left: 12px; border-left: 2px solid #6366f1;">• ${typeof item === 'string' ? item : (item.text || item.recommendation || item.insight || item.title || JSON.stringify(item))}</div>`).join('')}
           </div>`;
         }
       }
     }
     
+    // v23.3: Handle metric objects (scores, rates, etc.)
+    const metricKeys = Object.keys(data).filter(k => 
+      !priorityKeys.includes(k) && 
+      !competitorKeys.includes(k) && 
+      !['version', 'generatedAt', 'niche', 'error', 'tabName'].includes(k) &&
+      (typeof data[k] === 'number' || 
+       (typeof data[k] === 'string' && (data[k].includes('%') || !isNaN(parseFloat(data[k])))))
+    );
+    
+    if (metricKeys.length > 0) {
+      html += `<div style="background: white; padding: 16px; border-radius: 10px; margin-bottom: 12px;">
+        <div style="font-weight: 600; color: #475569; margin-bottom: 12px;">📈 Key Metrics</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+          ${metricKeys.slice(0, 8).map(key => {
+            const value = data[key];
+            const displayValue = typeof value === 'number' ? (value > 1 ? Math.round(value) : (value * 100).toFixed(1) + '%') : value;
+            return `<div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 20px; font-weight: 700; color: #3b82f6;">${displayValue}</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">${formatKeyName(key)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+    
     return html;
+  }
+  
+  /**
+   * v23.3: Render competitor comparison table for Elite data
+   */
+  function renderCompetitorComparisonTable(competitors, tabName) {
+    if (!Array.isArray(competitors) || competitors.length === 0) return '';
+    
+    // Extract numeric/displayable keys from first competitor
+    const firstComp = competitors[0];
+    const displayKeys = Object.keys(firstComp).filter(k => {
+      if (k === 'domain' || k.includes('raw') || k.includes('Raw') || k.includes('detail') || k.includes('Detail')) return false;
+      const val = firstComp[k];
+      return typeof val === 'number' || typeof val === 'string' && val.length < 50;
+    }).slice(0, 5);
+    
+    if (displayKeys.length === 0) displayKeys.push('brandStrengthScore', 'score', 'value');
+    
+    let html = `<div style="background: white; border-radius: 10px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">
+            <th style="padding: 12px; text-align: left;">Domain</th>
+            ${displayKeys.map(k => `<th style="padding: 12px; text-align: center;">${formatKeyName(k)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${competitors.slice(0, 6).map((comp, idx) => `
+            <tr style="background: ${idx % 2 === 0 ? '#f8fafc' : 'white'}; border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 10px; font-weight: 600; color: #1e293b;">${comp.domain || 'N/A'}</td>
+              ${displayKeys.map(k => {
+                const val = comp[k];
+                const display = typeof val === 'number' ? (val > 1 ? Math.round(val) : (val * 100).toFixed(0) + '%') : (val || 'N/A');
+                const color = typeof val === 'number' && val > 70 ? '#059669' : (typeof val === 'number' && val < 40 ? '#dc2626' : '#374151');
+                return `<td style="padding: 10px; text-align: center; color: ${color}; font-weight: 500;">${display}</td>`;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+    
+    return html;
+  }
+  
+  /**
+   * v23.3: Format camelCase/snake_case keys to readable names
+   */
+  function formatKeyName(key) {
+    return key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/_/g, ' ')
+      .replace(/^\s/, '')
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
   }
 
   // Export functions globally

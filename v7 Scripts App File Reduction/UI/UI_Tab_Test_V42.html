@@ -1,0 +1,15 @@
+<script>
+// V42 TEST FILE - Minimal test to verify include() works
+console.log('[V42-TEST] UI_Tab_Test_V42.html LOADED SUCCESSFULLY');
+window._v42_test_loaded = true;
+
+// Define a simple test function
+function testV42Function() {
+  console.log('[V42-TEST] testV42Function called');
+  return 'V42 test working';
+}
+
+// Export to window
+window.testV42Function = testV42Function;
+console.log('[V42-TEST] testV42Function exported:', typeof window.testV42Function);
+</script>

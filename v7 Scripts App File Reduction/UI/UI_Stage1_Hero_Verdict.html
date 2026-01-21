@@ -1,0 +1,122 @@
+<!--
+  UI_Stage1_Hero_Verdict.html
+  HERO VERDICT ZONE v1.0
+  
+  Top zone: Section icon + title, 1-line Sage insight, 3 metric badges
+  Uses Command Canvas tokens
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 7: HERO VERDICT CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hero-verdict {
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 16px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Section Header */
+.hero-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--cmd-border);
+}
+
+.hero-section-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.hero-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 0;
+}
+
+/* Sage Insight Line */
+.hero-insight {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--cmd-body-text);
+  margin: 0 0 1.25rem 0;
+  padding: 0.75rem 1rem;
+  background: var(--cmd-header-bg);
+  border-left: 3px solid var(--accent-authority);
+  border-radius: 0 8px 8px 0;
+}
+
+.hero-insight-expand {
+  color: var(--accent-authority);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+
+.hero-insight-expand:hover {
+  text-decoration: underline;
+}
+
+/* Metric Badges Row */
+.hero-metrics-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 11: THEME-SPECIFIC HERO STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Theme: Light */
+[data-theme="light"] .hero-verdict {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .hero-insight {
+  background: #F1F5F9;
+}
+
+/* Theme: Dark */
+[data-theme="dark"] .hero-verdict {
+  background: var(--cmd-header-bg);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+[data-theme="dark"] .hero-section-title {
+  color: #F1F5F9;
+}
+
+/* Theme: Aurora */
+[data-theme="aurora"] .hero-verdict {
+  backdrop-filter: blur(var(--cmd-blur));
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+[data-theme="aurora"] .hero-insight,
+[data-theme="aurora"] .hero-section-title {
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+/* Theme: Neon */
+[data-theme="neon"] .hero-verdict {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+[data-theme="neon"] .hero-section-title {
+  color: #F59E0B;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+[data-theme="neon"] .hero-verdict:hover {
+  box-shadow: var(--cmd-glow);
+}
+</style>

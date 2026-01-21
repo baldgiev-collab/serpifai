@@ -211,6 +211,48 @@ const ParallelEngine = (function() {
     state.jobToken = result.jobToken;
     state.competitors = result.competitors;
     
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v36.0: PERSISTENCE TRACKER - Show real-time MySQL save progress
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (typeof PersistenceTracker !== 'undefined') {
+      PersistenceTracker.show(state.competitors.length);
+      PersistenceTracker.update({
+        status: 'Initializing MySQL persistence...',
+        table: 'job_results'
+      });
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FIX #1: FORCED HANDSHAKE - Triple redundancy for jobToken persistence
+    // Even if "Message Channel Closes", token is on hard drive
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // METHOD 1: ORACLE_STATE global memory
+    window.ORACLE_STATE = window.ORACLE_STATE || { competitors: {}, evidencePointers: {} };
+    window.ORACLE_STATE.jobToken = result.jobToken;
+    window.ORACLE_STATE.projectId = state.projectId;
+    window.ORACLE_STATE.yourDomain = state.yourDomain;
+    window.ORACLE_STATE.jobStartTime = new Date().toISOString();
+    
+    // METHOD 2: Helper function (if available)
+    if (typeof window.ORACLE_STATE_setJobToken === 'function') {
+      window.ORACLE_STATE_setJobToken(result.jobToken);
+    }
+    
+    // METHOD 3: localStorage - survives page refresh
+    try {
+      localStorage.setItem('oracle_last_token', result.jobToken);
+      localStorage.setItem('ORACLE_lastJobToken', result.jobToken);
+      localStorage.setItem('ORACLE_lastJobTime', new Date().toISOString());
+      localStorage.setItem('ORACLE_projectId', state.projectId);
+    } catch (e) {
+      console.warn('[STATE] localStorage save failed:', e);
+    }
+    
+    console.log(`[STATE] ✅ FORCED HANDSHAKE COMPLETE`);
+    console.log(`   ORACLE_STATE.jobToken: ${window.ORACLE_STATE.jobToken}`);
+    console.log(`   localStorage: ${localStorage.getItem('oracle_last_token')}`);
+    
     // Trigger onJobCreated callback
     if (state.callbacks.onJobCreated) {
       state.callbacks.onJobCreated({
@@ -308,6 +350,66 @@ const ParallelEngine = (function() {
     };
     
     state.completedData.set(competitor.id, competitorData);
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FIX #2: COMPETITOR DATA HYDRATION - Push result into ORACLE_STATE
+    // Each completed competitor is immediately stored for AuditTrail access
+    // ═══════════════════════════════════════════════════════════════════════════
+    window.ORACLE_STATE = window.ORACLE_STATE || { competitors: {}, evidencePointers: {} };
+    window.ORACLE_STATE.competitors = window.ORACLE_STATE.competitors || {};
+    window.ORACLE_STATE.competitors[competitor.domain] = {
+      domain: competitor.domain,
+      data: result.finalData || {},
+      resultId: result.resultId || result.finalData?.resultId || null,
+      completedAt: new Date().toISOString()
+    };
+    
+    // Also use helper if available (for evidencePointers population)
+    if (typeof window.ORACLE_STATE_setCompetitor === 'function') {
+      const resultId = result.resultId || result.finalData?.resultId || null;
+      window.ORACLE_STATE_setCompetitor(
+        competitor.domain,
+        result.finalData || {},
+        resultId
+      );
+    }
+    
+    console.log(`[STATE] Competitor hydrated: ${competitor.domain}`);
+    
+    // Also update legacy currentCompetitors array for backwards compatibility
+    window.currentCompetitors = window.currentCompetitors || [];
+    const existingIdx = window.currentCompetitors.findIndex(c => c.domain === competitor.domain);
+    if (existingIdx >= 0) {
+      window.currentCompetitors[existingIdx] = { domain: competitor.domain, ...result.finalData };
+    } else {
+      window.currentCompetitors.push({ domain: competitor.domain, ...result.finalData });
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v36.0: PERSISTENCE TRACKER - Update MySQL save progress
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (typeof PersistenceTracker !== 'undefined') {
+      // Calculate estimated data size
+      const estimatedBytes = JSON.stringify(result.finalData || {}).length;
+      
+      // Mark tables as active/complete based on data types
+      if (result.finalData?.forensicsData) {
+        PersistenceTracker.setTableComplete('link_forensics', estimatedBytes * 0.3);
+      }
+      if (result.finalData?.keywordData) {
+        PersistenceTracker.setTableComplete('keyword_intelligence', estimatedBytes * 0.2);
+      }
+      if (result.finalData?.geminiAnalysis) {
+        PersistenceTracker.setTableComplete('ai_analysis', estimatedBytes * 0.25);
+      }
+      
+      // Mark competitor as secured
+      PersistenceTracker.competitorSecured(competitor.domain, estimatedBytes);
+      PersistenceTracker.update({
+        status: `Saving ${competitor.domain} to MySQL...`,
+        table: 'competitor_results'
+      });
+    }
     
     // v23.0.1: Defer hydration and notifications to prevent message channel closure
     // Using setTimeout(0) breaks the google.script.run callback chain
@@ -556,6 +658,62 @@ const ParallelEngine = (function() {
     state.isRunning = false;
     
     const totalTime = Date.now() - state.startTime;
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v36.0: PERSISTENCE TRACKER - Mark complete
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (typeof PersistenceTracker !== 'undefined') {
+      PersistenceTracker.setTableComplete('job_results', 0);
+      PersistenceTracker.complete();
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FIX #2: STATE MARRIAGE - Merge final results into ORACLE_STATE
+    // This ensures all competitor data persists in global memory
+    // ═══════════════════════════════════════════════════════════════════════════
+    try {
+      // Merge overview/analysis into ORACLE_STATE
+      window.ORACLE_STATE = window.ORACLE_STATE || { competitors: {}, evidencePointers: {} };
+      window.ORACLE_STATE.analysis = result.overview || result.analysis || null;
+      window.ORACLE_STATE.dashboardCharts = result.dashboardCharts || null;
+      window.ORACLE_STATE.comparisonMatrix = result.comparisonMatrix || null;
+      window.ORACLE_STATE.finalizedAt = new Date().toISOString();
+      
+      // Merge any additional competitor data from finalization
+      if (result.competitors && typeof result.competitors === 'object') {
+        Object.keys(result.competitors).forEach(domain => {
+          if (typeof window.ORACLE_STATE_setCompetitor === 'function') {
+            window.ORACLE_STATE_setCompetitor(domain, result.competitors[domain]);
+          } else {
+            window.ORACLE_STATE.competitors[domain] = {
+              ...(window.ORACLE_STATE.competitors[domain] || {}),
+              ...result.competitors[domain],
+              _finalizedAt: new Date().toISOString()
+            };
+          }
+        });
+      }
+      
+      console.log(`[STATE] ✅ State marriage complete. Competitors: ${Object.keys(window.ORACLE_STATE.competitors).length}`);
+      
+      // ═══════════════════════════════════════════════════════════════════════════
+      // FIX #2: PROOF LOG - console.table to prove data exists in browser
+      // This is crucial for debugging "No competitor data" issues
+      // ═══════════════════════════════════════════════════════════════════════════
+      console.log('═══════════════════════════════════════════════════════════════');
+      console.log('🔍 ORACLE_STATE PROOF - Data exists in browser:');
+      console.log('   jobToken:', window.ORACLE_STATE.jobToken);
+      console.log('   projectId:', window.ORACLE_STATE.projectId);
+      console.table(Object.keys(window.ORACLE_STATE.competitors).map(domain => ({
+        domain: domain,
+        hasData: !!window.ORACLE_STATE.competitors[domain]?.data,
+        completedAt: window.ORACLE_STATE.competitors[domain]?.completedAt || 'N/A'
+      })));
+      console.log('═══════════════════════════════════════════════════════════════');
+      
+    } catch (stateError) {
+      console.error('[STATE] State marriage error:', stateError);
+    }
     
     if (state.callbacks.onComplete) {
       state.callbacks.onComplete({

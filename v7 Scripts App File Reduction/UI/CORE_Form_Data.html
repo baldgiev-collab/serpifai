@@ -4,7 +4,7 @@
   Part of Elite Modular Architecture - Phase 11
   
   Provides:
-  - window.FIELD_IDS - Array of all 81 form field IDs
+  - window.FIELD_IDS - Array of all 91 form field IDs (updated from 81)
   - window.collectFormData() - Collect all form data
   - window.fillFormData() - Fill form with data
   - window.recalcScores() - Recalculate completion scores
@@ -20,15 +20,19 @@
   console.log('📋 CORE_Form_Data.html loading...');
 
   /**
-   * All 81 form field IDs across 5 stages
+   * All 91 form field IDs across 5 stages
    * This array defines all tracked input fields
    */
   window.FIELD_IDS = [
-    // Stage 1: Market Research & Strategy (17 fields)
+    // Stage 1: Market Research & Strategy (27 fields - includes 10 critical fields)
     'brandIdeology', 'brandArchetype', 'quarterlyObjective', 'brandName',
     'coreTopic', 'targetAudience', 'audiencePains', 'audienceDesired',
     'keyCompetitors', 'offerMatrix', 'primaryOfferName', 'primaryOfferPrice',
     'upsellOffer', 'upsellPrice', 'uvp', 'primaryChannels', 'northStarKpis', 'brandLexicon',
+    // ⚡ CRITICAL: 10 fields required for Stage 1 persistence (Ghost Data fix)
+    'productOrService', 'existingMessaging', 'secondaryAudience', 'customerDemographics',
+    'geographicFocus', 'industryVertical', 'competitiveAdvantages', 'contentGoals',
+    'contentFormats', 'seasonality',
 
     // Stage 2: Keyword Discovery (10 fields)
     'coreStrategicQuestion', 'thesis', 'antithesis', 'keyMarketData', 'categoryDefinition',
@@ -60,20 +64,22 @@
 
   // Auto-save debounce timer
   let autoSaveTimeout = null;
+  let lastSavedData = {}; // V7.11: Track what was last saved to avoid duplicate saves
 
   /**
-   * Debounced auto-save - waits 1 second after last input
+   * V7.11 Debounced auto-save - waits 3 seconds after last input (increased from 1s)
+   * Also prevents rapid duplicate saves
    */
   window.debounceAutoSave = function() {
     clearTimeout(autoSaveTimeout);
     autoSaveTimeout = setTimeout(() => {
       window.autoSaveProject?.();
-    }, 1000);
+    }, 3000); // V7.11: Increased debounce to 3s to reduce save frequency
   };
 
   /**
-   * Auto-save project to Google Sheets
-   * Uses collectFormData() to include competitor analysis data
+   * V7.11 MINIMAL Auto-save project to Google Sheets
+   * Only saves changed fields to reduce payload size and prevent HTTP 400
    */
   window.autoSaveProject = function() {
     const projectSelect = document.getElementById('projectSelect');
@@ -90,20 +96,29 @@
       return;
     }
 
+    // V7.11: Collect MINIMAL form data - only core fields, not AI results
+    const formData = window.collectMinimalFormData?.() || window.collectFormData?.() || {};
+    
+    // V7.11: Skip save if nothing changed
+    const dataHash = JSON.stringify(formData).length;
+    if (dataHash === lastSavedData.hash && Date.now() - (lastSavedData.time || 0) < 10000) {
+      console.log('ℹ️ Auto-save skipped: no changes detected');
+      return;
+    }
+
     // Show saving indicator
     if (saveStatus) {
       saveStatus.textContent = '💾 Saving...';
       saveStatus.style.opacity = '1';
     }
 
-    const formData = window.collectFormData?.() || {};
-
     console.log('💾 Auto-saving project:', projectName);
     console.log('   Form fields:', Object.keys(formData).filter(k => !k.startsWith('_') && k !== 'competitorAnalysis').length);
-    console.log('   Has competitor data:', !!formData.competitorAnalysis);
+    console.log('   Payload size:', Math.round(JSON.stringify(formData).length / 1024), 'KB');
 
     google.script.run
       .withSuccessHandler(function() {
+        lastSavedData = { hash: dataHash, time: Date.now() };
         if (saveStatus) {
           const now = new Date().toLocaleTimeString();
           saveStatus.textContent = `✓ Saved at ${now}`;
@@ -120,6 +135,7 @@
           saveStatus.style.opacity = '1';
         }
         console.error('Auto-save error:', error);
+        // V7.11: Don't spam retries on failure
       })
       .saveProject(projectName, formData);
   };
@@ -176,6 +192,33 @@
       }).length,
       hasCompetitorData: !!window.competitorIntelligenceData,
       hasQAData: !!window.qaData
+    };
+
+    return data;
+  };
+
+  /**
+   * V7.11 MINIMAL form data collection - excludes large AI/competitor data
+   * Used for auto-save to prevent HTTP 400 errors from payload size
+   * @returns {Object} Minimal form data (just user input fields)
+   */
+  window.collectMinimalFormData = function() {
+    const data = {};
+
+    // Collect only the 81 user input fields - NO AI results or competitor data
+    window.FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.value && el.value.trim().length > 0) {
+        data[id] = el.value;
+      }
+    });
+
+    // Minimal metadata
+    data._metadata = {
+      savedAt: new Date().toISOString(),
+      version: 'v7.11',
+      minimal: true,
+      fieldCount: Object.keys(data).length - 1 // Exclude _metadata
     };
 
     return data;

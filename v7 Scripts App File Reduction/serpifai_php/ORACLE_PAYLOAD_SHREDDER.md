@@ -1,0 +1,1 @@
+FaultReasonForensic FixHTTP 400Payload > 50KB limit of GAS.Pass projectId ONLY; pull data via SQL.Endless LoadingBrowser channel closed (Zombie Process).Implement Async ACK and UI Timeouts.No Execution LogRequest rejected at the Gate.Reduce request size to < 1KB.

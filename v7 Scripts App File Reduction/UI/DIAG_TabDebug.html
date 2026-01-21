@@ -1,0 +1,762 @@
+<script>
+/**
+ * ============================================================
+ * COMPREHENSIVE TAB DIAGNOSTIC SYSTEM - V38.6 DEBUG
+ * ============================================================
+ * This diagnostic file provides deep analysis of:
+ * 1. Function availability (are populate functions defined?)
+ * 2. Data structure analysis (what data is present/missing?)
+ * 3. Tab container status (do DOM elements exist?)
+ * 4. Render pipeline tracing (where does rendering fail?)
+ * ============================================================
+ */
+
+// ============================================================
+// SECTION 0: WRAP ALL POPULATE FUNCTIONS WITH LOGGING
+// ============================================================
+
+function wrapPopulateFunctionsWithLogging() {
+  console.log('\n========================================');
+  console.log('🔬 DIAGNOSTIC: Wrapping populate functions with logging');
+  console.log('========================================\n');
+  
+  const functionsToWrap = [
+    'populateConversionDataTab',
+    'populateDistributionDataTab',
+    'populateAudienceIntelligenceTab',
+    'populateGeoAeoIntelligenceTab',
+    'populateAuthorityInfluenceTab',
+    'populatePerformancePredictiveTab',
+    'populateStrategicOpportunitiesTab'
+  ];
+  
+  functionsToWrap.forEach(fnName => {
+    if (typeof window[fnName] === 'function') {
+      const originalFn = window[fnName];
+      window[fnName] = function(data) {
+        console.log(`\n📞 ========== ${fnName} CALLED ==========`);
+        console.log(`   Data type: ${typeof data}`);
+        console.log(`   Has competitors: ${data?.competitors?.length || 'NO'}`);
+        console.log(`   Has analysis: ${!!data?.analysis}`);
+        console.log(`   Has geminiAnalysis: ${!!data?.geminiAnalysis}`);
+        console.log(`   Has eliteTabIntelligence: ${!!data?.eliteTabIntelligence}`);
+        
+        try {
+          const result = originalFn.call(this, data);
+          console.log(`✅ ${fnName} completed successfully`);
+          return result;
+        } catch (error) {
+          console.error(`❌ ${fnName} THREW ERROR:`, error);
+          console.error(`   Stack:`, error.stack);
+          throw error;
+        }
+      };
+      console.log(`✅ Wrapped: ${fnName}`);
+    } else {
+      console.log(`⚠️ Cannot wrap ${fnName} - not a function (type: ${typeof window[fnName]})`);
+    }
+  });
+}
+
+// ============================================================
+// SECTION 0.5: CHECK CRITICAL HELPER FUNCTIONS
+// ============================================================
+
+function diagnoseCriticalHelpers() {
+  console.log('\n========================================');
+  console.log('🔬 DIAGNOSTIC: Critical Helper Functions');
+  console.log('========================================\n');
+  
+  const helpers = [
+    'extractRealMetrics',
+    'renderExecutiveGeminiInsight',
+    'generateExecutiveInsightConfig',
+    'renderRawDataComparisonTable',
+    'getDataSourceBadge',
+    'renderAudienceCharts',
+    'renderConversionCharts',
+    'renderDistributionCharts',
+    'renderGeoAeoCharts',
+    'renderAuthorityCharts',
+    'renderPerformanceCharts',
+    'renderOpportunityCharts'
+  ];
+  
+  const results = { available: [], missing: [] };
+  
+  helpers.forEach(fn => {
+    if (typeof window[fn] === 'function') {
+      results.available.push(fn);
+      console.log(`✅ ${fn} - AVAILABLE`);
+    } else {
+      results.missing.push(fn);
+      console.log(`❌ ${fn} - MISSING`);
+    }
+  });
+  
+  if (results.missing.length > 0) {
+    console.log('\n⚠️ MISSING HELPERS WILL CAUSE FAILURES:');
+    results.missing.forEach(fn => console.log(`   - ${fn}`));
+  }
+  
+  return results;
+}
+
+// ============================================================
+// SECTION 1: FUNCTION AVAILABILITY CHECK
+// ============================================================
+
+function diagnoseFunctionAvailability() {
+  console.log('\n========================================');
+  console.log('🔬 DIAGNOSTIC: Function Availability Check');
+  console.log('========================================\n');
+  
+  const criticalFunctions = [
+    // Overview
+    'populateOverviewTab',
+    'renderCompetitorGrid',
+    
+    // Conversion & Distribution
+    'populateConversionDataTab',
+    'populateDistributionDataTab',
+    
+    // Audience & GEO
+    'populateAudienceIntelligenceTab',
+    'populateGeoAeoIntelligenceTab',
+    
+    // Authority, Performance, Opportunities
+    'populateAuthorityInfluenceTab',
+    'populatePerformancePredictiveTab',
+    'populateStrategicOpportunitiesTab',
+    
+    // Technical & Brand
+    'populateTechnicalForensicsTab',
+    'populateBrandVoiceTab',
+    
+    // Content & Keywords
+    'populateContentDNATab',
+    'populateKeywordAnalysisTab',
+    
+    // Elite renderers
+    'renderEliteAudienceIntel',
+    'renderEliteConversionIntel',
+    'renderEliteGeoAeoIntel',
+    'renderEliteAuthorityIntel',
+    'renderElitePerformanceIntel',
+    'renderEliteOpportunitiesIntel',
+    'renderEliteDistributionIntel'
+  ];
+  
+  const results = {
+    available: [],
+    missing: []
+  };
+  
+  criticalFunctions.forEach(fn => {
+    if (typeof window[fn] === 'function') {
+      results.available.push(fn);
+      console.log(`✅ ${fn} - AVAILABLE`);
+    } else {
+      results.missing.push(fn);
+      console.log(`❌ ${fn} - MISSING`);
+    }
+  });
+  
+  console.log('\n--- Summary ---');
+  console.log(`Available: ${results.available.length}/${criticalFunctions.length}`);
+  console.log(`Missing: ${results.missing.length}/${criticalFunctions.length}`);
+  
+  if (results.missing.length > 0) {
+    console.log('\n⚠️ MISSING FUNCTIONS:', results.missing);
+  }
+  
+  return results;
+}
+
+// ============================================================
+// SECTION 2: DOM CONTAINER CHECK
+// ============================================================
+
+function diagnoseDOMContainers() {
+  console.log('\n========================================');
+  console.log('🔬 DIAGNOSTIC: DOM Container Check');
+  console.log('========================================\n');
+  
+  const containers = [
+    // Main tab containers
+    { id: 'overview-content', name: 'Overview Tab' },
+    { id: 'conversion-content', name: 'Conversion Tab' },
+    { id: 'distribution-content', name: 'Distribution Tab' },
+    { id: 'audience-content', name: 'Audience Tab' },
+    { id: 'geoaeo-content', name: 'GEO+AEO Tab' },
+    { id: 'authority-content', name: 'Authority Tab' },
+    { id: 'performance-content', name: 'Performance Tab' },
+    { id: 'opportunities-content', name: 'Opportunities Tab' },
+    { id: 'technical-content', name: 'Technical Tab' },
+    { id: 'brand-content', name: 'Brand Tab' },
+    { id: 'content-dna-content', name: 'Content DNA Tab' },
+    { id: 'keyword-content', name: 'Keyword Tab' },
+    
+    // Elite section containers
+    { id: 'elite-audience-section', name: 'Elite Audience Section' },
+    { id: 'elite-conversion-section', name: 'Elite Conversion Section' },
+    { id: 'elite-geoaeo-section', name: 'Elite GEO+AEO Section' },
+    { id: 'elite-authority-section', name: 'Elite Authority Section' },
+    { id: 'elite-performance-section', name: 'Elite Performance Section' },
+    { id: 'elite-opportunities-section', name: 'Elite Opportunities Section' },
+    { id: 'elite-distribution-section', name: 'Elite Distribution Section' }
+  ];
+  
+  const results = {
+    found: [],
+    missing: [],
+    empty: []
+  };
+  
+  containers.forEach(c => {
+    const el = document.getElementById(c.id);
+    if (!el) {
+      results.missing.push(c);
+      console.log(`❌ ${c.id} - NOT FOUND`);
+    } else {
+      results.found.push(c);
+      const hasContent = el.innerHTML.trim().length > 50;
+      const contentLength = el.innerHTML.trim().length;
+      if (!hasContent) {
+        results.empty.push({ ...c, length: contentLength });
+        console.log(`⚠️ ${c.id} - FOUND but EMPTY (${contentLength} chars)`);
+      } else {
+        console.log(`✅ ${c.id} - FOUND with content (${contentLength} chars)`);
+      }
+    }
+  });
+  
+  console.log('\n--- Summary ---');
+  console.log(`Found: ${results.found.length}/${containers.length}`);
+  console.log(`Missing: ${results.missing.length}`);
+  console.log(`Empty: ${results.empty.length}`);
+  
+  return results;
+}
+
+// ============================================================
+// SECTION 3: DATA STRUCTURE ANALYSIS
+// ============================================================
+
+function diagnoseDataStructure(data) {
+  console.log('\n========================================');
+  console.log('🔬 DIAGNOSTIC: Data Structure Analysis');
+  console.log('========================================\n');
+  
+  if (!data) {
+    console.log('❌ NO DATA PROVIDED');
+    return { hasData: false };
+  }
+  
+  const results = {
+    hasData: true,
+    competitorCount: 0,
+    dataFields: {},
+    geminiData: {},
+    missingCritical: []
+  };
+  
+  // Check if it's an array or object
+  console.log('Data Type:', Array.isArray(data) ? 'Array' : typeof data);
+  
+  if (Array.isArray(data)) {
+    results.competitorCount = data.length;
+    console.log(`Competitor Count: ${data.length}`);
+    
+    if (data.length > 0) {
+      console.log('\n--- First Competitor Structure ---');
+      const first = data[0];
+      analyzeCompetitorObject(first, results);
+    }
+  } else if (typeof data === 'object') {
+    console.log('\n--- Object Keys ---');
+    Object.keys(data).forEach(key => {
+      const val = data[key];
+      const valType = Array.isArray(val) ? `Array[${val.length}]` : typeof val;
+      console.log(`  ${key}: ${valType}`);
+    });
+  }
+  
+  return results;
+}
+
+function analyzeCompetitorObject(comp, results) {
+  if (!comp) return;
+  
+  // Critical fields for each tab
+  const criticalFields = {
+    overview: ['domain', 'url', 'title', 'score', 'position'],
+    conversion: ['conversionIntel', 'monetization', 'ctaAnalysis', 'conversion_signals'],
+    distribution: ['distributionIntel', 'referralSources', 'socialSignals', 'distribution_channels'],
+    audience: ['audienceIntel', 'targetAudience', 'userIntent', 'audience_segments'],
+    geoaeo: ['geoAeoIntel', 'geoTargeting', 'aeoSignals', 'local_seo'],
+    authority: ['authorityIntel', 'backlinks', 'domainAuthority', 'trustFlow'],
+    performance: ['performanceIntel', 'coreWebVitals', 'pageSpeed', 'performance_metrics'],
+    opportunities: ['opportunitiesIntel', 'gaps', 'weaknesses', 'quick_wins'],
+    technical: ['technicalIntel', 'schema', 'meta', 'technical_seo'],
+    brand: ['brandIntel', 'brandVoice', 'tone', 'messaging'],
+    contentDna: ['contentIntel', 'contentStructure', 'topics', 'content_analysis'],
+    keywords: ['keywords', 'keywordIntel', 'rankingKeywords', 'keyword_data']
+  };
+  
+  console.log('\n--- Top-Level Fields ---');
+  const topLevelKeys = Object.keys(comp);
+  console.log('Fields found:', topLevelKeys.length);
+  topLevelKeys.forEach(key => {
+    const val = comp[key];
+    let valDesc = '';
+    if (val === null) valDesc = 'null';
+    else if (val === undefined) valDesc = 'undefined';
+    else if (Array.isArray(val)) valDesc = `Array[${val.length}]`;
+    else if (typeof val === 'object') valDesc = `Object{${Object.keys(val).length} keys}`;
+    else if (typeof val === 'string') valDesc = val.length > 50 ? `String(${val.length} chars)` : `"${val}"`;
+    else valDesc = String(val);
+    
+    results.dataFields[key] = valDesc;
+    console.log(`  📦 ${key}: ${valDesc}`);
+  });
+  
+  // Check for Gemini data specifically
+  console.log('\n--- Gemini/Elite Data Check ---');
+  const geminiKeys = ['geminiIntel', 'gemini', 'eliteData', 'elite', 'aiAnalysis', 'geminiAnalysis'];
+  geminiKeys.forEach(key => {
+    if (comp[key]) {
+      console.log(`✅ ${key} FOUND:`, typeof comp[key]);
+      if (typeof comp[key] === 'object') {
+        results.geminiData[key] = Object.keys(comp[key]);
+        console.log(`   Sub-keys:`, Object.keys(comp[key]).join(', '));
+      }
+    }
+  });
+  
+  // Check each tab's critical fields
+  console.log('\n--- Tab Data Availability ---');
+  Object.entries(criticalFields).forEach(([tab, fields]) => {
+    const found = fields.filter(f => comp[f] !== undefined && comp[f] !== null);
+    const missing = fields.filter(f => comp[f] === undefined || comp[f] === null);
+    
+    if (found.length > 0) {
+      console.log(`✅ ${tab.toUpperCase()}: ${found.length}/${fields.length} fields`);
+      console.log(`   Found: ${found.join(', ')}`);
+    } else {
+      console.log(`❌ ${tab.toUpperCase()}: 0/${fields.length} fields`);
+      results.missingCritical.push(tab);
+    }
+    
+    if (missing.length > 0 && found.length > 0) {
+      console.log(`   Missing: ${missing.join(', ')}`);
+    }
+  });
+  
+  return results;
+}
+
+// ============================================================
+// SECTION 4: GLOBAL STATE CHECK
+// ============================================================
+
+function diagnoseGlobalState() {
+  console.log('\n========================================');
+  console.log('🔬 DIAGNOSTIC: Global State Check');
+  console.log('========================================\n');
+  
+  const globals = [
+    'competitorData',
+    'currentCompetitorData',
+    'allCompetitorData',
+    'geminiData',
+    'eliteData',
+    'fetchedData',
+    'analysisData',
+    'cachedData',
+    'modalData',
+    'serpData'
+  ];
+  
+  const results = {
+    found: [],
+    missing: []
+  };
+  
+  globals.forEach(g => {
+    if (typeof window[g] !== 'undefined') {
+      const val = window[g];
+      let desc = '';
+      if (val === null) desc = 'null';
+      else if (Array.isArray(val)) desc = `Array[${val.length}]`;
+      else if (typeof val === 'object') desc = `Object{${Object.keys(val).length} keys}`;
+      else desc = typeof val;
+      
+      results.found.push({ name: g, value: desc });
+      console.log(`✅ window.${g} = ${desc}`);
+    } else {
+      results.missing.push(g);
+      console.log(`❌ window.${g} - NOT DEFINED`);
+    }
+  });
+  
+  return results;
+}
+
+// ============================================================
+// SECTION 5: RENDER PIPELINE TRACE
+// ============================================================
+
+function traceRenderPipeline(tabName) {
+  console.log('\n========================================');
+  console.log(`🔬 DIAGNOSTIC: Render Pipeline Trace - ${tabName}`);
+  console.log('========================================\n');
+  
+  const tabConfig = {
+    'audience': {
+      containerId: 'audience-content',
+      eliteSectionId: 'elite-audience-section',
+      populateFn: 'populateAudienceIntelligenceTab',
+      eliteFn: 'renderEliteAudienceIntel',
+      dataKeys: ['audienceIntel', 'targetAudience', 'audience_segments']
+    },
+    'conversion': {
+      containerId: 'conversion-content',
+      eliteSectionId: 'elite-conversion-section',
+      populateFn: 'populateConversionDataTab',
+      eliteFn: 'renderEliteConversionIntel',
+      dataKeys: ['conversionIntel', 'monetization', 'conversion_signals']
+    },
+    'distribution': {
+      containerId: 'distribution-content',
+      eliteSectionId: 'elite-distribution-section',
+      populateFn: 'populateDistributionDataTab',
+      eliteFn: 'renderEliteDistributionIntel',
+      dataKeys: ['distributionIntel', 'referralSources', 'distribution_channels']
+    },
+    'geoaeo': {
+      containerId: 'geoaeo-content',
+      eliteSectionId: 'elite-geoaeo-section',
+      populateFn: 'populateGeoAeoIntelligenceTab',
+      eliteFn: 'renderEliteGeoAeoIntel',
+      dataKeys: ['geoAeoIntel', 'geoTargeting', 'local_seo']
+    },
+    'authority': {
+      containerId: 'authority-content',
+      eliteSectionId: 'elite-authority-section',
+      populateFn: 'populateAuthorityInfluenceTab',
+      eliteFn: 'renderEliteAuthorityIntel',
+      dataKeys: ['authorityIntel', 'backlinks', 'domainAuthority']
+    },
+    'performance': {
+      containerId: 'performance-content',
+      eliteSectionId: 'elite-performance-section',
+      populateFn: 'populatePerformancePredictiveTab',
+      eliteFn: 'renderElitePerformanceIntel',
+      dataKeys: ['performanceIntel', 'coreWebVitals', 'performance_metrics']
+    },
+    'opportunities': {
+      containerId: 'opportunities-content',
+      eliteSectionId: 'elite-opportunities-section',
+      populateFn: 'populateStrategicOpportunitiesTab',
+      eliteFn: 'renderEliteOpportunitiesIntel',
+      dataKeys: ['opportunitiesIntel', 'gaps', 'quick_wins']
+    }
+  };
+  
+  const config = tabConfig[tabName.toLowerCase()];
+  if (!config) {
+    console.log(`❌ Unknown tab: ${tabName}`);
+    console.log('Available tabs:', Object.keys(tabConfig).join(', '));
+    return;
+  }
+  
+  console.log(`\n📋 Tab Configuration:`);
+  console.log(`   Container: #${config.containerId}`);
+  console.log(`   Elite Section: #${config.eliteSectionId}`);
+  console.log(`   Populate Function: ${config.populateFn}`);
+  console.log(`   Elite Function: ${config.eliteFn}`);
+  console.log(`   Data Keys: ${config.dataKeys.join(', ')}`);
+  
+  // Step 1: Check container
+  console.log(`\n🔍 Step 1: Container Check`);
+  const container = document.getElementById(config.containerId);
+  if (!container) {
+    console.log(`   ❌ Container #${config.containerId} NOT FOUND`);
+    return;
+  }
+  console.log(`   ✅ Container found, innerHTML length: ${container.innerHTML.length}`);
+  
+  // Step 2: Check elite section
+  console.log(`\n🔍 Step 2: Elite Section Check`);
+  const eliteSection = document.getElementById(config.eliteSectionId);
+  if (!eliteSection) {
+    console.log(`   ⚠️ Elite section #${config.eliteSectionId} NOT FOUND (may be created dynamically)`);
+  } else {
+    console.log(`   ✅ Elite section found, innerHTML length: ${eliteSection.innerHTML.length}`);
+  }
+  
+  // Step 3: Check populate function
+  console.log(`\n🔍 Step 3: Populate Function Check`);
+  if (typeof window[config.populateFn] !== 'function') {
+    console.log(`   ❌ ${config.populateFn} is NOT a function`);
+    console.log(`   Type: ${typeof window[config.populateFn]}`);
+  } else {
+    console.log(`   ✅ ${config.populateFn} is available`);
+  }
+  
+  // Step 4: Check elite function
+  console.log(`\n🔍 Step 4: Elite Function Check`);
+  if (typeof window[config.eliteFn] !== 'function') {
+    console.log(`   ⚠️ ${config.eliteFn} is NOT a function (may not be needed)`);
+  } else {
+    console.log(`   ✅ ${config.eliteFn} is available`);
+  }
+  
+  // Step 5: Check data availability
+  console.log(`\n🔍 Step 5: Data Availability Check`);
+  const dataSource = window.competitorData || window.currentCompetitorData || window.allCompetitorData;
+  if (!dataSource) {
+    console.log(`   ❌ No competitor data found in global state`);
+  } else {
+    console.log(`   ✅ Competitor data found`);
+    const firstComp = Array.isArray(dataSource) ? dataSource[0] : dataSource;
+    config.dataKeys.forEach(key => {
+      if (firstComp && firstComp[key]) {
+        console.log(`   ✅ ${key}: Present`);
+      } else {
+        console.log(`   ❌ ${key}: Missing`);
+      }
+    });
+  }
+}
+
+// ============================================================
+// SECTION 6: DEEP DATA DUMP
+// ============================================================
+
+function dumpCompetitorData(index = 0) {
+  console.log('\n========================================');
+  console.log(`🔬 DIAGNOSTIC: Deep Data Dump - Competitor ${index}`);
+  console.log('========================================\n');
+  
+  const sources = [
+    { name: 'competitorData', val: window.competitorData },
+    { name: 'currentCompetitorData', val: window.currentCompetitorData },
+    { name: 'allCompetitorData', val: window.allCompetitorData },
+    { name: 'geminiData', val: window.geminiData },
+    { name: 'fetchedData', val: window.fetchedData }
+  ];
+  
+  let foundData = null;
+  let sourceName = '';
+  
+  for (const src of sources) {
+    if (src.val) {
+      foundData = src.val;
+      sourceName = src.name;
+      break;
+    }
+  }
+  
+  if (!foundData) {
+    console.log('❌ No data found in any global variable');
+    return;
+  }
+  
+  console.log(`📦 Data source: window.${sourceName}`);
+  
+  let competitor;
+  if (Array.isArray(foundData)) {
+    console.log(`📊 Total competitors: ${foundData.length}`);
+    competitor = foundData[index];
+  } else {
+    competitor = foundData;
+  }
+  
+  if (!competitor) {
+    console.log(`❌ No competitor at index ${index}`);
+    return;
+  }
+  
+  console.log('\n--- FULL DATA STRUCTURE ---');
+  console.log(JSON.stringify(competitor, null, 2).substring(0, 10000));
+  
+  if (JSON.stringify(competitor).length > 10000) {
+    console.log('\n... (truncated, data exceeds 10KB)');
+    console.log(`Total data size: ${JSON.stringify(competitor).length} chars`);
+  }
+  
+  return competitor;
+}
+
+// ============================================================
+// SECTION 7: LIVE TAB TEST
+// ============================================================
+
+function testPopulateTab(tabName) {
+  console.log('\n========================================');
+  console.log(`🔬 DIAGNOSTIC: Live Tab Test - ${tabName}`);
+  console.log('========================================\n');
+  
+  const fnMap = {
+    'audience': 'populateAudienceIntelligenceTab',
+    'conversion': 'populateConversionDataTab',
+    'distribution': 'populateDistributionDataTab',
+    'geoaeo': 'populateGeoAeoIntelligenceTab',
+    'authority': 'populateAuthorityInfluenceTab',
+    'performance': 'populatePerformancePredictiveTab',
+    'opportunities': 'populateStrategicOpportunitiesTab'
+  };
+  
+  const fnName = fnMap[tabName.toLowerCase()];
+  if (!fnName) {
+    console.log(`❌ Unknown tab: ${tabName}`);
+    return;
+  }
+  
+  const fn = window[fnName];
+  if (typeof fn !== 'function') {
+    console.log(`❌ ${fnName} is not a function`);
+    return;
+  }
+  
+  // Get data
+  const data = window.competitorData || window.currentCompetitorData || window.allCompetitorData;
+  if (!data) {
+    console.log('❌ No data available');
+    return;
+  }
+  
+  console.log(`📞 Calling ${fnName}(data)...`);
+  
+  try {
+    fn(data);
+    console.log('✅ Function executed without throwing');
+  } catch (e) {
+    console.log('❌ Function threw error:');
+    console.error(e);
+  }
+}
+
+// ============================================================
+// SECTION 8: MASTER DIAGNOSTIC
+// ============================================================
+
+function runFullDiagnostic() {
+  console.log('\n');
+  console.log('╔══════════════════════════════════════════════════════════════╗');
+  console.log('║         SERPIFAI TAB DIAGNOSTIC SYSTEM V38.6                ║');
+  console.log('║                  Full System Analysis                        ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝');
+  console.log('\n');
+  
+  const report = {
+    timestamp: new Date().toISOString(),
+    functions: null,
+    containers: null,
+    globalState: null,
+    dataAnalysis: null
+  };
+  
+  // Run all diagnostics
+  report.functions = diagnoseFunctionAvailability();
+  report.containers = diagnoseDOMContainers();
+  report.globalState = diagnoseGlobalState();
+  
+  // Get data for analysis
+  const data = window.competitorData || window.currentCompetitorData || window.allCompetitorData;
+  if (data) {
+    report.dataAnalysis = diagnoseDataStructure(data);
+  } else {
+    console.log('\n⚠️ No competitor data found for structure analysis');
+  }
+  
+  // Summary
+  console.log('\n');
+  console.log('╔══════════════════════════════════════════════════════════════╗');
+  console.log('║                    DIAGNOSTIC SUMMARY                        ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝');
+  console.log('\n');
+  
+  console.log('🔧 FUNCTIONS:');
+  console.log(`   Available: ${report.functions.available.length}`);
+  console.log(`   Missing: ${report.functions.missing.length}`);
+  if (report.functions.missing.length > 0) {
+    console.log(`   ⚠️ Missing: ${report.functions.missing.join(', ')}`);
+  }
+  
+  console.log('\n📦 CONTAINERS:');
+  console.log(`   Found: ${report.containers.found.length}`);
+  console.log(`   Missing: ${report.containers.missing.length}`);
+  console.log(`   Empty: ${report.containers.empty.length}`);
+  if (report.containers.empty.length > 0) {
+    console.log(`   ⚠️ Empty: ${report.containers.empty.map(c => c.id).join(', ')}`);
+  }
+  
+  console.log('\n🌐 GLOBAL STATE:');
+  console.log(`   Variables found: ${report.globalState.found.length}`);
+  report.globalState.found.forEach(v => {
+    console.log(`   • ${v.name}: ${v.value}`);
+  });
+  
+  if (report.dataAnalysis) {
+    console.log('\n📊 DATA:');
+    console.log(`   Competitors: ${report.dataAnalysis.competitorCount || 'N/A'}`);
+    if (report.dataAnalysis.missingCritical && report.dataAnalysis.missingCritical.length > 0) {
+      console.log(`   ⚠️ Tabs missing data: ${report.dataAnalysis.missingCritical.join(', ')}`);
+    }
+  }
+  
+  // Check critical helpers
+  report.helpers = diagnoseCriticalHelpers();
+  
+  console.log('\n');
+  console.log('═══════════════════════════════════════════════════════════════');
+  console.log('To trace a specific tab, run: traceRenderPipeline("tabName")');
+  console.log('Available tabs: audience, conversion, distribution, geoaeo,');
+  console.log('                authority, performance, opportunities');
+  console.log('═══════════════════════════════════════════════════════════════');
+  
+  // Store report for access
+  window.diagReport = report;
+  
+  return report;
+}
+
+// ============================================================
+// SECTION 9: AUTO-RUN ON LOAD
+// ============================================================
+
+// Wrap functions after DOM is ready (all scripts loaded)
+function initDiagnostics() {
+  console.log('🔧 Initializing diagnostics...');
+  wrapPopulateFunctionsWithLogging();
+  setTimeout(runFullDiagnostic, 500);
+}
+
+if (document.readyState === 'complete') {
+  setTimeout(initDiagnostics, 100);
+} else {
+  window.addEventListener('load', function() {
+    setTimeout(initDiagnostics, 100);
+  });
+}
+
+// Export functions globally
+window.runFullDiagnostic = runFullDiagnostic;
+window.diagnoseFunctionAvailability = diagnoseFunctionAvailability;
+window.diagnoseDOMContainers = diagnoseDOMContainers;
+window.diagnoseGlobalState = diagnoseGlobalState;
+window.diagnoseDataStructure = diagnoseDataStructure;
+window.traceRenderPipeline = traceRenderPipeline;
+window.dumpCompetitorData = dumpCompetitorData;
+window.testPopulateTab = testPopulateTab;
+window.wrapPopulateFunctionsWithLogging = wrapPopulateFunctionsWithLogging;
+window.diagnoseCriticalHelpers = diagnoseCriticalHelpers;
+
+console.log('📋 DIAG_TabDebug.html loaded - Diagnostic functions ready');
+console.log('   Run runFullDiagnostic() for complete analysis');
+console.log('   Run traceRenderPipeline("audience") to trace specific tab');
+console.log('   Run dumpCompetitorData(0) to see full data for competitor 0');
+</script>

@@ -1,4 +1,7 @@
-﻿<script>
+<script>
+  // V41.0 - DIAGNOSTIC SCRIPT LOAD TEST
+  console.log('[V41] UI_Tab_AuthPerf.html LOADED');
+  window._v41_authperf_loaded = true;
   // ===========================================================================
   // UI_Tab_AuthPerf.html
   // Authority Influence + Performance Predictive Tabs - Elite v9.0
@@ -15,14 +18,13 @@
   // - renderOnePercentStrategyPanel() from UI_Strategy_Panel.html
   // - renderAuthorityCharts(), renderPredictiveCharts() from UI_Chart_Generator.html
   // ===========================================================================
-  }
 
   // ---------------------------------------------------------------------------
   // XI. AUTHORITY & INFLUENCE TAB - Elite v2.0 (REAL DATA)
   // Uses: OpenPageRank API, PHP Fetcher link data
   // ---------------------------------------------------------------------------
   function populateAuthorityInfluenceTab(data) {
-    console.log('? Populating Authority Tab (Elite v2.0 - REAL DATA)...');
+    console.log('🏆 Populating Authority Tab (Elite v2.0 - REAL DATA)...');
 
     // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
     let metricsDiv = document.getElementById('comp-authority-metrics');
@@ -31,7 +33,7 @@
       const panel = document.querySelector('[data-comp-panel="authority"]') ||
         document.getElementById('panel-authorityInfluence');
       if (panel) {
-        console.log('?? Creating dynamic containers inside authority panel');
+        console.log('🏗️ Creating dynamic containers inside authority panel');
         metricsDiv = panel.querySelector('#comp-authority-metrics') || (() => {
           const c = document.createElement('div'); c.id = 'comp-authority-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
           const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
@@ -41,7 +43,7 @@
     }
 
     if (!metricsDiv) {
-      console.warn('?? Authority tab containers not found - check UI_Components_Competitors.html has data-comp-panel="authority"');
+      console.warn('⚠️ Authority tab containers not found - check UI_Components_Competitors.html has data-comp-panel="authority"');
       return;
     }
 
@@ -152,7 +154,7 @@
           
           <!-- HEADER WITH REAL DATA -->
           <div style="background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
-            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">?? Data Sources: OpenPageRank API, PHP Fetcher Link Analysis</p>
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: OpenPageRank API, PHP Fetcher Link Analysis</p>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px;">
               <div>
                 <div style="font-size: 12px; opacity: 0.85;">Avg PageRank</div>
@@ -244,18 +246,18 @@
           <!-- CHARTS -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
             <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">?? PageRank Comparison</h5>
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">📈 PageRank Comparison</h5>
               <div style="height: 220px;"><canvas id="chart-authority-velocity"></canvas></div>
             </div>
             <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">??? Link Architecture</h5>
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🔗 Link Architecture</h5>
               <div style="height: 220px;"><canvas id="chart-authority-network"></canvas></div>
             </div>
           </div>
           
           <!-- STRATEGIC INSIGHTS -->
           <div style="background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #eab308;">
-            <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #92400e;">?? Authority Building Insights</h5>
+            <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #92400e;">💡 Authority Building Insights</h5>
             ${(() => {
         const sorted = [...authorityData].sort((a, b) => b.pageRank - a.pageRank);
         const leader = sorted[0];
@@ -316,19 +318,19 @@
         };
       },
       fields: [
-        { key: 'pageRank', label: 'PageRank', icon: '??', type: 'number', compareMode: 'highest' },
-        { key: 'globalRank', label: 'Global Rank', icon: '??', type: 'number', compareMode: 'lowest' },
-        { key: 'topicalRelevance', label: 'Topical Relevance', icon: '??', type: 'score', compareMode: 'highest' },
-        { key: 'internalLinks', label: 'Internal Links', icon: '??', type: 'number', compareMode: 'highest' },
-        { key: 'externalLinks', label: 'External Links', icon: '??', type: 'number' },
-        { key: 'dataSource', label: 'Data Source', icon: '??', type: 'text' }
+        { key: 'pageRank', label: 'PageRank', icon: '🏆', type: 'number', compareMode: 'highest' },
+        { key: 'globalRank', label: 'Global Rank', icon: '🌐', type: 'number', compareMode: 'lowest' },
+        { key: 'topicalRelevance', label: 'Topical Relevance', icon: '🎯', type: 'score', compareMode: 'highest' },
+        { key: 'internalLinks', label: 'Internal Links', icon: '🔗', type: 'number', compareMode: 'highest' },
+        { key: 'externalLinks', label: 'External Links', icon: '🔗', type: 'number' },
+        { key: 'dataSource', label: 'Data Source', icon: '📊', type: 'text' }
       ]
     });
 
     // E-E-A-T Signals Comparison
     html += renderRawDataComparisonTable({
       title: 'E-E-A-T Signal Detection',
-      icon: '??',
+      icon: '🏅',
       description: 'Experience, Expertise, Authoritativeness, and Trustworthiness signals',
       competitors: competitors,
       geminiInsight: 'Strong E-E-A-T signals include: author bios, expert credentials, citations, reviews, and transparent contact information. Sites with 5+ E-E-A-T signals rank 40% higher.',
@@ -350,12 +352,12 @@
         };
       },
       fields: [
-        { key: 'eeatScore', label: 'E-E-A-T Score', icon: '??', type: 'score', compareMode: 'highest' },
-        { key: 'hasAuthor', label: 'Author Bio', icon: '??', type: 'text' },
-        { key: 'hasOrganization', label: 'Org Schema', icon: '??', type: 'text' },
+        { key: 'eeatScore', label: 'E-E-A-T Score', icon: '🏅', type: 'score', compareMode: 'highest' },
+        { key: 'hasAuthor', label: 'Author Bio', icon: '✍️', type: 'text' },
+        { key: 'hasOrganization', label: 'Org Schema', icon: '🏢', type: 'text' },
         { key: 'hasReviews', label: 'Reviews', icon: '?', type: 'text' },
-        { key: 'hasCitations', label: 'Citations', icon: '??', type: 'text' },
-        { key: 'hasContact', label: 'Contact Info', icon: '??', type: 'text' }
+        { key: 'hasCitations', label: 'Citations', icon: '📚', type: 'text' },
+        { key: 'hasContact', label: 'Contact Info', icon: '📞', type: 'text' }
       ]
     });
 
@@ -399,7 +401,7 @@
   // Uses: PageSpeed Insights API, PHP Fetcher content metrics, OpenPageRank
   // ---------------------------------------------------------------------------
   function populatePerformancePredictiveTab(data) {
-    console.log('?? Populating Performance Tab (Elite v3.0 - COMPREHENSIVE PageSpeed)...');
+    console.log('📈 Populating Performance Tab (Elite v3.0 - COMPREHENSIVE PageSpeed)...');
 
     // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
     let metricsDiv = document.getElementById('comp-performance-metrics');
@@ -408,7 +410,7 @@
       const panel = document.querySelector('[data-comp-panel="performance"]') ||
         document.getElementById('panel-performancePredictive');
       if (panel) {
-        console.log('?? Creating dynamic container inside performance panel');
+        console.log('🏗️ Creating dynamic container inside performance panel');
         metricsDiv = panel.querySelector('#comp-performance-metrics') || (() => {
           const c = document.createElement('div'); c.id = 'comp-performance-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
           const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
@@ -418,7 +420,7 @@
     }
 
     if (!metricsDiv) {
-      console.warn('?? Performance tab containers not found - check UI_Components_Competitors.html has data-comp-panel="performance"');
+      console.warn('⚠️ Performance tab containers not found - check UI_Components_Competitors.html has data-comp-panel="performance"');
       return;
     }
 
@@ -545,12 +547,12 @@
     let html = renderExecutiveGeminiInsight(performanceExecConfig);
     
     html += `
-          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">?? Performance & Core Web Vitals Analysis</h3>
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">📊 Performance & Core Web Vitals Analysis</h3>
           
           <!-- HEADER WITH REAL DATA -->
           <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <p style="margin: 0; font-size: 12px; opacity: 0.9;">?? Data: Google PageSpeed Insights API | OpenPageRank API</p>
+              <p style="margin: 0; font-size: 12px; opacity: 0.9;">📊 Data: Google PageSpeed Insights API | OpenPageRank API</p>
               <span style="background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 11px;">
                 ${hasRealPSData}/${perfData.length} sites with PageSpeed data
               </span>
@@ -578,7 +580,7 @@
           <!-- CORE WEB VITALS VISUAL GAUGES -->
           <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px;">
             <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700;">
-              ?? Core Web Vitals Summary
+              📊 Core Web Vitals Summary
               ${getDataSourceBadge('PageSpeed API')}
             </h4>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
@@ -640,7 +642,7 @@
           
           <!-- COMPREHENSIVE PERFORMANCE TABLE -->
           <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; overflow-x: auto;">
-            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700;">?? Detailed Performance Metrics</h4>
+            <h4 style="margin: 0 0 20px; font-size: 16px; font-weight: 700;">📊 Detailed Performance Metrics</h4>
             <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
               <thead>
                 <tr style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
@@ -714,17 +716,17 @@
           <!-- CHARTS -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
             <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">?? Predictive Rank Forecast</h5>
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🔮 Predictive Rank Forecast</h5>
               <div style="height: 220px;"><canvas id="chart-predictive-forecast"></canvas></div>
             </div>
             <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">?? Performance vs Quality Matrix</h5>
+              <h5 style="margin: 0 0 16px; font-size: 14px; font-weight: 700;">🎯 Performance vs Quality Matrix</h5>
               <div style="height: 220px;"><canvas id="chart-predictive-quality"></canvas></div>
             </div>
           </div>
           
           <!-- PREDICTION CARDS -->
-          <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700;">?? 90-Day Predictions (Based on PageSpeed + Authority)</h4>
+          <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700;">🔮 90-Day Predictions (Based on PageSpeed + Authority)</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
             ${perfData.slice(0, 4).map((p, i) => {
       const prediction = p.predictedRankDelta > 1 ? 'Rising' : p.predictedRankDelta < -1 ? 'Declining' : 'Stable';
@@ -733,7 +735,7 @@
                 <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid ${color};">
                   <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">${p.domain}</div>
                   <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 24px;">${prediction === 'Rising' ? '??' : prediction === 'Declining' ? '??' : '??'}</span>
+                    <span style="font-size: 24px;">${prediction === 'Rising' ? '📈' : prediction === 'Declining' ? '📉' : '➡️'}</span>
                     <div>
                       <div style="font-size: 18px; font-weight: 700; color: ${color};">${prediction}</div>
                       <div style="font-size: 10px; color: #666;">Perf: ${p.performance} | LCP: ${p.lcp} | DA: ${p.pageRank.toFixed(1)}</div>
@@ -747,7 +749,7 @@
           <!-- STRATEGIC INSIGHTS -->
           <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #10b981;">
             <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #065f46;">
-              ?? Performance Intelligence Insights
+              💡 Performance Intelligence Insights
               ${getDataSourceBadge('PageSpeed API')}
             </h5>
             ${(() => {
@@ -812,18 +814,18 @@
               };
             },
             fields: [
-              { key: 'performance', label: 'Performance Score', icon: '??', type: 'score', compareMode: 'highest' },
-              { key: 'seo', label: 'SEO Score', icon: '??', type: 'score', compareMode: 'highest' },
-              { key: 'lcp', label: 'LCP', icon: '???', type: 'text', compareMode: 'closest_to_2.5' },
-              { key: 'fcp', label: 'FCP', icon: '??', type: 'text', compareMode: 'closest_to_1.8' },
-              { key: 'cls', label: 'CLS', icon: '??', type: 'text', compareMode: 'closest_to_0' },
-              { key: 'tbt', label: 'TBT (ms)', icon: '?', type: 'text', compareMode: 'closest_to_0' }
+              { key: 'performance', label: 'Performance Score', icon: '⚡', type: 'score', compareMode: 'highest' },
+              { key: 'seo', label: 'SEO Score', icon: '🔍', type: 'score', compareMode: 'highest' },
+              { key: 'lcp', label: 'LCP', icon: '⏱️', type: 'text', compareMode: 'closest_to_2.5' },
+              { key: 'fcp', label: 'FCP', icon: '🖌️', type: 'text', compareMode: 'closest_to_1.8' },
+              { key: 'cls', label: 'CLS', icon: '📏', type: 'text', compareMode: 'closest_to_0' },
+              { key: 'tbt', label: 'TBT (ms)', icon: '⏳', type: 'text', compareMode: 'closest_to_0' }
             ]
           })}
           
           ${renderRawDataComparisonTable({
             title: 'Predictive Ranking Factors',
-            icon: '??',
+            icon: '🔮',
             description: 'Correlation analysis of technical performance with authority metrics',
             competitors: competitors,
             geminiInsight: 'Predictive ranking analysis: ' + (() => {
@@ -848,10 +850,10 @@
               };
             },
             fields: [
-              { key: 'predictedDelta', label: 'Predicted ?', icon: '??', type: 'number', compareMode: 'highest' },
-              { key: 'pageRank', label: 'PageRank', icon: '??', type: 'score', compareMode: 'highest' },
-              { key: 'performance', label: 'Performance', icon: '?', type: 'score', compareMode: 'highest' },
-              { key: 'combinedScore', label: 'Combined Score', icon: '??', type: 'score', compareMode: 'highest' }
+              { key: 'predictedDelta', label: 'Predicted Δ', icon: '📈', type: 'number', compareMode: 'highest' },
+              { key: 'pageRank', label: 'PageRank', icon: '🏆', type: 'score', compareMode: 'highest' },
+              { key: 'performance', label: 'Performance', icon: '⚡', type: 'score', compareMode: 'highest' },
+              { key: 'combinedScore', label: 'Combined Score', icon: '🎯', type: 'score', compareMode: 'highest' }
             ]
           })}
         `;
@@ -1079,5 +1081,8 @@
   window.populateAuthorityInfluenceTab = populateAuthorityInfluenceTab;
   window.populatePerformancePredictiveTab = populatePerformancePredictiveTab;
   window.populateStrategicOpportunitiesTab = populateStrategicOpportunitiesTab;
+
+  console.log('[V41] UI_Tab_AuthPerf.html: EXPORTS DONE');
+  console.log('[V41] populateAuthorityInfluenceTab:', typeof window.populateAuthorityInfluenceTab);
 
 </script>

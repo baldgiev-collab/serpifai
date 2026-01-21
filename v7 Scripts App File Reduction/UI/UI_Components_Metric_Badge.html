@@ -1,0 +1,110 @@
+<!--
+  UI_Components_Metric_Badge.html
+  METRIC BADGE COMPONENT v1.0
+  
+  Props: value, label, trend, accentType
+  Variants: positive (Emerald), negative (Magenta), neutral (Indigo)
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 8: METRIC BADGE COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.metric-badge {
+  flex: 1;
+  min-width: 140px;
+  max-width: 200px;
+  padding: 1rem 1.25rem;
+  background: var(--cmd-header-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: 12px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.metric-badge:hover {
+  transform: translateY(-2px);
+}
+
+/* Value Display */
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+  color: var(--cmd-header-text);
+}
+
+/* Label */
+.metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cmd-muted-text);
+}
+
+/* Trend Indicator */
+.metric-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.metric-trend--up {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--accent-value);
+}
+
+.metric-trend--down {
+  background: rgba(236, 72, 153, 0.15);
+  color: var(--accent-danger);
+}
+
+/* Accent Variants */
+.metric-badge--positive {
+  border-color: var(--accent-value);
+  box-shadow: 0 0 0 1px var(--accent-value), 0 4px 12px rgba(52, 211, 153, 0.1);
+}
+
+.metric-badge--positive .metric-value { color: var(--accent-value); }
+
+.metric-badge--negative {
+  border-color: var(--accent-danger);
+  box-shadow: 0 0 0 1px var(--accent-danger), 0 4px 12px rgba(236, 72, 153, 0.1);
+}
+
+.metric-badge--negative .metric-value { color: var(--accent-danger); }
+
+.metric-badge--neutral {
+  border-color: var(--accent-authority);
+  box-shadow: 0 0 0 1px var(--accent-authority), 0 4px 12px rgba(99, 102, 241, 0.1);
+}
+
+.metric-badge--neutral .metric-value { color: var(--accent-authority); }
+
+.metric-badge--velocity {
+  border-color: var(--accent-velocity);
+  box-shadow: 0 0 0 1px var(--accent-velocity), 0 4px 12px rgba(34, 211, 238, 0.1);
+}
+
+.metric-badge--velocity .metric-value { color: var(--accent-velocity); }
+
+/* Theme: Neon */
+[data-theme="neon"] .metric-badge--positive {
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.3);
+}
+
+[data-theme="neon"] .metric-badge--negative {
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.3);
+}
+
+[data-theme="neon"] .metric-badge--neutral {
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}
+</style>

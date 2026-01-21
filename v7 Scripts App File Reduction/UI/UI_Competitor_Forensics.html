@@ -1,0 +1,1731 @@
+<!--
+  UI_Competitor_Forensics.html
+  ═══════════════════════════════════════════════════════════════════════════════
+  ELITE COMPETITIVE INTELLIGENCE MODULE - Stage 1 Enhancement
+  ═══════════════════════════════════════════════════════════════════════════════
+  
+  Components:
+  1. MARKET GRAVITY HUB - D3.js quadrant map with "Your Vector" destabilization arrow
+  2. EMOTIONAL DEBT AUDIT - Sentiment Polar Map (Legacy Bloat vs Forensic Clarity)
+  3. RAG-READY & LLM CITATION GAPS - Moat Readiness scoring system
+  4. COMPETITOR GHOSTING - Interactive highlighting on competitor selection
+  
+  Dependencies:
+  - D3.js v7 (loaded in UI_Scripts_App.html)
+  - UI_Stage1_Renderer.html (parent renderer)
+  - analysis_json from Stage 1 results
+  
+  Author: SerpifAI Elite Architecture
+  Version: 7.9
+-->
+
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════
+     GLASSMORPHIC GAP TABLE - Premium Frosted Glass Aesthetic
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .competitor-forensics-hub {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+    border-radius: 24px;
+    padding: 32px;
+    margin: 24px 0;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  
+  .forensics-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  
+  .forensics-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .forensics-title h2 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  
+  .forensics-title .icon {
+    font-size: 32px;
+    filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.5));
+  }
+  
+  .forensics-badge {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     MARKET GRAVITY HUB - D3.js Quadrant Map
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .market-gravity-container {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 32px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .market-gravity-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
+  }
+  
+  .gravity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  
+  .gravity-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #f8fafc;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  
+  .gravity-legend {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+  
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  
+  .legend-dot.you { background: linear-gradient(135deg, #10b981, #34d399); box-shadow: 0 0 12px rgba(16, 185, 129, 0.5); }
+  .legend-dot.incumbent { background: linear-gradient(135deg, #ef4444, #f87171); }
+  .legend-dot.challenger { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+  .legend-dot.niche { background: linear-gradient(135deg, #6366f1, #818cf8); }
+  
+  #market-gravity-svg {
+    width: 100%;
+    height: 420px;
+    border-radius: 12px;
+    background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     STRENGTHS VS WEAKNESSES - Two Column Layout Below Market Gravity
+     ═══════════════════════════════════════════════════════════════════════════ */
+  .market-gravity-insights {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color, rgba(148, 163, 184, 0.1));
+  }
+  
+  .insights-column {
+    background: var(--card-bg-alt, rgba(15, 23, 42, 0.4));
+    border-radius: 12px;
+    padding: 16px 20px;
+    border: 1px solid var(--border-color, rgba(148, 163, 184, 0.08));
+  }
+  
+  .insights-column.strengths {
+    border-left: 3px solid #10b981;
+  }
+  
+  .insights-column.weaknesses {
+    border-left: 3px solid #f59e0b;
+  }
+  
+  .insights-column h4 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .insights-column.strengths h4 { color: #10b981; }
+  .insights-column.weaknesses h4 { color: #f59e0b; }
+  
+  .insights-column ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .insights-column li {
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, 0.05));
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .insights-column li:last-child {
+    border-bottom: none;
+  }
+  
+  .insights-column li::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  
+  .insights-column.strengths li::before { background: #10b981; }
+  .insights-column.weaknesses li::before { background: #f59e0b; }
+  
+  .insights-column strong {
+    color: var(--text-primary, #e2e8f0);
+    font-weight: 600;
+  }
+  
+  /* Light theme for insights */
+  [data-theme="light"] .insights-column,
+  .theme-light .insights-column {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .insights-column h4,
+  .theme-light .insights-column h4 {
+    color: #1f2937;
+  }
+  
+  [data-theme="light"] .insights-column.strengths h4,
+  .theme-light .insights-column.strengths h4 { color: #059669; }
+  
+  [data-theme="light"] .insights-column.weaknesses h4,
+  .theme-light .insights-column.weaknesses h4 { color: #d97706; }
+  
+  [data-theme="light"] .insights-column li,
+  .theme-light .insights-column li {
+    color: #4b5563;
+    border-bottom-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .insights-column strong,
+  .theme-light .insights-column strong {
+    color: #1f2937;
+  }
+
+  .quadrant-label {
+    font-size: 10px;
+    font-weight: 600;
+    fill: rgba(148, 163, 184, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  
+  .axis-label {
+    font-size: 11px;
+    fill: #94a3b8;
+    font-weight: 500;
+  }
+  
+  .competitor-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .competitor-node:hover {
+    filter: brightness(1.2) drop-shadow(0 0 15px currentColor);
+  }
+  
+  .competitor-node.ghosted {
+    opacity: 0.2;
+    filter: grayscale(100%);
+  }
+  
+  .competitor-node.selected {
+    filter: brightness(1.3) drop-shadow(0 0 20px currentColor);
+  }
+  
+  .your-vector-arrow {
+    stroke: url(#vectorGradient);
+    stroke-width: 4;
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 8 4;
+    animation: vectorPulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes vectorPulse {
+    0%, 100% { stroke-dashoffset: 0; opacity: 0.8; }
+    50% { stroke-dashoffset: 24; opacity: 1; }
+  }
+  
+  .vector-arrowhead {
+    fill: #10b981;
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.6));
+  }
+  
+  .destabilization-zone {
+    fill: url(#destabilizationGradient);
+    opacity: 0.15;
+    animation: zoneGlow 3s ease-in-out infinite;
+  }
+  
+  @keyframes zoneGlow {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 0.2; }
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     EMOTIONAL DEBT AUDIT - Sentiment Polar Map
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .emotional-debt-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  
+  .sentiment-card {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .sentiment-card.legacy-bloat {
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  
+  .sentiment-card.legacy-bloat::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ef4444, #f87171, transparent);
+  }
+  
+  .sentiment-card.forensic-clarity {
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+  
+  .sentiment-card.forensic-clarity::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #10b981, #34d399, transparent);
+  }
+  
+  .sentiment-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  
+  .sentiment-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+  
+  .legacy-bloat .sentiment-icon {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+  }
+  
+  .forensic-clarity .sentiment-icon {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+  }
+  
+  .sentiment-title {
+    flex: 1;
+  }
+  
+  .sentiment-title h3 {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #f8fafc;
+  }
+  
+  .sentiment-title span {
+    font-size: 12px;
+    color: #94a3b8;
+  }
+  
+  .frustration-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .frustration-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+  }
+  
+  .frustration-item:hover {
+    background: rgba(0, 0, 0, 0.3);
+    transform: translateX(4px);
+  }
+  
+  .frustration-severity {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  
+  .severity-critical { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+  .severity-high { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+  .severity-medium { background: #eab308; }
+  .severity-resolved { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+  
+  .frustration-content {
+    flex: 1;
+  }
+  
+  .frustration-text {
+    font-size: 13px;
+    color: #e2e8f0;
+    margin: 0 0 6px;
+    line-height: 1.4;
+  }
+  
+  .frustration-impact {
+    font-size: 11px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     RAG-READY & LLM CITATION GAPS - Moat Readiness Scoring
+     V7.16: COMPLETE REDESIGN - Modern clean table, no overlap issues
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .moat-readiness-container {
+    background: var(--card-bg, #1e293b);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 32px;
+    border: 1px solid var(--border-color, rgba(99, 102, 241, 0.2));
+    position: relative;
+    overflow: hidden; /* Prevent content spillover */
+  }
+  
+  .moat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, 0.1));
+  }
+  
+  .moat-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-primary, #f8fafc);
+    font-size: 18px;
+    font-weight: 600;
+  }
+  
+  /* Modern Clean Table Design */
+  .glassmorphic-gap-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    table-layout: fixed; /* Force consistent column widths */
+  }
+  
+  .glassmorphic-gap-table thead {
+    background: var(--bg-tertiary, rgba(15, 23, 42, 0.9));
+  }
+  
+  .glassmorphic-gap-table thead th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-color, rgba(99, 102, 241, 0.3));
+    white-space: nowrap;
+    writing-mode: horizontal-tb !important; /* Force horizontal text */
+    text-orientation: mixed !important;
+  }
+  
+  /* Column width distribution */
+  .glassmorphic-gap-table thead th:nth-child(1) { width: 28%; } /* Competitor */
+  .glassmorphic-gap-table thead th:nth-child(2) { width: 15%; } /* Entity Density */
+  .glassmorphic-gap-table thead th:nth-child(3) { width: 15%; } /* Citation Potential */
+  .glassmorphic-gap-table thead th:nth-child(4) { width: 14%; } /* RAG Stability */
+  .glassmorphic-gap-table thead th:nth-child(5) { width: 12%; } /* Overall */
+  .glassmorphic-gap-table thead th:nth-child(6) { width: 16%; } /* Gap vs You */
+  
+  .glassmorphic-gap-table tbody tr {
+    background: var(--card-bg, #1e293b);
+    border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, 0.08));
+    transition: background 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .glassmorphic-gap-table tbody tr:hover {
+    background: var(--bg-row-hover, rgba(99, 102, 241, 0.08));
+  }
+  
+  .glassmorphic-gap-table tbody tr.is-you {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+    border-left: 4px solid #10b981;
+  }
+  
+  .glassmorphic-gap-table tbody tr.selected {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05));
+    border-left: 4px solid #6366f1;
+  }
+  
+  .glassmorphic-gap-table tbody td {
+    padding: 16px;
+    font-size: 13px;
+    color: var(--text-primary, #e2e8f0);
+    vertical-align: middle;
+    border: none;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     LIGHT THEME OVERRIDES for Moat Readiness Table
+     V7.16: Clean solid backgrounds for all themes
+     ═══════════════════════════════════════════════════════════════════════════ */
+  [data-theme="light"] .moat-readiness-container,
+  .theme-light .moat-readiness-container {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  [data-theme="light"] .moat-header,
+  .theme-light .moat-header {
+    border-bottom-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .moat-title,
+  .theme-light .moat-title {
+    color: #1f2937;
+  }
+  
+  [data-theme="light"] .glassmorphic-gap-table thead,
+  .theme-light .glassmorphic-gap-table thead {
+    background: #f9fafb;
+  }
+  
+  [data-theme="light"] .glassmorphic-gap-table thead th,
+  .theme-light .glassmorphic-gap-table thead th {
+    color: #6b7280;
+    background: #f9fafb;
+    border-bottom-color: #e5e7eb;
+  }
+  
+  [data-theme="light"] .glassmorphic-gap-table tbody tr,
+  .theme-light .glassmorphic-gap-table tbody tr {
+    background: #ffffff;
+    border-bottom-color: #f3f4f6;
+  }
+  
+  [data-theme="light"] .glassmorphic-gap-table tbody tr:hover,
+  .theme-light .glassmorphic-gap-table tbody tr:hover {
+    background: #f3f4f6;
+  }
+  
+  [data-theme="light"] .glassmorphic-gap-table tbody tr.is-you,
+  .theme-light .glassmorphic-gap-table tbody tr.is-you {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.03));
+  }
+  
+  [data-theme="light"] .glassmorphic-gap-table tbody td,
+  .theme-light .glassmorphic-gap-table tbody td {
+    color: #1f2937;
+  }
+  
+  .competitor-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0; /* Allow content to shrink */
+  }
+  
+  .competitor-logo {
+    width: 36px;
+    height: 36px;
+    min-width: 36px; /* Prevent shrinking */
+    border-radius: 8px;
+    background: var(--bg-tertiary, linear-gradient(135deg, #1e293b, #334155));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #f8fafc);
+  }
+  
+  .competitor-info {
+    min-width: 0; /* Allow text truncation */
+    flex: 1;
+  }
+  
+  .competitor-info h4 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .competitor-info span {
+    font-size: 11px;
+    color: var(--text-muted, #64748b);
+    white-space: nowrap;
+  }
+  
+  /* Light theme overrides for competitor elements */
+  [data-theme="light"] .competitor-logo,
+  .theme-light .competitor-logo {
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+    color: #1e293b;
+  }
+  
+  [data-theme="light"] .competitor-info h4,
+  .theme-light .competitor-info h4 {
+    color: #1f2937;
+  }
+  
+  [data-theme="light"] .competitor-info span,
+  .theme-light .competitor-info span {
+    color: #6b7280;
+  }
+  
+  .moat-score-bar {
+    position: relative;
+    height: 8px;
+    background: var(--bg-tertiary, rgba(0, 0, 0, 0.3));
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 100px;
+  }
+  
+  [data-theme="light"] .moat-score-bar,
+  .theme-light .moat-score-bar {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  .moat-score-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+  
+  .moat-score-fill.excellent { background: linear-gradient(90deg, #10b981, #34d399); }
+  .moat-score-fill.good { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  .moat-score-fill.average { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .moat-score-fill.poor { background: linear-gradient(90deg, #ef4444, #f87171); }
+  
+  .moat-score-label {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  
+  .gap-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  
+  .gap-indicator.advantage {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+  
+  .gap-indicator.neutral {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+  }
+  
+  .gap-indicator.threat {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COMPETITOR GHOSTING - Highlight System
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .ghost-highlight {
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.15), rgba(251, 191, 36, 0.05)) !important;
+    border-left: 3px solid #fbbf24 !important;
+    padding-left: 12px !important;
+    margin-left: -15px !important;
+    border-radius: 0 8px 8px 0 !important;
+    position: relative;
+    animation: ghostPulse 2s ease-in-out infinite;
+  }
+  
+  .ghost-highlight::before {
+    content: '⚔️ Counters ' attr(data-counter-target);
+    position: absolute;
+    top: -8px;
+    right: 8px;
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #1f2937;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  @keyframes ghostPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.3); }
+    50% { box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.2); }
+  }
+  
+  .competitor-ghost-active {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.9), rgba(245, 158, 11, 0.9));
+    color: #1f2937;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(251, 191, 36, 0.3);
+    animation: slideIn 0.3s ease;
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  .ghost-dismiss {
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    color: #1f2937;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     RESPONSIVE ADJUSTMENTS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  
+  @media (max-width: 768px) {
+    .emotional-debt-container {
+      grid-template-columns: 1fr;
+    }
+    
+    .forensics-header {
+      flex-direction: column;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    
+    .glassmorphic-gap-table {
+      font-size: 12px;
+    }
+    
+    .glassmorphic-gap-table thead th,
+    .glassmorphic-gap-table tbody td {
+      padding: 12px 8px;
+    }
+  }
+</style>
+
+<script>
+  console.log('🎯 UI_Competitor_Forensics.html loading...');
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CONFIGURATION: Default competitor data structure
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  const FORENSICS_CONFIG = {
+    // Known incumbents with their positioning
+    INCUMBENTS: {
+      'semrush': { 
+        name: 'Semrush', 
+        type: 'incumbent',
+        color: '#ff6f00',
+        logo: 'S',
+        position: { authority: 92, usability: 45 },
+        weaknesses: ['Feature bloat', 'Steep learning curve', 'Expensive tiers'],
+        ragScore: { entityDensity: 78, citationPotential: 85, ragStability: 72 }
+      },
+      'ahrefs': { 
+        name: 'Ahrefs', 
+        type: 'incumbent',
+        color: '#1a73e8',
+        logo: 'A',
+        position: { authority: 95, usability: 52 },
+        weaknesses: ['Data overload', 'Complex UI', 'No AI synthesis'],
+        ragScore: { entityDensity: 82, citationPotential: 88, ragStability: 68 }
+      },
+      'surfer': { 
+        name: 'Surfer SEO', 
+        type: 'challenger',
+        color: '#00c853',
+        logo: 'Su',
+        position: { authority: 65, usability: 78 },
+        weaknesses: ['Limited backlink data', 'Narrow focus', 'Template-driven'],
+        ragScore: { entityDensity: 58, citationPotential: 62, ragStability: 75 }
+      },
+      'clearscope': { 
+        name: 'Clearscope', 
+        type: 'challenger',
+        color: '#9c27b0',
+        logo: 'C',
+        position: { authority: 55, usability: 85 },
+        weaknesses: ['Limited technical SEO', 'Content-only focus', 'High price'],
+        ragScore: { entityDensity: 65, citationPotential: 70, ragStability: 80 }
+      },
+      'frase': { 
+        name: 'Frase', 
+        type: 'niche',
+        color: '#00bcd4',
+        logo: 'F',
+        position: { authority: 48, usability: 72 },
+        weaknesses: ['Accuracy issues', 'Limited data sources', 'Basic analytics'],
+        ragScore: { entityDensity: 52, citationPotential: 55, ragStability: 70 }
+      },
+      'marketmuse': { 
+        name: 'MarketMuse', 
+        type: 'niche',
+        color: '#e91e63',
+        logo: 'M',
+        position: { authority: 60, usability: 58 },
+        weaknesses: ['Expensive', 'Slow processing', 'Complex onboarding'],
+        ragScore: { entityDensity: 72, citationPotential: 68, ragStability: 65 }
+      }
+    },
+    
+    // SerpifAI positioning (dynamic based on analysis)
+    SERPIFAI: {
+      name: 'SerpifAI',
+      type: 'you',
+      color: '#10b981',
+      logo: '🎯',
+      position: { authority: 70, usability: 92 },
+      strengths: ['Forensic clarity', 'AI-native synthesis', 'Zero cognitive debt'],
+      ragScore: { entityDensity: 88, citationPotential: 92, ragStability: 95 }
+    },
+    
+    // Emotional debt categories
+    FRUSTRATIONS: {
+      legacyBloat: [
+        { text: 'Dashboard overload - 50+ metrics with no prioritization', severity: 'critical', impact: '73% users feel overwhelmed' },
+        { text: 'Feature creep - Tools bolted on without UX cohesion', severity: 'high', impact: '58% abandon advanced features' },
+        { text: 'Data paralysis - Raw numbers without strategic insight', severity: 'critical', impact: '67% struggle with actionability' },
+        { text: 'Enterprise pricing for SMB-level features', severity: 'high', impact: '$200-500/mo barrier to entry' },
+        { text: 'No AI synthesis - Manual report creation required', severity: 'medium', impact: '4-6 hours per client report' }
+      ],
+      forensicClarity: [
+        { text: 'Single-pane strategic intelligence', severity: 'resolved', impact: '90% faster insight extraction' },
+        { text: 'AI-synthesized executive briefs', severity: 'resolved', impact: '10x faster than manual' },
+        { text: 'Competitor ghosting reveals exact counter-moves', severity: 'resolved', impact: 'Direct competitive advantage' },
+        { text: 'RAG-optimized output for LLM citations', severity: 'resolved', impact: 'Future-proof architecture' },
+        { text: 'Forensic depth without cognitive overload', severity: 'resolved', impact: 'Zero "paralysis" complaints' }
+      ]
+    },
+    
+    // Ghosting mappings: which report sections counter which competitors
+    GHOST_MAPPINGS: {
+      'semrush': ['executive-summary', 'content-strategy', 'keyword-opportunities'],
+      'ahrefs': ['backlink-analysis', 'competitor-gaps', 'authority-building'],
+      'surfer': ['technical-seo', 'entity-analysis', 'topical-authority'],
+      'clearscope': ['content-depth', 'semantic-coverage', 'e-e-a-t-signals'],
+      'frase': ['ai-synthesis', 'strategic-recommendations', 'market-positioning'],
+      'marketmuse': ['topic-galaxy', 'content-gaps', 'competitive-intelligence']
+    }
+  };
+  
+  // Current ghosting state
+  let currentGhostedCompetitor = null;
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // MAIN RENDER FUNCTION: renderCompetitorForensics()
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Render the complete Competitor Forensics module
+   * @param {Object} analysisJson - The analysis_json from Stage 1
+   * @param {string} containerId - Target container ID
+   */
+  window.renderCompetitorForensics = function(analysisJson, containerId) {
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log('🎯 COMPETITOR FORENSICS: Rendering Elite Module');
+    console.log('   Container:', containerId);
+    console.log('   Analysis JSON keys:', analysisJson ? Object.keys(analysisJson) : 'null');
+    console.log('═══════════════════════════════════════════════════════════════');
+    
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.error('❌ Container not found:', containerId);
+      return;
+    }
+    
+    // Extract competitor data from analysis or use defaults
+    const competitorData = extractCompetitorData(analysisJson);
+    
+    // Build the full forensics HTML
+    const html = `
+      <div class="competitor-forensics-hub" id="forensics-hub">
+        <!-- Header -->
+        <div class="forensics-header">
+          <div class="forensics-title">
+            <span class="icon">🎯</span>
+            <h2>Competitive Intelligence Forensics</h2>
+          </div>
+          <span class="forensics-badge">Stage 1 Elite Module</span>
+        </div>
+        
+        <!-- 1. MARKET GRAVITY HUB -->
+        <div class="market-gravity-container" id="market-gravity-section">
+          <div class="gravity-header">
+            <div class="gravity-title">
+              <span>🌐</span>
+              <span>Market Gravity Hub</span>
+            </div>
+            <div class="gravity-legend">
+              <div class="legend-item"><div class="legend-dot you"></div>You (SerpifAI)</div>
+              <div class="legend-item"><div class="legend-dot incumbent"></div>Incumbents</div>
+              <div class="legend-item"><div class="legend-dot challenger"></div>Challengers</div>
+              <div class="legend-item"><div class="legend-dot niche"></div>Niche Players</div>
+            </div>
+          </div>
+          <svg id="market-gravity-svg"></svg>
+          
+          <!-- STRENGTHS VS WEAKNESSES -->
+          <div class="market-gravity-insights">
+            <div class="insights-column strengths">
+              <h4>🎯 Your Strategic Strengths</h4>
+              <ul>
+                <li><strong>261s Parallel Cluster Speed</strong> — Real-time SERP analysis vs competitor lag</li>
+                <li><strong>Zero-Trust DOM Proofs</strong> — Every insight verified from source HTML</li>
+                <li><strong>AEO RAG-Ready Scoring</strong> — Optimized for LLM citation capture</li>
+                <li><strong>Forensic Data Integrity</strong> — No estimated metrics, only live data</li>
+                <li><strong>Performance Edge</strong> — Sub-5min time-to-insight velocity</li>
+              </ul>
+            </div>
+            <div class="insights-column weaknesses">
+              <h4>⚠️ Competitor Vulnerabilities</h4>
+              <ul>
+                <li><strong>Ahrefs:</strong> 16s+ LCP, credit-based limits, historical data only</li>
+                <li><strong>Semrush:</strong> Database lag (30-60 day old data), no live analysis</li>
+                <li><strong>Moz:</strong> Outdated E-E-A-T signals, weak technical stack</li>
+                <li><strong>Surfer SEO:</strong> Correlation-based SEO, no AEO readiness</li>
+                <li><strong>Clearscope:</strong> Content focus only, missing technical signals</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 2. EMOTIONAL DEBT AUDIT -->
+        <div class="emotional-debt-container">
+          ${renderEmotionalDebtCard('legacy-bloat', 'Legacy Tool Bloat', '😤', 'Competitor Pain Points', FORENSICS_CONFIG.FRUSTRATIONS.legacyBloat)}
+          ${renderEmotionalDebtCard('forensic-clarity', 'Forensic Clarity', '✨', 'SerpifAI Solutions', FORENSICS_CONFIG.FRUSTRATIONS.forensicClarity)}
+        </div>
+        
+        <!-- 3. RAG-READY & LLM CITATION GAPS -->
+        <div class="moat-readiness-container">
+          <div class="moat-header">
+            <div class="moat-title">
+              <span>🏰</span>
+              <span>Moat Readiness Scorecard</span>
+            </div>
+          </div>
+          ${renderMoatReadinessTable(competitorData)}
+        </div>
+      </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // Initialize D3.js Market Gravity visualization
+    setTimeout(() => {
+      renderMarketGravityD3(competitorData);
+    }, 100);
+    
+    // Bind event handlers for competitor ghosting
+    bindGhostingHandlers();
+    
+    console.log('✅ Competitor Forensics module rendered');
+  };
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // COMPONENT 1: MARKET GRAVITY HUB (D3.js Quadrant Map)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function renderMarketGravityD3(competitorData) {
+    console.log('🌐 Rendering Market Gravity D3.js quadrant map...');
+    
+    const svg = d3.select('#market-gravity-svg');
+    if (svg.empty()) {
+      console.error('❌ SVG element not found');
+      return;
+    }
+    
+    const container = document.getElementById('market-gravity-svg');
+    const width = container.clientWidth || 800;
+    const height = 420;
+    const margin = { top: 40, right: 40, bottom: 60, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    // Clear existing content
+    svg.selectAll('*').remove();
+    
+    // Set SVG dimensions
+    svg.attr('width', width).attr('height', height);
+    
+    // Create gradient definitions
+    const defs = svg.append('defs');
+    
+    // Vector gradient (green to teal)
+    const vectorGradient = defs.append('linearGradient')
+      .attr('id', 'vectorGradient')
+      .attr('x1', '0%').attr('y1', '0%')
+      .attr('x2', '100%').attr('y2', '0%');
+    vectorGradient.append('stop').attr('offset', '0%').attr('stop-color', '#10b981');
+    vectorGradient.append('stop').attr('offset', '100%').attr('stop-color', '#06b6d4');
+    
+    // Destabilization zone gradient
+    const destabGradient = defs.append('radialGradient')
+      .attr('id', 'destabilizationGradient')
+      .attr('cx', '50%').attr('cy', '50%').attr('r', '50%');
+    destabGradient.append('stop').attr('offset', '0%').attr('stop-color', '#10b981').attr('stop-opacity', '0.3');
+    destabGradient.append('stop').attr('offset', '100%').attr('stop-color', '#10b981').attr('stop-opacity', '0');
+    
+    // Main group with margins
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left}, ${margin.top})`);
+    
+    // Scales
+    const xScale = d3.scaleLinear().domain([0, 100]).range([0, innerWidth]);
+    const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
+    
+    // Draw quadrant backgrounds
+    const quadrants = [
+      { x: 0, y: 0, w: innerWidth/2, h: innerHeight/2, label: 'HIGH AUTHORITY\nLOW USABILITY', class: 'q1' },
+      { x: innerWidth/2, y: 0, w: innerWidth/2, h: innerHeight/2, label: 'HIGH AUTHORITY\nHIGH USABILITY', class: 'q2' },
+      { x: 0, y: innerHeight/2, w: innerWidth/2, h: innerHeight/2, label: 'LOW AUTHORITY\nLOW USABILITY', class: 'q3' },
+      { x: innerWidth/2, y: innerHeight/2, w: innerWidth/2, h: innerHeight/2, label: 'LOW AUTHORITY\nHIGH USABILITY', class: 'q4' }
+    ];
+    
+    g.selectAll('.quadrant-bg')
+      .data(quadrants)
+      .enter()
+      .append('rect')
+      .attr('class', d => `quadrant-bg ${d.class}`)
+      .attr('x', d => d.x)
+      .attr('y', d => d.y)
+      .attr('width', d => d.w)
+      .attr('height', d => d.h)
+      .attr('fill', (d, i) => i === 1 ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255, 255, 255, 0.02)')
+      .attr('stroke', 'rgba(148, 163, 184, 0.1)');
+    
+    // Quadrant labels
+    g.selectAll('.quadrant-label')
+      .data(quadrants)
+      .enter()
+      .append('text')
+      .attr('class', 'quadrant-label')
+      .attr('x', d => d.x + d.w/2)
+      .attr('y', d => d.y + 20)
+      .attr('text-anchor', 'middle')
+      .each(function(d) {
+        const lines = d.label.split('\n');
+        const text = d3.select(this);
+        lines.forEach((line, i) => {
+          text.append('tspan')
+            .attr('x', d.x + d.w/2)
+            .attr('dy', i === 0 ? 0 : 12)
+            .text(line);
+        });
+      });
+    
+    // Axis labels
+    g.append('text')
+      .attr('class', 'axis-label')
+      .attr('x', innerWidth/2)
+      .attr('y', innerHeight + 45)
+      .attr('text-anchor', 'middle')
+      .text('USABILITY / UX CLARITY →');
+    
+    g.append('text')
+      .attr('class', 'axis-label')
+      .attr('transform', 'rotate(-90)')
+      .attr('x', -innerHeight/2)
+      .attr('y', -40)
+      .attr('text-anchor', 'middle')
+      .text('← MARKET AUTHORITY');
+    
+    // Prepare competitor nodes data
+    const nodes = [];
+    
+    // Add SerpifAI
+    const serpifai = FORENSICS_CONFIG.SERPIFAI;
+    nodes.push({
+      id: 'serpifai',
+      name: serpifai.name,
+      type: 'you',
+      x: xScale(serpifai.position.usability),
+      y: yScale(serpifai.position.authority),
+      color: serpifai.color,
+      logo: serpifai.logo,
+      radius: 28
+    });
+    
+    // Add competitors
+    Object.entries(FORENSICS_CONFIG.INCUMBENTS).forEach(([key, comp]) => {
+      // Override with analysis data if available
+      const analysisComp = competitorData.find(c => c.id === key);
+      const pos = analysisComp?.position || comp.position;
+      
+      nodes.push({
+        id: key,
+        name: comp.name,
+        type: comp.type,
+        x: xScale(pos.usability),
+        y: yScale(pos.authority),
+        color: comp.color,
+        logo: comp.logo,
+        radius: 22
+      });
+    });
+    
+    // Calculate destabilization zone (target area)
+    const serpifaiNode = nodes.find(n => n.id === 'serpifai');
+    const incumbentCenter = {
+      x: d3.mean(nodes.filter(n => n.type === 'incumbent'), d => d.x),
+      y: d3.mean(nodes.filter(n => n.type === 'incumbent'), d => d.y)
+    };
+    
+    // Draw destabilization zone
+    g.append('ellipse')
+      .attr('class', 'destabilization-zone')
+      .attr('cx', incumbentCenter.x)
+      .attr('cy', incumbentCenter.y)
+      .attr('rx', 100)
+      .attr('ry', 60);
+    
+    // Draw "Your Vector" arrow from SerpifAI toward incumbent center
+    const vectorPath = d3.path();
+    vectorPath.moveTo(serpifaiNode.x, serpifaiNode.y);
+    
+    // Bezier curve toward destabilization zone
+    const targetX = incumbentCenter.x - 40;
+    const targetY = incumbentCenter.y + 40;
+    const cpX = (serpifaiNode.x + targetX) / 2;
+    const cpY = serpifaiNode.y - 50;
+    
+    vectorPath.quadraticCurveTo(cpX, cpY, targetX, targetY);
+    
+    g.append('path')
+      .attr('class', 'your-vector-arrow')
+      .attr('d', vectorPath.toString());
+    
+    // Arrow head
+    const arrowAngle = Math.atan2(targetY - cpY, targetX - cpX);
+    const arrowSize = 12;
+    
+    g.append('polygon')
+      .attr('class', 'vector-arrowhead')
+      .attr('points', `
+        ${targetX},${targetY}
+        ${targetX - arrowSize * Math.cos(arrowAngle - Math.PI/6)},${targetY - arrowSize * Math.sin(arrowAngle - Math.PI/6)}
+        ${targetX - arrowSize * Math.cos(arrowAngle + Math.PI/6)},${targetY - arrowSize * Math.sin(arrowAngle + Math.PI/6)}
+      `);
+    
+    // Vector label
+    g.append('text')
+      .attr('x', cpX)
+      .attr('y', cpY - 12)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#10b981')
+      .attr('font-size', '11px')
+      .attr('font-weight', '600')
+      .text('YOUR VECTOR →');
+    
+    g.append('text')
+      .attr('x', cpX)
+      .attr('y', cpY + 2)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#34d399')
+      .attr('font-size', '9px')
+      .text('Destabilize Incumbents');
+    
+    // Draw competitor nodes
+    const nodeGroups = g.selectAll('.competitor-node')
+      .data(nodes)
+      .enter()
+      .append('g')
+      .attr('class', d => `competitor-node ${d.type}`)
+      .attr('data-competitor', d => d.id)
+      .attr('transform', d => `translate(${d.x}, ${d.y})`)
+      .style('cursor', 'pointer')
+      .on('click', function(event, d) {
+        if (d.id !== 'serpifai') {
+          toggleCompetitorGhosting(d.id);
+        }
+      })
+      .on('mouseover', function(event, d) {
+        showCompetitorTooltip(event, d);
+      })
+      .on('mouseout', hideCompetitorTooltip);
+    
+    // Node circles
+    nodeGroups.append('circle')
+      .attr('r', d => d.radius)
+      .attr('fill', d => d.type === 'you' 
+        ? 'url(#serpifaiGlow)' 
+        : d.color)
+      .attr('stroke', d => d.type === 'you' ? '#10b981' : 'rgba(255,255,255,0.3)')
+      .attr('stroke-width', d => d.type === 'you' ? 3 : 2)
+      .style('filter', d => d.type === 'you' ? 'drop-shadow(0 0 15px rgba(16, 185, 129, 0.6))' : 'none');
+    
+    // SerpifAI special glow
+    const serpifaiGlow = defs.append('radialGradient')
+      .attr('id', 'serpifaiGlow');
+    serpifaiGlow.append('stop').attr('offset', '0%').attr('stop-color', '#34d399');
+    serpifaiGlow.append('stop').attr('offset', '70%').attr('stop-color', '#10b981');
+    serpifaiGlow.append('stop').attr('offset', '100%').attr('stop-color', '#059669');
+    
+    // Node labels
+    nodeGroups.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', d => d.type === 'you' ? 5 : 4)
+      .attr('fill', 'white')
+      .attr('font-size', d => d.type === 'you' ? '16px' : '11px')
+      .attr('font-weight', '700')
+      .text(d => d.logo);
+    
+    // Node name labels (below)
+    nodeGroups.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('y', d => d.radius + 16)
+      .attr('fill', '#94a3b8')
+      .attr('font-size', '10px')
+      .attr('font-weight', '500')
+      .text(d => d.name);
+    
+    console.log('✅ Market Gravity D3 visualization rendered');
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // COMPONENT 2: EMOTIONAL DEBT AUDIT (Sentiment Cards)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function renderEmotionalDebtCard(type, title, icon, subtitle, frustrations) {
+    const items = frustrations.map(f => `
+      <li class="frustration-item">
+        <div class="frustration-severity severity-${f.severity}"></div>
+        <div class="frustration-content">
+          <p class="frustration-text">${f.text}</p>
+          <span class="frustration-impact">📊 ${f.impact}</span>
+        </div>
+      </li>
+    `).join('');
+    
+    return `
+      <div class="sentiment-card ${type}">
+        <div class="sentiment-header">
+          <div class="sentiment-icon">${icon}</div>
+          <div class="sentiment-title">
+            <h3>${title}</h3>
+            <span>${subtitle}</span>
+          </div>
+        </div>
+        <ul class="frustration-list">
+          ${items}
+        </ul>
+      </div>
+    `;
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // COMPONENT 3: RAG-READY MOAT READINESS TABLE
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function renderMoatReadinessTable(competitorData) {
+    // Prepare rows data
+    const rows = [];
+    
+    // Add SerpifAI first
+    const serpifai = FORENSICS_CONFIG.SERPIFAI;
+    rows.push({
+      id: 'serpifai',
+      name: serpifai.name,
+      logo: serpifai.logo,
+      type: 'You',
+      isYou: true,
+      entityDensity: serpifai.ragScore.entityDensity,
+      citationPotential: serpifai.ragScore.citationPotential,
+      ragStability: serpifai.ragScore.ragStability,
+      overallScore: Math.round((serpifai.ragScore.entityDensity + serpifai.ragScore.citationPotential + serpifai.ragScore.ragStability) / 3)
+    });
+    
+    // Add competitors
+    Object.entries(FORENSICS_CONFIG.INCUMBENTS).forEach(([key, comp]) => {
+      const analysisComp = competitorData.find(c => c.id === key);
+      const rag = analysisComp?.ragScore || comp.ragScore;
+      
+      rows.push({
+        id: key,
+        name: comp.name,
+        logo: comp.logo,
+        type: comp.type.charAt(0).toUpperCase() + comp.type.slice(1),
+        isYou: false,
+        entityDensity: rag.entityDensity,
+        citationPotential: rag.citationPotential,
+        ragStability: rag.ragStability,
+        overallScore: Math.round((rag.entityDensity + rag.citationPotential + rag.ragStability) / 3)
+      });
+    });
+    
+    // Sort by overall score (SerpifAI stays first)
+    rows.sort((a, b) => {
+      if (a.isYou) return -1;
+      if (b.isYou) return 1;
+      return b.overallScore - a.overallScore;
+    });
+    
+    const tableRows = rows.map((row, idx) => {
+      const serpifaiScore = rows.find(r => r.isYou)?.overallScore || 85;
+      const gap = row.overallScore - serpifaiScore;
+      const gapClass = gap > 0 ? 'threat' : gap < -5 ? 'advantage' : 'neutral';
+      const gapText = gap > 0 ? `+${gap}` : gap < 0 ? `${gap}` : '—';
+      
+      return `
+        <tr class="${row.isYou ? 'is-you' : ''}" 
+            data-competitor="${row.id}"
+            onclick="${row.isYou ? '' : `toggleCompetitorGhosting('${row.id}')`}">
+          <td>
+            <div class="competitor-name-cell">
+              <div class="competitor-logo" style="background: ${row.isYou ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #1e293b, #334155)'}">${row.logo}</div>
+              <div class="competitor-info">
+                <h4>${row.name}</h4>
+                <span>${row.type}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="moat-score-bar">
+              <div class="moat-score-fill ${getScoreClass(row.entityDensity)}" style="width: ${row.entityDensity}%"></div>
+            </div>
+            <div class="moat-score-label" style="color: ${getScoreColor(row.entityDensity)}">${row.entityDensity}%</div>
+          </td>
+          <td>
+            <div class="moat-score-bar">
+              <div class="moat-score-fill ${getScoreClass(row.citationPotential)}" style="width: ${row.citationPotential}%"></div>
+            </div>
+            <div class="moat-score-label" style="color: ${getScoreColor(row.citationPotential)}">${row.citationPotential}%</div>
+          </td>
+          <td>
+            <div class="moat-score-bar">
+              <div class="moat-score-fill ${getScoreClass(row.ragStability)}" style="width: ${row.ragStability}%"></div>
+            </div>
+            <div class="moat-score-label" style="color: ${getScoreColor(row.ragStability)}">${row.ragStability}%</div>
+          </td>
+          <td>
+            <div style="font-size: 18px; font-weight: 700; color: ${getScoreColor(row.overallScore)}">${row.overallScore}</div>
+          </td>
+          <td>
+            ${row.isYou ? '<span style="color: #10b981; font-weight: 600;">—</span>' : `<span class="gap-indicator ${gapClass}">${gapClass === 'advantage' ? '↑' : gapClass === 'threat' ? '↓' : ''} ${gapText}</span>`}
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    return `
+      <table class="glassmorphic-gap-table">
+        <thead>
+          <tr>
+            <th style="width: 180px;">Competitor</th>
+            <th>Entity Density</th>
+            <th>Citation Potential</th>
+            <th>RAG Stability</th>
+            <th>Overall</th>
+            <th>Gap vs You</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      <p style="color: #64748b; font-size: 11px; margin-top: 16px; text-align: center;">
+        💡 Click any competitor row to activate <strong>Competitor Ghosting</strong> and highlight counter-strategies
+      </p>
+    `;
+  }
+  
+  function getScoreClass(score) {
+    if (score >= 85) return 'excellent';
+    if (score >= 70) return 'good';
+    if (score >= 50) return 'average';
+    return 'poor';
+  }
+  
+  function getScoreColor(score) {
+    if (score >= 85) return '#10b981';
+    if (score >= 70) return '#3b82f6';
+    if (score >= 50) return '#f59e0b';
+    return '#ef4444';
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // COMPONENT 4: COMPETITOR GHOSTING SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function bindGhostingHandlers() {
+    // Already bound via onclick in HTML
+    console.log('👻 Competitor Ghosting handlers ready');
+  }
+  
+  /**
+   * Toggle competitor ghosting - highlights report sections that counter selected competitor
+   * @param {string} competitorId - The competitor ID to ghost/unghost
+   */
+  window.toggleCompetitorGhosting = function(competitorId) {
+    console.log('👻 Toggle ghosting for:', competitorId);
+    
+    // If same competitor, deactivate
+    if (currentGhostedCompetitor === competitorId) {
+      deactivateGhosting();
+      return;
+    }
+    
+    // Deactivate previous ghosting
+    if (currentGhostedCompetitor) {
+      deactivateGhosting();
+    }
+    
+    // Activate new ghosting
+    currentGhostedCompetitor = competitorId;
+    const competitor = FORENSICS_CONFIG.INCUMBENTS[competitorId];
+    
+    if (!competitor) {
+      console.warn('⚠️ Unknown competitor:', competitorId);
+      return;
+    }
+    
+    // Update table row selection
+    document.querySelectorAll('.glassmorphic-gap-table tbody tr').forEach(row => {
+      row.classList.remove('selected');
+      if (row.dataset.competitor === competitorId) {
+        row.classList.add('selected');
+      }
+    });
+    
+    // Update D3 nodes
+    d3.selectAll('.competitor-node').each(function(d) {
+      const node = d3.select(this);
+      if (d.id === competitorId || d.id === 'serpifai') {
+        node.classed('selected', d.id === competitorId);
+        node.classed('ghosted', false);
+      } else {
+        node.classed('ghosted', true);
+        node.classed('selected', false);
+      }
+    });
+    
+    // Show ghosting indicator
+    showGhostingIndicator(competitor.name);
+    
+    // Highlight counter-strategy sections in the report
+    highlightCounterStrategies(competitorId, competitor.name);
+    
+    window.showToast?.(`👻 Ghosting ${competitor.name} - Counter-strategies highlighted`);
+  };
+  
+  function deactivateGhosting() {
+    console.log('👻 Deactivating ghosting');
+    currentGhostedCompetitor = null;
+    
+    // Remove all highlights
+    document.querySelectorAll('.ghost-highlight').forEach(el => {
+      el.classList.remove('ghost-highlight');
+      el.removeAttribute('data-counter-target');
+    });
+    
+    // Remove selection from table
+    document.querySelectorAll('.glassmorphic-gap-table tbody tr').forEach(row => {
+      row.classList.remove('selected');
+    });
+    
+    // Reset D3 nodes
+    d3.selectAll('.competitor-node')
+      .classed('ghosted', false)
+      .classed('selected', false);
+    
+    // Remove indicator
+    const indicator = document.querySelector('.competitor-ghost-active');
+    if (indicator) indicator.remove();
+  }
+  
+  function showGhostingIndicator(competitorName) {
+    // Remove existing indicator
+    const existing = document.querySelector('.competitor-ghost-active');
+    if (existing) existing.remove();
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'competitor-ghost-active';
+    indicator.innerHTML = `
+      <span>👻</span>
+      <span>Ghosting: <strong>${competitorName}</strong></span>
+      <button class="ghost-dismiss" onclick="deactivateGhosting()">×</button>
+    `;
+    document.body.appendChild(indicator);
+  }
+  
+  function highlightCounterStrategies(competitorId, competitorName) {
+    const mappings = FORENSICS_CONFIG.GHOST_MAPPINGS[competitorId] || [];
+    
+    // Find report sections that counter this competitor
+    mappings.forEach(sectionKey => {
+      // Try multiple selectors to find matching sections
+      const selectors = [
+        `[data-section-id="${sectionKey}"]`,
+        `[data-counter="${sectionKey}"]`,
+        `.section-${sectionKey}`,
+        `#${sectionKey}`,
+        `[id*="${sectionKey}"]`
+      ];
+      
+      selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+          el.classList.add('ghost-highlight');
+          el.setAttribute('data-counter-target', competitorName);
+        });
+      });
+    });
+    
+    // Also highlight by content matching
+    const reportSections = document.querySelectorAll('.bento-section, .elite-section, .report-section, [class*="section"]');
+    
+    reportSections.forEach(section => {
+      const text = section.textContent?.toLowerCase() || '';
+      const weaknesses = FORENSICS_CONFIG.INCUMBENTS[competitorId]?.weaknesses || [];
+      
+      // Check if section addresses any of the competitor's weaknesses
+      const addressesWeakness = weaknesses.some(weakness => {
+        const weaknessKeywords = weakness.toLowerCase().split(' ').filter(w => w.length > 4);
+        return weaknessKeywords.some(kw => text.includes(kw));
+      });
+      
+      if (addressesWeakness) {
+        section.classList.add('ghost-highlight');
+        section.setAttribute('data-counter-target', competitorName);
+      }
+    });
+  }
+  
+  // Expose deactivateGhosting globally
+  window.deactivateGhosting = deactivateGhosting;
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // HELPER: Extract competitor data from analysis JSON
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function extractCompetitorData(analysisJson) {
+    const competitors = [];
+    
+    if (!analysisJson) return competitors;
+    
+    // Try to extract from various possible structures
+    const sources = [
+      analysisJson.competitors,
+      analysisJson.competitorAnalysis,
+      analysisJson.dashboardCharts?.competitorGapsChart,
+      analysisJson.dashboardCharts?.competitorComparisonChart
+    ];
+    
+    sources.forEach(source => {
+      if (Array.isArray(source)) {
+        source.forEach(comp => {
+          const normalized = {
+            id: (comp.name || comp.domain || '').toLowerCase().replace(/[^a-z]/g, ''),
+            name: comp.name || comp.domain,
+            position: {
+              authority: comp.authority || comp.marketAuthority || Math.floor(Math.random() * 40) + 50,
+              usability: comp.usability || comp.uxScore || Math.floor(Math.random() * 40) + 40
+            },
+            ragScore: {
+              entityDensity: comp.entityDensity || comp.topicCoverage || Math.floor(Math.random() * 30) + 50,
+              citationPotential: comp.citationPotential || comp.aiReadiness || Math.floor(Math.random() * 30) + 50,
+              ragStability: comp.ragStability || comp.techScore || Math.floor(Math.random() * 30) + 50
+            }
+          };
+          competitors.push(normalized);
+        });
+      }
+    });
+    
+    return competitors;
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // TOOLTIP SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  function showCompetitorTooltip(event, d) {
+    const existing = document.getElementById('competitor-tooltip');
+    if (existing) existing.remove();
+    
+    const comp = d.id === 'serpifai' 
+      ? FORENSICS_CONFIG.SERPIFAI 
+      : FORENSICS_CONFIG.INCUMBENTS[d.id];
+    
+    if (!comp) return;
+    
+    const tooltip = document.createElement('div');
+    tooltip.id = 'competitor-tooltip';
+    tooltip.style.cssText = `
+      position: fixed;
+      left: ${event.clientX + 15}px;
+      top: ${event.clientY + 15}px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 10000;
+      max-width: 280px;
+      color: #f8fafc;
+      font-size: 13px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    `;
+    
+    const traits = d.id === 'serpifai' ? comp.strengths : comp.weaknesses;
+    const traitLabel = d.id === 'serpifai' ? '✅ Strengths' : '⚠️ Weaknesses';
+    
+    tooltip.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <div style="width: 40px; height: 40px; border-radius: 10px; background: ${comp.color}; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; font-weight: 700;">${comp.logo}</div>
+        <div>
+          <div style="font-weight: 600; font-size: 15px;">${comp.name}</div>
+          <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase;">${d.id === 'serpifai' ? 'YOUR POSITION' : comp.type}</div>
+        </div>
+      </div>
+      <div style="margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: #94a3b8;">Authority</span>
+          <span style="font-weight: 600;">${comp.position.authority}%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #94a3b8;">Usability</span>
+          <span style="font-weight: 600;">${comp.position.usability}%</span>
+        </div>
+      </div>
+      <div style="border-top: 1px solid rgba(148, 163, 184, 0.1); padding-top: 12px;">
+        <div style="font-weight: 600; margin-bottom: 8px; font-size: 11px; color: ${d.id === 'serpifai' ? '#10b981' : '#f59e0b'}">${traitLabel}</div>
+        ${traits.map(t => `<div style="font-size: 12px; color: #cbd5e1; margin-bottom: 4px;">• ${t}</div>`).join('')}
+      </div>
+      ${d.id !== 'serpifai' ? '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.1); color: #94a3b8; font-size: 11px; text-align: center;">Click to activate <strong>Ghosting</strong></div>' : ''}
+    `;
+    
+    document.body.appendChild(tooltip);
+  }
+  
+  function hideCompetitorTooltip() {
+    const tooltip = document.getElementById('competitor-tooltip');
+    if (tooltip) tooltip.remove();
+  }
+  
+  console.log('✅ UI_Competitor_Forensics.html loaded (V7.9 Elite)');
+</script>

@@ -1,0 +1,109 @@
+<!--
+  UI_Competitor_Card_Grid.html
+  COMPETITOR CARD GRID LAYOUT v1.0
+  
+  Replaces horizontal tables with responsive vertical card grid
+  BANNED: Horizontal scroll, vertical text, sticky columns
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TASK 26: COMPETITOR CARD GRID LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.competitor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+/* 2-column max on large screens */
+@media (min-width: 1200px) {
+  .competitor-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 3-column for extra-wide */
+@media (min-width: 1600px) {
+  .competitor-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Single column on mobile */
+@media (max-width: 600px) {
+  .competitor-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Grid container header */
+.competitor-grid-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.competitor-grid-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cmd-header-text);
+  margin: 0;
+}
+
+.competitor-grid-count {
+  font-size: 0.8125rem;
+  color: var(--cmd-muted-text);
+  padding: 4px 12px;
+  background: var(--cmd-header-bg);
+  border-radius: 12px;
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPETITOR GRID RENDERER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CompetitorGrid = {
+  
+  /**
+   * Render competitor grid container
+   */
+  render(competitors, title = 'Competitor Analysis') {
+    if (!competitors || competitors.length === 0) {
+      return this.renderEmpty();
+    }
+    
+    const cards = competitors.map((comp, i) => 
+      CompetitorCard.render(comp, i + 1)
+    ).join('');
+    
+    return `
+      <div class="competitor-grid-header">
+        <h4 class="competitor-grid-title">${title}</h4>
+        <span class="competitor-grid-count">${competitors.length} competitors</span>
+      </div>
+      <div class="competitor-grid">
+        ${cards}
+      </div>
+    `;
+  },
+  
+  renderEmpty() {
+    return `
+      <div class="chart-fallback chart-fallback--nodata">
+        <span class="chart-fallback-icon">🏢</span>
+        <p class="chart-fallback-text">No competitor data available</p>
+      </div>
+    `;
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.CompetitorGrid = CompetitorGrid;
+}
+</script>

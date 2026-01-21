@@ -1,0 +1,1013 @@
+<script>
+  // V40.0 - NEW FILE TO BYPASS CACHE
+  console.log('🔥 [V40.0] UI_Tab_Audience_v40.html: FRESH FILE - NO CACHE');
+  // ===========================================================================
+  // UI_Tab_Audience_v40.html
+  // Audience & Psychological Intelligence Tab - Elite v9.0
+  // Extracted from UI_Scripts_App.html for modular architecture
+  // 
+  // Contains:
+  // - populateAudienceIntelligenceTab() - Behavioral archetypes, JTBD, emotional resonance
+  // - renderDataQualityBadge() - Data quality indicator helper
+  // - renderEliteAudienceIntelligence() - Elite v9.0 audience renderer
+  //
+  // Dependencies:
+  // - extractRealMetrics() from DATA_Real_Metrics.html
+  // - renderExecutiveGeminiInsight() from UI_Executive_Renderer.html
+  // - renderRawDataComparisonTable() from UI_Raw_Data_Tables.html
+  // - renderOnePercentStrategyPanel() from UI_Strategy_Panel.html
+  // - renderAudienceCharts() from UI_Chart_Generator.html
+  // ===========================================================================
+  // ---------------------------------------------------------------------------
+  // IX. AUDIENCE & PSYCHOLOGICAL INTELLIGENCE TAB - Elite v9.0
+  // ---------------------------------------------------------------------------
+  // Uses: FT_GenerateEliteTabIntelligence ? Behavioral Archetypes, JTBD, 
+  // Emotional Resonance, Cognitive Load + PHP Fetcher content analysis
+  // ---------------------------------------------------------------------------
+  function populateAudienceIntelligenceTab(data) {
+    console.log('👥 Populating Audience Tab (Elite v9.0 - BEHAVIORAL ARCHETYPES)...');
+
+    // V38.3: Wrap entire function in try-catch to prevent silent failures
+    try {
+
+    // V3.3: Use correct data-comp-panel selectors matching UI_Components_Competitors.html
+    let metricsDiv = document.getElementById('comp-audience-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="audience"]') ||
+        document.getElementById('panel-audienceIntelligence');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside audience panel');
+        metricsDiv = panel.querySelector('#comp-audience-metrics') || (() => {
+          const c = document.createElement('div'); c.id = 'comp-audience-metrics'; c.className = 'comp-metrics-grid'; c.style.width = '100%';
+          const h = panel.querySelector('.panel-header'); if (h?.nextSibling) panel.insertBefore(c, h.nextSibling); else panel.insertBefore(c, panel.firstChild);
+          return c;
+        })();
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ Audience tab containers not found - check UI_Components_Competitors.html has data-comp-panel="audience"');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // ---------------------------------------------------------------------------
+    // ELITE TAB INTELLIGENCE v9.0 - Check for enhanced data
+    // V38.2 FIX: Always render BOTH Elite AND fallback content for maximum value
+    // ---------------------------------------------------------------------------
+    const eliteData = data.eliteTabIntelligence || window._eliteTabIntelligence;
+    const audienceIntel = eliteData?.audienceIntelligence;
+
+    // V38.2: Log Elite data availability but ALWAYS compute fallback metrics too
+    if (audienceIntel) {
+      console.log('🎯 Using ELITE Tab Intelligence v9.0 for Audience Tab (with rich fallback data)');
+      console.log('   Archetypes:', audienceIntel.archetypes?.length || 0);
+      console.log('   JTBD Analysis:', !!audienceIntel.jtbdAnalysis);
+      console.log('   Emotional Resonance:', !!audienceIntel.emotionalResonance);
+      console.log('   Kill Moves:', audienceIntel.killMoves?.length || 0);
+    }
+
+    // V38.2: ALWAYS compute fallback metrics - they provide the rich data tables
+    // The Elite renderer will be added at the TOP, then fallback content follows
+
+    // COMBINED MODE: Extract REAL audience metrics + Elite enhancements
+    console.log('📊 Using combined audience analysis mode (Rich fallback + Elite enhancements)...');
+
+    // Extract REAL audience metrics from PHP Fetcher data
+    const audienceMetrics = competitors.map(comp => {
+      const metrics = extractRealMetrics(comp);
+      const synth = comp.synthesized || {};
+      const content = synth.content || {};
+      const title = metrics.content.title || '';
+      const meta = synth.metaDescription || content.metaDescription || '';
+      const fullText = (title + ' ' + meta + ' ' + JSON.stringify(synth)).toLowerCase();
+
+      // REAL audience detection from content analysis
+      const b2bSignals = ['enterprise', 'business', 'team', 'organization', 'company', 'corporate', 'b2b', 'saas', 'platform'];
+      const b2cSignals = ['personal', 'individual', 'user', 'home', 'family', 'b2c', 'consumer', 'you', 'your'];
+      const technicalSignals = ['api', 'developer', 'code', 'technical', 'integration', 'sdk', 'documentation'];
+      const marketingSignals = ['seo', 'marketing', 'growth', 'campaign', 'traffic', 'conversion', 'leads'];
+
+      const b2bScore = b2bSignals.filter(s => fullText.includes(s)).length;
+      const b2cScore = b2cSignals.filter(s => fullText.includes(s)).length;
+      const techScore = technicalSignals.filter(s => fullText.includes(s)).length;
+      const marketingScore = marketingSignals.filter(s => fullText.includes(s)).length;
+
+      // Determine target audience from REAL signals
+      let targetAudience = 'Mixed';
+      if (b2bScore > b2cScore + 1) targetAudience = 'B2B Enterprise';
+      else if (b2cScore > b2bScore + 1) targetAudience = 'B2C Consumer';
+      else if (techScore > 2) targetAudience = 'Technical Users';
+      else if (marketingScore > 2) targetAudience = 'Marketing Professionals';
+
+      // Calculate persona depth from REAL content signals
+      let personaDepth = 20; // Base
+      if (metrics.content.wordCount >= 2000) personaDepth += 20;
+      else if (metrics.content.wordCount >= 1000) personaDepth += 10;
+      if (content.headings?.length >= 5) personaDepth += 15;
+      if (metrics.content.schemaTypes?.length >= 2) personaDepth += 15;
+      if (title.length > 30 && title.length < 70) personaDepth += 10;
+      if (meta.length > 100) personaDepth += 10;
+      personaDepth = Math.min(100, personaDepth);
+
+      // Calculate content quality score as JTBD match proxy
+      let jtbdMatch = 30; // Base
+      if (metrics.content.internalLinks >= 10) jtbdMatch += 15;
+      if (metrics.content.schemaTypes?.length >= 1) jtbdMatch += 15;
+      if (metrics.technical.seo >= 80) jtbdMatch += 20;
+      if (metrics.content.wordCount >= 1500) jtbdMatch += 20;
+      jtbdMatch = Math.min(100, jtbdMatch);
+
+      // Emotional signals detection
+      const emotionalWords = ['best', 'amazing', 'powerful', 'easy', 'fast', 'free', 'trusted', 'proven', 'top'];
+      const emotionalCount = emotionalWords.filter(w => fullText.includes(w)).length;
+      const emotionalResonance = Math.min(100, 30 + (emotionalCount * 10) + (marketingScore * 5));
+
+      const hasRealData = metrics.content.wordCount > 0 || title.length > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        targetAudience,
+        personaDepth,
+        jtbdMatch,
+        emotionalResonance,
+        wordCount: metrics.content.wordCount,
+        b2bScore,
+        b2cScore,
+        techScore,
+        marketingScore,
+        dataSource: hasRealData ? 'PHP Fetcher' : 'Pending'
+      };
+    });
+
+    // Detect detected personas from REAL data
+    const personaCounts = {
+      'Technical Users': audienceMetrics.filter(a => a.techScore >= 2).length,
+      'Marketing Professionals': audienceMetrics.filter(a => a.marketingScore >= 2).length,
+      'B2B Enterprise': audienceMetrics.filter(a => a.b2bScore >= 2).length,
+      'B2C Consumer': audienceMetrics.filter(a => a.b2cScore >= 2).length
+    };
+
+    // EXECUTIVE INTELLIGENCE BRIEF - Audience Intelligence
+    const gemini = data.geminiAnalysis || data.analysis || {};
+    const audienceExecConfig = generateExecutiveInsightConfig('audience', competitors, gemini);
+
+    let html = renderExecutiveGeminiInsight(audienceExecConfig);
+    
+    html += `
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">👥 Audience & Psychological Intelligence</h3>
+          
+          <!-- HEADER WITH REAL DATA -->
+          <div style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: PHP Fetcher Content Analysis, Meta/Title Analysis</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Persona Depth</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(audienceMetrics.reduce((a, b) => a + b.personaDepth, 0) / audienceMetrics.length)}/100</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">JTBD Match Avg</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(audienceMetrics.reduce((a, b) => a + b.jtbdMatch, 0) / audienceMetrics.length)}%</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Emotional Resonance</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(audienceMetrics.reduce((a, b) => a + b.emotionalResonance, 0) / audienceMetrics.length)}%</div>
+              </div>
+              <div>
+                <div style="font-size: 12px; opacity: 0.85;">Avg Word Count</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round(audienceMetrics.reduce((a, b) => a + b.wordCount, 0) / audienceMetrics.length).toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- AUDIENCE TABLE WITH DATA SOURCES -->
+          <div style="overflow-x: auto;">
+          <table class="comp-table" style="margin-bottom: 30px;">
+            <thead>
+              <tr>
+                <th>Competitor</th>
+                <th>Target Audience</th>
+                <th>Persona Depth</th>
+                <th>JTBD Match</th>
+                <th>Emotional Index</th>
+                <th>Word Count</th>
+                <th>Data Source</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+    audienceMetrics.forEach(aud => {
+      html += `
+            <tr>
+              <td><strong>${aud.domain}</strong></td>
+              <td><span style="background: #ec489920; color: #db2777; padding: 4px 10px; border-radius: 4px; font-size: 12px;">${aud.targetAudience}</span></td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                    <div style="width: ${aud.personaDepth}%; height: 100%; background: #ec4899;"></div>
+                  </div>
+                  <span style="font-size: 11px;">${aud.personaDepth}</span>
+                </div>
+              </td>
+              <td><span class="metric-badge ${aud.jtbdMatch > 70 ? 'badge-high' : 'badge-medium'}">${aud.jtbdMatch}%</span></td>
+              <td><span style="color: ${aud.emotionalResonance > 70 ? '#22c55e' : '#f59e0b'}; font-weight: 600;">${aud.emotionalResonance}</span></td>
+              <td>${aud.wordCount > 0 ? aud.wordCount.toLocaleString() : 'N/A'}</td>
+              <td style="text-align: center;">${getDataSourceBadge(aud.dataSource)}</td>
+            </tr>
+          `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          </div>
+          
+          <!-- CHARTS -->
+          <div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                💭 Emotional Trigger Analysis
+                <span class="info-tooltip" title="[i] Emotional resonance scores: How well each competitor connects with target audience pain points and aspirations." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-audience-emotional" style="width: 100% !important;"></canvas></div>
+            </div>
+            <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); min-width: 0; flex-grow: 1;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                🎯 JTBD Coverage
+                <span class="info-tooltip" title="[i] Jobs-To-Be-Done alignment: How well each competitor addresses the key jobs customers hire products to accomplish." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #e5e7eb; font-size: 9px; font-weight: 700; color: #374151;">i</span>
+              </h3>
+              <div style="height: 240px; width: 100%;"><canvas id="chart-audience-jtbd" style="width: 100% !important;"></canvas></div>
+            </div>
+          </div>
+          
+          <!-- PERSONA CARDS FROM REAL DATA -->
+          <h4 style="margin: 0 0 16px; font-size: 16px; font-weight: 700;">🎭 Detected Persona Archetypes (Based on Real Content Analysis)</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${Object.entries(personaCounts).map(([persona, count], i) => {
+      const prevalence = audienceMetrics.length > 0 ? Math.round((count / audienceMetrics.length) * 100) : 0;
+      return `
+              <div style="background: linear-gradient(135deg, ${['#ec4899', '#8b5cf6', '#0ea5e9', '#22c55e'][i]} 0%, ${['#db2777', '#7c3aed', '#0284c7', '#16a34a'][i]} 100%); color: white; padding: 20px; border-radius: 12px;">
+                <div style="font-size: 24px; margin-bottom: 8px;">${['👤', '📈', '💻', '🛒'][i]}</div>
+                <div style="font-size: 14px; font-weight: 700;">${persona}</div>
+                <div style="font-size: 12px; opacity: 0.85; margin-top: 4px;">Detected: ${count}/${audienceMetrics.length} (${prevalence}%)</div>
+              </div>
+            `}).join('')}
+          </div>
+          
+          <!-- STRATEGIC INSIGHTS FROM REAL DATA -->
+          <div style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #ec4899;">
+            <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #9d174d;">💡 Audience Intelligence Insights</h5>
+            ${(() => {
+        const sorted = [...audienceMetrics].sort((a, b) => b.personaDepth - a.personaDepth);
+        const leader = sorted[0];
+        const avgDepth = Math.round(audienceMetrics.reduce((a, b) => a + b.personaDepth, 0) / audienceMetrics.length);
+        const dominantAudience = Object.entries(personaCounts).sort((a, b) => b[1] - a[1])[0];
+
+        return `
+                <ul style="margin: 0; padding-left: 20px;">
+                  <li style="margin-bottom: 8px; color: #831843; line-height: 1.5;">
+                    <strong>Content Leader:</strong> ${leader?.domain || 'N/A'} with persona depth of ${leader?.personaDepth || 0}/100
+                    ${leader?.wordCount ? `(${leader.wordCount.toLocaleString()} words)` : ''}
+                  </li>
+                  <li style="margin-bottom: 8px; color: #831843; line-height: 1.5;">
+                    <strong>Primary Audience:</strong> ${dominantAudience ? `${dominantAudience[0]} (${dominantAudience[1]} competitors target this)` : 'Mixed audiences'}
+                  </li>
+                  <li style="margin-bottom: 8px; color: #831843; line-height: 1.5;">
+                    <strong>Content Strategy:</strong> ${avgDepth >= 70 ? 'High persona understanding across competitors - differentiate with unique angles.' : avgDepth >= 50 ? 'Moderate persona targeting - opportunity to deepen audience understanding.' : 'Low persona depth - significant opportunity for audience-focused content.'}
+                  </li>
+                </ul>
+              `;
+      })()}
+          </div>
+          
+          <!-- --------------------------------------------------------------- -->
+          <!-- RAW DATA COMPARISON SECTION - Audience Deep Dive               -->
+          <!-- --------------------------------------------------------------- -->
+          
+          ${renderRawDataComparisonTable({
+            title: 'Audience Targeting Signals',
+            icon: '🎯',
+            description: 'Compare detected audience signals and persona depth across competitors',
+            competitors: competitors,
+            geminiInsight: 'Audience targeting analysis: ' + (() => {
+              const sorted = [...audienceMetrics].sort((a, b) => b.personaDepth - a.personaDepth);
+              const leader = sorted[0];
+              const avgDepth = audienceMetrics.length > 0 ? Math.round(audienceMetrics.reduce((a, b) => a + b.personaDepth, 0) / audienceMetrics.length) : 0;
+              return (leader?.domain || 'Leading competitor') + ' shows deepest persona understanding at ' + (leader?.personaDepth || 0) + '/100. ' +
+                'Industry average: ' + avgDepth + '/100. ' +
+                (leader?.targetAudience ? 'Primary focus: ' + leader.targetAudience + '. ' : '') +
+                (avgDepth < 50 ? 'Low persona depth across industry presents differentiation opportunity.' : 'Mature audience targeting - focus on unique value propositions.');
+            })(),
+            dataExtractor: (c, idx, realMetrics) => {
+              const d = audienceMetrics[idx] || {};
+              const rm = realMetrics || {};
+              const wordCount = rm.content?.wordCount || d.wordCount || 0;
+              const headings = rm.content?.headingStructure?.length || d.headingCount || 0;
+              const calcPersonaDepth = d.personaDepth || Math.min(100, Math.round((wordCount / 30) + (headings * 3)));
+              return {
+                targetAudience: d.targetAudience || rm.content?.targetAudience || (wordCount > 2000 ? 'In-depth Research' : 'General'),
+                personaDepth: calcPersonaDepth,
+                jtbdMatch: d.jtbdMatch || Math.min(100, Math.round(calcPersonaDepth * 0.9)),
+                emotionalResonance: d.emotionalResonance || Math.min(100, Math.round(calcPersonaDepth * 0.7)),
+                b2bScore: d.b2bScore || 0,
+                b2cScore: d.b2cScore || 0
+              };
+            },
+            fields: [
+              { key: 'targetAudience', label: 'Target Audience', icon: '👥', type: 'text', compareMode: null },
+              { key: 'personaDepth', label: 'Persona Depth', icon: '📊', type: 'score', compareMode: 'highest' },
+              { key: 'jtbdMatch', label: 'JTBD Match', icon: '🎯', type: 'score', compareMode: 'highest' },
+              { key: 'emotionalResonance', label: 'Emotional Resonance', icon: '💖', type: 'score', compareMode: 'highest' }
+            ]
+          })}
+          
+          ${renderRawDataComparisonTable({
+            title: 'Content Targeting Evidence',
+            icon: '📝',
+            description: 'Real content metrics that indicate audience focus',
+            competitors: competitors,
+            geminiInsight: 'Content targeting evidence: ' + (() => {
+              const withContent = audienceMetrics.filter(a => a.wordCount > 0);
+              if (withContent.length === 0) return 'No content data available for analysis.';
+              const avgWords = Math.round(withContent.reduce((a, b) => a + b.wordCount, 0) / withContent.length);
+              const leader = [...withContent].sort((a, b) => b.wordCount - a.wordCount)[0];
+              return (leader?.domain || 'Leader') + ' invests heavily with ' + (leader?.wordCount?.toLocaleString() || 0) + ' words. ' +
+                'Industry average: ' + avgWords.toLocaleString() + ' words. ' +
+                (avgWords > 2000 ? 'Long-form content standard indicates educated audience expectations.' : 
+                 avgWords > 1000 ? 'Moderate content depth - opportunity for comprehensive guides.' : 
+                 'Short-form dominates - consider detailed content differentiation strategy.');
+            })(),
+            dataExtractor: (c, idx, realMetrics) => {
+              const d = audienceMetrics[idx] || {};
+              const rm = realMetrics || {};
+              return {
+                wordCount: rm.content?.wordCount || d.wordCount || 0,
+                readingLevel: d.readingLevel || rm.content?.readingLevel || (rm.content?.wordCount > 2500 ? 'Advanced' : rm.content?.wordCount > 1200 ? 'Intermediate' : 'Basic'),
+                headingCount: rm.content?.headingStructure?.length || d.headingCount || 0,
+                schemaCount: rm.content?.schemaTypes?.length || d.schemaCount || 0
+              };
+            },
+            fields: [
+              { key: 'wordCount', label: 'Word Count', icon: '📊', type: 'number', compareMode: 'highest' },
+              { key: 'readingLevel', label: 'Reading Level', icon: '📚', type: 'text', compareMode: null },
+              { key: 'headingCount', label: 'Heading Count', icon: '📋', type: 'number', compareMode: 'highest' },
+              { key: 'schemaCount', label: 'Schema Types', icon: '🔧', type: 'number', compareMode: 'highest' }
+            ]
+          })}
+        `;
+
+    // V38.2: Add Elite Enhancements if available (JTBD, Archetypes, Emotional Resonance)
+    if (audienceIntel) {
+      const archetypes = audienceIntel.archetypes || [];
+      const jtbd = audienceIntel.jtbdAnalysis || {};
+      const emotional = audienceIntel.emotionalResonance || {};
+      
+      if (archetypes.length > 0) {
+        html += `
+          <h4 style="margin: 30px 0 16px; font-size: 18px; font-weight: 700;">🎭 Elite Behavioral Archetypes</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${archetypes.map((arch, i) => `
+              <div style="background: linear-gradient(135deg, ${['#fce7f3', '#ede9fe', '#e0f2fe', '#dcfce7'][i % 4]} 0%, ${['#fbcfe8', '#ddd6fe', '#bae6fd', '#bbf7d0'][i % 4]} 100%); padding: 20px; border-radius: 12px; border-left: 4px solid ${['#ec4899', '#8b5cf6', '#0ea5e9', '#22c55e'][i % 4]};">
+                <div style="font-size: 18px; margin-bottom: 8px;">${['👤', '🎯', '💡', '🏆'][i % 4]}</div>
+                <div style="font-size: 16px; font-weight: 700; color: ${['#9d174d', '#6b21a8', '#075985', '#166534'][i % 4]}; margin-bottom: 8px;">${arch.name}</div>
+                <div style="font-size: 13px; color: ${['#be185d', '#7c3aed', '#0369a1', '#16a34a'][i % 4]}; margin-bottom: 12px;">${arch.description}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+                  <div><strong>Intent:</strong> ${arch.intent || 'Mixed'}</div>
+                  <div><strong>Trust:</strong> ${arch.trustLevel || 'Medium'}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if ((jtbd.primaryStruggles || []).length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🎯 JTBD Struggle Origin Analysis</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${(jtbd.primaryStruggles || []).map(struggle => `
+              <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid ${struggle.severity >= 80 ? '#ef4444' : struggle.severity >= 60 ? '#f59e0b' : '#22c55e'};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <span style="font-weight: 700; color: #1f2937;">${struggle.struggle}</span>
+                  <span style="background: ${struggle.severity >= 80 ? '#fee2e2' : struggle.severity >= 60 ? '#fef3c7' : '#dcfce7'}; color: ${struggle.severity >= 80 ? '#991b1b' : struggle.severity >= 60 ? '#92400e' : '#166534'}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">${struggle.severity}% Severity</span>
+                </div>
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">${struggle.description}</div>
+                <div style="font-size: 12px; background: #f3f4f6; padding: 8px 12px; border-radius: 8px;">
+                  <strong style="color: #16a34a;">✓ Solution:</strong> ${struggle.solution}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      if (emotional.sentimentPolarity) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">💖 Elite Emotional Resonance Mapping</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">😰</div>
+              <div style="font-size: 11px; color: #92400e; margin-top: 4px;">FOMO Index</div>
+              <div style="font-size: 20px; font-weight: 700; color: #78350f;">${emotional.sentimentPolarity?.fomoIndex || 0}%</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #fee2e2, #fecaca); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">🤔</div>
+              <div style="font-size: 11px; color: #991b1b; margin-top: 4px;">Skepticism</div>
+              <div style="font-size: 20px; font-weight: 700; color: #7f1d1d;">${emotional.sentimentPolarity?.skepticismIndex || 0}%</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">🗣️</div>
+              <div style="font-size: 11px; color: #166534; margin-top: 4px;">Advocacy Potential</div>
+              <div style="font-size: 20px; font-weight: 700; color: #14532d;">${emotional.sentimentPolarity?.advocacyPotential || 0}%</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">⏱️</div>
+              <div style="font-size: 11px; color: #075985; margin-top: 4px;">Convert Time</div>
+              <div style="font-size: 16px; font-weight: 700; color: #0c4a6e;">${emotional.sentimentPolarity?.targetConversionTime || '<3 min'}</div>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Add Kill Moves if available
+      const killMoves = audienceIntel.killMoves || [];
+      if (killMoves.length > 0) {
+        html += `
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">⚔️ Kill Moves: Audience Domination</h4>
+          <div style="display: grid; gap: 12px; margin-bottom: 24px;">
+            ${killMoves.slice(0, 4).map((move, i) => `
+              <div style="background: linear-gradient(135deg, #9d174d 0%, #be185d 100%); color: white; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;">${['⚡', '🎯', '🌙', '🔥'][i % 4]}</span>
+                <div>
+                  <div style="font-weight: 700; font-size: 14px;">${move.name}</div>
+                  <div style="font-size: 12px; opacity: 0.9;">${move.action}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+    }
+
+    metricsDiv.innerHTML = html;
+    setTimeout(() => renderAudienceCharts(audienceMetrics), 300);
+
+    } catch (error) {
+      // V38.3: Show visible error to help debug
+      console.error('❌ AUDIENCE TAB ERROR:', error);
+      const errorDiv = document.getElementById('comp-audience-metrics') || 
+        document.querySelector('[data-comp-panel="audience"]');
+      if (errorDiv) {
+        errorDiv.innerHTML = `
+          <div style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; padding: 24px; margin: 16px;">
+            <h4 style="color: #991b1b; margin: 0 0 12px;">⚠️ Audience Tab Error</h4>
+            <p style="color: #7f1d1d; font-size: 14px; margin: 0 0 12px;">${error.message || error}</p>
+            <pre style="background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; font-size: 11px; overflow-x: auto;">${error.stack || 'No stack trace'}</pre>
+          </div>
+        `;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // DATA QUALITY INDICATOR HELPER
+  // Shows users when real data vs. placeholder data is being used
+  // ---------------------------------------------------------------------------
+  function renderDataQualityBadge(dataQuality) {
+    if (!dataQuality) return '';
+
+    const score = dataQuality.overallScore || 0;
+    const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444';
+    const label = score >= 70 ? 'High Quality Data' : score >= 40 ? 'Partial Data' : 'Limited Data';
+    const icon = score >= 70 ? '✅' : score >= 40 ? '⚠️' : '❌';
+
+    return `
+          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; border-left: 4px solid ${color};">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">${icon}</span>
+                <span style="font-weight: 600; color: #374151; font-size: 13px;">${label}</span>
+                <span style="background: ${color}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;">${score}%</span>
+              </div>
+              <div style="display: flex; gap: 16px; font-size: 11px; color: #6b7280;">
+                <span>🌐 Website: ${dataQuality.websiteData || 0}%</span>
+                <span>🔗 API: ${dataQuality.apiData || 0}%</span>
+                <span>📸 Snapshot: ${dataQuality.snapshotData || 0}%</span>
+              </div>
+            </div>
+            ${dataQuality.recommendation ? `<div style="margin-top: 8px; font-size: 11px; color: #6b7280;">💡 ${dataQuality.recommendation}</div>` : ''}
+          </div>
+        `;
+  }
+
+  // ---------------------------------------------------------------------------
+  // IX-B. ELITE AUDIENCE INTELLIGENCE RENDERER v9.1
+  // Renders: Behavioral Archetypes, JTBD Struggle Origin, Emotional Resonance,
+  //          Cognitive Load, Kill Moves, Hover Insights
+  // ---------------------------------------------------------------------------
+  function renderEliteAudienceIntelligence(container, audienceIntel, competitors, eliteData) {
+    console.log('🎭 Rendering Elite Audience Intelligence v9.1 (REAL DATA)...');
+
+    const archetypes = audienceIntel.archetypes || [];
+    const jtbd = audienceIntel.jtbdAnalysis || {};
+    const emotional = audienceIntel.emotionalResonance || {};
+    const cognitive = audienceIntel.cognitiveLoad || {};
+    const killMoves = audienceIntel.killMoves || [];
+    const hoverInsights = eliteData?.hoverInsights?.audienceIntelligence || {};
+    const dataQuality = eliteData?.dataQuality;
+
+    // Count items with real data
+    const realDataCount = (jtbd.competitorJTBDMatch || []).filter(c => c.hasRealData).length;
+    const totalCount = (jtbd.competitorJTBDMatch || []).length;
+
+    let html = `
+          <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">👥 Audience Intelligence <span style="font-size: 12px; background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; padding: 4px 12px; border-radius: 12px; margin-left: 8px;">Elite v9.1</span></h3>
+          
+          ${renderDataQualityBadge(dataQuality)}
+          
+          <!-- ELITE HEADER -->
+          <div style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">🎯 Behavioral Archetypes • JTBD Struggle Analysis • Emotional Resonance Mapping | Real Data: ${realDataCount}/${totalCount} competitors</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+              <div title="${hoverInsights?.archetypes || 'Strategic user personas based on intent patterns'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Archetypes Mapped</div>
+                <div style="font-size: 24px; font-weight: 700;">${archetypes.length}</div>
+              </div>
+              <div title="${hoverInsights?.jtbd || 'Jobs-to-be-Done framework analysis'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">JTBD Struggles</div>
+                <div style="font-size: 24px; font-weight: 700;">${jtbd.primaryStruggles?.length || 0}</div>
+              </div>
+              <div title="${hoverInsights?.emotionalResonance || 'Emotional connection scoring'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">FOMO Index</div>
+                <div style="font-size: 24px; font-weight: 700;">${emotional.sentimentPolarity?.fomoIndex || 0}%</div>
+              </div>
+              <div title="${hoverInsights?.cognitiveLoad || 'Decision friction measurement'}" style="cursor: help;">
+                <div style="font-size: 12px; opacity: 0.85;">Avg Cognitive Load</div>
+                <div style="font-size: 24px; font-weight: 700;">${Math.round((cognitive.competitorScores || []).reduce((a, b) => a + (b.cognitiveLoadScore || 0), 0) / Math.max(1, (cognitive.competitorScores || []).length))}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- BEHAVIORAL ARCHETYPES -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🧠 Behavioral Archetypes</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${archetypes.map((arch, i) => `
+              <div style="background: linear-gradient(135deg, ${['#fce7f3', '#ede9fe', '#e0f2fe', '#dcfce7'][i % 4]} 0%, ${['#fbcfe8', '#ddd6fe', '#bae6fd', '#bbf7d0'][i % 4]} 100%); padding: 20px; border-radius: 12px; border-left: 4px solid ${['#ec4899', '#8b5cf6', '#0ea5e9', '#22c55e'][i % 4]};">
+                <div style="font-size: 18px; margin-bottom: 8px;">${['🧐', '🚀', '🛡️', '🎯'][i % 4]}</div>
+                <div style="font-size: 16px; font-weight: 700; color: ${['#9d174d', '#6b21a8', '#075985', '#166534'][i % 4]}; margin-bottom: 8px;">${arch.name}</div>
+                <div style="font-size: 13px; color: ${['#be185d', '#7c3aed', '#0369a1', '#16a34a'][i % 4]}; margin-bottom: 12px;">${arch.description}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+                  <div><strong>Intent:</strong> ${arch.intent}</div>
+                  <div><strong>Trust:</strong> ${arch.trustLevel}</div>
+                </div>
+                <div style="margin-top: 8px; font-size: 11px; color: #6b7280;">
+                  <strong>Path:</strong> ${arch.conversionPath}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <!-- JTBD STRUGGLE ORIGIN -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🔍 JTBD Struggle Origin Analysis</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            ${(jtbd.primaryStruggles || []).map(struggle => `
+              <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid ${struggle.severity >= 80 ? '#ef4444' : struggle.severity >= 60 ? '#f59e0b' : '#22c55e'};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <span style="font-weight: 700; color: #1f2937;">${struggle.struggle}</span>
+                  <span style="background: ${struggle.severity >= 80 ? '#fee2e2' : struggle.severity >= 60 ? '#fef3c7' : '#dcfce7'}; color: ${struggle.severity >= 80 ? '#991b1b' : struggle.severity >= 60 ? '#92400e' : '#166534'}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">${struggle.severity}% Severity</span>
+                </div>
+                <div style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">${struggle.description}</div>
+                <div style="font-size: 12px; background: #f3f4f6; padding: 8px 12px; border-radius: 8px;">
+                  <strong style="color: #16a34a;">? Solution:</strong> ${struggle.solution}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <!-- COMPETITOR JTBD MATCH -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🏆 Competitor JTBD Match Scores</h4>
+          <div style="overflow-x: auto; margin-bottom: 24px;">
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Competitor</th>
+                  <th>JTBD Match</th>
+                  <th>Primary Gap</th>
+                  <th>Struggle Origin</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(jtbd.competitorJTBDMatch || []).map(comp => `
+                  <tr>
+                    <td><strong>${comp.domain}</strong></td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                          <div style="width: ${comp.jtbdMatchScore}%; height: 100%; background: ${comp.jtbdMatchScore >= 60 ? '#22c55e' : comp.jtbdMatchScore >= 40 ? '#f59e0b' : '#ef4444'};"></div>
+                        </div>
+                        <span style="font-weight: 600;">${comp.jtbdMatchScore}%</span>
+                      </div>
+                    </td>
+                    <td><span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-size: 12px;">${comp.primaryGap}</span></td>
+                    <td style="font-size: 12px; color: #6b7280;">${comp.struggleOrigin}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- EMOTIONAL RESONANCE -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">💡 Emotional Resonance Mapping</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">😱</div>
+              <div style="font-size: 11px; color: #92400e; margin-top: 4px;">FOMO Index</div>
+              <div style="font-size: 20px; font-weight: 700; color: #78350f;">${emotional.sentimentPolarity?.fomoIndex || 0}%</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #fee2e2, #fecaca); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">🤔</div>
+              <div style="font-size: 11px; color: #991b1b; margin-top: 4px;">Skepticism</div>
+              <div style="font-size: 20px; font-weight: 700; color: #7f1d1d;">${emotional.sentimentPolarity?.skepticismIndex || 0}%</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">💪</div>
+              <div style="font-size: 11px; color: #166534; margin-top: 4px;">Advocacy Potential</div>
+              <div style="font-size: 20px; font-weight: 700; color: #14532d;">${emotional.sentimentPolarity?.advocacyPotential || 0}%</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); padding: 16px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 24px;">⏱️</div>
+              <div style="font-size: 11px; color: #075985; margin-top: 4px;">Target Convert Time</div>
+              <div style="font-size: 16px; font-weight: 700; color: #0c4a6e;">${emotional.sentimentPolarity?.targetConversionTime || '<3 min'}</div>
+            </div>
+          </div>
+          
+          <!-- COGNITIVE LOAD ANALYSIS -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">🧠 Cognitive Load & Decision Friction</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            ${(cognitive.decisionFrictionFactors || []).map(factor => `
+              <div style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <span style="font-weight: 600; color: #1f2937;">${factor.factor}</span>
+                  <span style="font-size: 18px; font-weight: 700; color: #6366f1;">${factor.weight}%</span>
+                </div>
+                <div style="font-size: 12px; color: #6b7280;">${factor.description}</div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <!-- KILL MOVES -->
+          <h4 style="margin: 0 0 16px; font-size: 18px; font-weight: 700;">⚔️ Kill Moves: Audience Domination</h4>
+          <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+            ${killMoves.map((move, i) => `
+              <div style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%); color: white; padding: 20px; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                  <span style="font-size: 24px;">${['💣', '🛡️', '🚀'][i % 3]}</span>
+                  <div>
+                    <div style="font-size: 16px; font-weight: 700;">${move.name}</div>
+                    <div style="font-size: 12px; opacity: 0.7;">${move.type}</div>
+                  </div>
+                </div>
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;">${move.description}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
+                  <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px;">
+                    <strong style="color: #22c55e;">📊 Impact:</strong> ${move.impact}
+                  </div>
+                  <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px;">
+                    <strong style="color: #f59e0b;">🎯 Target:</strong> ${move.targetCompetitors || 'All incumbents'}
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        // ---------------------------------------------------------------------------
+        // 1% STRATEGY EXECUTION PANEL - Audience Intelligence Focus
+        // P1: FAQ Schema for JTBD questions | P5: Hub & Spoke for audience segments
+        // AIO Survival: Audience tools that AIs can't replicate (quizzes, assessments)
+        // ---------------------------------------------------------------------------
+        html += (() => {
+          // Extract gemini analysis from data
+          const gemini = data.geminiAnalysis || data.analysis || {};
+          
+          // Extract audience-focused PAA questions (JTBD, struggles, emotions)
+          const paaQuestions = gemini?.paaQuestions || 
+            competitors.flatMap(c => c.stages?.serper?.data?.peopleAlsoAsk || [])
+              .filter(q => /audience|customer|user|persona|segment|need|want|struggle|decision|choose/i.test(q?.question || q))
+              .slice(0, 8);
+          
+          // Extract audience keywords from JTBD
+          const audienceKeywords = (jtbd.primaryStruggles || []).map(s => s.struggle).slice(0, 5)
+            .concat(gemini?.keywords?.slice(0, 10) || ['target audience', 'customer persona', 'user needs', 'buyer journey']);
+          
+          // Brand entity for schema linking
+          const brandEntity = {
+            name: data.projectName || data.domain || 'Your Brand',
+            url: data.targetUrl || `https://${data.domain}`,
+            id: '#organization'
+          };
+          
+          return renderOnePercentStrategyPanel({
+            paaQuestions,
+            keywords: audienceKeywords,
+            brandEntity,
+            competitors,
+            tabName: 'audience'
+          });
+        })();
+
+    container.innerHTML = html;
+
+    // Render charts if needed
+    setTimeout(() => {
+      if (typeof renderAudienceCharts === 'function') {
+        const chartData = (jtbd.competitorJTBDMatch || []).map(c => ({
+          domain: c.domain,
+          jtbdMatch: c.jtbdMatchScore,
+          emotionalResonance: c.emotionalResonance || 0, // Real data or 0
+          personaDepth: c.personaDepth || 0 // Real data or 0
+        }));
+        renderAudienceCharts(chartData);
+      }
+    }, 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // X. GEO + AEO INTELLIGENCE TAB - Elite v2.0 (REAL DATA)
+  // Uses: Schema.org detection, Serper PAA, FAQ schema, structured data
+  // ---------------------------------------------------------------------------
+  function populateGeoAeoIntelligenceTab(data) {
+    console.log('🤖 Populating GEO/AEO Tab (Elite v2.0 - REAL DATA)...');
+
+    let metricsDiv = document.getElementById('comp-geo-metrics') ||
+      document.getElementById('comp-geo-aeo-metrics');
+
+    if (!metricsDiv) {
+      const panel = document.querySelector('[data-comp-panel="geo"]') ||
+        document.getElementById('panel-geoAeoIntelligence');
+      if (panel) {
+        console.log('📦 Creating dynamic containers inside GEO panel');
+        let existingMetrics = panel.querySelector('#comp-geo-metrics');
+        if (!existingMetrics) {
+          const header = panel.querySelector('.panel-header');
+          const metricsContainer = document.createElement('div');
+          metricsContainer.id = 'comp-geo-metrics';
+          metricsContainer.className = 'comp-metrics-grid';
+          metricsContainer.style.width = '100%';
+          if (header && header.nextSibling) {
+            panel.insertBefore(metricsContainer, header.nextSibling);
+          } else {
+            panel.insertBefore(metricsContainer, panel.firstChild);
+          }
+        }
+        metricsDiv = document.getElementById('comp-geo-metrics');
+      }
+    }
+
+    if (!metricsDiv) {
+      console.warn('⚠️ GEO/AEO tab containers not found');
+      return;
+    }
+
+    const competitors = data.competitors || [];
+
+    if (competitors.length === 0) {
+      metricsDiv.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;"><p>No competitors to analyze.</p></div>';
+      return;
+    }
+
+    // Collect all PAA questions across competitors
+    let allPAAQuestions = [];
+
+    // Extract REAL GEO/AEO metrics
+    const geoData = competitors.map(comp => {
+      const metrics = typeof extractRealMetrics === 'function' ? extractRealMetrics(comp) : { content: {}, authority: {} };
+      const synth = comp.synthesized || {};
+      const website = synth.website || {};
+      const serper = comp.apiData?.serper || comp.stages?.serper?.data || {};
+
+      // REAL schema types from PHP Fetcher
+      const schemaTypes = website.schemaTypes || [];
+      const schemaCount = schemaTypes.length;
+
+      // REAL PAA data from Serper
+      const paaQuestions = serper.peopleAlsoAsk || [];
+      allPAAQuestions = allPAAQuestions.concat(paaQuestions.slice(0, 3));
+
+      // Calculate AI readiness based on REAL signals
+      let aiReadinessScore = 20; // Base
+      if (schemaTypes.includes('FAQPage')) aiReadinessScore += 20;
+      if (schemaTypes.includes('HowTo')) aiReadinessScore += 15;
+      if (schemaTypes.includes('Article') || schemaTypes.includes('BlogPosting')) aiReadinessScore += 10;
+      if (schemaTypes.includes('Organization') || schemaTypes.includes('LocalBusiness')) aiReadinessScore += 10;
+      if (schemaTypes.includes('Product') || schemaTypes.includes('Review')) aiReadinessScore += 10;
+      if (schemaCount >= 3) aiReadinessScore += 15;
+      if ((metrics.content?.wordCount || 0) >= 2000) aiReadinessScore += 10;
+      if (paaQuestions.length > 0) aiReadinessScore += 10;
+      aiReadinessScore = Math.min(100, aiReadinessScore);
+
+      const answerAuthority = Math.min(100, schemaCount * 15 + (paaQuestions.length * 10) + ((metrics.authority?.pageRank || 0) * 5));
+      const factualIntegrity = schemaCount >= 2 ? Math.min(100, 60 + schemaCount * 10) : 40;
+
+      const hasRealData = schemaCount > 0 || paaQuestions.length > 0;
+
+      return {
+        domain: comp.domain || comp.url,
+        schemaTypes,
+        schemaCount,
+        paaCount: paaQuestions.length,
+        paaQuestions,
+        aiReadinessScore,
+        answerAuthority,
+        factualIntegrity,
+        wordCount: metrics.content?.wordCount || 0,
+        dataSource: hasRealData ? (schemaCount > 0 ? 'PHP Fetcher' : 'Serper API') : 'Pending'
+      };
+    });
+
+    // Calculate stats
+    const totalSchemas = geoData.reduce((a, b) => a + b.schemaCount, 0);
+    const avgAIReadiness = Math.round(geoData.reduce((a, b) => a + b.aiReadinessScore, 0) / geoData.length);
+    const avgAnswerAuth = Math.round(geoData.reduce((a, b) => a + b.answerAuthority, 0) / geoData.length);
+
+    let html = `
+      <h3 style="margin: 0 0 24px; font-size: 20px; font-weight: 700;">🤖 GEO + AEO Intelligence (AI Search Optimization)</h3>
+      
+      <div style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+        <p style="margin: 0 0 12px; font-size: 12px; opacity: 0.8;">📊 Data Sources: Schema.org Detection, Serper PAA, PHP Fetcher</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px;">
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Total Schema Types</div>
+            <div style="font-size: 24px; font-weight: 700;">${totalSchemas}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">PAA Questions</div>
+            <div style="font-size: 24px; font-weight: 700;">${allPAAQuestions.length}</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Avg AI Readiness</div>
+            <div style="font-size: 24px; font-weight: 700;">${avgAIReadiness}%</div>
+          </div>
+          <div>
+            <div style="font-size: 12px; opacity: 0.85;">Avg Answer Auth</div>
+            <div style="font-size: 24px; font-weight: 700;">${avgAnswerAuth}%</div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="overflow-x: auto;">
+        <table class="comp-table" style="margin-bottom: 30px;">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Competitor</th>
+              <th>Schema Types</th>
+              <th>PAA Matches</th>
+              <th>AI Readiness</th>
+              <th>Answer Auth</th>
+              <th>Factual Score</th>
+              <th>Data Source</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    const sortedGeoData = [...geoData].sort((a, b) => b.aiReadinessScore - a.aiReadinessScore);
+    const medals = ['🥇', '🥈', '🥉'];
+
+    sortedGeoData.forEach((geo, idx) => {
+      const medal = idx < 3 ? medals[idx] : `#${idx + 1}`;
+      const isTop3 = idx < 3;
+
+      html += `
+        <tr style="${isTop3 ? 'background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);' : ''}">
+          <td style="text-align: center; font-size: 18px;">${medal}</td>
+          <td><strong>${geo.domain}</strong></td>
+          <td style="text-align: center;">
+            ${geo.schemaCount > 0 ?
+              `<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 6px;" title="${geo.schemaTypes.join(', ')}">${geo.schemaCount} types</span>` :
+              '<span style="color: #9ca3af;">None</span>'}
+          </td>
+          <td style="text-align: center;">
+            ${geo.paaCount > 0 ?
+              `<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 6px;">${geo.paaCount}</span>` :
+              '<span style="color: #9ca3af;">0</span>'}
+          </td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 50px; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                <div style="width: ${geo.aiReadinessScore}%; height: 100%; background: #06b6d4;"></div>
+              </div>
+              <span style="font-size: 11px; font-weight: 600;">${geo.aiReadinessScore}%</span>
+            </div>
+          </td>
+          <td><span class="metric-badge ${geo.answerAuthority > 50 ? 'badge-high' : 'badge-medium'}">${geo.answerAuthority}%</span></td>
+          <td><span style="color: ${geo.factualIntegrity > 60 ? '#22c55e' : '#f59e0b'}; font-weight: 600;">${geo.factualIntegrity}%</span></td>
+          <td style="text-align: center;">${typeof getDataSourceBadge === 'function' ? getDataSourceBadge(geo.dataSource) : geo.dataSource}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">🏗️ Schema.org Types Detected</h5>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            ${(() => {
+              const allSchemas = geoData.flatMap(g => g.schemaTypes);
+              const uniqueSchemas = [...new Set(allSchemas)];
+              if (uniqueSchemas.length === 0) return '<span style="color: #9ca3af; font-size: 12px;">No schema types detected</span>';
+              return uniqueSchemas.map(s => {
+                const isAIFriendly = ['FAQPage', 'HowTo', 'Article', 'BlogPosting', 'Product', 'Review'].includes(s);
+                return `<span style="background: ${isAIFriendly ? '#dcfce7' : '#e5e7eb'}; color: ${isAIFriendly ? '#166534' : '#374151'}; padding: 6px 12px; border-radius: 8px; font-size: 12px;">${s} ${isAIFriendly ? '✨' : ''}</span>`;
+              }).join('');
+            })()}
+          </div>
+        </div>
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">💬 People Also Ask</h5>
+          <div style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+            ${allPAAQuestions.length > 0 ?
+              allPAAQuestions.slice(0, 6).map(paa => `
+                <div style="background: #f8fafc; padding: 10px 12px; border-radius: 8px; border-left: 3px solid #06b6d4; font-size: 12px;">
+                  ${paa.question || paa}
+                </div>
+              `).join('') :
+              '<span style="color: #9ca3af; font-size: 12px;">No PAA data available</span>'
+            }
+          </div>
+        </div>
+      </div>
+      
+      <div class="chart-bento-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; width: 100%;">
+        <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">🎯 AI Readiness Radar</h3>
+          <div style="height: 240px; width: 100%;"><canvas id="chart-geo-radar" style="width: 100% !important;"></canvas></div>
+        </div>
+        <div class="chart-container-full" style="background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 700;">📊 Schema Implementation</h3>
+          <div style="height: 240px; width: 100%;"><canvas id="chart-geo-platforms" style="width: 100% !important;"></canvas></div>
+        </div>
+      </div>
+      
+      <div style="background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%); padding: 24px; border-radius: 16px; border-left: 4px solid #06b6d4;">
+        <h5 style="margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #0e7490;">💡 AI Search Strategy Insights</h5>
+        ${(() => {
+          const sorted = [...geoData].sort((a, b) => b.aiReadinessScore - a.aiReadinessScore);
+          const leader = sorted[0];
+          const hasFAQ = geoData.some(g => g.schemaTypes.includes('FAQPage'));
+          const hasHowTo = geoData.some(g => g.schemaTypes.includes('HowTo'));
+          return `
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;">
+                <strong>AI-Ready Leader:</strong> ${leader?.domain || 'N/A'} with ${leader?.aiReadinessScore || 0}% readiness score
+              </li>
+              <li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;">
+                <strong>Schema Coverage:</strong> ${totalSchemas} implementations. ${hasFAQ ? '✅ FAQPage detected' : '⚠️ No FAQPage schema'}
+              </li>
+              <li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;">
+                <strong>Answer Engine:</strong> ${hasHowTo ? 'HowTo schema present' : 'Consider HowTo schema for procedural queries'}
+              </li>
+              <li style="margin-bottom: 8px; color: #164e63; line-height: 1.5;">
+                <strong>PAA Opportunity:</strong> ${allPAAQuestions.length} questions found - create content answering these
+              </li>
+            </ul>
+          `;
+        })()}
+      </div>
+    `;
+
+    metricsDiv.innerHTML = html;
+    
+    setTimeout(() => {
+      if (typeof renderGeoAeoCharts === 'function') {
+        renderGeoAeoCharts(geoData);
+      }
+    }, 300);
+  }
+
+  // ---------------------------------------------------------------------------
+  // WINDOW EXPORTS
+  // ---------------------------------------------------------------------------
+  window.populateAudienceIntelligenceTab = populateAudienceIntelligenceTab;
+  window.populateGeoAeoIntelligenceTab = populateGeoAeoIntelligenceTab;
+  window.renderDataQualityBadge = renderDataQualityBadge;
+  window.renderEliteAudienceIntelligence = renderEliteAudienceIntelligence;
+
+  console.log('✅ [DIAG] UI_Tab_Audience.html: Script block END - All exports complete');
+  console.log('   populateAudienceIntelligenceTab:', typeof window.populateAudienceIntelligenceTab);
+  console.log('   populateGeoAeoIntelligenceTab:', typeof window.populateGeoAeoIntelligenceTab);
+
+</script>
