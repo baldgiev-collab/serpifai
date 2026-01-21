@@ -52,14 +52,279 @@
 .command-canvas-section {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0;
   max-width: 1400px;
-  margin: 0 auto 3rem;
+  margin: 0 auto 2rem;
   padding: 0 1.5rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   SECTION-LEVEL PROGRESSIVE DISCLOSURE
+   The Section Title IS the toggle — clicking expands/collapses the deep-dive
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Disclosure Header — Always Visible, Clickable */
+.section-disclosure-header {
+  background: var(--forensic-glass);
+  backdrop-filter: blur(var(--forensic-blur));
+  -webkit-backdrop-filter: blur(var(--forensic-blur));
+  border: 1px solid var(--forensic-glass-border);
+  border-radius: 16px 16px 0 0;
+  padding: 1.25rem 1.75rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.section-disclosure-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-amber) 0%, var(--accent-magenta) 50%, var(--accent-cyan) 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.section-disclosure-header:hover {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.section-disclosure-header[data-expanded="true"] {
+  border-radius: 16px 16px 0 0;
+  border-bottom: none;
+}
+
+/* Disclosure Title Row */
+.disclosure-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.disclosure-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.disclosure-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Rotating Chevron — Toggle Indicator */
+.section-chevron {
+  font-size: 0.85rem;
+  color: var(--accent-amber);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(245, 158, 11, 0.15);
+  border-radius: 6px;
+  filter: drop-shadow(0 0 6px var(--accent-amber));
+}
+
+.section-disclosure-header[data-expanded="true"] .section-chevron {
+  transform: rotate(90deg);
+}
+
+/* Section Icon */
+.section-icon {
+  font-size: 1.75rem;
+  filter: drop-shadow(0 0 8px var(--accent-amber));
+}
+
+/* Section Title */
+.section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  text-shadow: 0 0 20px rgba(248, 250, 252, 0.3);
+  letter-spacing: 0.01em;
+}
+
+/* Metric Badges — Compact High-Contrast */
+.metric-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0.9rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--forensic-glass-border);
+  border-radius: 10px;
+  min-width: 70px;
+}
+
+.badge-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.badge-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.metric-badge--cite {
+  border-color: var(--accent-cyan);
+}
+.metric-badge--cite .badge-value { color: var(--accent-cyan); }
+
+.metric-badge--moat {
+  border-color: var(--accent-lime);
+}
+.metric-badge--moat .badge-value { color: var(--accent-lime); }
+
+.metric-badge--value {
+  border-color: var(--accent-magenta);
+}
+.metric-badge--value .badge-value { color: var(--accent-magenta); }
+
+/* Word Count Pill */
+.word-count-pill {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  padding: 0.3rem 0.65rem;
+  border-radius: 12px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  border: 1px solid var(--forensic-glass-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLLAPSED ZONE — Hero Signal + Chart (Always Visible)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.section-collapsed-zone {
+  background: var(--forensic-glass);
+  backdrop-filter: blur(var(--forensic-blur));
+  -webkit-backdrop-filter: blur(var(--forensic-blur));
+  border: 1px solid var(--forensic-glass-border);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+  padding: 1.25rem 1.75rem 1.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXPANDED ZONE — Forensic Deep-Dive (Hidden by Default)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.section-expanded-zone {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--forensic-glass-border);
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  padding: 0;
+  margin-top: -1px;
+  overflow: hidden;
+}
+
+/* Slide Animations */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding: 0 1.75rem;
+  }
+  to {
+    opacity: 1;
+    max-height: 3000px;
+    padding: 1.5rem 1.75rem 2rem;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    max-height: 3000px;
+    padding: 1.5rem 1.75rem 2rem;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding: 0 1.75rem;
+  }
+}
+
+/* Forensic Deep-Dive Content */
+.forensic-deepdive {
+  padding: 1.5rem 1.75rem 2rem;
+}
+
+.deepdive-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.deepdive-icon {
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 8px var(--accent-magenta));
+}
+
+.deepdive-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-magenta);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.deepdive-content {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.deepdive-content h2,
+.deepdive-content h3,
+.deepdive-content h4 {
+  color: var(--text-primary);
+  margin: 1.5rem 0 0.75rem;
+}
+
+.deepdive-content p {
+  margin: 0.75rem 0;
+}
+
+.deepdive-content ul,
+.deepdive-content ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.deepdive-content li {
+  margin: 0.4rem 0;
+}
+
+.deepdive-content strong {
+  color: var(--accent-amber);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    TIER 1: HERO VERDICT — Sage Architect Verdict + 3 Pill Metrics
+   (Legacy - kept for backward compatibility)
    ═══════════════════════════════════════════════════════════════════════════ */
 .hero-verdict {
   background: var(--forensic-glass);

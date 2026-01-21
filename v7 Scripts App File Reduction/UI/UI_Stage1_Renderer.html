@@ -1161,44 +1161,55 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     const competitors = extractCompetitorData(content, sectionNum);
 
     // ═══════════════════════════════════════════════════════════════════════
-    // TIER 1: HERO VERDICT — Title + Sage Insight + 3 Pill Metrics
+    // SECTION-LEVEL PROGRESSIVE DISCLOSURE
+    // The Section Title IS the toggle — clicking expands/collapses forensic deep-dive
+    // Collapsed: Hero Signal (title + 3 metrics) + Chart only
+    // Expanded: Full Gemini forensic text + Competitor Cards
     // ═══════════════════════════════════════════════════════════════════════
-    const heroHeader = document.createElement('div');
-    heroHeader.className = 'hero-verdict';
-    heroHeader.innerHTML = `
-      <div class="hero-verdict-header">
-        <div class="hero-header-left">
-          <span class="hero-verdict-icon">${icon}</span>
-          <h2 class="hero-verdict-title">${title}</h2>
+    
+    // Create the clickable section header (always visible)
+    const sectionHeader = document.createElement('div');
+    sectionHeader.className = 'section-disclosure-header';
+    sectionHeader.setAttribute('data-expanded', 'false');
+    sectionHeader.id = `section-header-${sectionNum}`;
+    sectionHeader.onclick = function() { toggleSectionDisclosure(sectionNum); };
+    
+    sectionHeader.innerHTML = `
+      <div class="disclosure-title-row">
+        <div class="disclosure-left">
+          <span class="section-chevron" id="chevron-${sectionNum}">▶</span>
+          <span class="section-icon">${icon}</span>
+          <h2 class="section-title">${title}</h2>
         </div>
-        <div class="hero-header-meta">
-          <span class="meta-pill">${wordCount.toLocaleString()} words</span>
+        <div class="disclosure-right">
+          <div class="metric-badge metric-badge--cite">
+            <span class="badge-value">${citeabilityScore}</span>
+            <span class="badge-label">Cite-ability</span>
+          </div>
+          <div class="metric-badge metric-badge--moat">
+            <span class="badge-value">${moatStability}x</span>
+            <span class="badge-label">Moat</span>
+          </div>
+          <div class="metric-badge metric-badge--value">
+            <span class="badge-value">${timeValue}</span>
+            <span class="badge-label">Value</span>
+          </div>
+          <span class="word-count-pill">${wordCount.toLocaleString()} words</span>
         </div>
       </div>
-      
+    `;
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // COLLAPSED STATE: Hero Signal + Chart Only (Always Visible)
+    // ═══════════════════════════════════════════════════════════════════════
+    const collapsedZone = document.createElement('div');
+    collapsedZone.className = 'section-collapsed-zone';
+    collapsedZone.id = `collapsed-zone-${sectionNum}`;
+    
+    // Sage Verdict (1-line insight - always visible)
+    collapsedZone.innerHTML = `
       <div class="sage-verdict-line">
         "${sageVerdict}"
-      </div>
-      
-      <div class="hero-metrics-row">
-        <div class="metric-pill metric-pill--citeability">
-          <div>
-            <span class="metric-pill-value">${citeabilityScore}</span>
-            <span class="metric-pill-label">Cite-ability</span>
-          </div>
-        </div>
-        <div class="metric-pill metric-pill--moat">
-          <div>
-            <span class="metric-pill-value">${moatStability}x</span>
-            <span class="metric-pill-label">Moat Stability</span>
-          </div>
-        </div>
-        <div class="metric-pill metric-pill--timevalue">
-          <div>
-            <span class="metric-pill-value">${timeValue}</span>
-            <span class="metric-pill-label">Time-Value</span>
-          </div>
-        </div>
       </div>
     `;
 
@@ -1321,50 +1332,71 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // STRATEGIC PROOF ACCORDION — Collapsible Gemini Response (Collapsed Default)
+    // EXPANDED STATE: Full Forensic Deep-Dive (Hidden by Default)
     // ═══════════════════════════════════════════════════════════════════════
-    const accordion = document.createElement('div');
-    accordion.className = 'strategic-proof-accordion';
-    accordion.setAttribute('data-expanded', 'false');
-    accordion.id = `proof-accordion-${sectionNum}`;
+    const expandedZone = document.createElement('div');
+    expandedZone.className = 'section-expanded-zone';
+    expandedZone.id = `expanded-zone-${sectionNum}`;
+    expandedZone.style.display = 'none'; // Hidden by default
     
     const formattedContent = formatEliteMarkdown(content);
     
-    accordion.innerHTML = `
-      <button class="accordion-trigger" onclick="toggleProofAccordion(${sectionNum})">
-        <div class="accordion-trigger-left">
-          <span class="accordion-icon">📜</span>
-          <span class="accordion-title">Strategic Proof Accordion</span>
+    expandedZone.innerHTML = `
+      <div class="forensic-deepdive">
+        <div class="deepdive-header">
+          <span class="deepdive-icon">🔬</span>
+          <h3 class="deepdive-title">Forensic Intelligence Deep-Dive</h3>
         </div>
-        <div class="accordion-meta">
-          <span class="accordion-word-count">${wordCount} words</span>
-          <span class="accordion-chevron">▼</span>
-        </div>
-      </button>
-      <div class="accordion-content">
-        <div class="accordion-content-inner">
+        <div class="deepdive-content">
           ${formattedContent}
         </div>
       </div>
     `;
 
-    // Assemble the 3-tier structure
-    sectionDiv.appendChild(heroHeader);
-    sectionDiv.appendChild(chartStage);
-    sectionDiv.appendChild(cardGrid);
-    sectionDiv.appendChild(accordion);
+    // ═══════════════════════════════════════════════════════════════════════
+    // ASSEMBLE: Progressive Disclosure Architecture
+    // Header (always visible) → Collapsed Zone (chart) → Expanded Zone (hidden)
+    // ═══════════════════════════════════════════════════════════════════════
+    sectionDiv.appendChild(sectionHeader);
+    collapsedZone.appendChild(chartStage);
+    sectionDiv.appendChild(collapsedZone);
+    expandedZone.insertBefore(cardGrid, expandedZone.firstChild);
+    sectionDiv.appendChild(expandedZone);
     
     return sectionDiv;
   }
   
   /**
-   * Toggle the Strategic Proof Accordion
+   * Toggle Section-Level Progressive Disclosure
+   * Clicking the section title expands/collapses the forensic deep-dive
    */
-  window.toggleProofAccordion = function(sectionNum) {
-    const accordion = document.getElementById(`proof-accordion-${sectionNum}`);
-    if (accordion) {
-      const isExpanded = accordion.getAttribute('data-expanded') === 'true';
-      accordion.setAttribute('data-expanded', isExpanded ? 'false' : 'true');
+  window.toggleSectionDisclosure = function(sectionNum) {
+    const header = document.getElementById(`section-header-${sectionNum}`);
+    const expandedZone = document.getElementById(`expanded-zone-${sectionNum}`);
+    const chevron = document.getElementById(`chevron-${sectionNum}`);
+    
+    if (!header || !expandedZone) return;
+    
+    const isExpanded = header.getAttribute('data-expanded') === 'true';
+    const newState = !isExpanded;
+    
+    // Toggle state
+    header.setAttribute('data-expanded', newState ? 'true' : 'false');
+    
+    // Animate chevron rotation
+    if (chevron) {
+      chevron.style.transform = newState ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+    
+    // Slide toggle the expanded zone
+    if (newState) {
+      expandedZone.style.display = 'block';
+      expandedZone.style.animation = 'slideDown 0.3s ease-out forwards';
+    } else {
+      expandedZone.style.animation = 'slideUp 0.3s ease-out forwards';
+      setTimeout(() => {
+        expandedZone.style.display = 'none';
+      }, 280);
     }
   };
   
