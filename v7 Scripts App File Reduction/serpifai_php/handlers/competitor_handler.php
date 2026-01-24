@@ -126,11 +126,21 @@ function saveCompetitorResults($payload, $userId) {
         $metadata = $payload['metadata'] ?? [];
         
         // ═══════════════════════════════════════════════════════════════════════════
-        // v29.2 FIX: Ensure competitorsArray exists before saving
-        // This guarantees UI can always find competitor data
+        // V12.0 FIX: Extract brandName/yourDomain from analysis data if not provided
+        // This ensures we can search by brand name when loading
         // ═══════════════════════════════════════════════════════════════════════════
         $analysisData = json_decode($jsonData, true);
         if ($analysisData) {
+            // Extract yourDomain if not provided in payload
+            if (empty($yourDomain)) {
+                $yourDomain = $analysisData['yourDomain'] 
+                           ?? $analysisData['brandName']
+                           ?? $analysisData['projectContext']['brandName'] 
+                           ?? $analysisData['projectContext']['yourDomain']
+                           ?? $projectId;  // Fallback to projectId
+                error_log("[SAVE v12.0] Extracted yourDomain: " . $yourDomain);
+            }
+            
             // If competitorsArray is missing but rawData exists, create it
             if (empty($analysisData['competitorsArray']) && !empty($analysisData['rawData'])) {
                 $rawData = $analysisData['rawData'];
@@ -428,6 +438,11 @@ function finalizeChunkedUpload($payload, $userId) {
 
 /**
  * Load competitor analysis results from MySQL
+ * 
+ * V12.0 FIX: Search by BOTH project_id AND your_domain to handle:
+ * - Saves using brandName as projectId (e.g., "BairesDEV")
+ * - Saves using generated projectId (e.g., "comp-1234567890")
+ * - UI loading by project name (which may differ from stored project_id)
  */
 function loadCompetitorResults($payload, $userId) {
     try {
@@ -442,22 +457,64 @@ function loadCompetitorResults($payload, $userId) {
             ];
         }
         
+        error_log("[LOAD v12.0] Searching for project: " . $projectId);
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // V12.0 FIX: Search by project_id OR your_domain OR brandName in analysis_data
+        // This handles the mismatch between save (using projectId) and load (using name)
+        // ═══════════════════════════════════════════════════════════════════════════
+        
+        // First try exact project_id match
         $stmt = $db->prepare("
             SELECT * FROM competitor_analysis_results 
             WHERE project_id = ? AND user_id = ?
             ORDER BY updated_at DESC
             LIMIT 1
         ");
-        
         $stmt->execute([$projectId, $userId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
+        // If not found, try matching your_domain (brand name)
         if (!$result) {
+            error_log("[LOAD v12.0] No exact project_id match, trying your_domain...");
+            $stmt = $db->prepare("
+                SELECT * FROM competitor_analysis_results 
+                WHERE your_domain = ? AND user_id = ?
+                ORDER BY updated_at DESC
+                LIMIT 1
+            ");
+            $stmt->execute([$projectId, $userId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        // If still not found, try JSON search in analysis_data for brandName
+        if (!$result) {
+            error_log("[LOAD v12.0] No your_domain match, trying brandName in analysis_data...");
+            $stmt = $db->prepare("
+                SELECT * FROM competitor_analysis_results 
+                WHERE user_id = ? 
+                AND (
+                    analysis_data LIKE ? 
+                    OR analysis_data LIKE ?
+                )
+                ORDER BY updated_at DESC
+                LIMIT 1
+            ");
+            $searchPattern1 = '%"brandName":"' . $projectId . '"%';
+            $searchPattern2 = '%"yourDomain":"' . $projectId . '"%';
+            $stmt->execute([$userId, $searchPattern1, $searchPattern2]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        
+        if (!$result) {
+            error_log("[LOAD v12.0] Project not found in any search: " . $projectId);
             return [
                 'success' => false,
                 'error' => 'Project not found: ' . $projectId
             ];
         }
+        
+        error_log("[LOAD v12.0] Found project! ID: " . $result['id'] . ", project_id: " . $result['project_id']);
         
         // ═══════════════════════════════════════════════════════════════════════════
         // v30.1 COMPREHENSIVE FIX: Normalize ALL data structures for UI compatibility

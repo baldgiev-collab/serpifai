@@ -1,0 +1,296 @@
+<!--
+  UI_ESI_Insight_List.html
+  ELITE STRATEGIC INTELLIGENCE - INSIGHT LIST COMPONENT v12.0
+  
+  Numbered list with icons, descriptions, priorities, and action links
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI INSIGHT LIST - NUMBERED INSIGHT COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-insight-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: insight-counter;
+}
+
+.esi-insight-item {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+  background: var(--elite-glass-bg, rgba(255, 255, 255, 0.95));
+  border: 1px solid var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-md, 0.75rem);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  counter-increment: insight-counter;
+}
+
+.esi-insight-item:hover {
+  transform: translateX(4px);
+  border-color: var(--elite-primary-light, #6366f1);
+  box-shadow: var(--elite-shadow-md);
+}
+
+/* Number Badge */
+.esi-insight-item__number {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--elite-gradient-royal);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: var(--elite-radius-md);
+}
+
+.esi-insight-item__number::before {
+  content: counter(insight-counter);
+}
+
+/* Content Area */
+.esi-insight-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.esi-insight-item__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.esi-insight-item__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--elite-gray-800, #1f2937);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.esi-insight-item__priority {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--elite-radius-full);
+}
+
+.esi-insight-item__priority--high {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--elite-danger, #ef4444);
+}
+
+.esi-insight-item__priority--medium {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--elite-warning, #f59e0b);
+}
+
+.esi-insight-item__priority--low {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--elite-success, #10b981);
+}
+
+.esi-insight-item__description {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--elite-gray-600, #4b5563);
+  margin-bottom: 0.75rem;
+}
+
+/* Action Link */
+.esi-insight-item__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--elite-primary, #4f46e5);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.esi-insight-item__action:hover {
+  color: var(--elite-primary-dark, #4338ca);
+  transform: translateX(2px);
+}
+
+.esi-insight-item__action::after {
+  content: '→';
+  transition: transform 0.2s ease;
+}
+
+.esi-insight-item__action:hover::after {
+  transform: translateX(3px);
+}
+
+/* Icon Variant */
+.esi-insight-item--with-icon .esi-insight-item__number {
+  background: transparent;
+  font-size: 1.5rem;
+}
+
+.esi-insight-item--with-icon .esi-insight-item__number::before {
+  content: attr(data-icon);
+}
+
+/* Compact Variant */
+.esi-insight-list--compact .esi-insight-item {
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.esi-insight-list--compact .esi-insight-item__number {
+  width: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+}
+
+/* Bordered Variant */
+.esi-insight-list--bordered .esi-insight-item {
+  border-left: 4px solid var(--elite-primary, #4f46e5);
+  border-radius: 0 var(--elite-radius-md) var(--elite-radius-md) 0;
+}
+
+.esi-insight-list--bordered .esi-insight-item--high {
+  border-left-color: var(--elite-danger, #ef4444);
+}
+
+.esi-insight-list--bordered .esi-insight-item--medium {
+  border-left-color: var(--elite-warning, #f59e0b);
+}
+
+.esi-insight-list--bordered .esi-insight-item--low {
+  border-left-color: var(--elite-success, #10b981);
+}
+
+/* Animation */
+@keyframes esi-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.esi-insight-list--animate .esi-insight-item {
+  animation: esi-slide-in-right 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.esi-insight-list--animate .esi-insight-item:nth-child(1) { animation-delay: 0ms; }
+.esi-insight-list--animate .esi-insight-item:nth-child(2) { animation-delay: 80ms; }
+.esi-insight-list--animate .esi-insight-item:nth-child(3) { animation-delay: 160ms; }
+.esi-insight-list--animate .esi-insight-item:nth-child(4) { animation-delay: 240ms; }
+.esi-insight-list--animate .esi-insight-item:nth-child(5) { animation-delay: 320ms; }
+.esi-insight-list--animate .esi-insight-item:nth-child(6) { animation-delay: 400ms; }
+.esi-insight-list--animate .esi-insight-item:nth-child(7) { animation-delay: 480ms; }
+.esi-insight-list--animate .esi-insight-item:nth-child(8) { animation-delay: 560ms; }
+
+/* Dark Theme */
+[data-theme="dark"] .esi-insight-item,
+[data-theme="neon"] .esi-insight-item {
+  background: var(--elite-gray-800, #1f2937);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-insight-item__title,
+[data-theme="neon"] .esi-insight-item__title {
+  color: var(--elite-gray-100, #f3f4f6);
+}
+
+[data-theme="dark"] .esi-insight-item__description,
+[data-theme="neon"] .esi-insight-item__description {
+  color: var(--elite-gray-400, #9ca3af);
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI INSIGHT LIST - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI Insight List
+ * @param {Array} insights - Array of insight objects
+ * @param {Object} options - List options (variant, animate)
+ * @returns {HTMLElement}
+ */
+function createESIInsightList(insights = [], options = {}) {
+  const { variant = 'default', animate = true } = options;
+
+  const list = document.createElement('ul');
+  list.className = `esi-insight-list ${variant === 'compact' ? 'esi-insight-list--compact' : ''} ${variant === 'bordered' ? 'esi-insight-list--bordered' : ''} ${animate ? 'esi-insight-list--animate' : ''}`;
+
+  insights.forEach(insight => {
+    const item = document.createElement('li');
+    const priorityClass = insight.priority ? `esi-insight-item--${insight.priority}` : '';
+    const iconClass = insight.icon ? 'esi-insight-item--with-icon' : '';
+    item.className = `esi-insight-item ${priorityClass} ${iconClass}`;
+
+    item.innerHTML = `
+      <div class="esi-insight-item__number" ${insight.icon ? `data-icon="${insight.icon}"` : ''}></div>
+      <div class="esi-insight-item__content">
+        <div class="esi-insight-item__header">
+          <h4 class="esi-insight-item__title">${insight.title || 'Insight'}</h4>
+          ${insight.priority ? `
+            <span class="esi-insight-item__priority esi-insight-item__priority--${insight.priority}">
+              ${insight.priority}
+            </span>
+          ` : ''}
+        </div>
+        <p class="esi-insight-item__description">${insight.description || ''}</p>
+        ${insight.action ? `
+          <a class="esi-insight-item__action" href="${insight.actionUrl || '#'}" data-action="${insight.actionId || ''}">
+            ${insight.action}
+          </a>
+        ` : ''}
+      </div>
+    `;
+
+    list.appendChild(item);
+  });
+
+  return list;
+}
+
+/**
+ * Render ESI Insight List into container
+ */
+function renderESIInsightList(containerId, insights = [], options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  console.log(`📊 ESI Insight List V12.0: Rendering ${insights.length} insights`);
+  container.innerHTML = '';
+  container.appendChild(createESIInsightList(insights, options));
+}
+
+window.createESIInsightList = createESIInsightList;
+window.renderESIInsightList = renderESIInsightList;
+
+console.log('📊 ESI Insight List Component V12.0 loaded');
+</script>

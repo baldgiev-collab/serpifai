@@ -41,7 +41,7 @@ const ParallelEngine = (function() {
   'use strict';
   
   // ═══════════════════════════════════════════════════════════════════════════════════
-  // CONFIGURATION - v23.0 ENHANCED
+  // CONFIGURATION - v23.0 ENHANCED, v12.0 PHASE 8: RETRY LOGIC
   // ═══════════════════════════════════════════════════════════════════════════════════
   
   const CONFIG = {
@@ -50,8 +50,79 @@ const ParallelEngine = (function() {
     ANIMATION_DURATION_MS: 300,   // UI animation speed
     RETRY_DELAY_MS: 1000,         // Delay before retry
     HYDRATION_DELAY_MS: 100,      // v23.0: Delay between progressive UI updates
-    MIN_HYDRATION_THRESHOLD: 1    // v23.0: Hydrate after N competitors complete
+    MIN_HYDRATION_THRESHOLD: 1,   // v23.0: Hydrate after N competitors complete
+    // V12.0 Phase 8: Retry with exponential backoff
+    MAX_RETRIES: 3,               // Maximum retry attempts
+    RETRY_BASE_DELAY_MS: 1000,    // Base delay (doubles each retry)
+    RETRY_MAX_DELAY_MS: 8000      // Cap delay at 8 seconds
   };
+  
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // V12.0 PHASE 8: RETRY UTILITY WITH EXPONENTIAL BACKOFF
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Execute a google.script.run call with retry logic
+   * @param {Object} options - Retry configuration
+   * @param {string} options.methodName - Server method name
+   * @param {Array} options.args - Arguments to pass
+   * @param {number} options.maxRetries - Max attempts (default CONFIG.MAX_RETRIES)
+   * @param {Function} options.onSuccess - Success callback
+   * @param {Function} options.onFailure - Final failure callback
+   * @param {Function} options.onRetry - Called on each retry attempt
+   */
+  function executeWithRetry(options) {
+    const maxRetries = options.maxRetries || CONFIG.MAX_RETRIES;
+    const methodName = options.methodName;
+    const args = options.args || [];
+    let attempts = 0;
+    
+    function attempt() {
+      attempts++;
+      const isLastAttempt = attempts > maxRetries;
+      
+      if (isLastAttempt) {
+        console.error(`❌ [Retry] ${methodName} failed after ${maxRetries} attempts`);
+        if (options.onFailure) {
+          options.onFailure(new Error(`Max retries (${maxRetries}) exceeded for ${methodName}`));
+        }
+        return;
+      }
+      
+      console.log(`🔄 [Retry] ${methodName} attempt ${attempts}/${maxRetries + 1}`);
+      
+      // Get the method from google.script.run
+      const runner = google.script.run
+        .withSuccessHandler(function(result) {
+          console.log(`✅ [Retry] ${methodName} succeeded on attempt ${attempts}`);
+          if (options.onSuccess) options.onSuccess(result);
+        })
+        .withFailureHandler(function(error) {
+          if (attempts <= maxRetries) {
+            // Calculate exponential backoff delay
+            const delay = Math.min(
+              CONFIG.RETRY_BASE_DELAY_MS * Math.pow(2, attempts - 1),
+              CONFIG.RETRY_MAX_DELAY_MS
+            );
+            console.warn(`⚠️ [Retry] ${methodName} failed (attempt ${attempts}), retrying in ${delay}ms...`, error);
+            
+            if (options.onRetry) {
+              options.onRetry({ attempt: attempts, delay, error });
+            }
+            
+            setTimeout(attempt, delay);
+          } else {
+            console.error(`❌ [Retry] ${methodName} failed permanently:`, error);
+            if (options.onFailure) options.onFailure(error);
+          }
+        });
+      
+      // Call the method with spread arguments
+      runner[methodName].apply(runner, args);
+    }
+    
+    attempt();
+  }
   
   // ═══════════════════════════════════════════════════════════════════════════════════
   // STATE - v23.0 ENHANCED WITH HYDRATION QUEUE
@@ -182,21 +253,27 @@ const ParallelEngine = (function() {
   }
   
   // ═══════════════════════════════════════════════════════════════════════════════════
-  // JOB INITIALIZATION
+  // JOB INITIALIZATION - V12.0: With retry logic
   // ═══════════════════════════════════════════════════════════════════════════════════
   
   function initializeJob() {
     console.log('📋 Initializing job...');
     
-    google.script.run
-      .withSuccessHandler(onJobInitialized)
-      .withFailureHandler(onJobInitFailed)
-      .Cluster_InitializeJob(
-        state.projectId,
-        state.competitors,
-        state.yourDomain,
-        {}
-      );
+    // V12.0 Phase 8: Use retry logic for job initialization
+    executeWithRetry({
+      methodName: 'Cluster_InitializeJob',
+      args: [state.projectId, state.competitors, state.yourDomain, {}],
+      maxRetries: CONFIG.MAX_RETRIES,
+      onSuccess: onJobInitialized,
+      onFailure: onJobInitFailed,
+      onRetry: function(info) {
+        notifyStateChange('JOB_INIT_RETRY', {
+          attempt: info.attempt,
+          delay: info.delay,
+          error: info.error?.message || 'Unknown error'
+        });
+      }
+    });
   }
   
   function onJobInitialized(result) {
@@ -756,7 +833,7 @@ const ParallelEngine = (function() {
   }
   
   // ═══════════════════════════════════════════════════════════════════════════════════
-  // PUBLIC INTERFACE
+  // PUBLIC INTERFACE - V12.0: Added retry utility
   // ═══════════════════════════════════════════════════════════════════════════════════
   
   return {
@@ -767,7 +844,10 @@ const ParallelEngine = (function() {
     addStateListener: addStateListener,
     getCompletedData: () => state.completedData,
     hydrateCard: hydrateCompetitorCard,
-    version: '23.0.1-stable'
+    // V12.0 Phase 8: Retry utility
+    executeWithRetry: executeWithRetry,
+    getConfig: () => ({ ...CONFIG }),
+    version: '23.1.0-v12-retry'
   };
   
 })();
@@ -775,7 +855,7 @@ const ParallelEngine = (function() {
 // Expose to window for cross-module access
 window.ParallelEngine = ParallelEngine;
 
-console.log('✅ UI_ParallelEngine.html loaded - v23.0.1 Message Channel Fix');
+console.log('✅ UI_ParallelEngine.html loaded - v23.1.0 V12 Phase 8 Retry Logic');
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
 // v23.0: PROGRESSIVE RENDERING HELPER

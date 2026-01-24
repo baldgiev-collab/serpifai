@@ -1,0 +1,355 @@
+<!--
+  UI_ESI_Comparison_Table.html
+  ELITE STRATEGIC INTELLIGENCE - COMPARISON TABLE COMPONENT v12.0
+  
+  Side-by-side competitor comparison with highlighting and badges
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI COMPARISON TABLE - COMPETITOR ANALYSIS COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-comparison-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9375rem;
+  background: var(--elite-glass-bg, rgba(255, 255, 255, 0.95));
+  border: 1px solid var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-lg, 1rem);
+  overflow: hidden;
+}
+
+.esi-comparison-table thead {
+  background: var(--elite-gradient-royal);
+  color: #fff;
+}
+
+.esi-comparison-table th {
+  padding: 1rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.esi-comparison-table th:first-child {
+  border-radius: var(--elite-radius-lg) 0 0 0;
+}
+
+.esi-comparison-table th:last-child {
+  border-radius: 0 var(--elite-radius-lg) 0 0;
+}
+
+.esi-comparison-table td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--elite-gray-100, #f3f4f6);
+  vertical-align: middle;
+}
+
+.esi-comparison-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.esi-comparison-table tbody tr:hover {
+  background: var(--elite-gray-50, #f9fafb);
+}
+
+.esi-comparison-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Row Metric Label */
+.esi-comparison-table__metric {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--elite-gray-700, #374151);
+}
+
+.esi-comparison-table__metric-icon {
+  font-size: 1.125rem;
+}
+
+/* Value Cell */
+.esi-comparison-table__value {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--elite-gray-800, #1f2937);
+}
+
+/* Winner Highlight */
+.esi-comparison-table__value--winner {
+  color: var(--elite-success, #10b981);
+  position: relative;
+}
+
+.esi-comparison-table__value--winner::after {
+  content: '✓';
+  margin-left: 6px;
+  font-size: 0.875rem;
+}
+
+/* Loser/Behind */
+.esi-comparison-table__value--behind {
+  color: var(--elite-gray-400, #9ca3af);
+}
+
+/* Your Domain Highlight Column */
+.esi-comparison-table th.esi-you,
+.esi-comparison-table td.esi-you {
+  background: rgba(99, 102, 241, 0.08);
+  position: relative;
+}
+
+.esi-comparison-table th.esi-you::before {
+  content: '👑';
+  margin-right: 6px;
+}
+
+/* Status Badges in Cells */
+.esi-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: var(--elite-radius-full);
+}
+
+.esi-status-badge--excellent {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--elite-success, #10b981);
+}
+
+.esi-status-badge--good {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--elite-info, #3b82f6);
+}
+
+.esi-status-badge--average {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--elite-warning, #f59e0b);
+}
+
+.esi-status-badge--poor {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--elite-danger, #ef4444);
+}
+
+/* Progress Bar in Cell */
+.esi-cell-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.esi-cell-progress__bar {
+  flex: 1;
+  height: 8px;
+  background: var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-full);
+  overflow: hidden;
+}
+
+.esi-cell-progress__fill {
+  height: 100%;
+  background: var(--elite-gradient-royal);
+  border-radius: var(--elite-radius-full);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.esi-cell-progress__value {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--elite-primary, #4f46e5);
+  min-width: 45px;
+  text-align: right;
+}
+
+/* Competitor Avatar */
+.esi-competitor-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.esi-competitor-avatar {
+  width: 28px;
+  height: 28px;
+  background: var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--elite-gray-600, #4b5563);
+}
+
+/* Dark Theme */
+[data-theme="dark"] .esi-comparison-table,
+[data-theme="neon"] .esi-comparison-table {
+  background: var(--elite-gray-800, #1f2937);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-comparison-table td,
+[data-theme="neon"] .esi-comparison-table td {
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-comparison-table tbody tr:hover,
+[data-theme="neon"] .esi-comparison-table tbody tr:hover {
+  background: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-comparison-table__metric,
+[data-theme="neon"] .esi-comparison-table__metric {
+  color: var(--elite-gray-300, #d1d5db);
+}
+
+[data-theme="dark"] .esi-comparison-table__value,
+[data-theme="neon"] .esi-comparison-table__value {
+  color: var(--elite-gray-100, #f3f4f6);
+}
+
+[data-theme="dark"] th.esi-you,
+[data-theme="dark"] td.esi-you,
+[data-theme="neon"] th.esi-you,
+[data-theme="neon"] td.esi-you {
+  background: rgba(99, 102, 241, 0.15);
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI COMPARISON TABLE - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI Comparison Table
+ * @param {Object} config - Table configuration
+ * @param {Array} config.competitors - Array of competitor names
+ * @param {Array} config.metrics - Array of metric objects with values per competitor
+ * @param {string} config.yourDomain - Your domain name to highlight
+ * @returns {HTMLElement}
+ */
+function createESIComparisonTable(config = {}) {
+  const {
+    competitors = [],
+    metrics = [],
+    yourDomain = ''
+  } = config;
+
+  const table = document.createElement('table');
+  table.className = 'esi-comparison-table';
+
+  // Build header
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  headerRow.innerHTML = `
+    <th>Metric</th>
+    ${competitors.map(comp => {
+      const isYou = yourDomain && comp.toLowerCase().includes(yourDomain.toLowerCase());
+      return `<th class="${isYou ? 'esi-you' : ''}">${comp}</th>`;
+    }).join('')}
+  `;
+  
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // Build body
+  const tbody = document.createElement('tbody');
+  
+  metrics.forEach(metric => {
+    const row = document.createElement('tr');
+    
+    // Find winner (highest value)
+    const numericValues = metric.values.map(v => parseFloat(String(v).replace(/[^0-9.-]/g, '')) || 0);
+    const maxValue = Math.max(...numericValues);
+    
+    row.innerHTML = `
+      <td>
+        <div class="esi-comparison-table__metric">
+          <span class="esi-comparison-table__metric-icon">${metric.icon || '📊'}</span>
+          <span>${metric.name || 'Metric'}</span>
+        </div>
+      </td>
+      ${metric.values.map((value, idx) => {
+        const isYou = yourDomain && competitors[idx]?.toLowerCase().includes(yourDomain.toLowerCase());
+        const numVal = numericValues[idx];
+        const isWinner = numVal === maxValue && numVal > 0;
+        const isBehind = numVal < maxValue * 0.5;
+        
+        let valueClass = 'esi-comparison-table__value';
+        if (isWinner) valueClass += ' esi-comparison-table__value--winner';
+        if (isBehind) valueClass += ' esi-comparison-table__value--behind';
+        
+        // Handle different value types
+        let cellContent = '';
+        if (metric.type === 'progress') {
+          cellContent = `
+            <div class="esi-cell-progress">
+              <div class="esi-cell-progress__bar">
+                <div class="esi-cell-progress__fill" style="width: ${numVal}%;"></div>
+              </div>
+              <span class="esi-cell-progress__value">${value}</span>
+            </div>
+          `;
+        } else if (metric.type === 'status') {
+          const statusClass = getStatusClass(value);
+          cellContent = `<span class="esi-status-badge ${statusClass}">${value}</span>`;
+        } else {
+          cellContent = `<span class="${valueClass}">${value}</span>`;
+        }
+        
+        return `<td class="${isYou ? 'esi-you' : ''}">${cellContent}</td>`;
+      }).join('')}
+    `;
+    
+    tbody.appendChild(row);
+  });
+  
+  table.appendChild(tbody);
+  return table;
+}
+
+function getStatusClass(value) {
+  const str = String(value).toLowerCase();
+  if (str.includes('excellent') || str.includes('a+') || str.includes('a ')) return 'esi-status-badge--excellent';
+  if (str.includes('good') || str.includes('b')) return 'esi-status-badge--good';
+  if (str.includes('average') || str.includes('c')) return 'esi-status-badge--average';
+  if (str.includes('poor') || str.includes('d') || str.includes('f')) return 'esi-status-badge--poor';
+  return '';
+}
+
+/**
+ * Render ESI Comparison Table into container
+ */
+function renderESIComparisonTable(containerId, config = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  console.log(`📊 ESI Comparison Table V12.0: Rendering ${config.competitors?.length || 0} competitors`);
+  container.innerHTML = '';
+  container.appendChild(createESIComparisonTable(config));
+}
+
+window.createESIComparisonTable = createESIComparisonTable;
+window.renderESIComparisonTable = renderESIComparisonTable;
+
+console.log('📊 ESI Comparison Table Component V12.0 loaded');
+</script>

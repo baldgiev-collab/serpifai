@@ -4,10 +4,13 @@
   
   Tab 6: 6 Pillars → 6 Clusters → 6 Keywords
   Features: Solo mode, zoom/pan, theme-aware colors
+  
+  V12.0 Phase 8: Added null checks for D3 operations
 -->
 <script>
 /* ═══════════════════════════════════════════════════════════════════════════
    TASK 18: MIND MAP D3 FORCE-DIRECTED GRAPH
+   V12.0 Phase 8: Enhanced error handling
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const MindMapForce = {
@@ -17,14 +20,42 @@ const MindMapForce = {
   
   /**
    * Render force-directed mind map
+   * V12.0: Added null checks throughout
    */
   render(container, data) {
-    const width = container.clientWidth;
-    const height = container.clientHeight - 52; // Account for header
-    const colors = ChartThemeColors.getColorScale();
+    // V12.0: Early return if container or data is missing
+    if (!container) {
+      console.warn('⚠️ MindMapForce.render: No container provided');
+      return;
+    }
     
-    // Clear previous
-    d3.select(container).select('.chart-body').selectAll('*').remove();
+    if (!data || (!data.pillars && !data.clusters && !data.keywords)) {
+      console.warn('⚠️ MindMapForce.render: No valid data provided');
+      return;
+    }
+    
+    // V12.0: Check if D3 is loaded
+    if (typeof d3 === 'undefined') {
+      console.error('❌ MindMapForce.render: D3 library not loaded');
+      return;
+    }
+    
+    // V12.0: Check if ChartThemeColors exists
+    if (typeof ChartThemeColors === 'undefined') {
+      console.warn('⚠️ MindMapForce: ChartThemeColors not loaded, using defaults');
+    }
+    
+    const width = container.clientWidth || 400;
+    const height = (container.clientHeight || 300) - 52; // Account for header
+    const colors = (typeof ChartThemeColors !== 'undefined') 
+      ? ChartThemeColors.getColorScale() 
+      : ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+    
+    // Clear previous - V12.0: Safe selection
+    const chartBody = d3.select(container).select('.chart-body');
+    if (!chartBody.empty()) {
+      chartBody.selectAll('*').remove();
+    }
     
     const svg = d3.select(container).select('.chart-body')
       .append('svg')
@@ -40,25 +71,45 @@ const MindMapForce = {
     
     svg.call(zoom);
     
-    // Build nodes and links from data
-    const { nodes, links } = this.processData(data, colors);
+    // Build nodes and links from data - V12.0: Try-catch for safety
+    let nodes, links;
+    try {
+      const processed = this.processData(data, colors);
+      nodes = processed.nodes;
+      links = processed.links;
+    } catch (err) {
+      console.error('❌ MindMapForce.processData error:', err);
+      return;
+    }
     
-    // Force simulation
-    this.simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id(d => d.id).distance(80))
-      .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(d => d.radius + 5));
+    if (!nodes || nodes.length === 0) {
+      console.warn('⚠️ MindMapForce: No nodes generated from data');
+      return;
+    }
+    
+    // Force simulation - V12.0: Wrapped in try-catch
+    try {
+      this.simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => (d.radius || 10) + 5));
+    } catch (err) {
+      console.error('❌ MindMapForce simulation error:', err);
+      return;
+    }
     
     // Links
     const link = g.selectAll('.mindmap-link')
       .data(links)
       .join('line')
       .attr('class', 'mindmap-link')
-      .attr('stroke', ChartThemeColors.getGridColor())
+      .attr('stroke', (typeof ChartThemeColors !== 'undefined') ? ChartThemeColors.getGridColor() : '#e2e8f0')
       .attr('stroke-width', 1.5);
     
-    // Nodes
+    // Nodes - V12.0: Safe color access
+    const textColor = (typeof ChartThemeColors !== 'undefined') ? ChartThemeColors.getTextColor() : '#1f2937';
+    
     const node = g.selectAll('.mindmap-node')
       .data(nodes)
       .join('g')
@@ -68,16 +119,16 @@ const MindMapForce = {
       .on('click', (e, d) => this.toggleSolo(d, node, link));
     
     node.append('circle')
-      .attr('r', d => d.radius)
-      .attr('fill', d => d.color);
+      .attr('r', d => d.radius || 10)
+      .attr('fill', d => d.color || '#3b82f6');
     
     node.append('text')
-      .attr('dy', d => d.radius + 14)
+      .attr('dy', d => (d.radius || 10) + 14)
       .attr('text-anchor', 'middle')
-      .attr('fill', ChartThemeColors.getTextColor())
+      .attr('fill', textColor)
       .attr('font-size', d => d.type === 'pillar' ? '12px' : '10px')
       .attr('font-weight', d => d.type === 'pillar' ? '700' : '400')
-      .text(d => d.label.length > 15 ? d.label.slice(0, 15) + '...' : d.label);
+      .text(d => (d.label || '').length > 15 ? (d.label || '').slice(0, 15) + '...' : (d.label || ''));
     
     // Tick updates
     this.simulation.on('tick', () => {
@@ -119,18 +170,38 @@ const MindMapForce = {
   
   /**
    * Drag behavior
+   * V12.0: Added null checks for simulation
    */
   drag(simulation) {
+    if (!simulation) {
+      console.warn('⚠️ MindMapForce.drag: No simulation provided');
+      return d3.drag(); // Return empty drag behavior
+    }
+    
     return d3.drag()
-      .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-      .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
-      .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; });
+      .on('start', (e, d) => { 
+        if (!e.active && simulation) simulation.alphaTarget(0.3).restart(); 
+        if (d) { d.fx = d.x; d.fy = d.y; }
+      })
+      .on('drag', (e, d) => { 
+        if (d) { d.fx = e.x; d.fy = e.y; }
+      })
+      .on('end', (e, d) => { 
+        if (!e.active && simulation) simulation.alphaTarget(0); 
+        if (d) { d.fx = null; d.fy = null; }
+      });
   },
   
   /**
    * Solo mode: Fade others on click
+   * V12.0: Added null checks for selections
    */
   toggleSolo(d, nodeSelection, linkSelection) {
+    if (!d || !nodeSelection || !linkSelection) {
+      console.warn('⚠️ MindMapForce.toggleSolo: Missing parameters');
+      return;
+    }
+    
     if (this.soloActive === d.id) {
       // Reset
       nodeSelection.style('opacity', 1);
@@ -138,11 +209,23 @@ const MindMapForce = {
       this.soloActive = null;
     } else {
       // Solo this pillar
-      const pillarId = d.type === 'pillar' ? d.id : d.id.split('-').slice(0,2).join('-');
-      nodeSelection.style('opacity', n => n.id.startsWith(pillarId) || n.id === pillarId ? 1 : 0.15);
-      linkSelection.style('opacity', l => l.source.id.startsWith(pillarId) ? 1 : 0.1);
+      const pillarId = d.type === 'pillar' ? d.id : (d.id || '').split('-').slice(0,2).join('-');
+      nodeSelection.style('opacity', n => (n && n.id && (n.id.startsWith(pillarId) || n.id === pillarId)) ? 1 : 0.15);
+      linkSelection.style('opacity', l => (l && l.source && l.source.id && l.source.id.startsWith(pillarId)) ? 1 : 0.1);
       this.soloActive = d.id;
     }
+  },
+  
+  /**
+   * Cleanup method for proper resource disposal
+   * V12.0: Added for memory management
+   */
+  cleanup() {
+    if (this.simulation) {
+      this.simulation.stop();
+      this.simulation = null;
+    }
+    this.soloActive = null;
   }
 };
 

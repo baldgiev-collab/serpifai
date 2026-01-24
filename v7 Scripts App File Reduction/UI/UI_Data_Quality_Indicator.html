@@ -1,0 +1,314 @@
+<!--
+  UI_Data_Quality_Indicator.html
+  DATA QUALITY INDICATOR SYSTEM v1.0
+  
+  Shows badges/icons indicating whether data is REAL or ESTIMATED
+  with confidence scores for transparency.
+  
+  @author SerpifAI Engineering
+  @version 1.0.0
+  @implements TODO #13: Add Real vs Estimated UI Indicators
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA QUALITY INDICATORS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Quality Badge Base */
+.dq-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.dq-badge:hover {
+  transform: scale(1.05);
+}
+
+/* Real Data Badge - High Confidence */
+.dq-badge--real {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(16, 185, 129, 0.15));
+  color: #34D399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.dq-badge--real::before {
+  content: '✓';
+  font-size: 9px;
+}
+
+/* Estimated Data Badge - Low Confidence */
+.dq-badge--estimated {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.15));
+  color: #FBBF24;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.dq-badge--estimated::before {
+  content: '~';
+  font-size: 11px;
+  font-weight: 900;
+}
+
+/* Fallback Data Badge - Very Low Confidence */
+.dq-badge--fallback {
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.2), rgba(107, 114, 128, 0.15));
+  color: #9CA3AF;
+  border: 1px solid rgba(156, 163, 175, 0.4);
+}
+
+.dq-badge--fallback::before {
+  content: '○';
+  font-size: 9px;
+}
+
+/* Confidence Score Display */
+.dq-confidence {
+  font-size: 9px;
+  opacity: 0.8;
+  margin-left: 2px;
+}
+
+/* Inline Quality Indicator (for metrics) */
+.dq-inline {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.dq-inline--real { background: #34D399; }
+.dq-inline--estimated { background: #FBBF24; }
+.dq-inline--fallback { background: #9CA3AF; }
+
+/* Tooltip for Quality Info */
+.dq-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  background: #1E293B;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1000;
+}
+
+.dq-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #334155;
+}
+
+[data-dq-source]:hover .dq-tooltip {
+  opacity: 1;
+}
+
+/* Data Quality Legend */
+.dq-legend {
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  background: var(--cmd-header-bg, #0F172A);
+  border-radius: 8px;
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+
+.dq-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dq-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dq-legend-dot--real { background: #34D399; }
+.dq-legend-dot--estimated { background: #FBBF24; }
+.dq-legend-dot--fallback { background: #9CA3AF; }
+
+</style>
+
+<script>
+/**
+ * DATA QUALITY INDICATOR SYSTEM
+ * Creates badges and indicators showing data source confidence
+ */
+
+const DataQualityIndicator = {
+  
+  // Confidence thresholds
+  THRESHOLDS: {
+    REAL: 0.80,      // 80%+ confidence = real data
+    ESTIMATED: 0.50, // 50-79% = estimated
+    FALLBACK: 0.00   // 0-49% = fallback
+  },
+  
+  /**
+   * Determine quality tier from confidence score
+   */
+  getTier: function(confidence) {
+    if (confidence >= this.THRESHOLDS.REAL) return 'real';
+    if (confidence >= this.THRESHOLDS.ESTIMATED) return 'estimated';
+    return 'fallback';
+  },
+  
+  /**
+   * Create a quality badge element
+   * @param {number} confidence - 0-1 confidence score
+   * @param {string} source - Data source name (e.g., 'Serper API', 'Forensic Estimation')
+   * @param {boolean} showConfidence - Whether to display percentage
+   */
+  createBadge: function(confidence, source, showConfidence) {
+    const tier = this.getTier(confidence);
+    const labels = {
+      real: 'Real',
+      estimated: 'Est',
+      fallback: 'Est'
+    };
+    
+    let html = '<span class="dq-badge dq-badge--' + tier + '"';
+    html += ' title="' + source + ' (Confidence: ' + Math.round(confidence * 100) + '%)">';
+    html += labels[tier];
+    if (showConfidence) {
+      html += '<span class="dq-confidence">' + Math.round(confidence * 100) + '%</span>';
+    }
+    html += '</span>';
+    
+    return html;
+  },
+  
+  /**
+   * Create an inline dot indicator
+   * @param {number} confidence - 0-1 confidence score
+   */
+  createInlineDot: function(confidence) {
+    const tier = this.getTier(confidence);
+    return '<span class="dq-inline dq-inline--' + tier + '"></span>';
+  },
+  
+  /**
+   * Create the legend component showing what indicators mean
+   */
+  createLegend: function() {
+    return [
+      '<div class="dq-legend">',
+      '  <div class="dq-legend-item">',
+      '    <span class="dq-legend-dot dq-legend-dot--real"></span>',
+      '    <span>Real API Data</span>',
+      '  </div>',
+      '  <div class="dq-legend-item">',
+      '    <span class="dq-legend-dot dq-legend-dot--estimated"></span>',
+      '    <span>Estimated</span>',
+      '  </div>',
+      '  <div class="dq-legend-item">',
+      '    <span class="dq-legend-dot dq-legend-dot--fallback"></span>',
+      '    <span>Fallback</span>',
+      '  </div>',
+      '</div>'
+    ].join('\n');
+  },
+  
+  /**
+   * Wrap a metric value with quality indicator
+   * @param {string|number} value - The metric value
+   * @param {Object} meta - Metadata with confidence and source
+   */
+  wrapMetric: function(value, meta) {
+    meta = meta || {};
+    const confidence = meta.confidence || 1.0;
+    const source = meta.dataSource || 'Unknown';
+    
+    return '<span data-dq-source="' + source + '" data-dq-confidence="' + confidence + '">' +
+           value + this.createInlineDot(confidence) +
+           '<span class="dq-tooltip">' + source + ' (' + Math.round(confidence * 100) + '% confidence)</span>' +
+           '</span>';
+  },
+  
+  /**
+   * Analyze competitor data and extract quality metadata
+   * @param {Object} comp - Competitor object
+   */
+  analyzeQuality: function(comp) {
+    const synth = comp.synthesized || {};
+    const quality = {
+      overall: 0.85, // Default high confidence
+      metrics: {}
+    };
+    
+    // Check each data source for estimation flags
+    const sources = [
+      { key: 'serper', path: comp.stages?.serper },
+      { key: 'pageSpeed', path: comp.stages?.pageSpeed },
+      { key: 'openPageRank', path: comp.stages?.openPageRank },
+      { key: 'oracle', path: comp.stages?.oracleFetcher },
+      { key: 'traffic', path: synth.eliteTraffic },
+      { key: 'backlinks', path: synth.eliteBacklinks }
+    ];
+    
+    let totalConfidence = 0;
+    let sourceCount = 0;
+    
+    sources.forEach(function(s) {
+      if (s.path) {
+        const isEstimated = s.path.estimated || s.path._estimated || s.path.dataSource === 'FORENSIC_ESTIMATION';
+        const confidence = isEstimated ? (s.path.confidence || 0.3) : 0.95;
+        quality.metrics[s.key] = {
+          confidence: confidence,
+          source: s.path.dataSource || (isEstimated ? 'Estimated' : 'API'),
+          estimated: isEstimated
+        };
+        totalConfidence += confidence;
+        sourceCount++;
+      }
+    });
+    
+    quality.overall = sourceCount > 0 ? totalConfidence / sourceCount : 0.85;
+    return quality;
+  }
+  
+};
+
+// Export for global use
+window.DataQualityIndicator = DataQualityIndicator;
+window.DQI = DataQualityIndicator; // Shorthand
+
+/**
+ * USAGE EXAMPLES:
+ * 
+ * 1. Add badge next to a value:
+ *    document.getElementById('traffic').innerHTML = '10,250/mo ' + DQI.createBadge(0.65, 'Serper API', true);
+ * 
+ * 2. Add inline dot to any metric:
+ *    '<span>DR 45' + DQI.createInlineDot(0.95) + '</span>'
+ * 
+ * 3. Show legend at top of results:
+ *    document.getElementById('legend-container').innerHTML = DQI.createLegend();
+ * 
+ * 4. Wrap metric with tooltip:
+ *    DQI.wrapMetric('1,234 backlinks', {confidence: 0.7, dataSource: 'Serper Mentions'})
+ */
+</script>

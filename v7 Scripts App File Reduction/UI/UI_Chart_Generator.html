@@ -12,6 +12,7 @@
   - Chart.js library
   
   V7.22 PHASE 5: Added performance optimization, render tracking, and debouncing
+  V12.0 PHASE 9.6: Added RAF-based chart rendering scheduler
 -->
 <script>
   console.log('📈 UI_Chart_Generator.html loading...');
@@ -29,6 +30,107 @@
     eliteInsightParseTime: 0,
     totalRenderTime: 0
   };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V12.0 PHASE 9.6: RAF-BASED CHART RENDERING SCHEDULER
+  // Schedules chart renders using requestAnimationFrame for smooth 60fps
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const ChartRenderScheduler = (function() {
+    const queue = [];
+    let isProcessing = false;
+    let frameId = null;
+    const CHARTS_PER_FRAME = 1; // Render 1 chart per frame for smoothness
+    
+    /**
+     * Queue a chart render operation
+     * @param {Function} renderFn - Chart render function
+     * @param {string} name - Chart name for tracking
+     * @param {number} priority - Lower = higher priority (default 5)
+     */
+    function schedule(renderFn, name, priority = 5) {
+      queue.push({ renderFn, name, priority, queuedAt: performance.now() });
+      
+      // Sort by priority
+      queue.sort((a, b) => a.priority - b.priority);
+      
+      if (!isProcessing) {
+        processQueue();
+      }
+    }
+    
+    /**
+     * Process the render queue using RAF
+     */
+    function processQueue() {
+      if (queue.length === 0) {
+        isProcessing = false;
+        console.log('📊 [ChartScheduler] Queue empty, all charts rendered');
+        return;
+      }
+      
+      isProcessing = true;
+      
+      frameId = requestAnimationFrame(() => {
+        const startTime = performance.now();
+        let rendered = 0;
+        
+        // Render up to N charts per frame
+        while (rendered < CHARTS_PER_FRAME && queue.length > 0) {
+          const item = queue.shift();
+          
+          try {
+            item.renderFn();
+            const renderTime = performance.now() - startTime;
+            PERF_METRICS.chartRenderTimes[item.name] = renderTime;
+            console.log(`📊 [ChartScheduler] Rendered '${item.name}' in ${renderTime.toFixed(1)}ms`);
+          } catch (err) {
+            console.error(`❌ [ChartScheduler] Failed to render '${item.name}':`, err);
+          }
+          
+          rendered++;
+        }
+        
+        // Continue processing remaining items
+        processQueue();
+      });
+    }
+    
+    /**
+     * Cancel all pending renders
+     */
+    function cancelAll() {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+      const count = queue.length;
+      queue.length = 0;
+      isProcessing = false;
+      console.log(`🛑 [ChartScheduler] Cancelled ${count} pending renders`);
+    }
+    
+    /**
+     * Get queue status
+     */
+    function getStatus() {
+      return {
+        pending: queue.length,
+        isProcessing,
+        queued: queue.map(q => q.name)
+      };
+    }
+    
+    return {
+      schedule,
+      cancelAll,
+      getStatus,
+      isIdle: () => !isProcessing && queue.length === 0
+    };
+  })();
+  
+  // Expose globally
+  window.ChartRenderScheduler = ChartRenderScheduler;
 
   /**
    * Debounce utility for preventing rapid re-renders
@@ -93,12 +195,28 @@
     }
   }
 
+  // V9.4: Tracking to prevent duplicate chart generation
+  let _lastChartGenerationTime = 0;
+  let _lastChartDataHash = '';
+  
   /**
    * Generate all 14 Stage 1 Dashboard Charts
    * @param {Object} data - JSON data containing dashboardCharts
    */
   window.generateStage1Charts = function(data) {
-    PERF_METRICS.chartRenderStart = performance.now();
+    // V9.4 FIX: Prevent duplicate generation within 1 second or same data
+    const now = performance.now();
+    const dataHash = JSON.stringify(data?.dashboardCharts || {}).substring(0, 500);
+    
+    if (now - _lastChartGenerationTime < 1000 && dataHash === _lastChartDataHash) {
+      console.log('⏭️ generateStage1Charts: Skipping duplicate call within 1 second');
+      return;
+    }
+    
+    _lastChartGenerationTime = now;
+    _lastChartDataHash = dataHash;
+    
+    PERF_METRICS.chartRenderStart = now;
     console.log('=== generateStage1Charts called ===');
     
     const chartInstances = window.chartInstances;
@@ -186,13 +304,13 @@
     }
     
     // Validate pillar depth for 6×5×6 structure (Phase 3)
+    // Note: validatePillarDepth returns a validated array of pillars, not a validation object
+    let validatedPillars = contentPillarsData;
     if (contentPillarsData?.length && window.validatePillarDepth) {
-      const validation = window.validatePillarDepth(contentPillarsData);
-      if (!validation.valid) {
-        console.warn('⚠️ Pillar depth validation failed:', validation.errors);
-      } else {
-        console.log('✅ Pillar depth validation passed:', validation.summary);
-      }
+      validatedPillars = window.validatePillarDepth(contentPillarsData);
+      // The function logs its own validation status
+    } else if (!contentPillarsData?.length) {
+      console.warn('⚠️ No content pillars data available for validation');
     }
 
     let created = 0, failed = 0;
@@ -347,6 +465,71 @@
     } catch (e) { console.error('Black Holes Chart error:', e); failed++; }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // V9.5 PERSONA & MARKET INTELLIGENCE CHARTS
+    // Renders charts from personas, competitiveAnalysis, opportunities, contentStrategy
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Chart MI1: Persona Pain Intensity (from personas[].charts)
+    try {
+      const personaData = data.personas || [];
+      if (personaData.length > 0) {
+        personaData.forEach((persona, idx) => {
+          if (persona.charts?.length) {
+            persona.charts.forEach(chart => {
+              const canvasId = `persona-chart-${idx}-${chart.chart_name}`;
+              const result = createGenericBarChart(canvasId, chart, commonAnimation);
+              result ? created++ : failed++;
+            });
+          }
+        });
+        console.log(`📊 Rendered charts for ${personaData.length} personas`);
+      }
+    } catch (e) { console.error('Persona Charts error:', e); failed++; }
+
+    // Chart MI2: Competitive Analysis Charts (gaps vs needs, moat potential)
+    try {
+      const compAnalysis = data.competitiveAnalysis;
+      if (compAnalysis?.charts?.length) {
+        compAnalysis.charts.forEach(chart => {
+          const canvasId = `comp-analysis-${chart.chart_name}`;
+          const result = createGenericBarChart(canvasId, chart, commonAnimation);
+          result ? created++ : failed++;
+        });
+        console.log(`📊 Rendered ${compAnalysis.charts.length} competitive analysis charts`);
+      }
+    } catch (e) { console.error('Competitive Analysis Charts error:', e); failed++; }
+
+    // Chart MI3: Opportunity Charts
+    try {
+      const opportunities = data.opportunities;
+      if (opportunities?.charts?.length) {
+        opportunities.charts.forEach(chart => {
+          const canvasId = `opportunity-${chart.chart_name}`;
+          const result = createGenericBarChart(canvasId, chart, commonAnimation);
+          result ? created++ : failed++;
+        });
+        console.log(`📊 Rendered ${opportunities.charts.length} opportunity charts`);
+      }
+    } catch (e) { console.error('Opportunity Charts error:', e); failed++; }
+
+    // Chart MI4: Content Strategy Pillar Charts (keyword opportunity vs saturation)
+    try {
+      const contentStrategy = data.contentStrategy;
+      if (contentStrategy?.pillars?.length) {
+        contentStrategy.pillars.forEach((pillar, idx) => {
+          if (pillar.charts?.length) {
+            pillar.charts.forEach(chart => {
+              const canvasId = `content-pillar-${idx}-${chart.chart_name}`;
+              const result = createGenericBarChart(canvasId, chart, commonAnimation);
+              result ? created++ : failed++;
+            });
+          }
+        });
+        console.log(`📊 Rendered content strategy charts for ${contentStrategy.pillars.length} pillars`);
+      }
+    } catch (e) { console.error('Content Strategy Charts error:', e); failed++; }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // V7.20 PHASE 4 CHARTS: Interactive Pillar Mind Map (D3.js Force Layout)
     // Updated to use createInteractivePillarMindMap from UI_D3_MindMap.html
     // ═══════════════════════════════════════════════════════════════════════════
@@ -453,14 +636,30 @@
   
   function ensureCanvasElements() {
     const ids = [
-      // Core strategic charts
-      'chart-tactical-roadmap', 'chart-impact-matrix', 'chart-resource-allocation',
-      // Blue Ocean (Section 4)
+      // Section 1: Customer Intelligence - Primary charts
+      'chart-emotional-pains', 'chart-hidden-desires', 'chart-mindset-shifts',
+      // Section 2: JTBD
+      'chart-jtbd-impact',
+      // Section 3: Competitive Warfare
+      'chart-competitor-gaps',
+      // Section 4: Blue Ocean
       'chart-blue-ocean',
+      // Section 5: Brand Positioning
+      'chart-brand-positioning',
+      // Section 7: Value Proposition & Moat
+      'chart-value-proposition', 'chart-format-usage',
+      // Section 8: Action Plan
+      'chart-tactical-roadmap', 'chart-priority-matrix',
       // Forensic charts (Sections 9-12)
       'chart-aeo-analysis', 'chart-asset-valuation', 'chart-brittleness-risk', 'chart-information-blackholes',
+      // Section 13: Strategic Imperatives
+      'chart-impact-matrix',
+      // Section 14: Resource Allocation
+      'chart-resource-allocation',
       // V7.18 Phase 3 charts
-      'chart-strategic-moat-flow', 'chart-action-plan-gantt'
+      'chart-strategic-moat-flow', 'chart-action-plan-gantt',
+      // Additional content pillars chart
+      'chart-content-pillars', 'chart-opportunity-gaps'
     ];
     
     // Canvas container
@@ -468,16 +667,18 @@
                       document.getElementById('stage1-unified-container');
     if (!container) return;
     
-    // Create canvas elements - V7.19 Optimized heights for compact modern look
+    // Create canvas elements with proper dimensions - V10.2 Fix for Chart.js rendering
     ids.forEach(id => {
-      if (!document.getElementById(id)) {
-        const canvas = document.createElement('canvas');
+      let canvas = document.getElementById(id);
+      if (!canvas) {
+        canvas = document.createElement('canvas');
         canvas.id = id;
-        canvas.width = 720;
-        canvas.height = 280;
-        canvas.style.cssText = 'width:100%;max-height:280px;';
         container.appendChild(canvas);
       }
+      // V10.2: Always ensure dimensions are set for Chart.js rendering
+      canvas.width = 720;
+      canvas.height = 360;
+      canvas.style.cssText = 'width:100%;height:360px;';
     });
     
     // Create div container for D3 mind map (not canvas) - V7.20 Phase 4 Interactive
@@ -499,6 +700,132 @@
       inlineMindMapDiv.style.cssText = 'width:100%;min-height:420px;max-height:520px;margin:12px 0;position:relative;';
       inlineMindMapDiv.setAttribute('data-phase', '4');
       // This will be placed by the Section 6 renderer
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V9.5 GENERIC CHART CREATOR FOR MARKET INTELLIGENCE DATA
+  // Handles the standardized chart format: { chart_name, x_axis, y_axis, description }
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Create a generic bar chart from the standardized market intelligence format
+   * @param {string} canvasId - Target canvas element ID (will be created if not exists)
+   * @param {Object} chartData - Chart data in format { chart_name, x_axis, y_axis, description }
+   * @param {Object} animation - Animation configuration
+   * @returns {Chart|null} - Chart instance or null on failure
+   */
+  function createGenericBarChart(canvasId, chartData, animation) {
+    if (!chartData || !chartData.x_axis || !chartData.y_axis) {
+      console.warn(`⚠️ Invalid chart data for ${canvasId}`);
+      return null;
+    }
+    
+    // Find or create canvas
+    let canvas = document.getElementById(canvasId);
+    if (!canvas) {
+      // Try to find a container for dynamic chart placement
+      const container = document.querySelector('.market-intelligence-charts') || 
+                       document.querySelector('.charts-container') ||
+                       document.querySelector('#charts-container');
+      if (container) {
+        canvas = document.createElement('canvas');
+        canvas.id = canvasId;
+        canvas.className = 'mi-chart-canvas';
+        canvas.style.cssText = 'max-height:300px;margin:12px 0;';
+        
+        // Add description if provided
+        const wrapper = document.createElement('div');
+        wrapper.className = 'mi-chart-wrapper';
+        if (chartData.description) {
+          const desc = document.createElement('p');
+          desc.className = 'mi-chart-description';
+          desc.textContent = chartData.description;
+          desc.style.cssText = 'font-size:0.85rem;color:var(--text-muted);margin-bottom:8px;';
+          wrapper.appendChild(desc);
+        }
+        wrapper.appendChild(canvas);
+        container.appendChild(wrapper);
+      } else {
+        console.warn(`⚠️ No container found for chart ${canvasId}`);
+        return null;
+      }
+    }
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    
+    // Determine chart type based on data pattern
+    const isHorizontal = chartData.x_axis.some(label => label.length > 15);
+    
+    // Generate gradient colors
+    const colors = chartData.y_axis.map((val, idx) => {
+      const hue = (idx * 35 + 220) % 360; // Blue-purple spectrum
+      const saturation = 65 + (val / Math.max(...chartData.y_axis)) * 20;
+      return `hsl(${hue}, ${saturation}%, 55%)`;
+    });
+    
+    try {
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: chartData.x_axis,
+          datasets: [{
+            label: chartData.chart_name?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Score',
+            data: chartData.y_axis,
+            backgroundColor: colors,
+            borderColor: colors.map(c => c.replace('55%', '45%')),
+            borderWidth: 1,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: isHorizontal ? 'y' : 'x',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: chartData.chart_name?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Chart',
+              font: { size: 14, weight: 'bold' },
+              color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#333'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: !isHorizontal },
+              ticks: { 
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#666',
+                maxRotation: isHorizontal ? 0 : 45
+              }
+            },
+            y: {
+              beginAtZero: true,
+              max: Math.max(...chartData.y_axis) <= 10 ? 10 : undefined,
+              grid: { display: isHorizontal },
+              ticks: { 
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#666'
+              }
+            }
+          },
+          animation: animation || { duration: 800 }
+        }
+      });
+      
+      window.chartInstances[canvasId] = chart;
+      console.log(`✅ Created generic chart: ${canvasId}`);
+      return chart;
+    } catch (e) {
+      console.error(`❌ Failed to create chart ${canvasId}:`, e);
+      return null;
     }
   }
 
@@ -911,8 +1238,27 @@
   }
 
   function createTacticalRoadmapChart(animation) {
-    const canvas = document.getElementById('chart-tactical-roadmap');
-    if (!canvas) return false;
+    // V12.0 Enhanced: Canvas creation fallback for hasInstance=false fix
+    let canvas = document.getElementById('chart-tactical-roadmap');
+    if (!canvas) {
+      console.log('📊 V12.0: chart-tactical-roadmap not found, creating dynamically');
+      const container = document.getElementById('stage1-chart-storage') || 
+                        document.getElementById('stage1-unified-container') ||
+                        document.querySelector('[data-section="8"]') ||
+                        document.querySelector('.section-8-container');
+      if (container) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'chart-tactical-roadmap';
+        canvas.width = 720;
+        canvas.height = 360;
+        canvas.style.cssText = 'width:100%;height:360px;';
+        container.appendChild(canvas);
+        console.log('📊 V12.0: chart-tactical-roadmap created successfully');
+      } else {
+        console.warn('📊 V12.0: No container found for chart-tactical-roadmap');
+        return false;
+      }
+    }
     
     const initiatives = [
       { name: 'Content Foundation', start: 0, duration: 15, priority: 'high' },
@@ -945,8 +1291,27 @@
   }
 
   function createImpactMatrixChart(animation) {
-    const canvas = document.getElementById('chart-impact-matrix');
-    if (!canvas) return false;
+    // V12.0 Enhanced: Canvas creation fallback for hasInstance=false fix
+    let canvas = document.getElementById('chart-impact-matrix');
+    if (!canvas) {
+      console.log('📊 V12.0: chart-impact-matrix not found, creating dynamically');
+      const container = document.getElementById('stage1-chart-storage') || 
+                        document.getElementById('stage1-unified-container') ||
+                        document.querySelector('[data-section="13"]') ||
+                        document.querySelector('.section-13-container');
+      if (container) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'chart-impact-matrix';
+        canvas.width = 720;
+        canvas.height = 360;
+        canvas.style.cssText = 'width:100%;height:360px;';
+        container.appendChild(canvas);
+        console.log('📊 V12.0: chart-impact-matrix created successfully');
+      } else {
+        console.warn('📊 V12.0: No container found for chart-impact-matrix');
+        return false;
+      }
+    }
     
     const initiatives = [
       { name: 'Fix Technical SEO', effort: 25, impact: 85, size: 15, quadrant: 'Quick Wins' },
@@ -978,8 +1343,27 @@
   }
 
   function createResourceAllocationChart(animation) {
-    const canvas = document.getElementById('chart-resource-allocation');
-    if (!canvas) return false;
+    // V12.0 Enhanced: Canvas creation fallback for hasInstance=false fix
+    let canvas = document.getElementById('chart-resource-allocation');
+    if (!canvas) {
+      console.log('📊 V12.0: chart-resource-allocation not found, creating dynamically');
+      const container = document.getElementById('stage1-chart-storage') || 
+                        document.getElementById('stage1-unified-container') ||
+                        document.querySelector('[data-section="14"]') ||
+                        document.querySelector('.section-14-container');
+      if (container) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'chart-resource-allocation';
+        canvas.width = 720;
+        canvas.height = 360;
+        canvas.style.cssText = 'width:100%;height:360px;';
+        container.appendChild(canvas);
+        console.log('📊 V12.0: chart-resource-allocation created successfully');
+      } else {
+        console.warn('📊 V12.0: No container found for chart-resource-allocation');
+        return false;
+      }
+    }
     
     const phases = ['Foundation (0-30d)', 'Growth (31-60d)', 'Scale (61-90d)'];
     const resources = {

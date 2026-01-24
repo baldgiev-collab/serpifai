@@ -10,10 +10,319 @@
  * - Output Quality Mandates
  * - Elite Insight Presentation Format
  * - Master Prompt Injection Block
+ * - V12.0: Dashboard Chart Data Requirements (18 charts)
+ * - V12.0: Tab-Specific Insights (14 tabs)
+ * - V12.0: Pillar/Cluster/Keyword Generation Requirements
  * 
- * @version 1.0.0
+ * @version 12.0.0
  * @author SerpifAI Elite Intelligence System
  */
+
+/**
+ * V12.0: Dashboard Chart Data Schema Requirements
+ * Explicitly requests all 18 dashboard charts with strict JSON schemas
+ */
+function getDashboardChartRequirements() {
+  return `
+═══════════════════════════════════════════════════════════════════════════════
+📊 DASHBOARD CHART DATA REQUIREMENTS — 18 REQUIRED CHARTS
+═══════════════════════════════════════════════════════════════════════════════
+
+You MUST include a "dashboardCharts" object in your JSON response with ALL of the following chart data structures:
+
+1. **marketPositionRadar** (Radar Chart):
+   \`\`\`json
+   { "labels": ["Authority", "Content", "Technical", "Backlinks", "Keywords", "Speed"],
+     "datasets": [{ "label": "You", "data": [85, 72, 90, 65, 78, 88] },
+                  { "label": "Competitor Avg", "data": [75, 80, 70, 85, 82, 75] }] }
+   \`\`\`
+
+2. **competitorGapAnalysis** (Bar Chart):
+   \`\`\`json
+   { "labels": ["Ahrefs", "SEMrush", "Moz", "Majestic"],
+     "datasets": [{ "label": "Content Gap", "data": [15, 22, 8, 12] },
+                  { "label": "Backlink Gap", "data": [25, 18, 30, 22] },
+                  { "label": "Technical Gap", "data": [5, 10, 15, 8] }] }
+   \`\`\`
+
+3. **keywordOpportunityBubble** (Bubble Chart):
+   \`\`\`json
+   { "datasets": [{ "label": "High Volume", "data": [{ "x": 85, "y": 12000, "r": 20 }] },
+                  { "label": "Long Tail", "data": [{ "x": 35, "y": 800, "r": 10 }] }] }
+   \`\`\`
+
+4. **contentGapTreemap** (Treemap):
+   \`\`\`json
+   { "datasets": [{ "tree": [{ "name": "Product Reviews", "value": 45, "category": "Content Gap" },
+                             { "name": "How-To Guides", "value": 35, "category": "Content Gap" }] }] }
+   \`\`\`
+
+5. **authorityDistribution** (Doughnut Chart):
+   \`\`\`json
+   { "labels": ["High Authority (80+)", "Medium (50-79)", "Low (<50)"],
+     "datasets": [{ "data": [25, 45, 30], "backgroundColor": ["#22c55e", "#f59e0b", "#ef4444"] }] }
+   \`\`\`
+
+6. **trafficTrend** (Line Chart):
+   \`\`\`json
+   { "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+     "datasets": [{ "label": "Organic Traffic", "data": [12000, 13500, 14200, 15800, 16500, 18000] },
+                  { "label": "Competitor Avg", "data": [15000, 15200, 15000, 15500, 16000, 16200] }] }
+   \`\`\`
+
+7. **topicalAuthorityHeatmap** (Heatmap):
+   \`\`\`json
+   { "xLabels": ["You", "Comp1", "Comp2", "Comp3"],
+     "yLabels": ["Topic1", "Topic2", "Topic3", "Topic4"],
+     "data": [[85, 70, 65, 60], [72, 90, 55, 80], [60, 45, 85, 70], [90, 75, 70, 65]] }
+   \`\`\`
+
+8. **contentAgeDistribution** (Bar Chart):
+   \`\`\`json
+   { "labels": ["< 3 months", "3-6 months", "6-12 months", "> 12 months"],
+     "datasets": [{ "label": "Content Count", "data": [15, 25, 40, 35] }] }
+   \`\`\`
+
+9. **backlinkQualityScatter** (Scatter Chart):
+   \`\`\`json
+   { "datasets": [{ "label": "Your Backlinks", "data": [{ "x": 85, "y": 12 }, { "x": 72, "y": 8 }] },
+                  { "label": "Competitor Backlinks", "data": [{ "x": 90, "y": 15 }, { "x": 65, "y": 6 }] }] }
+   \`\`\`
+
+10. **serpFeaturePresence** (Stacked Bar):
+    \`\`\`json
+    { "labels": ["You", "Comp1", "Comp2", "Comp3"],
+      "datasets": [{ "label": "Featured Snippets", "data": [12, 18, 8, 15] },
+                   { "label": "PAA Boxes", "data": [25, 20, 30, 22] },
+                   { "label": "Knowledge Panel", "data": [1, 0, 1, 0] }] }
+    \`\`\`
+
+11. **technicalHealthGauge** (Gauge Chart):
+    \`\`\`json
+    { "value": 78, "min": 0, "max": 100,
+      "thresholds": [{ "value": 50, "color": "#ef4444" }, { "value": 75, "color": "#f59e0b" }, { "value": 100, "color": "#22c55e" }] }
+    \`\`\`
+
+12. **coreWebVitals** (Grouped Bar):
+    \`\`\`json
+    { "labels": ["LCP", "FID", "CLS"],
+      "datasets": [{ "label": "You", "data": [2.1, 80, 0.08] },
+                   { "label": "Good Threshold", "data": [2.5, 100, 0.1] }] }
+    \`\`\`
+
+13. **keywordRankDistribution** (Pie Chart):
+    \`\`\`json
+    { "labels": ["Top 3", "4-10", "11-20", "21-50", "51-100"],
+      "datasets": [{ "data": [15, 35, 45, 85, 120] }] }
+    \`\`\`
+
+14. **contentROIQuadrant** (Scatter with Quadrants):
+    \`\`\`json
+    { "datasets": [{ "label": "High Value", "data": [{ "x": 80, "y": 85, "label": "Ultimate Guide" }] },
+                   { "label": "Low Value", "data": [{ "x": 20, "y": 15, "label": "Old FAQ" }] }] }
+    \`\`\`
+
+15. **topicClusterForce** (Force-Directed Graph):
+    \`\`\`json
+    { "nodes": [{ "id": "pillar1", "group": 1, "label": "Main Topic" },
+                { "id": "cluster1", "group": 2, "label": "Subtopic 1" }],
+      "links": [{ "source": "pillar1", "target": "cluster1", "value": 5 }] }
+    \`\`\`
+
+16. **competitorThreatIndex** (Horizontal Bar):
+    \`\`\`json
+    { "labels": ["Comp1", "Comp2", "Comp3", "Comp4", "Comp5"],
+      "datasets": [{ "label": "Threat Score", "data": [92, 85, 78, 65, 55] }] }
+    \`\`\`
+
+17. **opportunityTimeline** (Timeline/Gantt):
+    \`\`\`json
+    { "items": [{ "label": "Quick Win 1", "start": 0, "end": 2, "type": "quick-win" },
+                { "label": "Strategic Initiative", "start": 1, "end": 6, "type": "strategic" }] }
+    \`\`\`
+
+18. **moatStrengthPolar** (Polar Area Chart):
+    \`\`\`json
+    { "labels": ["Brand Moat", "Content Moat", "Technical Moat", "Backlink Moat", "Data Moat"],
+      "datasets": [{ "data": [85, 72, 90, 65, 45] }] }
+    \`\`\`
+
+CRITICAL: If data is unavailable for any chart, provide realistic synthetic data based on the competitor analysis context. NEVER return empty arrays or null values for chart data.
+`;
+}
+
+/**
+ * V12.0: Pillar/Cluster/Keyword Generation Requirements
+ */
+function getPillarClusterRequirements() {
+  return `
+═══════════════════════════════════════════════════════════════════════════════
+🏛️ PILLAR/CLUSTER CONTENT STRUCTURE — REQUIRED OUTPUT
+═══════════════════════════════════════════════════════════════════════════════
+
+You MUST include a "contentArchitecture" object with this exact structure:
+
+\`\`\`json
+{
+  "contentArchitecture": {
+    "pillars": [
+      {
+        "id": "pillar_1",
+        "title": "[Pillar Topic Name]",
+        "targetKeyword": "[Primary Keyword]",
+        "searchVolume": 15000,
+        "difficulty": 65,
+        "intent": "informational|commercial|transactional|navigational",
+        "clusters": [
+          {
+            "id": "cluster_1_1",
+            "title": "[Cluster Topic]",
+            "targetKeyword": "[Cluster Keyword]",
+            "searchVolume": 2500,
+            "difficulty": 45,
+            "supportingKeywords": [
+              { "keyword": "[keyword1]", "volume": 500, "difficulty": 30 },
+              { "keyword": "[keyword2]", "volume": 350, "difficulty": 25 },
+              { "keyword": "[keyword3]", "volume": 280, "difficulty": 35 },
+              { "keyword": "[keyword4]", "volume": 200, "difficulty": 20 },
+              { "keyword": "[keyword5]", "volume": 150, "difficulty": 28 }
+            ],
+            "contentType": "how-to|guide|comparison|review|list",
+            "priority": "high|medium|low"
+          }
+        ]
+      }
+    ],
+    "totalPillars": 6,
+    "totalClusters": 30,
+    "totalKeywords": 180,
+    "estimatedTrafficPotential": 125000
+  }
+}
+\`\`\`
+
+REQUIREMENTS:
+- Generate EXACTLY 6 content pillars
+- Each pillar MUST have 5 clusters (30 total)
+- Each cluster MUST have 5 supporting keywords (150+ total keywords)
+- All search volumes and difficulties MUST be realistic numbers
+- Keywords MUST be specific, not generic placeholders
+`;
+}
+
+/**
+ * V12.0: Tab-Specific Insight Requirements (14 tabs)
+ */
+function getTabInsightRequirements() {
+  return `
+═══════════════════════════════════════════════════════════════════════════════
+📑 TAB-SPECIFIC INSIGHTS — 14 REQUIRED SECTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+You MUST include a "tabInsights" object with insights for ALL 14 dashboard tabs:
+
+\`\`\`json
+{
+  "tabInsights": {
+    "overview": {
+      "headline": "[One-line executive summary]",
+      "score": 78,
+      "trend": "up|down|stable",
+      "keyMetrics": [{ "label": "Authority Score", "value": 72, "change": "+5" }],
+      "topInsight": "[Most important finding]",
+      "actionItem": "[Immediate next step]"
+    },
+    "competitors": {
+      "headline": "[Competitive landscape summary]",
+      "topThreat": "[Most dangerous competitor]",
+      "biggestGap": "[Largest competitive gap]",
+      "quickWin": "[Fastest win opportunity]",
+      "keyInsights": ["[insight1]", "[insight2]", "[insight3]"]
+    },
+    "keywords": {
+      "headline": "[Keyword strategy summary]",
+      "topOpportunities": [{ "keyword": "", "volume": 0, "difficulty": 0, "opportunity": "" }],
+      "defensiveKeywords": ["[keyword to protect]"],
+      "attackKeywords": ["[keyword to target]"]
+    },
+    "content": {
+      "headline": "[Content strategy summary]",
+      "gapAnalysis": "[Content gaps identified]",
+      "topPerformers": ["[top content 1]", "[top content 2]"],
+      "refreshNeeded": ["[content needing update]"]
+    },
+    "technical": {
+      "headline": "[Technical SEO summary]",
+      "healthScore": 85,
+      "criticalIssues": [{ "issue": "", "impact": "high|medium|low", "fix": "" }],
+      "coreWebVitals": { "lcp": 2.1, "fid": 80, "cls": 0.08 }
+    },
+    "backlinks": {
+      "headline": "[Backlink profile summary]",
+      "totalBacklinks": 15000,
+      "referringDomains": 850,
+      "toxicLinks": 25,
+      "opportunities": ["[link opportunity 1]"]
+    },
+    "brand": {
+      "headline": "[Brand authority summary]",
+      "brandMentions": 1500,
+      "sentimentScore": 82,
+      "shareOfVoice": 18,
+      "brandGaps": ["[brand weakness 1]"]
+    },
+    "audience": {
+      "headline": "[Audience insights summary]",
+      "topSegments": ["[segment 1]", "[segment 2]"],
+      "intentDistribution": { "informational": 45, "commercial": 30, "transactional": 25 },
+      "engagementTrends": "[trend summary]"
+    },
+    "conversion": {
+      "headline": "[Conversion optimization summary]",
+      "conversionRate": 2.5,
+      "topPages": ["[high converting page]"],
+      "bottlenecks": ["[conversion bottleneck]"],
+      "testIdeas": ["[A/B test idea]"]
+    },
+    "authority": {
+      "headline": "[Authority & EEAT summary]",
+      "eatScore": 75,
+      "expertiseSignals": ["[expertise signal]"],
+      "trustFactors": ["[trust factor]"],
+      "authorityGaps": ["[authority gap]"]
+    },
+    "opportunities": {
+      "headline": "[Strategic opportunities summary]",
+      "quickWins": [{ "opportunity": "", "effort": "low|medium|high", "impact": "high|medium|low" }],
+      "strategicPlays": ["[strategic initiative]"],
+      "riskMitigation": ["[risk to address]"]
+    },
+    "categoryIntel": {
+      "headline": "[Category intelligence summary]",
+      "marketSize": "$X billion",
+      "growthRate": "15%",
+      "trends": ["[trend 1]", "[trend 2]"],
+      "emergingPlayers": ["[new competitor]"]
+    },
+    "scoring": {
+      "headline": "[Overall scoring summary]",
+      "overallScore": 78,
+      "categoryScores": { "content": 82, "technical": 75, "authority": 80, "backlinks": 72 },
+      "benchmarkComparison": "[vs industry benchmark]"
+    },
+    "strategic": {
+      "headline": "[Strategic command summary]",
+      "missionStatement": "[Strategic mission]",
+      "q1Priorities": ["[priority 1]", "[priority 2]", "[priority 3]"],
+      "resourceAllocation": { "content": 40, "technical": 25, "linkBuilding": 35 }
+    }
+  }
+}
+\`\`\`
+
+CRITICAL: Every tab MUST have meaningful, actionable insights. No empty or placeholder values.
+`;
+}
 
 /**
  * Returns the Elite Intelligence Protocol block to inject at START of Gemini prompts
@@ -129,6 +438,12 @@ For EVERY strategic insight, use this exact format:
 ═══════════════════════════════════════════════════════════════════════════════
 🏢 BRAND CONTEXT: ${brandName}
 ═══════════════════════════════════════════════════════════════════════════════
+
+${getDashboardChartRequirements()}
+
+${getPillarClusterRequirements()}
+
+${getTabInsightRequirements()}
 `;
 }
 

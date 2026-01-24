@@ -1,0 +1,316 @@
+<!--
+  UI_ESI_Callout.html
+  ELITE STRATEGIC INTELLIGENCE - CALLOUT COMPONENT v12.0
+  
+  Highlighted quote/insight with source attribution and visual impact
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI CALLOUT - QUOTE/HIGHLIGHT COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-callout {
+  position: relative;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+  border-left: 4px solid var(--elite-primary, #4f46e5);
+  border-radius: 0 var(--elite-radius-lg, 1rem) var(--elite-radius-lg, 1rem) 0;
+  margin: 1.5rem 0;
+}
+
+.esi-callout::before {
+  content: '"';
+  position: absolute;
+  top: 0.5rem;
+  left: 1rem;
+  font-size: 4rem;
+  font-family: Georgia, serif;
+  color: var(--elite-primary, #4f46e5);
+  opacity: 0.15;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.esi-callout__content {
+  position: relative;
+  z-index: 1;
+}
+
+.esi-callout__text {
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.7;
+  color: var(--elite-gray-800, #1f2937);
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.esi-callout__text strong,
+.esi-callout__text em {
+  color: var(--elite-primary, #4f46e5);
+  font-weight: 700;
+  font-style: normal;
+}
+
+.esi-callout__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.esi-callout__source {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--elite-gray-600, #4b5563);
+}
+
+.esi-callout__source-icon {
+  font-size: 1.125rem;
+}
+
+.esi-callout__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: var(--elite-primary, #4f46e5);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--elite-radius-full);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI CALLOUT VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Success Variant */
+.esi-callout--success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border-left-color: var(--elite-success, #10b981);
+}
+
+.esi-callout--success::before { color: var(--elite-success, #10b981); }
+.esi-callout--success .esi-callout__badge { background: var(--elite-success, #10b981); }
+.esi-callout--success .esi-callout__text strong { color: var(--elite-success, #10b981); }
+
+/* Warning Variant */
+.esi-callout--warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(234, 88, 12, 0.05) 100%);
+  border-left-color: var(--elite-warning, #f59e0b);
+}
+
+.esi-callout--warning::before { color: var(--elite-warning, #f59e0b); }
+.esi-callout--warning .esi-callout__badge { background: var(--elite-warning, #f59e0b); }
+.esi-callout--warning .esi-callout__text strong { color: var(--elite-warning, #f59e0b); }
+
+/* Danger Variant */
+.esi-callout--danger {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.05) 100%);
+  border-left-color: var(--elite-danger, #ef4444);
+}
+
+.esi-callout--danger::before { color: var(--elite-danger, #ef4444); }
+.esi-callout--danger .esi-callout__badge { background: var(--elite-danger, #ef4444); }
+.esi-callout--danger .esi-callout__text strong { color: var(--elite-danger, #ef4444); }
+
+/* Info Variant */
+.esi-callout--info {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-left-color: var(--elite-info, #3b82f6);
+}
+
+.esi-callout--info::before { color: var(--elite-info, #3b82f6); }
+.esi-callout--info .esi-callout__badge { background: var(--elite-info, #3b82f6); }
+.esi-callout--info .esi-callout__text strong { color: var(--elite-info, #3b82f6); }
+
+/* Featured/Large Variant */
+.esi-callout--featured {
+  padding: 2rem 2.5rem;
+  border-left-width: 6px;
+  box-shadow: var(--elite-shadow-lg);
+}
+
+.esi-callout--featured .esi-callout__text {
+  font-size: 1.375rem;
+}
+
+.esi-callout--featured::before {
+  font-size: 5rem;
+}
+
+/* Compact Variant */
+.esi-callout--compact {
+  padding: 1rem 1.5rem;
+}
+
+.esi-callout--compact .esi-callout__text {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.esi-callout--compact::before {
+  font-size: 2.5rem;
+}
+
+/* Centered Variant */
+.esi-callout--centered {
+  text-align: center;
+  border-left: none;
+  border-top: 4px solid var(--elite-primary, #4f46e5);
+  border-radius: var(--elite-radius-lg);
+}
+
+.esi-callout--centered::before {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.esi-callout--centered .esi-callout__footer {
+  justify-content: center;
+}
+
+/* Animation */
+@keyframes esi-callout-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.esi-callout--animate {
+  animation: esi-callout-fade 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Dark Theme */
+[data-theme="dark"] .esi-callout,
+[data-theme="neon"] .esi-callout {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+}
+
+[data-theme="dark"] .esi-callout__text,
+[data-theme="neon"] .esi-callout__text {
+  color: var(--elite-gray-200, #e5e7eb);
+}
+
+[data-theme="dark"] .esi-callout__source,
+[data-theme="neon"] .esi-callout__source {
+  color: var(--elite-gray-400, #9ca3af);
+}
+
+/* Neon Glow */
+[data-theme="neon"] .esi-callout {
+  box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="neon"] .esi-callout::before {
+  text-shadow: 0 0 20px currentColor;
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI CALLOUT - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI Callout
+ * @param {Object} config - Callout configuration
+ * @param {string} config.text - Quote/callout text (supports HTML for emphasis)
+ * @param {string} config.source - Source attribution
+ * @param {string} config.sourceIcon - Icon for source
+ * @param {string} config.badge - Optional badge text
+ * @param {string} config.variant - 'default', 'success', 'warning', 'danger', 'info'
+ * @param {string} config.size - 'compact', 'default', 'featured'
+ * @param {boolean} config.centered - Center the callout
+ * @param {boolean} config.animate - Add entrance animation
+ * @returns {HTMLElement}
+ */
+function createESICallout(config = {}) {
+  const {
+    text = '',
+    source = '',
+    sourceIcon = '📌',
+    badge = '',
+    variant = 'default',
+    size = 'default',
+    centered = false,
+    animate = true
+  } = config;
+
+  const callout = document.createElement('div');
+  
+  const classes = ['esi-callout'];
+  if (variant !== 'default') classes.push(`esi-callout--${variant}`);
+  if (size === 'compact') classes.push('esi-callout--compact');
+  if (size === 'featured') classes.push('esi-callout--featured');
+  if (centered) classes.push('esi-callout--centered');
+  if (animate) classes.push('esi-callout--animate');
+  
+  callout.className = classes.join(' ');
+
+  callout.innerHTML = `
+    <div class="esi-callout__content">
+      <p class="esi-callout__text">${text}</p>
+      <div class="esi-callout__footer">
+        ${source ? `
+          <div class="esi-callout__source">
+            <span class="esi-callout__source-icon">${sourceIcon}</span>
+            <span>${source}</span>
+          </div>
+        ` : ''}
+        ${badge ? `
+          <span class="esi-callout__badge">${badge}</span>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  return callout;
+}
+
+/**
+ * Render ESI Callout into container
+ */
+function renderESICallout(containerId, config = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  console.log('📊 ESI Callout V12.0: Rendering callout');
+  container.appendChild(createESICallout(config));
+}
+
+/**
+ * Create multiple callouts
+ */
+function createESICallouts(configs = []) {
+  const fragment = document.createDocumentFragment();
+  configs.forEach(config => {
+    fragment.appendChild(createESICallout(config));
+  });
+  return fragment;
+}
+
+window.createESICallout = createESICallout;
+window.createESICallouts = createESICallouts;
+window.renderESICallout = renderESICallout;
+
+console.log('📊 ESI Callout Component V12.0 loaded');
+</script>

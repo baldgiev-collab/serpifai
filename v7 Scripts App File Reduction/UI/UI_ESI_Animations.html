@@ -1,0 +1,409 @@
+<!--
+  UI_ESI_Animations.html
+  ELITE STRATEGIC INTELLIGENCE - PREMIUM ANIMATIONS v12.0
+  
+  Comprehensive animation library for ESI components
+  Includes: Fade, Slide, Scale, Bounce, Glow, Shimmer, Float
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   V12.0 ESI PREMIUM ANIMATIONS - PHASE 5 VISUAL OVERHAUL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Fade In Up */
+@keyframes esi-fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In Down */
+@keyframes esi-fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide In Left */
+@keyframes esi-slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide In Right */
+@keyframes esi-slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale In */
+@keyframes esi-scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Bounce In */
+@keyframes esi-bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Pulse Glow */
+@keyframes esi-pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(99, 102, 241, 0.3);
+  }
+}
+
+/* Shimmer */
+@keyframes esi-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Float */
+@keyframes esi-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Heartbeat */
+@keyframes esi-heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.1);
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.1);
+  }
+  70% {
+    transform: scale(1);
+  }
+}
+
+/* Rotate In */
+@keyframes esi-rotateIn {
+  from {
+    opacity: 0;
+    transform: rotate(-180deg) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+/* Flip In */
+@keyframes esi-flipIn {
+  from {
+    opacity: 0;
+    transform: perspective(400px) rotateY(90deg);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(400px) rotateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATION UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-animate-fadeInUp {
+  animation: esi-fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-animate-fadeInDown {
+  animation: esi-fadeInDown 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-animate-slideInLeft {
+  animation: esi-slideInLeft 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-animate-slideInRight {
+  animation: esi-slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-animate-scaleIn {
+  animation: esi-scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-animate-bounceIn {
+  animation: esi-bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.esi-animate-pulseGlow {
+  animation: esi-pulseGlow 2s ease-in-out infinite;
+}
+
+.esi-animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: esi-shimmer 2s infinite;
+}
+
+.esi-animate-float {
+  animation: esi-float 3s ease-in-out infinite;
+}
+
+.esi-animate-heartbeat {
+  animation: esi-heartbeat 1.5s ease-in-out infinite;
+}
+
+.esi-animate-rotateIn {
+  animation: esi-rotateIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-animate-flipIn {
+  animation: esi-flipIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STAGGER ANIMATION DELAYS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-stagger-1 { animation-delay: 0ms; }
+.esi-stagger-2 { animation-delay: 100ms; }
+.esi-stagger-3 { animation-delay: 200ms; }
+.esi-stagger-4 { animation-delay: 300ms; }
+.esi-stagger-5 { animation-delay: 400ms; }
+.esi-stagger-6 { animation-delay: 500ms; }
+.esi-stagger-7 { animation-delay: 600ms; }
+.esi-stagger-8 { animation-delay: 700ms; }
+.esi-stagger-9 { animation-delay: 800ms; }
+.esi-stagger-10 { animation-delay: 900ms; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOVER TRANSITIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.esi-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.esi-hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.esi-hover-scale:hover {
+  transform: scale(1.03);
+}
+
+.esi-hover-glow {
+  transition: box-shadow 0.3s ease;
+}
+
+.esi-hover-glow:hover {
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.esi-hover-rotate {
+  transition: transform 0.3s ease;
+}
+
+.esi-hover-rotate:hover {
+  transform: rotate(5deg);
+}
+
+.esi-hover-brightness {
+  transition: filter 0.3s ease;
+}
+
+.esi-hover-brightness:hover {
+  filter: brightness(1.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATION STATE UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Initially hidden for animation */
+.esi-animate-hidden {
+  opacity: 0;
+}
+
+/* Pause animations */
+.esi-animate-paused {
+  animation-play-state: paused;
+}
+
+/* Speed modifiers */
+.esi-animate-fast {
+  animation-duration: 0.3s !important;
+}
+
+.esi-animate-slow {
+  animation-duration: 0.8s !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY - REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .esi-animate-fadeInUp,
+  .esi-animate-fadeInDown,
+  .esi-animate-slideInLeft,
+  .esi-animate-slideInRight,
+  .esi-animate-scaleIn,
+  .esi-animate-bounceIn,
+  .esi-animate-pulseGlow,
+  .esi-animate-shimmer,
+  .esi-animate-float,
+  .esi-animate-heartbeat,
+  .esi-animate-rotateIn,
+  .esi-animate-flipIn {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  
+  .esi-hover-lift:hover,
+  .esi-hover-scale:hover,
+  .esi-hover-rotate:hover {
+    transform: none !important;
+  }
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI ANIMATION CONTROLLER v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Apply staggered animation to children
+ * @param {HTMLElement|string} container - Container element or ID
+ * @param {string} animationClass - Animation class to apply
+ * @param {number} delay - Delay between items in ms
+ */
+function esiStaggerAnimation(container, animationClass = 'esi-animate-fadeInUp', delay = 100) {
+  const el = typeof container === 'string' ? document.getElementById(container) : container;
+  if (!el) return;
+
+  const children = el.children;
+  Array.from(children).forEach((child, index) => {
+    child.style.opacity = '0';
+    child.style.animationDelay = `${index * delay}ms`;
+    child.classList.add(animationClass);
+  });
+}
+
+/**
+ * Trigger animation on scroll into view
+ * @param {string} selector - CSS selector for elements
+ * @param {string} animationClass - Animation class to apply
+ */
+function esiAnimateOnScroll(selector, animationClass = 'esi-animate-fadeInUp') {
+  const elements = document.querySelectorAll(selector);
+  
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add(animationClass);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  elements.forEach(el => {
+    el.classList.add('esi-animate-hidden');
+    observer.observe(el);
+  });
+}
+
+/**
+ * Reset animation on element
+ * @param {HTMLElement} element - Element to reset
+ */
+function esiResetAnimation(element) {
+  element.style.animation = 'none';
+  element.offsetHeight; // Trigger reflow
+  element.style.animation = null;
+}
+
+/**
+ * Check if user prefers reduced motion
+ * @returns {boolean}
+ */
+function esiPrefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// Export to global scope
+window.esiStaggerAnimation = esiStaggerAnimation;
+window.esiAnimateOnScroll = esiAnimateOnScroll;
+window.esiResetAnimation = esiResetAnimation;
+window.esiPrefersReducedMotion = esiPrefersReducedMotion;
+
+console.log('📊 ESI Animations v12.0 loaded');
+</script>

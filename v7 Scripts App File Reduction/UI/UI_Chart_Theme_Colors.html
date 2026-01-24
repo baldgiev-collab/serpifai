@@ -1,45 +1,116 @@
 <!--
   UI_Chart_Theme_Colors.html
-  THEME-AWARE CHART COLOR UTILITY v1.0
+  V12.0 THEME-AWARE CHART COLOR UTILITY
+  Phase 6 TODO 6.7: Theme-aware chart colors for D3 and Chart.js
   
-  Provides D3-ready color palettes per theme
-  Ensures chart colors match Command Canvas tokens
+  Provides D3-ready and Chart.js-ready color palettes per theme
+  Ensures chart colors match Command Canvas tokens with WCAG compliance
 -->
 <script>
 /* ═══════════════════════════════════════════════════════════════════════════
-   TASK 16: THEME-AWARE CHART COLOR UTILITY
+   V12.0 PHASE 6: THEME-AWARE CHART COLOR UTILITY
+   Complete chart color system for all 4 themes
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const ChartThemeColors = {
   
   palettes: {
     light: {
-      primary: ['#6366F1', '#8B5CF6', '#34D399', '#F59E0B', '#EC4899', '#22D3EE'],
+      // Primary palette - high contrast for light backgrounds
+      primary: ['#6366F1', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#06B6D4', '#F43F5E', '#84CC16'],
+      // Secondary palette - softer variants
+      secondary: ['#818CF8', '#A78BFA', '#34D399', '#FBBF24', '#F472B6', '#22D3EE', '#FB7185', '#A3E635'],
+      // Gradient pairs for area charts
+      gradients: [
+        { start: '#6366F1', end: 'rgba(99,102,241,0.1)' },
+        { start: '#10B981', end: 'rgba(16,185,129,0.1)' },
+        { start: '#F59E0B', end: 'rgba(245,158,11,0.1)' },
+        { start: '#EC4899', end: 'rgba(236,72,153,0.1)' }
+      ],
       background: '#FFFFFF',
+      cardBackground: '#F8FAFC',
       gridLines: '#E2E8F0',
+      gridLinesDashed: 'rgba(226,232,240,0.5)',
       text: '#0F172A',
-      muted: '#64748B'
+      textSecondary: '#334155',
+      muted: '#64748B',
+      tooltip: {
+        background: '#FFFFFF',
+        text: '#0F172A',
+        border: '#E2E8F0'
+      }
     },
+    
     dark: {
-      primary: ['#A5B4FC', '#C084FC', '#34D399', '#FCD34D', '#F472B6', '#67E8F9'],
-      background: '#1E293B',
+      // Primary palette - brighter for dark backgrounds
+      primary: ['#A5B4FC', '#C4B5FD', '#34D399', '#FBBF24', '#F472B6', '#22D3EE', '#FB7185', '#BEF264'],
+      secondary: ['#818CF8', '#A78BFA', '#10B981', '#F59E0B', '#EC4899', '#06B6D4', '#F43F5E', '#84CC16'],
+      gradients: [
+        { start: '#A5B4FC', end: 'rgba(165,180,252,0.1)' },
+        { start: '#34D399', end: 'rgba(52,211,153,0.1)' },
+        { start: '#FBBF24', end: 'rgba(251,191,36,0.1)' },
+        { start: '#F472B6', end: 'rgba(244,114,182,0.1)' }
+      ],
+      background: '#0F172A',
+      cardBackground: '#1E293B',
       gridLines: '#334155',
+      gridLinesDashed: 'rgba(51,65,85,0.5)',
       text: '#F1F5F9',
-      muted: '#94A3B8'
+      textSecondary: '#E2E8F0',
+      muted: '#94A3B8',
+      tooltip: {
+        background: '#1E293B',
+        text: '#F1F5F9',
+        border: '#334155'
+      }
     },
+    
     aurora: {
-      primary: ['#34D399', '#059669', '#10B981', '#A7F3D0', '#60A5FA', '#818CF8'],
-      background: 'rgba(15, 23, 42, 0.8)',
-      gridLines: 'rgba(52, 211, 153, 0.2)',
-      text: '#34D399',
-      muted: '#94A3B8'
+      // Aurora palette - emerald-based with magical accents
+      primary: ['#34D399', '#4ADE80', '#38BDF8', '#A78BFA', '#FB7185', '#FBBF24', '#22D3EE', '#818CF8'],
+      secondary: ['#10B981', '#22C55E', '#0EA5E9', '#8B5CF6', '#F43F5E', '#F59E0B', '#06B6D4', '#6366F1'],
+      gradients: [
+        { start: '#34D399', end: 'rgba(52,211,153,0.05)' },
+        { start: '#38BDF8', end: 'rgba(56,189,248,0.05)' },
+        { start: '#A78BFA', end: 'rgba(167,139,250,0.05)' },
+        { start: '#FB7185', end: 'rgba(251,113,133,0.05)' }
+      ],
+      background: 'rgba(15,23,42,0.8)',
+      cardBackground: 'rgba(30,41,59,0.6)',
+      gridLines: 'rgba(52,211,153,0.15)',
+      gridLinesDashed: 'rgba(52,211,153,0.08)',
+      text: '#F0FDF4',
+      textSecondary: '#D1FAE5',
+      muted: '#6EE7B7',
+      tooltip: {
+        background: 'rgba(30,41,59,0.95)',
+        text: '#F0FDF4',
+        border: 'rgba(52,211,153,0.3)'
+      }
     },
+    
     neon: {
-      primary: ['#F59E0B', '#EC4899', '#FFFFFF', '#60F0FF', '#FFD86B', '#A78BFA'],
-      background: '#0A0A0A',
-      gridLines: 'rgba(245, 158, 11, 0.15)',
-      text: '#F59E0B',
-      muted: '#E6EDF3'
+      // Neon palette - vibrant purples/pinks on light base
+      primary: ['#8B5CF6', '#EC4899', '#06B6D4', '#22C55E', '#F59E0B', '#6366F1', '#F43F5E', '#14B8A6'],
+      secondary: ['#A78BFA', '#F472B6', '#22D3EE', '#4ADE80', '#FBBF24', '#818CF8', '#FB7185', '#2DD4BF'],
+      gradients: [
+        { start: '#8B5CF6', end: 'rgba(139,92,246,0.1)' },
+        { start: '#EC4899', end: 'rgba(236,72,153,0.1)' },
+        { start: '#06B6D4', end: 'rgba(6,182,212,0.1)' },
+        { start: '#22C55E', end: 'rgba(34,197,94,0.1)' }
+      ],
+      background: '#FAF5FF',
+      cardBackground: '#FFFFFF',
+      gridLines: 'rgba(139,92,246,0.15)',
+      gridLinesDashed: 'rgba(139,92,246,0.08)',
+      text: '#1E1B4B',
+      textSecondary: '#4338CA',
+      muted: '#6366F1',
+      tooltip: {
+        background: '#FFFFFF',
+        text: '#1E1B4B',
+        border: 'rgba(139,92,246,0.3)'
+      }
     }
   },
   
@@ -47,7 +118,8 @@ const ChartThemeColors = {
    * Get current theme from document
    */
   getCurrentTheme() {
-    const theme = document.documentElement.getAttribute('data-theme');
+    const theme = document.documentElement.getAttribute('data-theme') || 
+                  document.body.getAttribute('data-theme');
     return this.palettes[theme] ? theme : 'light';
   },
   
@@ -81,10 +153,31 @@ const ChartThemeColors = {
   },
   
   /**
+   * Get card background color
+   */
+  getCardBackground() {
+    return this.getPalette().cardBackground;
+  },
+  
+  /**
    * Get text color
    */
   getTextColor() {
     return this.getPalette().text;
+  },
+  
+  /**
+   * Get secondary text color
+   */
+  getTextSecondaryColor() {
+    return this.getPalette().textSecondary;
+  },
+  
+  /**
+   * Get muted text color
+   */
+  getMutedColor() {
+    return this.getPalette().muted;
   },
   
   /**
@@ -95,16 +188,93 @@ const ChartThemeColors = {
   },
   
   /**
+   * Get dashed grid line color
+   */
+  getGridDashedColor() {
+    return this.getPalette().gridLinesDashed;
+  },
+  
+  /**
+   * Get tooltip styles
+   */
+  getTooltipStyles() {
+    return this.getPalette().tooltip;
+  },
+  
+  /**
+   * Get gradient for area charts
+   */
+  getGradient(index = 0) {
+    const gradients = this.getPalette().gradients;
+    return gradients[index % gradients.length];
+  },
+  
+  /**
    * Create D3 ordinal scale with theme colors
    */
   createD3Scale(d3, domain) {
     return d3.scaleOrdinal()
       .domain(domain)
       .range(this.getColorScale());
+  },
+  
+  /**
+   * Get Chart.js compatible configuration
+   */
+  getChartJsConfig() {
+    const palette = this.getPalette();
+    return {
+      colors: palette.primary,
+      backgroundColor: palette.background,
+      borderColor: palette.gridLines,
+      textColor: palette.text,
+      gridColor: palette.gridLines,
+      tooltipBackgroundColor: palette.tooltip.background,
+      tooltipTextColor: palette.tooltip.text,
+      tooltipBorderColor: palette.tooltip.border
+    };
+  },
+  
+  /**
+   * Apply theme colors to Chart.js chart options
+   */
+  applyToChartJs(chartOptions) {
+    const palette = this.getPalette();
+    
+    // Apply grid colors
+    if (chartOptions.scales) {
+      ['x', 'y'].forEach(axis => {
+        if (chartOptions.scales[axis]) {
+          chartOptions.scales[axis].grid = chartOptions.scales[axis].grid || {};
+          chartOptions.scales[axis].grid.color = palette.gridLines;
+          chartOptions.scales[axis].ticks = chartOptions.scales[axis].ticks || {};
+          chartOptions.scales[axis].ticks.color = palette.muted;
+        }
+      });
+    }
+    
+    // Apply legend colors
+    if (chartOptions.plugins?.legend?.labels) {
+      chartOptions.plugins.legend.labels.color = palette.text;
+    }
+    
+    // Apply tooltip colors
+    if (chartOptions.plugins?.tooltip) {
+      chartOptions.plugins.tooltip.backgroundColor = palette.tooltip.background;
+      chartOptions.plugins.tooltip.titleColor = palette.tooltip.text;
+      chartOptions.plugins.tooltip.bodyColor = palette.tooltip.text;
+      chartOptions.plugins.tooltip.borderColor = palette.tooltip.border;
+      chartOptions.plugins.tooltip.borderWidth = 1;
+    }
+    
+    return chartOptions;
   }
 };
 
+// Expose globally
 if (typeof window !== 'undefined') {
   window.ChartThemeColors = ChartThemeColors;
 }
+
+console.log('✅ ChartThemeColors loaded - V12.0 Theme-aware chart colors');
 </script>

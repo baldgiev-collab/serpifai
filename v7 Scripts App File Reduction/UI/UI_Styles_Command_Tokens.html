@@ -1,17 +1,58 @@
 <!--
   UI_Styles_Command_Tokens.html
-  COMMAND CANVAS THEME TOKEN SYSTEM v1.0
+  V12.0 COMMAND CANVAS THEME TOKEN SYSTEM
   
   WCAG AA Compliant (4.5:1 contrast minimum)
   Themes: Light, Dark, Aurora, Neon
+  Phase 6 TODO 6.6: Comprehensive Component Style Tokens
 -->
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
-   TASK 1: THEME CONTRAST TOKENS — WCAG AA Compliant
+   V12.0 PHASE 6: COMMAND CANVAS THEME TOKENS
+   Complete token system for consistent component styling
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Light theme defaults */
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COMPONENT SPACING TOKENS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  --cmd-space-xs: 4px;
+  --cmd-space-sm: 8px;
+  --cmd-space-md: 12px;
+  --cmd-space-lg: 16px;
+  --cmd-space-xl: 24px;
+  --cmd-space-2xl: 32px;
+  --cmd-space-3xl: 48px;
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COMPONENT TYPOGRAPHY TOKENS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  --cmd-font-xs: 10px;
+  --cmd-font-sm: 12px;
+  --cmd-font-base: 14px;
+  --cmd-font-md: 16px;
+  --cmd-font-lg: 18px;
+  --cmd-font-xl: 20px;
+  --cmd-font-2xl: 24px;
+  --cmd-font-3xl: 30px;
+  --cmd-line-height-tight: 1.25;
+  --cmd-line-height-normal: 1.5;
+  --cmd-line-height-relaxed: 1.75;
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     COMPONENT RADIUS TOKENS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  --cmd-radius-xs: 4px;
+  --cmd-radius-sm: 6px;
+  --cmd-radius-md: 8px;
+  --cmd-radius-lg: 12px;
+  --cmd-radius-xl: 16px;
+  --cmd-radius-2xl: 24px;
+  --cmd-radius-full: 9999px;
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     LIGHT THEME TOKENS (Default)
+     ═══════════════════════════════════════════════════════════════════════════ */
   --cmd-page-bg: #FFFFFF;
   --cmd-card-bg: #F8FAFC;
   --cmd-header-bg: #FFFFFF;
@@ -20,9 +61,46 @@
   --cmd-muted-text: #64748B;
   --cmd-border: #E2E8F0;
   --cmd-chart-bg: #FAFBFC;
+  --cmd-hover-bg: #F1F5F9;
+  --cmd-active-bg: #E2E8F0;
+  
+  /* ═══════════════════════════════════════════════════════════════════════════
+     SEMANTIC ACCENT TOKENS
+     ═══════════════════════════════════════════════════════════════════════════ */
+  /* Danger/Risk — Rose/Magenta (Kill Moves, Brittleness) */
+  --accent-danger: #F43F5E;
+  --accent-danger-bg: #FFF1F2;
+  --accent-danger-border: #FECDD3;
+  --accent-danger-glow: 0 0 16px rgba(244,63,94,0.25);
+  
+  /* Velocity/Speed — Cyan (Momentum, Growth) */
+  --accent-velocity: #06B6D4;
+  --accent-velocity-bg: #ECFEFF;
+  --accent-velocity-border: #A5F3FC;
+  --accent-velocity-glow: 0 0 16px rgba(6,182,212,0.25);
+  
+  /* Value/Opportunity — Emerald (Moat, Assets) */
+  --accent-value: #10B981;
+  --accent-value-bg: #ECFDF5;
+  --accent-value-border: #A7F3D0;
+  --accent-value-glow: 0 0 16px rgba(16,185,129,0.25);
+  
+  /* Authority/Trust — Indigo (E-E-A-T, Citations) */
+  --accent-authority: #6366F1;
+  --accent-authority-bg: #EEF2FF;
+  --accent-authority-border: #C7D2FE;
+  --accent-authority-glow: 0 0 16px rgba(99,102,241,0.25);
+  
+  /* Warning — Amber */
+  --accent-warning: #F59E0B;
+  --accent-warning-bg: #FFFBEB;
+  --accent-warning-border: #FDE68A;
+  --accent-warning-glow: 0 0 16px rgba(245,158,11,0.25);
 }
 
-/* LIGHT — Slate-900 on White-50 */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIGHT THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
   --cmd-page-bg: #FFFFFF;
   --cmd-card-bg: #F8FAFC;
@@ -32,74 +110,148 @@
   --cmd-muted-text: #64748B;
   --cmd-border: #E2E8F0;
   --cmd-chart-bg: #FAFBFC;
+  --cmd-hover-bg: #F1F5F9;
+  --cmd-active-bg: #E2E8F0;
+  --cmd-shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+  --cmd-shadow-elevated: 0 4px 20px rgba(0,0,0,0.10);
 }
 
-/* DARK — White-100 on Deep Indigo */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK THEME
+   ═══════════════════════════════════════════════════════════════════════════ */
 [data-theme="dark"] {
   --cmd-page-bg: #0F172A;
   --cmd-card-bg: #1E293B;
-  --cmd-header-bg: #312E81;
+  --cmd-header-bg: #1E293B;
   --cmd-header-text: #F1F5F9;
   --cmd-body-text: #E2E8F0;
   --cmd-muted-text: #94A3B8;
   --cmd-border: #334155;
   --cmd-chart-bg: #1E293B;
-}
-
-/* AURORA — Emerald-400 with text-shadow for glassmorphism */
-[data-theme="aurora"] {
-  --cmd-page-bg: rgba(15,23,42,0.6);
-  --cmd-card-bg: rgba(255,255,255,0.05);
-  --cmd-header-bg: rgba(15,23,42,0.7);
-  --cmd-header-text: #34D399;
-  --cmd-body-text: #F1F5F9;
-  --cmd-muted-text: rgba(241,245,249,0.7);
-  --cmd-border: rgba(52,211,153,0.15);
-  --cmd-chart-bg: rgba(255,255,255,0.04);
-  --cmd-blur: 12px;
-  --cmd-text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-}
-
-/* NEON — Amber headers, white-silver body */
-[data-theme="neon"] {
-  --cmd-page-bg: #000000;
-  --cmd-card-bg: #0A0A0A;
-  --cmd-header-bg: #000000;
-  --cmd-header-text: #F59E0B;
-  --cmd-body-text: #E6EDF3;
-  --cmd-muted-text: rgba(230,237,243,0.7);
-  --cmd-border: rgba(245,158,11,0.15);
-  --cmd-chart-bg: #0A0A0A;
-  --cmd-glow: 0 0 20px rgba(245,158,11,0.15);
+  --cmd-hover-bg: #334155;
+  --cmd-active-bg: #475569;
+  --cmd-shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.4);
+  --cmd-shadow-elevated: 0 4px 20px rgba(0,0,0,0.5);
+  
+  /* Dark theme accent adjustments - brighter */
+  --accent-danger: #FB7185;
+  --accent-danger-bg: rgba(244,63,94,0.15);
+  --accent-danger-border: rgba(251,113,133,0.3);
+  --accent-velocity: #22D3EE;
+  --accent-velocity-bg: rgba(6,182,212,0.15);
+  --accent-velocity-border: rgba(34,211,238,0.3);
+  --accent-value: #34D399;
+  --accent-value-bg: rgba(16,185,129,0.15);
+  --accent-value-border: rgba(52,211,153,0.3);
+  --accent-authority: #A5B4FC;
+  --accent-authority-bg: rgba(99,102,241,0.15);
+  --accent-authority-border: rgba(165,180,252,0.3);
+  --accent-warning: #FBBF24;
+  --accent-warning-bg: rgba(245,158,11,0.15);
+  --accent-warning-border: rgba(251,191,36,0.3);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TASK 2: TRIADIC ACCENT SYSTEM — Semantic Colors
+   AURORA THEME — Glassmorphism with Emerald Accents
    ═══════════════════════════════════════════════════════════════════════════ */
-
-:root {
-  /* Danger/Risk — Magenta (Kill Moves, Brittleness) */
-  --accent-danger: #EC4899;
-  --accent-danger-glow: 0 0 16px rgba(236,72,153,0.3);
+[data-theme="aurora"] {
+  --cmd-page-bg: rgba(6,12,31,0.95);
+  --cmd-card-bg: rgba(30,41,59,0.60);
+  --cmd-header-bg: rgba(15,23,42,0.80);
+  --cmd-header-text: #34D399;
+  --cmd-body-text: #F0FDF4;
+  --cmd-muted-text: #6EE7B7;
+  --cmd-border: rgba(52,211,153,0.20);
+  --cmd-chart-bg: rgba(30,41,59,0.50);
+  --cmd-hover-bg: rgba(52,211,153,0.10);
+  --cmd-active-bg: rgba(52,211,153,0.20);
+  --cmd-blur: 16px;
+  --cmd-text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  --cmd-shadow-card: 0 4px 20px rgba(0,0,0,0.4), 0 0 30px rgba(52,211,153,0.08);
+  --cmd-shadow-elevated: 0 8px 40px rgba(0,0,0,0.5), 0 0 50px rgba(52,211,153,0.12);
   
-  /* Velocity/Speed — Cyan (Momentum, Growth) */
-  --accent-velocity: #22D3EE;
-  --accent-velocity-glow: 0 0 16px rgba(34,211,238,0.3);
-  
-  /* Value/Opportunity — Emerald (Moat, Assets) */
-  --accent-value: #34D399;
-  --accent-value-glow: 0 0 16px rgba(52,211,153,0.3);
-  
-  /* Authority/Trust — Indigo (E-E-A-T, Citations) */
-  --accent-authority: #6366F1;
-  --accent-authority-glow: 0 0 16px rgba(99,102,241,0.3);
-}
-
-/* Theme-specific accent adjustments */
-[data-theme="neon"] {
-  --accent-danger: #FF6B9D;
-  --accent-velocity: #60F0FF;
+  /* Aurora accent adjustments */
+  --accent-danger: #FB7185;
+  --accent-velocity: #38BDF8;
   --accent-value: #4ADE80;
   --accent-authority: #A78BFA;
+  --accent-warning: #FBBF24;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NEON THEME — Light Base with Vibrant Purple/Pink Accents
+   ═══════════════════════════════════════════════════════════════════════════ */
+[data-theme="neon"] {
+  --cmd-page-bg: #FAF5FF;
+  --cmd-card-bg: #FFFFFF;
+  --cmd-header-bg: #FFFFFF;
+  --cmd-header-text: #7C3AED;
+  --cmd-body-text: #1E1B4B;
+  --cmd-muted-text: #6366F1;
+  --cmd-border: rgba(139,92,246,0.25);
+  --cmd-chart-bg: #FFFFFF;
+  --cmd-hover-bg: #F5F3FF;
+  --cmd-active-bg: #EDE9FE;
+  --cmd-glow: 0 0 20px rgba(139,92,246,0.20);
+  --cmd-shadow-card: 0 1px 3px rgba(139,92,246,0.08), 0 4px 12px rgba(139,92,246,0.10);
+  --cmd-shadow-elevated: 0 4px 20px rgba(139,92,246,0.15), 0 0 30px rgba(139,92,246,0.10);
+  
+  /* Neon accent adjustments - vibrant */
+  --accent-danger: #EC4899;
+  --accent-danger-bg: #FDF2F8;
+  --accent-danger-border: #FBCFE8;
+  --accent-velocity: #06B6D4;
+  --accent-velocity-bg: #ECFEFF;
+  --accent-velocity-border: #A5F3FC;
+  --accent-value: #22C55E;
+  --accent-value-bg: #F0FDF4;
+  --accent-value-border: #BBF7D0;
+  --accent-authority: #8B5CF6;
+  --accent-authority-bg: #F5F3FF;
+  --accent-authority-border: #DDD6FE;
+  --accent-warning: #F59E0B;
+  --accent-warning-bg: #FFFBEB;
+  --accent-warning-border: #FDE68A;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENT-SPECIFIC TOKENS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Card Components */
+.cmd-card {
+  background: var(--cmd-card-bg);
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-lg);
+  box-shadow: var(--cmd-shadow-card);
+}
+
+/* Header Components */
+.cmd-header {
+  background: var(--cmd-header-bg);
+  color: var(--cmd-header-text);
+  border-bottom: 1px solid var(--cmd-border);
+}
+
+/* Interactive States */
+.cmd-interactive {
+  transition: all 150ms ease;
+}
+.cmd-interactive:hover {
+  background: var(--cmd-hover-bg);
+}
+.cmd-interactive:active {
+  background: var(--cmd-active-bg);
+}
+
+/* Aurora Glassmorphism */
+[data-theme="aurora"] .cmd-glass {
+  backdrop-filter: blur(var(--cmd-blur));
+  -webkit-backdrop-filter: blur(var(--cmd-blur));
+}
+
+/* Neon Glow Effects */
+[data-theme="neon"] .cmd-glow {
+  box-shadow: var(--cmd-glow);
 }
 </style>

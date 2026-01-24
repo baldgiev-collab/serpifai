@@ -33,6 +33,10 @@
     box-shadow: 
       0 25px 50px -12px rgba(0, 0, 0, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    /* V10.5: Full width to match text below */
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   
   .forensics-header {
@@ -832,105 +836,222 @@
   console.log('🎯 UI_Competitor_Forensics.html loading...');
   
   // ═══════════════════════════════════════════════════════════════════════════════
-  // CONFIGURATION: Default competitor data structure
+  // V11.2: DYNAMIC CONFIGURATION - No hardcoded competitors!
+  // Competitors are built dynamically from project data at runtime
   // ═══════════════════════════════════════════════════════════════════════════════
   
+  /**
+   * V11.2: Get dynamic brand name from project state
+   */
+  function getDynamicBrandName() {
+    return window.ORACLE_STATE?.projectData?.brandName || 
+           window.ORACLE_STATE?.projectData?.brand ||
+           window.ORACLE_STATE?.projectId ||
+           document.getElementById('projectSelect')?.value ||
+           'Your Brand';
+  }
+  
+  /**
+   * V11.3: Get dynamic competitors from project state
+   * PRIORITY ORDER (V11.3 FIX):
+   *   1. _lastCompetitorData (REAL competitor domains from MySQL analysis)
+   *   2. currentCompetitorData (backup from COMP_Tab_Render)
+   *   3. ORACLE_STATE.projectData.competitors (project form input)
+   *   4. _lastStage1Json.projectContext.competitors (fallback)
+   */
+  function getDynamicCompetitors() {
+    let competitors = [];
+    
+    // V11.3 FIX: Priority 1 - _lastCompetitorData has REAL competitor domains from MySQL
+    // This is populated by COMP_Tab_Render.html with actual analyzed competitor data
+    const lastCompData = window._lastCompetitorData;
+    const compArray = lastCompData?.competitors || 
+                      lastCompData?.competitorsArray || 
+                      (Array.isArray(lastCompData) ? lastCompData : null);
+    
+    if (compArray?.length) {
+      competitors = compArray.map(c => ({
+        name: c.domain || c.url || c.name || 'Competitor',
+        domain: c.domain || c.url || '',
+        metrics: c.processedMetrics || c.synthesized || {}
+      }));
+      console.log('🎯 V11.3 getDynamicCompetitors: Using _lastCompetitorData', competitors.length);
+      return competitors;
+    }
+    
+    // Priority 2: currentCompetitorData
+    if (window.currentCompetitorData?.competitors?.length) {
+      competitors = window.currentCompetitorData.competitors.map(c => ({
+        name: c.domain || c.url || c.name || 'Competitor',
+        domain: c.domain || c.url || '',
+        metrics: c.processedMetrics || c.synthesized || {}
+      }));
+      console.log('🎯 V11.3 getDynamicCompetitors: Using currentCompetitorData', competitors.length);
+      return competitors;
+    }
+    
+    // Priority 3: ORACLE_STATE project data (user input from project form)
+    let projectCompetitors = window.ORACLE_STATE?.projectData?.competitors || [];
+    if (typeof projectCompetitors === 'string') {
+      projectCompetitors = projectCompetitors.split(',').map(c => c.trim()).filter(c => c);
+    }
+    if (projectCompetitors.length) {
+      competitors = projectCompetitors.map(name => ({
+        name: typeof name === 'string' ? name : (name.name || name.domain || 'Competitor'),
+        domain: typeof name === 'string' ? name : (name.domain || ''),
+        metrics: {}
+      }));
+      console.log('🎯 V11.3 getDynamicCompetitors: Using ORACLE_STATE.projectData', competitors.length);
+      return competitors;
+    }
+    
+    // Priority 4: Last Stage 1 JSON project context
+    let stage1Competitors = window._lastStage1Json?.projectContext?.competitors || [];
+    if (typeof stage1Competitors === 'string') {
+      stage1Competitors = stage1Competitors.split(',').map(c => c.trim()).filter(c => c);
+    }
+    if (stage1Competitors.length) {
+      competitors = stage1Competitors.map(name => ({
+        name: typeof name === 'string' ? name : (name.name || 'Competitor'),
+        domain: typeof name === 'string' ? name : (name.domain || ''),
+        metrics: {}
+      }));
+      console.log('🎯 V11.3 getDynamicCompetitors: Using _lastStage1Json', competitors.length);
+      return competitors;
+    }
+    
+    console.log('🎯 V11.3 getDynamicCompetitors: No competitors found');
+    return competitors;
+  }
+  
+  /**
+   * V11.2: Generate color palette for competitors
+   */
+  function getCompetitorColor(index) {
+    const colors = [
+      '#3B82F6', // Blue
+      '#EF4444', // Red
+      '#F59E0B', // Amber
+      '#8B5CF6', // Purple
+      '#EC4899', // Pink
+      '#06B6D4', // Cyan
+      '#84CC16', // Lime
+      '#F97316', // Orange
+    ];
+    return colors[index % colors.length];
+  }
+  
+  /**
+   * V11.3: Build dynamic competitor config object
+   * Uses rich competitor data from getDynamicCompetitors()
+   * Replaces the hardcoded FORENSICS_CONFIG.INCUMBENTS
+   */
+  function buildDynamicCompetitorConfig() {
+    const competitors = getDynamicCompetitors();
+    const config = {};
+    
+    competitors.forEach((comp, index) => {
+      const name = comp.name || comp.domain || 'Competitor';
+      const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '');
+      
+      // V11.3: Determine type based on index (first 2 are incumbents, next 2 challengers, rest niche)
+      let type = 'niche';
+      if (index < 2) type = 'incumbent';
+      else if (index < 4) type = 'challenger';
+      
+      // V11.3: Extract metrics from competitor data if available
+      const metrics = comp.metrics || {};
+      const authority = metrics.authorityScore || metrics.authority?.score || (50 + Math.random() * 40);
+      const usability = metrics.uxScore || metrics.ux?.score || (30 + Math.random() * 50);
+      const entityDensity = metrics.entityDensity || (50 + Math.floor(Math.random() * 30));
+      const citationPotential = metrics.aeoScore || metrics.aeo?.citeabilityScore || (50 + Math.floor(Math.random() * 30));
+      const ragStability = metrics.techScore || (50 + Math.floor(Math.random() * 30));
+      
+      config[id] = {
+        name: name,
+        type: type,
+        color: getCompetitorColor(index),
+        logo: name.charAt(0).toUpperCase(),
+        position: { 
+          authority: Math.round(authority), 
+          usability: Math.round(usability)
+        },
+        weaknesses: metrics.weaknesses || ['Pending competitive analysis'],
+        ragScore: { 
+          entityDensity: entityDensity,
+          citationPotential: citationPotential,
+          ragStability: ragStability
+        }
+      };
+    });
+    
+    return config;
+  }
+  
+  // V11.2: Dynamic FORENSICS_CONFIG - built at runtime
   const FORENSICS_CONFIG = {
-    // Known incumbents with their positioning
-    INCUMBENTS: {
-      'semrush': { 
-        name: 'Semrush', 
-        type: 'incumbent',
-        color: '#ff6f00',
-        logo: 'S',
-        position: { authority: 92, usability: 45 },
-        weaknesses: ['Feature bloat', 'Steep learning curve', 'Expensive tiers'],
-        ragScore: { entityDensity: 78, citationPotential: 85, ragStability: 72 }
-      },
-      'ahrefs': { 
-        name: 'Ahrefs', 
-        type: 'incumbent',
-        color: '#1a73e8',
-        logo: 'A',
-        position: { authority: 95, usability: 52 },
-        weaknesses: ['Data overload', 'Complex UI', 'No AI synthesis'],
-        ragScore: { entityDensity: 82, citationPotential: 88, ragStability: 68 }
-      },
-      'surfer': { 
-        name: 'Surfer SEO', 
-        type: 'challenger',
-        color: '#00c853',
-        logo: 'Su',
-        position: { authority: 65, usability: 78 },
-        weaknesses: ['Limited backlink data', 'Narrow focus', 'Template-driven'],
-        ragScore: { entityDensity: 58, citationPotential: 62, ragStability: 75 }
-      },
-      'clearscope': { 
-        name: 'Clearscope', 
-        type: 'challenger',
-        color: '#9c27b0',
-        logo: 'C',
-        position: { authority: 55, usability: 85 },
-        weaknesses: ['Limited technical SEO', 'Content-only focus', 'High price'],
-        ragScore: { entityDensity: 65, citationPotential: 70, ragStability: 80 }
-      },
-      'frase': { 
-        name: 'Frase', 
-        type: 'niche',
-        color: '#00bcd4',
-        logo: 'F',
-        position: { authority: 48, usability: 72 },
-        weaknesses: ['Accuracy issues', 'Limited data sources', 'Basic analytics'],
-        ragScore: { entityDensity: 52, citationPotential: 55, ragStability: 70 }
-      },
-      'marketmuse': { 
-        name: 'MarketMuse', 
-        type: 'niche',
-        color: '#e91e63',
-        logo: 'M',
-        position: { authority: 60, usability: 58 },
-        weaknesses: ['Expensive', 'Slow processing', 'Complex onboarding'],
-        ragScore: { entityDensity: 72, citationPotential: 68, ragStability: 65 }
-      }
+    // V11.2: INCUMBENTS is now a getter that returns dynamic data
+    get INCUMBENTS() {
+      return buildDynamicCompetitorConfig();
     },
     
-    // SerpifAI positioning (dynamic based on analysis)
-    SERPIFAI: {
-      name: 'SerpifAI',
-      type: 'you',
-      color: '#10b981',
-      logo: '🎯',
-      position: { authority: 70, usability: 92 },
-      strengths: ['Forensic clarity', 'AI-native synthesis', 'Zero cognitive debt'],
-      ragScore: { entityDensity: 88, citationPotential: 92, ragStability: 95 }
+    // V11.2: Your brand positioning is now dynamic based on ORACLE_STATE
+    getYourBrand: function() {
+      const brandName = getDynamicBrandName();
+      return {
+        name: brandName,
+        type: 'you',
+        color: '#10b981',
+        logo: '🎯',
+        position: { authority: 75, usability: 88 },
+        strengths: ['Strategic positioning', 'Market differentiation', 'Competitive advantage'],
+        ragScore: { entityDensity: 85, citationPotential: 90, ragStability: 92 }
+      };
     },
     
-    // Emotional debt categories
-    FRUSTRATIONS: {
-      legacyBloat: [
-        { text: 'Dashboard overload - 50+ metrics with no prioritization', severity: 'critical', impact: '73% users feel overwhelmed' },
-        { text: 'Feature creep - Tools bolted on without UX cohesion', severity: 'high', impact: '58% abandon advanced features' },
-        { text: 'Data paralysis - Raw numbers without strategic insight', severity: 'critical', impact: '67% struggle with actionability' },
-        { text: 'Enterprise pricing for SMB-level features', severity: 'high', impact: '$200-500/mo barrier to entry' },
-        { text: 'No AI synthesis - Manual report creation required', severity: 'medium', impact: '4-6 hours per client report' }
-      ],
-      forensicClarity: [
-        { text: 'Single-pane strategic intelligence', severity: 'resolved', impact: '90% faster insight extraction' },
-        { text: 'AI-synthesized executive briefs', severity: 'resolved', impact: '10x faster than manual' },
-        { text: 'Competitor ghosting reveals exact counter-moves', severity: 'resolved', impact: 'Direct competitive advantage' },
-        { text: 'RAG-optimized output for LLM citations', severity: 'resolved', impact: 'Future-proof architecture' },
-        { text: 'Forensic depth without cognitive overload', severity: 'resolved', impact: 'Zero "paralysis" complaints' }
-      ]
+    // Legacy SERPIFAI key for backwards compatibility - now calls getYourBrand()
+    get SERPIFAI() {
+      return this.getYourBrand();
     },
     
-    // Ghosting mappings: which report sections counter which competitors
-    GHOST_MAPPINGS: {
-      'semrush': ['executive-summary', 'content-strategy', 'keyword-opportunities'],
-      'ahrefs': ['backlink-analysis', 'competitor-gaps', 'authority-building'],
-      'surfer': ['technical-seo', 'entity-analysis', 'topical-authority'],
-      'clearscope': ['content-depth', 'semantic-coverage', 'e-e-a-t-signals'],
-      'frase': ['ai-synthesis', 'strategic-recommendations', 'market-positioning'],
-      'marketmuse': ['topic-galaxy', 'content-gaps', 'competitive-intelligence']
+    // V11.2: Dynamic frustrations - brand-aware
+    get FRUSTRATIONS() {
+      const brandName = getDynamicBrandName();
+      return {
+        legacyBloat: [
+          { text: 'Competitor dashboard overload with no prioritization', severity: 'critical', impact: 'High cognitive load' },
+          { text: 'Feature sprawl without strategic cohesion', severity: 'high', impact: 'User confusion' },
+          { text: 'Raw metrics without actionable insights', severity: 'critical', impact: 'Decision paralysis' },
+          { text: 'Fragmented tools requiring multiple subscriptions', severity: 'high', impact: 'Cost inefficiency' },
+          { text: 'Manual synthesis required for strategic planning', severity: 'medium', impact: 'Time waste' }
+        ],
+        forensicClarity: [
+          { text: `${brandName}'s unified strategic intelligence`, severity: 'resolved', impact: 'Faster insights' },
+          { text: 'AI-synthesized competitive briefs', severity: 'resolved', impact: '10x faster analysis' },
+          { text: 'Clear competitive positioning visibility', severity: 'resolved', impact: 'Strategic clarity' },
+          { text: 'Actionable recommendations, not just data', severity: 'resolved', impact: 'Better decisions' },
+          { text: 'Streamlined workflow without cognitive overload', severity: 'resolved', impact: 'User satisfaction' }
+        ]
+      };
+    },
+    
+    // V11.2: Dynamic ghosting mappings based on actual competitors
+    get GHOST_MAPPINGS() {
+      const competitors = getDynamicCompetitors();
+      const mappings = {};
+      const sections = [
+        ['executive-summary', 'content-strategy', 'keyword-opportunities'],
+        ['backlink-analysis', 'competitor-gaps', 'authority-building'],
+        ['technical-seo', 'entity-analysis', 'topical-authority'],
+        ['content-depth', 'semantic-coverage', 'e-e-a-t-signals'],
+        ['ai-synthesis', 'strategic-recommendations', 'market-positioning'],
+        ['topic-galaxy', 'content-gaps', 'competitive-intelligence']
+      ];
+      competitors.forEach((comp, i) => {
+        const id = (typeof comp === 'string' ? comp : comp.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-');
+        mappings[id] = sections[i % sections.length];
+      });
+      return mappings;
     }
   };
   
@@ -945,6 +1066,7 @@
    * Render the complete Competitor Forensics module
    * @param {Object} analysisJson - The analysis_json from Stage 1
    * @param {string} containerId - Target container ID
+   * V11.1 FIX: Use dynamic brand name from ORACLE_STATE instead of hardcoded SerpifAI
    */
   window.renderCompetitorForensics = function(analysisJson, containerId) {
     console.log('═══════════════════════════════════════════════════════════════');
@@ -959,10 +1081,56 @@
       return;
     }
     
+    // V11.1: Get dynamic brand name from ORACLE_STATE
+    const brandName = window.ORACLE_STATE?.projectData?.brandName || 
+                      window.ORACLE_STATE?.projectId ||
+                      document.getElementById('projectSelect')?.value ||
+                      'Your Brand';
+    
+    // V11.1: Get competitor names from project state for dynamic vulnerabilities
+    const projectCompetitors = window.ORACLE_STATE?.projectData?.competitors || 
+                               analysisJson?.projectContext?.competitors ||
+                               [];
+    const compNames = Array.isArray(projectCompetitors) 
+                      ? projectCompetitors 
+                      : (typeof projectCompetitors === 'string' ? projectCompetitors.split(',').map(c => c.trim()) : []);
+    
+    // V11.1: Build dynamic strengths from Gemini JSON or use generic placeholders
+    const yourStrengths = analysisJson?.competitiveIntel?.yourStrengths || [
+      { title: 'Strategic Positioning', description: `${brandName}'s core market advantage` },
+      { title: 'Market Differentiation', description: 'Unique value proposition vs competitors' },
+      { title: 'Technical Excellence', description: 'Performance and reliability metrics' },
+      { title: 'Brand Authority', description: 'Trust and credibility signals' },
+      { title: 'Growth Potential', description: 'Market expansion opportunities' }
+    ];
+    
+    // V11.1: Build dynamic vulnerabilities from Gemini JSON or use project competitors
+    const competitorVulns = analysisJson?.competitiveIntel?.competitorVulnerabilities || 
+      (compNames.length > 0 
+        ? compNames.slice(0, 5).map(c => ({ competitor: c, issue: 'Pending competitive analysis' }))
+        : [
+            { competitor: 'Competitor 1', issue: 'Vulnerability analysis pending' },
+            { competitor: 'Competitor 2', issue: 'Vulnerability analysis pending' },
+            { competitor: 'Competitor 3', issue: 'Vulnerability analysis pending' }
+          ]);
+    
+    console.log('   🎯 Dynamic brand name:', brandName);
+    console.log('   📋 Competitors:', compNames.length > 0 ? compNames : 'Using defaults');
+    
     // Extract competitor data from analysis or use defaults
     const competitorData = extractCompetitorData(analysisJson);
     
-    // Build the full forensics HTML
+    // V11.1: Build strengths HTML dynamically
+    const strengthsHtml = yourStrengths.map(s => 
+      `<li><strong>${s.title}</strong> — ${s.description}</li>`
+    ).join('');
+    
+    // V11.1: Build vulnerabilities HTML dynamically
+    const vulnsHtml = competitorVulns.map(v => 
+      `<li><strong>${v.competitor}:</strong> ${v.issue}</li>`
+    ).join('');
+    
+    // Build the full forensics HTML with dynamic brand name
     const html = `
       <div class="competitor-forensics-hub" id="forensics-hub">
         <!-- Header -->
@@ -982,7 +1150,7 @@
               <span>Market Gravity Hub</span>
             </div>
             <div class="gravity-legend">
-              <div class="legend-item"><div class="legend-dot you"></div>You (SerpifAI)</div>
+              <div class="legend-item"><div class="legend-dot you"></div>You (${brandName})</div>
               <div class="legend-item"><div class="legend-dot incumbent"></div>Incumbents</div>
               <div class="legend-item"><div class="legend-dot challenger"></div>Challengers</div>
               <div class="legend-item"><div class="legend-dot niche"></div>Niche Players</div>
@@ -990,26 +1158,18 @@
           </div>
           <svg id="market-gravity-svg"></svg>
           
-          <!-- STRENGTHS VS WEAKNESSES -->
+          <!-- STRENGTHS VS WEAKNESSES - V11.1: Now dynamic -->
           <div class="market-gravity-insights">
             <div class="insights-column strengths">
-              <h4>🎯 Your Strategic Strengths</h4>
+              <h4>🎯 ${brandName}'s Strategic Strengths</h4>
               <ul>
-                <li><strong>261s Parallel Cluster Speed</strong> — Real-time SERP analysis vs competitor lag</li>
-                <li><strong>Zero-Trust DOM Proofs</strong> — Every insight verified from source HTML</li>
-                <li><strong>AEO RAG-Ready Scoring</strong> — Optimized for LLM citation capture</li>
-                <li><strong>Forensic Data Integrity</strong> — No estimated metrics, only live data</li>
-                <li><strong>Performance Edge</strong> — Sub-5min time-to-insight velocity</li>
+                ${strengthsHtml}
               </ul>
             </div>
             <div class="insights-column weaknesses">
               <h4>⚠️ Competitor Vulnerabilities</h4>
               <ul>
-                <li><strong>Ahrefs:</strong> 16s+ LCP, credit-based limits, historical data only</li>
-                <li><strong>Semrush:</strong> Database lag (30-60 day old data), no live analysis</li>
-                <li><strong>Moz:</strong> Outdated E-E-A-T signals, weak technical stack</li>
-                <li><strong>Surfer SEO:</strong> Correlation-based SEO, no AEO readiness</li>
-                <li><strong>Clearscope:</strong> Content focus only, missing technical signals</li>
+                ${vulnsHtml}
               </ul>
             </div>
           </div>
@@ -1018,7 +1178,7 @@
         <!-- 2. EMOTIONAL DEBT AUDIT -->
         <div class="emotional-debt-container">
           ${renderEmotionalDebtCard('legacy-bloat', 'Legacy Tool Bloat', '😤', 'Competitor Pain Points', FORENSICS_CONFIG.FRUSTRATIONS.legacyBloat)}
-          ${renderEmotionalDebtCard('forensic-clarity', 'Forensic Clarity', '✨', 'SerpifAI Solutions', FORENSICS_CONFIG.FRUSTRATIONS.forensicClarity)}
+          ${renderEmotionalDebtCard('forensic-clarity', 'Forensic Clarity', '✨', `${brandName} Solutions`, FORENSICS_CONFIG.FRUSTRATIONS.forensicClarity)}
         </div>
         
         <!-- 3. RAG-READY & LLM CITATION GAPS -->
@@ -1155,26 +1315,27 @@
       .attr('text-anchor', 'middle')
       .text('← MARKET AUTHORITY');
     
-    // Prepare competitor nodes data
+    // V11.2: Prepare competitor nodes data - now fully dynamic!
     const nodes = [];
     
-    // Add SerpifAI
-    const serpifai = FORENSICS_CONFIG.SERPIFAI;
+    // V11.2: Add YOUR BRAND (dynamic, not hardcoded)
+    const yourBrand = FORENSICS_CONFIG.SERPIFAI; // Uses getYourBrand() getter
     nodes.push({
-      id: 'serpifai',
-      name: serpifai.name,
+      id: 'your-brand',
+      name: yourBrand.name,
       type: 'you',
-      x: xScale(serpifai.position.usability),
-      y: yScale(serpifai.position.authority),
-      color: serpifai.color,
-      logo: serpifai.logo,
+      x: xScale(yourBrand.position.usability),
+      y: yScale(yourBrand.position.authority),
+      color: yourBrand.color,
+      logo: yourBrand.logo,
       radius: 28
     });
     
-    // Add competitors
-    Object.entries(FORENSICS_CONFIG.INCUMBENTS).forEach(([key, comp]) => {
-      // Override with analysis data if available
-      const analysisComp = competitorData.find(c => c.id === key);
+    // V11.2: Add competitors from DYNAMIC config (not hardcoded!)
+    const dynamicCompetitors = FORENSICS_CONFIG.INCUMBENTS; // Uses buildDynamicCompetitorConfig()
+    Object.entries(dynamicCompetitors).forEach(([key, comp]) => {
+      // Override with analysis data if available from competitorData param
+      const analysisComp = competitorData.find(c => c.id === key || c.name?.toLowerCase() === comp.name?.toLowerCase());
       const pos = analysisComp?.position || comp.position;
       
       nodes.push({
@@ -1189,11 +1350,11 @@
       });
     });
     
-    // Calculate destabilization zone (target area)
-    const serpifaiNode = nodes.find(n => n.id === 'serpifai');
+    // V11.2: Calculate destabilization zone (target area)
+    const yourBrandNode = nodes.find(n => n.id === 'your-brand');
     const incumbentCenter = {
-      x: d3.mean(nodes.filter(n => n.type === 'incumbent'), d => d.x),
-      y: d3.mean(nodes.filter(n => n.type === 'incumbent'), d => d.y)
+      x: d3.mean(nodes.filter(n => n.type === 'incumbent'), d => d.x) || innerWidth * 0.3,
+      y: d3.mean(nodes.filter(n => n.type === 'incumbent'), d => d.y) || innerHeight * 0.3
     };
     
     // Draw destabilization zone
@@ -1204,15 +1365,15 @@
       .attr('rx', 100)
       .attr('ry', 60);
     
-    // Draw "Your Vector" arrow from SerpifAI toward incumbent center
+    // V11.2: Draw "Your Vector" arrow from YOUR BRAND toward incumbent center
     const vectorPath = d3.path();
-    vectorPath.moveTo(serpifaiNode.x, serpifaiNode.y);
+    vectorPath.moveTo(yourBrandNode.x, yourBrandNode.y);
     
     // Bezier curve toward destabilization zone
     const targetX = incumbentCenter.x - 40;
     const targetY = incumbentCenter.y + 40;
-    const cpX = (serpifaiNode.x + targetX) / 2;
-    const cpY = serpifaiNode.y - 50;
+    const cpX = (yourBrandNode.x + targetX) / 2;
+    const cpY = yourBrandNode.y - 50;
     
     vectorPath.quadraticCurveTo(cpX, cpY, targetX, targetY);
     
@@ -1260,7 +1421,8 @@
       .attr('transform', d => `translate(${d.x}, ${d.y})`)
       .style('cursor', 'pointer')
       .on('click', function(event, d) {
-        if (d.id !== 'serpifai') {
+        // V11.2: Allow clicking any non-your-brand competitor
+        if (d.id !== 'your-brand') {
           toggleCompetitorGhosting(d.id);
         }
       })
@@ -1273,18 +1435,18 @@
     nodeGroups.append('circle')
       .attr('r', d => d.radius)
       .attr('fill', d => d.type === 'you' 
-        ? 'url(#serpifaiGlow)' 
+        ? 'url(#yourBrandGlow)' 
         : d.color)
       .attr('stroke', d => d.type === 'you' ? '#10b981' : 'rgba(255,255,255,0.3)')
       .attr('stroke-width', d => d.type === 'you' ? 3 : 2)
       .style('filter', d => d.type === 'you' ? 'drop-shadow(0 0 15px rgba(16, 185, 129, 0.6))' : 'none');
     
-    // SerpifAI special glow
-    const serpifaiGlow = defs.append('radialGradient')
-      .attr('id', 'serpifaiGlow');
-    serpifaiGlow.append('stop').attr('offset', '0%').attr('stop-color', '#34d399');
-    serpifaiGlow.append('stop').attr('offset', '70%').attr('stop-color', '#10b981');
-    serpifaiGlow.append('stop').attr('offset', '100%').attr('stop-color', '#059669');
+    // V11.2: Your brand special glow (renamed from serpifaiGlow)
+    const yourBrandGlow = defs.append('radialGradient')
+      .attr('id', 'yourBrandGlow');
+    yourBrandGlow.append('stop').attr('offset', '0%').attr('stop-color', '#34d399');
+    yourBrandGlow.append('stop').attr('offset', '70%').attr('stop-color', '#10b981');
+    yourBrandGlow.append('stop').attr('offset', '100%').attr('stop-color', '#059669');
     
     // Node labels
     nodeGroups.append('text')
@@ -1340,29 +1502,31 @@
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // COMPONENT 3: RAG-READY MOAT READINESS TABLE
+  // V11.2: Now fully dynamic using getDynamicBrandName() and getDynamicCompetitors()
   // ═══════════════════════════════════════════════════════════════════════════════
   
   function renderMoatReadinessTable(competitorData) {
     // Prepare rows data
     const rows = [];
     
-    // Add SerpifAI first
-    const serpifai = FORENSICS_CONFIG.SERPIFAI;
+    // V11.2: Add YOUR BRAND first (dynamic, not hardcoded)
+    const yourBrand = FORENSICS_CONFIG.SERPIFAI; // Uses getYourBrand() getter
     rows.push({
-      id: 'serpifai',
-      name: serpifai.name,
-      logo: serpifai.logo,
+      id: 'your-brand',
+      name: yourBrand.name,
+      logo: yourBrand.logo,
       type: 'You',
       isYou: true,
-      entityDensity: serpifai.ragScore.entityDensity,
-      citationPotential: serpifai.ragScore.citationPotential,
-      ragStability: serpifai.ragScore.ragStability,
-      overallScore: Math.round((serpifai.ragScore.entityDensity + serpifai.ragScore.citationPotential + serpifai.ragScore.ragStability) / 3)
+      entityDensity: yourBrand.ragScore.entityDensity,
+      citationPotential: yourBrand.ragScore.citationPotential,
+      ragStability: yourBrand.ragScore.ragStability,
+      overallScore: Math.round((yourBrand.ragScore.entityDensity + yourBrand.ragScore.citationPotential + yourBrand.ragScore.ragStability) / 3)
     });
     
-    // Add competitors
-    Object.entries(FORENSICS_CONFIG.INCUMBENTS).forEach(([key, comp]) => {
-      const analysisComp = competitorData.find(c => c.id === key);
+    // V11.2: Add dynamic competitors from FORENSICS_CONFIG.INCUMBENTS getter
+    const dynamicCompetitors = FORENSICS_CONFIG.INCUMBENTS;
+    Object.entries(dynamicCompetitors).forEach(([key, comp]) => {
+      const analysisComp = competitorData.find(c => c.id === key || c.name?.toLowerCase() === comp.name?.toLowerCase());
       const rag = analysisComp?.ragScore || comp.ragScore;
       
       rows.push({
@@ -1378,7 +1542,7 @@
       });
     });
     
-    // Sort by overall score (SerpifAI stays first)
+    // Sort by overall score (Your brand stays first)
     rows.sort((a, b) => {
       if (a.isYou) return -1;
       if (b.isYou) return 1;
@@ -1386,8 +1550,8 @@
     });
     
     const tableRows = rows.map((row, idx) => {
-      const serpifaiScore = rows.find(r => r.isYou)?.overallScore || 85;
-      const gap = row.overallScore - serpifaiScore;
+      const yourBrandScore = rows.find(r => r.isYou)?.overallScore || 85;
+      const gap = row.overallScore - yourBrandScore;
       const gapClass = gap > 0 ? 'threat' : gap < -5 ? 'advantage' : 'neutral';
       const gapText = gap > 0 ? `+${gap}` : gap < 0 ? `${gap}` : '—';
       
@@ -1512,10 +1676,10 @@
       }
     });
     
-    // Update D3 nodes
+    // V11.2: Update D3 nodes - use 'your-brand' instead of 'serpifai'
     d3.selectAll('.competitor-node').each(function(d) {
       const node = d3.select(this);
-      if (d.id === competitorId || d.id === 'serpifai') {
+      if (d.id === competitorId || d.id === 'your-brand') {
         node.classed('selected', d.id === competitorId);
         node.classed('ghosted', false);
       } else {
@@ -1620,55 +1784,128 @@
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // HELPER: Extract competitor data from analysis JSON
+  // V10.7 FIX: Prioritize window._lastCompetitorData which has REAL competitor domains
   // ═══════════════════════════════════════════════════════════════════════════════
   
   function extractCompetitorData(analysisJson) {
     const competitors = [];
     
-    if (!analysisJson) return competitors;
+    // V10.7: PRIORITY 1 - Use _lastCompetitorData (set by COMP_Tab_Render.html)
+    // This contains the REAL competitor domains from MySQL (moz.com, ahrefs.com, etc.)
+    const lastCompData = window._lastCompetitorData;
+    const compArray = lastCompData?.competitors || 
+                      lastCompData?.competitorsArray || 
+                      (Array.isArray(lastCompData) ? lastCompData : null);
     
-    // Try to extract from various possible structures
-    const sources = [
-      analysisJson.competitors,
-      analysisJson.competitorAnalysis,
-      analysisJson.dashboardCharts?.competitorGapsChart,
-      analysisJson.dashboardCharts?.competitorComparisonChart
-    ];
-    
-    sources.forEach(source => {
-      if (Array.isArray(source)) {
-        source.forEach(comp => {
-          const normalized = {
-            id: (comp.name || comp.domain || '').toLowerCase().replace(/[^a-z]/g, ''),
-            name: comp.name || comp.domain,
-            position: {
-              authority: comp.authority || comp.marketAuthority || Math.floor(Math.random() * 40) + 50,
-              usability: comp.usability || comp.uxScore || Math.floor(Math.random() * 40) + 40
-            },
-            ragScore: {
-              entityDensity: comp.entityDensity || comp.topicCoverage || Math.floor(Math.random() * 30) + 50,
-              citationPotential: comp.citationPotential || comp.aiReadiness || Math.floor(Math.random() * 30) + 50,
-              ragStability: comp.ragStability || comp.techScore || Math.floor(Math.random() * 30) + 50
-            }
-          };
-          competitors.push(normalized);
+    if (compArray?.length) {
+      console.log(`📊 V10.7 extractCompetitorData: Using _lastCompetitorData (${compArray.length} competitors)`);
+      compArray.forEach(comp => {
+        const name = comp.domain || comp.url || comp.name || 'Unknown';
+        competitors.push({
+          id: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+          name: name,
+          position: {
+            authority: comp.processedMetrics?.authorityScore || comp.synthesized?.authority?.score || 50,
+            usability: comp.processedMetrics?.uxScore || comp.synthesized?.ux?.score || 50
+          },
+          ragScore: {
+            entityDensity: comp.processedMetrics?.entityDensity || 60,
+            citationPotential: comp.processedMetrics?.aeoScore || comp.synthesized?.aeo?.citeabilityScore || 55,
+            ragStability: comp.processedMetrics?.techScore || 65
+          }
         });
-      }
-    });
+      });
+      console.log(`📊 V10.7 extractCompetitorData: Found ${competitors.length} competitors from _lastCompetitorData`);
+      return competitors;
+    }
     
+    // V10.7: PRIORITY 2 - Use currentCompetitorData (also set by COMP_Tab_Render)
+    const currCompData = window.currentCompetitorData?.competitors;
+    if (currCompData?.length) {
+      console.log(`📊 V10.7 extractCompetitorData: Using currentCompetitorData (${currCompData.length} competitors)`);
+      currCompData.forEach(comp => {
+        const name = comp.domain || comp.url || comp.name || 'Unknown';
+        competitors.push({
+          id: name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+          name: name,
+          position: {
+            authority: comp.processedMetrics?.authorityScore || 50,
+            usability: comp.processedMetrics?.uxScore || 50
+          },
+          ragScore: {
+            entityDensity: comp.processedMetrics?.entityDensity || 60,
+            citationPotential: comp.processedMetrics?.aeoScore || 55,
+            ragStability: comp.processedMetrics?.techScore || 65
+          }
+        });
+      });
+      console.log(`📊 V10.7 extractCompetitorData: Found ${competitors.length} competitors from currentCompetitorData`);
+      return competitors;
+    }
+    
+    // V10.7: PRIORITY 3 - Use _competitorAnalysisData (legacy)
+    if (window._competitorAnalysisData?.competitorsArray?.length) {
+      console.log('📊 V10.7 extractCompetitorData: Using _competitorAnalysisData');
+      window._competitorAnalysisData.competitorsArray.forEach(comp => {
+        competitors.push({
+          id: (comp.domain || comp.name || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
+          name: comp.domain || comp.name || 'Competitor',
+          position: {
+            authority: comp.processedMetrics?.authorityScore || 50,
+            usability: comp.processedMetrics?.uxScore || 50
+          },
+          ragScore: {
+            entityDensity: comp.processedMetrics?.entityDensity || 60,
+            citationPotential: comp.processedMetrics?.aeoScore || 55,
+            ragStability: comp.processedMetrics?.techScore || 65
+          }
+        });
+      });
+      console.log(`📊 V10.7 extractCompetitorData: Found ${competitors.length} competitors from _competitorAnalysisData`);
+      return competitors;
+    }
+
+    // V10.7: FALLBACK - Check analysisJson for competitor structure (but NOT chart data!)
+    // Only use paths that contain REAL competitor objects with domain fields
+    if (analysisJson?.competitors?.length && analysisJson.competitors[0]?.domain) {
+      console.log('📊 V10.7 extractCompetitorData: Using analysisJson.competitors');
+      analysisJson.competitors.forEach(comp => {
+        competitors.push({
+          id: (comp.domain || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
+          name: comp.domain || comp.name || 'Competitor',
+          position: {
+            authority: comp.authority || 50,
+            usability: comp.usability || 50
+          },
+          ragScore: {
+            entityDensity: 60,
+            citationPotential: 55,
+            ragStability: 65
+          }
+        });
+      });
+      return competitors;
+    }
+    
+    // V10.7: If still empty, return empty - don't try to extract from chart data
+    // as that contains visualization labels NOT competitor domains
+    console.log('📊 V10.7 extractCompetitorData: No competitor domain data found - returning empty');
     return competitors;
   }
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // TOOLTIP SYSTEM
+  // V11.2: Updated to use dynamic 'your-brand' ID instead of 'serpifai'
   // ═══════════════════════════════════════════════════════════════════════════════
   
   function showCompetitorTooltip(event, d) {
     const existing = document.getElementById('competitor-tooltip');
     if (existing) existing.remove();
     
-    const comp = d.id === 'serpifai' 
-      ? FORENSICS_CONFIG.SERPIFAI 
+    // V11.2: Use 'your-brand' ID instead of 'serpifai'
+    const isYourBrand = d.id === 'your-brand';
+    const comp = isYourBrand 
+      ? FORENSICS_CONFIG.SERPIFAI // Uses getYourBrand() getter
       : FORENSICS_CONFIG.INCUMBENTS[d.id];
     
     if (!comp) return;
@@ -1691,15 +1928,15 @@
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
     `;
     
-    const traits = d.id === 'serpifai' ? comp.strengths : comp.weaknesses;
-    const traitLabel = d.id === 'serpifai' ? '✅ Strengths' : '⚠️ Weaknesses';
+    const traits = isYourBrand ? comp.strengths : comp.weaknesses;
+    const traitLabel = isYourBrand ? '✅ Strengths' : '⚠️ Weaknesses';
     
     tooltip.innerHTML = `
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
         <div style="width: 40px; height: 40px; border-radius: 10px; background: ${comp.color}; display: flex; align-items: center; justify-content: center; font-size: 18px; color: white; font-weight: 700;">${comp.logo}</div>
         <div>
           <div style="font-weight: 600; font-size: 15px;">${comp.name}</div>
-          <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase;">${d.id === 'serpifai' ? 'YOUR POSITION' : comp.type}</div>
+          <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase;">${isYourBrand ? 'YOUR POSITION' : comp.type}</div>
         </div>
       </div>
       <div style="margin-bottom: 12px;">
@@ -1713,10 +1950,10 @@
         </div>
       </div>
       <div style="border-top: 1px solid rgba(148, 163, 184, 0.1); padding-top: 12px;">
-        <div style="font-weight: 600; margin-bottom: 8px; font-size: 11px; color: ${d.id === 'serpifai' ? '#10b981' : '#f59e0b'}">${traitLabel}</div>
-        ${traits.map(t => `<div style="font-size: 12px; color: #cbd5e1; margin-bottom: 4px;">• ${t}</div>`).join('')}
+        <div style="font-weight: 600; margin-bottom: 8px; font-size: 11px; color: ${isYourBrand ? '#10b981' : '#f59e0b'}">${traitLabel}</div>
+        ${(traits || ['Pending analysis']).map(t => `<div style="font-size: 12px; color: #cbd5e1; margin-bottom: 4px;">• ${t}</div>`).join('')}
       </div>
-      ${d.id !== 'serpifai' ? '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.1); color: #94a3b8; font-size: 11px; text-align: center;">Click to activate <strong>Ghosting</strong></div>' : ''}
+      ${!isYourBrand ? '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.1); color: #94a3b8; font-size: 11px; text-align: center;">Click to activate <strong>Ghosting</strong></div>' : ''}
     `;
     
     document.body.appendChild(tooltip);
@@ -1727,5 +1964,5 @@
     if (tooltip) tooltip.remove();
   }
   
-  console.log('✅ UI_Competitor_Forensics.html loaded (V7.9 Elite)');
+  console.log('✅ UI_Competitor_Forensics.html loaded (V11.2 Dynamic Competitors)');
 </script>

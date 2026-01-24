@@ -1,0 +1,347 @@
+<!--
+  UI_ESI_Progress.html
+  ELITE STRATEGIC INTELLIGENCE - PROGRESS INDICATOR COMPONENT v12.0
+  
+  Circular progress with percentage, label, and animated fill
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI PROGRESS INDICATOR - CIRCULAR PROGRESS COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-progress-ring {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.esi-progress-ring__svg {
+  transform: rotate(-90deg);
+  filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.2));
+}
+
+.esi-progress-ring__bg {
+  fill: none;
+  stroke: var(--elite-gray-200, #e5e7eb);
+  stroke-width: 8;
+}
+
+.esi-progress-ring__fill {
+  fill: none;
+  stroke: url(#esi-gradient-primary);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.esi-progress-ring__value {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.esi-progress-ring__percentage {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--elite-primary, #4f46e5);
+  line-height: 1;
+}
+
+.esi-progress-ring__sub {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--elite-gray-500, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.esi-progress-ring__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--elite-gray-700, #374151);
+  text-align: center;
+}
+
+/* Container for proper positioning */
+.esi-progress-ring__container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Size Variants */
+.esi-progress-ring--sm .esi-progress-ring__svg { width: 80px; height: 80px; }
+.esi-progress-ring--sm .esi-progress-ring__percentage { font-size: 1.25rem; }
+.esi-progress-ring--sm .esi-progress-ring__bg,
+.esi-progress-ring--sm .esi-progress-ring__fill { stroke-width: 6; }
+
+.esi-progress-ring--lg .esi-progress-ring__svg { width: 140px; height: 140px; }
+.esi-progress-ring--lg .esi-progress-ring__percentage { font-size: 2.25rem; }
+.esi-progress-ring--lg .esi-progress-ring__bg,
+.esi-progress-ring--lg .esi-progress-ring__fill { stroke-width: 10; }
+
+/* Color Variants */
+.esi-progress-ring--success .esi-progress-ring__fill { stroke: var(--elite-success, #10b981); }
+.esi-progress-ring--success .esi-progress-ring__percentage { color: var(--elite-success, #10b981); }
+
+.esi-progress-ring--warning .esi-progress-ring__fill { stroke: var(--elite-warning, #f59e0b); }
+.esi-progress-ring--warning .esi-progress-ring__percentage { color: var(--elite-warning, #f59e0b); }
+
+.esi-progress-ring--danger .esi-progress-ring__fill { stroke: var(--elite-danger, #ef4444); }
+.esi-progress-ring--danger .esi-progress-ring__percentage { color: var(--elite-danger, #ef4444); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI LINEAR PROGRESS BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-progress-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.esi-progress-bar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.esi-progress-bar__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--elite-gray-700, #374151);
+}
+
+.esi-progress-bar__value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--elite-primary, #4f46e5);
+}
+
+.esi-progress-bar__track {
+  height: 10px;
+  background: var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-full);
+  overflow: hidden;
+}
+
+.esi-progress-bar__fill {
+  height: 100%;
+  background: var(--elite-gradient-royal);
+  border-radius: var(--elite-radius-full);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.esi-progress-bar__fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: esi-shimmer 2s infinite;
+}
+
+@keyframes esi-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Progress Bar Variants */
+.esi-progress-bar--success .esi-progress-bar__fill { background: var(--elite-gradient-success); }
+.esi-progress-bar--success .esi-progress-bar__value { color: var(--elite-success, #10b981); }
+
+.esi-progress-bar--warning .esi-progress-bar__fill { background: var(--elite-gradient-sunset); }
+.esi-progress-bar--warning .esi-progress-bar__value { color: var(--elite-warning, #f59e0b); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI PROGRESS GRID
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-progress-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  justify-items: center;
+}
+
+.esi-progress-grid--bars {
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+/* Dark Theme */
+[data-theme="dark"] .esi-progress-ring__bg,
+[data-theme="neon"] .esi-progress-ring__bg {
+  stroke: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-progress-ring__label,
+[data-theme="neon"] .esi-progress-ring__label {
+  color: var(--elite-gray-300, #d1d5db);
+}
+
+[data-theme="dark"] .esi-progress-bar__track,
+[data-theme="neon"] .esi-progress-bar__track {
+  background: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-progress-bar__label,
+[data-theme="neon"] .esi-progress-bar__label {
+  color: var(--elite-gray-300, #d1d5db);
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI PROGRESS INDICATOR - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI Circular Progress Ring
+ * @param {Object} config - Ring configuration
+ * @param {number} config.value - Progress value 0-100
+ * @param {string} config.label - Label text below
+ * @param {string} config.sublabel - Sublabel inside ring
+ * @param {string} config.size - 'sm', 'md', 'lg'
+ * @param {string} config.variant - 'default', 'success', 'warning', 'danger'
+ * @returns {HTMLElement}
+ */
+function createESIProgressRing(config = {}) {
+  const {
+    value = 0,
+    label = '',
+    sublabel = '',
+    size = 'md',
+    variant = 'default'
+  } = config;
+
+  const sizeMap = { sm: 80, md: 110, lg: 140 };
+  const svgSize = sizeMap[size] || 110;
+  const radius = (svgSize - 20) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (value / 100) * circumference;
+
+  const wrapper = document.createElement('div');
+  const sizeClass = size !== 'md' ? `esi-progress-ring--${size}` : '';
+  const variantClass = variant !== 'default' ? `esi-progress-ring--${variant}` : '';
+  wrapper.className = `esi-progress-ring ${sizeClass} ${variantClass}`;
+
+  wrapper.innerHTML = `
+    <div class="esi-progress-ring__container">
+      <svg class="esi-progress-ring__svg" width="${svgSize}" height="${svgSize}">
+        <defs>
+          <linearGradient id="esi-gradient-primary" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#4f46e5"/>
+            <stop offset="100%" style="stop-color:#7c3aed"/>
+          </linearGradient>
+        </defs>
+        <circle 
+          class="esi-progress-ring__bg" 
+          cx="${svgSize / 2}" 
+          cy="${svgSize / 2}" 
+          r="${radius}"
+        />
+        <circle 
+          class="esi-progress-ring__fill" 
+          cx="${svgSize / 2}" 
+          cy="${svgSize / 2}" 
+          r="${radius}"
+          stroke-dasharray="${circumference}"
+          stroke-dashoffset="${offset}"
+        />
+      </svg>
+      <div class="esi-progress-ring__value" style="width:${svgSize}px;height:${svgSize}px;">
+        <span class="esi-progress-ring__percentage">${Math.round(value)}%</span>
+        ${sublabel ? `<span class="esi-progress-ring__sub">${sublabel}</span>` : ''}
+      </div>
+    </div>
+    ${label ? `<span class="esi-progress-ring__label">${label}</span>` : ''}
+  `;
+
+  return wrapper;
+}
+
+/**
+ * Create an ESI Linear Progress Bar
+ * @param {Object} config - Bar configuration
+ * @param {number} config.value - Progress value 0-100
+ * @param {string} config.label - Label text
+ * @param {string} config.variant - 'default', 'success', 'warning'
+ * @returns {HTMLElement}
+ */
+function createESIProgressBar(config = {}) {
+  const {
+    value = 0,
+    label = '',
+    variant = 'default'
+  } = config;
+
+  const wrapper = document.createElement('div');
+  const variantClass = variant !== 'default' ? `esi-progress-bar--${variant}` : '';
+  wrapper.className = `esi-progress-bar ${variantClass}`;
+
+  wrapper.innerHTML = `
+    <div class="esi-progress-bar__header">
+      <span class="esi-progress-bar__label">${label}</span>
+      <span class="esi-progress-bar__value">${Math.round(value)}%</span>
+    </div>
+    <div class="esi-progress-bar__track">
+      <div class="esi-progress-bar__fill" style="width: ${value}%;"></div>
+    </div>
+  `;
+
+  return wrapper;
+}
+
+/**
+ * Create an ESI Progress Grid
+ * @param {Array} items - Array of progress configurations
+ * @param {string} type - 'rings' or 'bars'
+ * @returns {HTMLElement}
+ */
+function createESIProgressGrid(items = [], type = 'rings') {
+  const grid = document.createElement('div');
+  grid.className = `esi-progress-grid ${type === 'bars' ? 'esi-progress-grid--bars' : ''}`;
+
+  items.forEach(item => {
+    const element = type === 'bars' 
+      ? createESIProgressBar(item)
+      : createESIProgressRing(item);
+    grid.appendChild(element);
+  });
+
+  return grid;
+}
+
+/**
+ * Render ESI Progress Grid into container
+ */
+function renderESIProgressGrid(containerId, items = [], type = 'rings') {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  console.log(`📊 ESI Progress V12.0: Rendering ${items.length} ${type}`);
+  container.innerHTML = '';
+  container.appendChild(createESIProgressGrid(items, type));
+}
+
+window.createESIProgressRing = createESIProgressRing;
+window.createESIProgressBar = createESIProgressBar;
+window.createESIProgressGrid = createESIProgressGrid;
+window.renderESIProgressGrid = renderESIProgressGrid;
+
+console.log('📊 ESI Progress Indicator Component V12.0 loaded');
+</script>

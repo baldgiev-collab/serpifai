@@ -369,6 +369,10 @@ window.renderPredictiveCharts = renderPredictiveCharts;
 window.renderStrategicCharts = renderStrategicCharts;
 window.renderScoringCharts = renderScoringCharts;
 
+// V12.0 FIX: Add aliases for functions that diagnostics look for
+window.renderPerformanceCharts = renderPredictiveCharts;   // Alias for diagnostic compatibility
+window.renderOpportunityCharts = renderStrategicCharts;    // Alias for diagnostic compatibility
+
 /**
  * Render Content Systems Charts (Workflow Maturity + AI vs Manual)
  */

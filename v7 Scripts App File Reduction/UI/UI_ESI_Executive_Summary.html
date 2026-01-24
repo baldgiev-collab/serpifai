@@ -1,0 +1,541 @@
+<!--
+  UI_ESI_Executive_Summary.html
+  ELITE STRATEGIC INTELLIGENCE - EXECUTIVE SUMMARY COMPONENT v12.0
+  
+  One-page overview with key metrics, findings, and recommendations
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI EXECUTIVE SUMMARY - PREMIUM OVERVIEW COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-executive {
+  background: var(--elite-glass-bg, rgba(255, 255, 255, 0.98));
+  border: 1px solid var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-xl, 1.5rem);
+  overflow: hidden;
+  box-shadow: var(--elite-shadow-lg);
+}
+
+/* Hero Header */
+.esi-executive__hero {
+  position: relative;
+  padding: 2.5rem 2rem;
+  background: var(--elite-gradient-royal);
+  color: #fff;
+  overflow: hidden;
+}
+
+.esi-executive__hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.esi-executive__hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.esi-executive__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  border-radius: var(--elite-radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.esi-executive__title {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0 0 0.5rem 0;
+}
+
+.esi-executive__subtitle {
+  font-size: 1.125rem;
+  opacity: 0.9;
+  margin: 0;
+  max-width: 600px;
+}
+
+.esi-executive__date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
+/* Hero Metrics */
+.esi-executive__hero-metrics {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.esi-executive__hero-metric {
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border-radius: var(--elite-radius-md);
+  min-width: 140px;
+}
+
+.esi-executive__hero-metric-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.esi-executive__hero-metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* Body Content */
+.esi-executive__body {
+  padding: 2rem;
+}
+
+/* Section Grid */
+.esi-executive__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .esi-executive__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Section Box */
+.esi-executive__section {
+  padding: 1.5rem;
+  background: var(--elite-gray-50, #f9fafb);
+  border-radius: var(--elite-radius-lg, 1rem);
+  border: 1px solid var(--elite-gray-100, #f3f4f6);
+}
+
+.esi-executive__section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.esi-executive__section-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--elite-gradient-royal);
+  border-radius: var(--elite-radius-md);
+  font-size: 1.25rem;
+}
+
+.esi-executive__section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--elite-gray-800, #1f2937);
+  margin: 0;
+}
+
+.esi-executive__section-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.esi-executive__section-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--elite-gray-200, #e5e7eb);
+}
+
+.esi-executive__section-item:last-child {
+  border-bottom: none;
+}
+
+.esi-executive__section-item-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: var(--elite-radius-sm);
+  font-size: 0.75rem;
+}
+
+.esi-executive__section-item-text {
+  font-size: 0.9375rem;
+  color: var(--elite-gray-700, #374151);
+  line-height: 1.5;
+}
+
+.esi-executive__section-item-text strong {
+  color: var(--elite-primary, #4f46e5);
+  font-weight: 600;
+}
+
+/* Spotlight Section */
+.esi-executive__spotlight {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.03) 100%);
+  border-radius: var(--elite-radius-lg);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+@media (max-width: 768px) {
+  .esi-executive__spotlight {
+    grid-template-columns: 1fr;
+  }
+}
+
+.esi-executive__spotlight-title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--elite-primary, #4f46e5);
+  margin-bottom: 0.5rem;
+}
+
+/* Priority Matrix */
+.esi-executive__priority-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border-radius: var(--elite-radius-md);
+  box-shadow: var(--elite-shadow-sm);
+}
+
+.esi-executive__priority-number {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--elite-gradient-royal);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: var(--elite-radius-sm);
+}
+
+.esi-executive__priority-content {
+  flex: 1;
+}
+
+.esi-executive__priority-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--elite-gray-800, #1f2937);
+  margin-bottom: 2px;
+}
+
+.esi-executive__priority-impact {
+  font-size: 0.75rem;
+  color: var(--elite-gray-500, #6b7280);
+}
+
+/* Footer CTA */
+.esi-executive__footer {
+  padding: 1.5rem 2rem;
+  background: var(--elite-gray-50, #f9fafb);
+  border-top: 1px solid var(--elite-gray-200, #e5e7eb);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.esi-executive__footer-text {
+  font-size: 0.9375rem;
+  color: var(--elite-gray-600, #4b5563);
+}
+
+.esi-executive__footer-text strong {
+  color: var(--elite-primary, #4f46e5);
+}
+
+.esi-executive__footer-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.esi-executive__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--elite-radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.esi-executive__cta--primary {
+  background: var(--elite-gradient-royal);
+  color: #fff;
+}
+
+.esi-executive__cta--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+}
+
+.esi-executive__cta--secondary {
+  background: #fff;
+  color: var(--elite-gray-700, #374151);
+  border: 1px solid var(--elite-gray-300, #d1d5db);
+}
+
+.esi-executive__cta--secondary:hover {
+  background: var(--elite-gray-50, #f9fafb);
+  border-color: var(--elite-gray-400, #9ca3af);
+}
+
+/* Animation */
+@keyframes esi-executive-fade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.esi-executive--animate {
+  animation: esi-executive-fade 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Dark Theme */
+[data-theme="dark"] .esi-executive,
+[data-theme="neon"] .esi-executive {
+  background: var(--elite-gray-800, #1f2937);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-executive__section,
+[data-theme="neon"] .esi-executive__section {
+  background: var(--elite-gray-900, #111827);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-executive__section-title,
+[data-theme="neon"] .esi-executive__section-title {
+  color: var(--elite-gray-100, #f3f4f6);
+}
+
+[data-theme="dark"] .esi-executive__section-item-text,
+[data-theme="neon"] .esi-executive__section-item-text {
+  color: var(--elite-gray-300, #d1d5db);
+}
+
+[data-theme="dark"] .esi-executive__footer,
+[data-theme="neon"] .esi-executive__footer {
+  background: var(--elite-gray-900, #111827);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-executive__priority-item,
+[data-theme="neon"] .esi-executive__priority-item {
+  background: var(--elite-gray-800, #1f2937);
+}
+
+[data-theme="dark"] .esi-executive__priority-title,
+[data-theme="neon"] .esi-executive__priority-title {
+  color: var(--elite-gray-100, #f3f4f6);
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI EXECUTIVE SUMMARY - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI Executive Summary
+ * @param {Object} config - Summary configuration
+ * @returns {HTMLElement}
+ */
+function createESIExecutiveSummary(config = {}) {
+  const {
+    badge = 'Strategic Intelligence',
+    title = 'Executive Summary',
+    subtitle = '',
+    date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    heroMetrics = [],
+    sections = [],
+    priorities = [],
+    footerText = '',
+    actions = [],
+    animate = true
+  } = config;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `esi-executive ${animate ? 'esi-executive--animate' : ''}`;
+
+  // Build hero metrics
+  const heroMetricsHTML = heroMetrics.length > 0 ? `
+    <div class="esi-executive__hero-metrics">
+      ${heroMetrics.map(m => `
+        <div class="esi-executive__hero-metric">
+          <div class="esi-executive__hero-metric-value">${m.value || '—'}</div>
+          <div class="esi-executive__hero-metric-label">${m.label || ''}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  // Build sections
+  const sectionsHTML = sections.map(section => `
+    <div class="esi-executive__section">
+      <div class="esi-executive__section-header">
+        <div class="esi-executive__section-icon">${section.icon || '📊'}</div>
+        <h4 class="esi-executive__section-title">${section.title || 'Section'}</h4>
+      </div>
+      <ul class="esi-executive__section-list">
+        ${(section.items || []).map(item => `
+          <li class="esi-executive__section-item">
+            <span class="esi-executive__section-item-icon">${item.icon || '→'}</span>
+            <span class="esi-executive__section-item-text">${item.text || ''}</span>
+          </li>
+        `).join('')}
+      </ul>
+    </div>
+  `).join('');
+
+  // Build priorities spotlight
+  const prioritiesHTML = priorities.length > 0 ? `
+    <div class="esi-executive__spotlight">
+      <div class="esi-executive__spotlight-title">
+        <span>🎯</span> Top Priorities
+      </div>
+      ${priorities.slice(0, 4).map((p, idx) => `
+        <div class="esi-executive__priority-item">
+          <div class="esi-executive__priority-number">${idx + 1}</div>
+          <div class="esi-executive__priority-content">
+            <div class="esi-executive__priority-title">${p.title || ''}</div>
+            <div class="esi-executive__priority-impact">${p.impact || ''}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  // Build actions
+  const actionsHTML = actions.map((action, idx) => {
+    const isPrimary = action.primary || idx === 0;
+    return `
+      <button class="esi-executive__cta esi-executive__cta--${isPrimary ? 'primary' : 'secondary'}" data-action="${action.id || idx}">
+        ${action.icon ? `<span>${action.icon}</span>` : ''}
+        <span>${action.label || 'Action'}</span>
+      </button>
+    `;
+  }).join('');
+
+  wrapper.innerHTML = `
+    <div class="esi-executive__hero">
+      <div class="esi-executive__hero-content">
+        <span class="esi-executive__badge">🎯 ${badge}</span>
+        <h2 class="esi-executive__title">${title}</h2>
+        ${subtitle ? `<p class="esi-executive__subtitle">${subtitle}</p>` : ''}
+        <div class="esi-executive__date">
+          <span>📅</span> Generated: ${date}
+        </div>
+        ${heroMetricsHTML}
+      </div>
+    </div>
+    <div class="esi-executive__body">
+      <div class="esi-executive__grid">
+        ${sectionsHTML}
+        ${prioritiesHTML}
+      </div>
+    </div>
+    ${(footerText || actions.length > 0) ? `
+      <div class="esi-executive__footer">
+        ${footerText ? `<div class="esi-executive__footer-text">${footerText}</div>` : ''}
+        ${actions.length > 0 ? `<div class="esi-executive__footer-actions">${actionsHTML}</div>` : ''}
+      </div>
+    ` : ''}
+  `;
+
+  // Attach action listeners
+  wrapper.querySelectorAll('.esi-executive__cta').forEach((btn, idx) => {
+    btn.addEventListener('click', () => {
+      if (actions[idx] && typeof actions[idx].onClick === 'function') {
+        actions[idx].onClick();
+      }
+    });
+  });
+
+  return wrapper;
+}
+
+/**
+ * Render ESI Executive Summary into container
+ */
+function renderESIExecutiveSummary(containerId, config = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  console.log('📊 ESI Executive Summary V12.0: Rendering summary');
+  container.innerHTML = '';
+  container.appendChild(createESIExecutiveSummary(config));
+}
+
+window.createESIExecutiveSummary = createESIExecutiveSummary;
+window.renderESIExecutiveSummary = renderESIExecutiveSummary;
+
+console.log('📊 ESI Executive Summary Component V12.0 loaded');
+</script>

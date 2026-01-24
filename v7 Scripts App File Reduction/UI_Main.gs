@@ -316,6 +316,7 @@
       const cacheKey = 'stage_' + projectId + '_' + stageNum;
       let jsonStr = cache.get(cacheKey + '_json');
       let jsonData;
+      let forensicBridge = null;
       
       if (jsonStr) {
         Logger.log('✅ JSON loaded from cache');
@@ -340,6 +341,16 @@
         }
         
         jsonData = result.json || result.data?.json || {};
+        // V11.0: Also extract forensicBridge from saved data
+        forensicBridge = result.forensicBridge || result.data?.forensicBridge || null;
+        if (forensicBridge) {
+          Logger.log('🔗 Forensic Bridge found in MySQL data');
+        }
+      }
+      
+      // V11.0: Include forensicBridge in jsonData for hydration pickup
+      if (forensicBridge) {
+        jsonData.forensicBridge = forensicBridge;
       }
       
       const fullJsonStr = JSON.stringify(jsonData);
@@ -941,6 +952,20 @@
             break;
           default:
             throw new Error('Invalid stage number: ' + stageNum);
+        }
+        
+        // V7.21 FIX: Check if stage actually succeeded before marking complete
+        if (!stageResult || !stageResult.success) {
+          const errorMsg = stageResult?.error || 'Stage execution returned failure';
+          Logger.log('❌ Stage ' + stageNum + ' FAILED: ' + errorMsg);
+          failTransaction(transactionId, errorMsg);
+          
+          return {
+            success: false,
+            stage: stageNum,
+            error: errorMsg.substring(0, 500),
+            _hydrateFromDatabase: false
+          };
         }
         
         // Mark transaction as complete

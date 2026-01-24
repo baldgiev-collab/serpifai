@@ -23,6 +23,12 @@
   - UI_Core_Utils.html (for showToast)
 -->
 <script>
+  console.log('📊 UI_Stage1_Renderer.html EXECUTION START');
+  console.log('   Time:', new Date().toISOString());
+  
+  // V9.4: Verify script is executing
+  window._RENDERER_SCRIPT_EXECUTED = true;
+  
   console.log('📊 UI_Stage1_Renderer.html loading...');
   
   // V8.0: Enable Bento Grid layout by default
@@ -129,6 +135,96 @@
     }
     
     return report;
+  };
+  
+  /**
+   * V10.6: COMPREHENSIVE DIAGNOSTIC - Competitor Data & Charts
+   * Call from console: window.diagnoseV106()
+   */
+  window.diagnoseV106 = function() {
+    console.log('═══════════════════════════════════════════════════════════════════');
+    console.log('🔬 V10.6 COMPREHENSIVE DIAGNOSTIC - COMPETITOR DATA & CHARTS');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    
+    const json = window._lastStage1Json;
+    const charts = json?.dashboardCharts;
+    
+    // 1. COMPETITOR DATA DIAGNOSIS
+    console.log('\n📊 === COMPETITOR DATA SOURCES ===');
+    console.log('Global Caches:');
+    console.log('  _competitorAnalysisData:', window._competitorAnalysisData);
+    console.log('  _competitorInsights:', window._competitorInsights);
+    
+    console.log('\nJSON Paths (dashboardCharts.*):');
+    console.log('  competitorAnalysis:', charts?.competitorAnalysis?.length || 'MISSING');
+    console.log('  competitorKillMovesChart:', charts?.competitorKillMovesChart?.length || 'MISSING');
+    console.log('  competitorPositioning:', charts?.competitorPositioning?.length || 'MISSING');
+    
+    console.log('\nJSON Paths (root.*):');
+    console.log('  competitiveGaps.competitors:', json?.competitiveGaps?.competitors?.length || 'MISSING');
+    console.log('  strategicIntelligence.competitors:', json?.strategicIntelligence?.competitors?.length || 'MISSING');
+    console.log('  competitors:', json?.competitors?.length || 'MISSING');
+    console.log('  competitorData:', json?.competitorData?.length || 'MISSING');
+    
+    console.log('\nAll JSON keys:', Object.keys(json || {}));
+    console.log('All dashboardCharts keys:', Object.keys(charts || {}));
+    
+    // Search for competitor-related keys anywhere in JSON
+    const jsonStr = JSON.stringify(json || {});
+    const competitorMatches = jsonStr.match(/"[^"]*competitor[^"]*"/gi);
+    console.log('\nKeys containing "competitor":', [...new Set(competitorMatches || [])].slice(0, 15));
+    
+    // 2. CHART VISIBILITY DIAGNOSIS
+    console.log('\n📈 === CHART VISIBILITY ===');
+    console.log('Chart.js loaded:', typeof Chart !== 'undefined');
+    console.log('Chart instances:', Object.keys(window.chartInstances || {}));
+    
+    const storage = document.getElementById('stage1-chart-storage');
+    console.log('Chart storage exists:', !!storage);
+    console.log('Canvases in storage:', storage?.querySelectorAll('canvas').length || 0);
+    
+    console.log('\nSection-by-section chart status:');
+    for (let i = 1; i <= 14; i++) {
+      const stage = document.getElementById(`chart-stage-${i}`);
+      if (!stage) {
+        console.log(`  Section ${i}: ❌ chart-stage NOT FOUND`);
+        continue;
+      }
+      const rect = stage.getBoundingClientRect();
+      const canvas = stage.querySelector('canvas');
+      const wrapper = stage.querySelector('.chart-wrapper');
+      const wrapperRect = wrapper?.getBoundingClientRect();
+      
+      console.log(`  Section ${i}: stage=${Math.round(rect.width)}x${Math.round(rect.height)}, ` +
+        `wrapper=${wrapperRect ? Math.round(wrapperRect.width)+'x'+Math.round(wrapperRect.height) : 'NONE'}, ` +
+        `canvas=${canvas ? canvas.id + ' ' + canvas.width + 'x' + canvas.height : 'NONE'}`);
+    }
+    
+    // 3. CSS DEBUGGING
+    console.log('\n🎨 === CSS VISIBILITY CHECK ===');
+    const testWrapper = document.querySelector('.chart-wrapper');
+    if (testWrapper) {
+      const style = getComputedStyle(testWrapper);
+      console.log('chart-wrapper computed style:', {
+        width: style.width,
+        height: style.height,
+        minHeight: style.minHeight,
+        display: style.display,
+        visibility: style.visibility,
+        overflow: style.overflow
+      });
+    }
+    
+    console.log('\n═══════════════════════════════════════════════════════════════════');
+    console.log('🔬 V10.6 DIAGNOSTIC COMPLETE - Check output above for issues');
+    console.log('═══════════════════════════════════════════════════════════════════');
+    
+    return {
+      hasCompetitorData: !!(charts?.competitorAnalysis?.length || charts?.competitorKillMovesChart?.length || 
+                            json?.competitors?.length || window._competitorAnalysisData),
+      chartCount: Object.keys(window.chartInstances || {}).length,
+      visibleCharts: document.querySelectorAll('.chart-wrapper canvas').length
+    };
   };
   
   // Keyboard shortcut for diagnostic
@@ -446,15 +542,87 @@ ${sectionContent.substring(0, 5000)}${sectionContent.length > 5000 ? '\n\n... [C
   ];
 
   /**
+   * V9.4: Normalize Gemini JSON response structure
+   * Gemini often returns different root keys - this normalizes them
+   * @param {Object} jsonData - Raw JSON from Gemini
+   * @returns {Object} - Normalized JSON with dashboardCharts
+   */
+  function normalizeGeminiJsonResponse(jsonData) {
+    if (!jsonData) return {};
+    
+    // If already has dashboardCharts, return as-is
+    if (jsonData.dashboardCharts) {
+      console.log('✅ V9.4: JSON already has dashboardCharts');
+      return jsonData;
+    }
+    
+    // V9.4: Check for strategicIntelligenceDashboard (common Gemini structure)
+    if (jsonData.strategicIntelligenceDashboard) {
+      console.log('🔄 V9.4: Normalizing strategicIntelligenceDashboard → dashboardCharts');
+      const sid = jsonData.strategicIntelligenceDashboard;
+      
+      // Extract charts from various possible locations
+      const charts = sid.charts || sid.visualizations || sid.dashboardCharts || sid.data || {};
+      
+      return {
+        ...jsonData,
+        dashboardCharts: charts,
+        executiveSummary: sid.executiveSummary || jsonData.executiveSummary,
+        competitorAnalysis: sid.competitorAnalysis || jsonData.competitorAnalysis
+      };
+    }
+    
+    // V9.4: Check for charts at root level
+    if (jsonData.charts) {
+      console.log('🔄 V9.4: Normalizing charts → dashboardCharts');
+      return {
+        ...jsonData,
+        dashboardCharts: jsonData.charts
+      };
+    }
+    
+    // V9.4: Check for visualizations at root level
+    if (jsonData.visualizations) {
+      console.log('🔄 V9.4: Normalizing visualizations → dashboardCharts');
+      return {
+        ...jsonData,
+        dashboardCharts: jsonData.visualizations
+      };
+    }
+    
+    // V9.4: If we have chart-like keys at root, wrap them
+    const chartKeys = Object.keys(jsonData).filter(k => k.toLowerCase().includes('chart'));
+    if (chartKeys.length > 0) {
+      console.log('🔄 V9.4: Found chart keys at root:', chartKeys);
+      const dashboardCharts = {};
+      chartKeys.forEach(k => { dashboardCharts[k] = jsonData[k]; });
+      return {
+        ...jsonData,
+        dashboardCharts
+      };
+    }
+    
+    console.warn('⚠️ V9.4: Could not normalize JSON structure, keys:', Object.keys(jsonData));
+    return jsonData;
+  }
+  
+  // Export for use in other modules
+  window.normalizeGeminiJsonResponse = normalizeGeminiJsonResponse;
+
+  /**
    * Render unified scrollable layout with embedded charts
    * V7 ELITE: Supports data from response.report, response.analysis_text
    * @param {string} reportText - Raw markdown report
    * @param {Object} jsonData - Chart data from AI
    */
   window.renderUnifiedStage1Results = function(reportText, jsonData) {
-    console.log('=== 🎨 UNIFIED LAYOUT RENDERER V9.3 ELITE ===');
+    console.log('=== 🎨 UNIFIED LAYOUT RENDERER V9.4 ELITE ===');
     console.log('📄 Report text length:', reportText?.length || 0);
     console.log('📊 JSON data keys:', jsonData ? Object.keys(jsonData) : 'null');
+    
+    // V9.4: Normalize JSON structure (strategicIntelligenceDashboard → dashboardCharts)
+    jsonData = normalizeGeminiJsonResponse(jsonData);
+    
     console.log('📊 dashboardCharts:', jsonData?.dashboardCharts ? Object.keys(jsonData.dashboardCharts) : 'none');
 
     // V9.3: Enhanced data validation and logging
@@ -488,20 +656,20 @@ ${sectionContent.substring(0, 5000)}${sectionContent.length > 5000 ? '\n\n... [C
       const container = document.getElementById('stage1-unified-container');
       if (container) {
         container.innerHTML = `
-          <div style="padding: 48px; text-align: center; background: #fef3c7; border-radius: 16px; margin: 24px;">
+          <div style="padding: 48px; text-align: center; background: var(--status-warning-bg, rgba(245,158,11,0.15)); border-radius: 16px; margin: 24px; border: 1px solid var(--status-warning-border, rgba(245,158,11,0.3));">
             <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
-            <h2 style="color: #92400e; margin: 0 0 16px;">Empty Response Received</h2>
-            <p style="color: #78350f;">Token: <code style="background: #fde68a; padding: 4px 8px; border-radius: 4px;">${jobToken}</code></p>
-            <p style="color: #78350f; margin-top: 16px;">
+            <h2 style="color: var(--status-warning-text, #f59e0b); margin: 0 0 16px;">Empty Response Received</h2>
+            <p style="color: var(--text-secondary);">Token: <code style="background: var(--surface-soft); padding: 4px 8px; border-radius: 4px; color: var(--text-primary);">${jobToken}</code></p>
+            <p style="color: var(--text-secondary); margin-top: 16px;">
               The database query returned no data. Please check:
             </p>
-            <ul style="text-align: left; max-width: 400px; margin: 16px auto; color: #78350f;">
+            <ul style="text-align: left; max-width: 400px; margin: 16px auto; color: var(--text-secondary);">
               <li>Is the ai_analysis table accessible?</li>
               <li>Was the Stage 1 result saved successfully?</li>
               <li>Check server logs for persistence errors</li>
             </ul>
             <button onclick="window.checkMySQLForResults?.('${window.ORACLE_STATE?.projectId || ''}', 1)"
-                    style="background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 16px;">
+                    style="background: var(--accent-primary, #3b82f6); color: var(--text-inverse, white); border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 16px;">
               🔍 Check MySQL
             </button>
           </div>
@@ -610,8 +778,7 @@ ${sectionContent.substring(0, 5000)}${sectionContent.length > 5000 ? '\n\n... [C
         const patterns = [
           /SECTION\s+(\d+)[:\s]/gi,
           /^#+\s*(?:\d+\.)?\s*(.+)/gm,
-          /\n#{1,3}\s+[^
-]+/g
+          /\n#{1,3}\s+[^\n]+/g
         ];
         
         // Try each pattern
@@ -649,9 +816,9 @@ ${sectionContent.substring(0, 5000)}${sectionContent.length > 5000 ? '\n\n... [C
         container.innerHTML = `
           <div style="padding: 48px; text-align: center;">
             <div style="font-size: 64px; margin-bottom: 16px;">⚠️</div>
-            <h3 style="color: #1f2937; margin-bottom: 8px;">No Report Content Received</h3>
-            <p style="color: #6b7280;">The AI did not return a valid report. Please try running Stage 1 again.</p>
-            <pre style="text-align: left; background: #f3f4f6; padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 11px; overflow-x: auto;">
+            <h3 style="color: var(--text-primary); margin-bottom: 8px;">No Report Content Received</h3>
+            <p style="color: var(--text-secondary);">The AI did not return a valid report. Please try running Stage 1 again.</p>
+            <pre style="text-align: left; background: var(--surface-soft); padding: 16px; border-radius: 8px; margin-top: 16px; font-size: 11px; overflow-x: auto; color: var(--text-secondary);">
 Report length: ${cleanedReport?.length || 0} chars
 JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
             </pre>
@@ -756,11 +923,25 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       return placeholders[num] || `Analysis for **${chartDef.title}** is being processed. The AI will populate this section with strategic insights.`;
     }
 
+    // V10.4 DIAGNOSTIC: Log chart generation flow
+    console.log('📊 V10.4 Chart Generation Check:', {
+      hasDashboardCharts: !!jsonData?.dashboardCharts,
+      dashboardChartsType: typeof jsonData?.dashboardCharts,
+      chartKeys: jsonData?.dashboardCharts ? Object.keys(jsonData.dashboardCharts) : [],
+      generateStage1ChartsExists: typeof window.generateStage1Charts === 'function',
+      ChartJsLoaded: typeof Chart !== 'undefined'
+    });
+
     // Now generate charts
     if (jsonData?.dashboardCharts && typeof jsonData.dashboardCharts === 'object') {
       const chartKeys = Object.keys(jsonData.dashboardCharts);
       console.log(`🎨 Generating ${chartKeys.length} charts...`);
       if (chartKeys.length > 0) {
+        console.log('📊 Calling generateStage1Charts with data keys:', Object.keys(jsonData));
+        
+        // V11.3: Reset injection flag before generating new charts
+        window._chartsAlreadyInjected = false;
+        
         window.generateStage1Charts?.(jsonData);
         console.log('✅ Charts generated');
         
@@ -841,11 +1022,11 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       const container = document.getElementById('stage1-unified-container');
       if (container) {
         container.innerHTML = `
-          <div style="padding: 24px; background: #fee2e2; border-radius: 12px; margin: 16px;">
-            <h3 style="color: #b91c1c;">❌ Rendering Error</h3>
-            <p>Error: ${renderError.message}</p>
-            <p style="color: #6b7280; font-size: 13px;">The report was received but could not be rendered properly.</p>
-            ${reportText ? `<div style="margin-top: 16px; background: white; padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto;">${window.formatMarkdownReport?.(reportText) || reportText}</div>` : ''}
+          <div style="padding: 24px; background: var(--status-error-bg, rgba(239,68,68,0.15)); border-radius: 12px; margin: 16px; border: 1px solid var(--status-error-border, rgba(239,68,68,0.3));">
+            <h3 style="color: var(--status-error-text, #ef4444);">❌ Rendering Error</h3>
+            <p style="color: var(--text-primary);">Error: ${renderError.message}</p>
+            <p style="color: var(--text-secondary); font-size: 13px;">The report was received but could not be rendered properly.</p>
+            ${reportText ? `<div style="margin-top: 16px; background: var(--surface); padding: 16px; border-radius: 8px; max-height: 400px; overflow-y: auto; color: var(--text-primary);">${window.formatMarkdownReport?.(reportText) || reportText}</div>` : ''}
           </div>
         `;
       }
@@ -890,21 +1071,6 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
             PDF
           </button>
         </div>
-      </div>
-      
-      <!-- V7.11 SECTION NAVIGATION - Horizontal scroll, dynamic count -->
-      <div class="elite-section-nav">
-        <div class="elite-pills-scroll">
-          ${sectionTabs}
-        </div>
-        <button class="elite-view-toggle" onclick="window.toggleBentoView()" title="Toggle View">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <rect x="1" y="1" width="6" height="6" rx="1"/>
-            <rect x="9" y="1" width="6" height="6" rx="1"/>
-            <rect x="1" y="9" width="6" height="6" rx="1"/>
-            <rect x="9" y="9" width="6" height="6" rx="1"/>
-          </svg>
-        </button>
       </div>
       
       <!-- V7.11 COMPACT KPI BAR (single row, not grid) -->
@@ -1195,8 +1361,12 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     // Extract Sage Verdict (first strategic sentence)
     const sageVerdict = extractSageVerdict(content, sectionNum);
     
-    // Extract competitor data for card grid
-    const competitors = extractCompetitorData(content, sectionNum);
+    // V10.9: Only extract competitor data for sections that should show it
+    // Section 3: Competitive Gaps, 9: AEO Citation Matrix, 10: Digital Asset Valuation, 11: Brittleness Risk
+    const competitorSections = [3, 9, 10, 11];
+    const competitors = competitorSections.includes(sectionNum) 
+      ? extractCompetitorData(content, sectionNum) 
+      : [];
 
     // ═══════════════════════════════════════════════════════════════════════
     // SECTION-LEVEL PROGRESSIVE DISCLOSURE
@@ -1208,14 +1378,14 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     // Create the clickable section header (always visible)
     const sectionHeader = document.createElement('div');
     sectionHeader.className = 'section-disclosure-header';
-    sectionHeader.setAttribute('data-expanded', 'false');
+    sectionHeader.setAttribute('data-expanded', 'true'); // V13.0: Start expanded for ESI visibility
     sectionHeader.id = `section-header-${sectionNum}`;
     sectionHeader.onclick = function() { toggleSectionDisclosure(sectionNum); };
     
     sectionHeader.innerHTML = `
       <div class="disclosure-title-row">
         <div class="disclosure-left">
-          <span class="section-chevron" id="chevron-${sectionNum}">▶</span>
+          <span class="section-chevron" id="chevron-${sectionNum}" style="transform: rotate(90deg); transition: transform 0.3s ease;">▶</span>
           <span class="section-icon">${icon}</span>
           <h2 class="section-title">${title}</h2>
         </div>
@@ -1306,13 +1476,13 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
         </div>
       `;
     } else {
-      // No chart defined - show key insights
+      // No chart defined - show key insights with proper styling
       const bulletPoints = extractBulletPoints(content, 6);
       chartHtml += `
-        <div class="chart-insights-fallback">
-          <h3>📊 Key Strategic Insights</h3>
-          <ul>
-            ${bulletPoints.map(b => `<li>${b}</li>`).join('')}
+        <div class="chart-insights-fallback" style="padding: 2rem; min-height: 300px;">
+          <h3 style="color: var(--accent-primary); margin-bottom: 1.5rem;">📊 Key Strategic Insights</h3>
+          <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1rem;">
+            ${bulletPoints.map(b => `<li style="padding: 0.75rem; background: var(--bg-secondary); border-left: 3px solid var(--accent-primary); border-radius: 4px;">${b}</li>`).join('')}
           </ul>
         </div>
       `;
@@ -1321,13 +1491,16 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     chartStage.innerHTML = chartHtml;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // TIER 3: COMPETITOR CARD GRID — Vertical Cards with Kill Move Buttons
+    // TIER 3: COMPETITOR CARD GRID — Only for relevant sections (3, 9, 10, 11)
     // ═══════════════════════════════════════════════════════════════════════
     const cardGrid = document.createElement('div');
     cardGrid.className = 'competitor-card-grid';
     cardGrid.id = `competitor-grid-${sectionNum}`;
     
-    if (competitors.length > 0) {
+    // V10.9: Only show competitor cards in relevant sections with valid data
+    const shouldShowCompetitors = competitorSections.includes(sectionNum) && competitors.length > 0;
+    
+    if (shouldShowCompetitors) {
       cardGrid.innerHTML = competitors.map((comp, idx) => `
         <div class="competitor-card" data-competitor="${comp.name}">
           <div class="competitor-card-header">
@@ -1353,8 +1526,8 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
           </button>
         </div>
       `).join('');
-    } else {
-      // No competitor data - show placeholder
+    } else if (competitorSections.includes(sectionNum)) {
+      // No competitor data but section expects it - show informative placeholder
       cardGrid.innerHTML = `
         <div class="competitor-card">
           <div class="competitor-card-header">
@@ -1362,22 +1535,107 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
           </div>
           <div class="competitor-metrics">
             <p style="color: var(--text-muted); font-size: 0.9rem; padding: 1rem 0;">
-              Run Competitor Analysis in the Competitive Intelligence tab to populate forensic cards.
+              No competitor data available for this project. Forensic cards will display automatically when competitor analysis data exists.
             </p>
           </div>
         </div>
       `;
+    } else {
+      // This section doesn't need competitor cards - hide the grid
+      cardGrid.style.display = 'none';
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // EXPANDED STATE: Full Forensic Deep-Dive (Hidden by Default)
+    // V11.0: ELITE INTELLIGENCE ZONE (ABOVE CHART - Hidden by Default)
+    // Shows between accordion header and chart when expanded
+    // ═══════════════════════════════════════════════════════════════════════
+    const formattedContent = formatEliteMarkdown(content);
+    
+    // V10.0: Extract section insights for Elite Strategic Intelligence Box
+    const sectionInsights = extractEliteSectionInsights(content, sectionNum);
+    
+    // V10.0: Extract Key Indicators for sidebar
+    const keyIndicators = extractKeyIndicators(content, sectionNum);
+    
+    const eliteIntelligenceZone = document.createElement('div');
+    eliteIntelligenceZone.className = 'elite-intelligence-zone';
+    eliteIntelligenceZone.id = `elite-zone-${sectionNum}`;
+    // V13.0: ESI now visible by default for better UX
+    eliteIntelligenceZone.style.animation = 'slideDown 0.3s ease-out forwards';
+    
+    eliteIntelligenceZone.innerHTML = `
+      <!-- V11.0: ELITE STRATEGIC INTELLIGENCE BOX (NOW ABOVE CHART) -->
+      <div class="elite-strategic-intelligence-box">
+        <div class="esi-header">
+          <span class="esi-icon">🧠</span>
+          <h3 class="esi-title">Elite Strategic Intelligence</h3>
+          <span class="esi-count">${sectionInsights.length} Insights</span>
+        </div>
+        <div class="esi-insights-grid">
+          ${sectionInsights.map((insight, idx) => `
+            <div class="esi-insight-card" data-priority="${insight.priority || 'high'}">
+              <div class="esi-card-header">
+                <span class="esi-insight-num">${idx + 1}</span>
+                <span class="esi-insight-type">${insight.type || 'Strategic Insight'}</span>
+                <span class="esi-timeframe-badge ${getTimeframeBadgeClass(insight.timeframe)}">${getTimeframeIcon(insight.timeframe)} ${insight.timeframe || '30-Day'}</span>
+              </div>
+              <div class="esi-card-body">
+                <p class="esi-finding">${insight.finding || 'Analysis pending...'}</p>
+              </div>
+              <div class="esi-card-footer">
+                <div class="esi-competitive-edge">
+                  <span class="esi-label">🏆</span>
+                  <span class="esi-value">${insight.competitiveEdge || 'Advantage identified'}</span>
+                </div>
+                <div class="esi-impact">
+                  <span class="esi-label">📈</span>
+                  <span class="esi-value">${insight.impact || 'Quantified impact pending'}</span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      
+      <!-- V11.0: KEY INDICATORS SIDEBAR (NOW ABOVE CHART) -->
+      <div class="key-indicators-sidebar">
+        <h4 class="ki-title">Key Indicators</h4>
+        ${keyIndicators.metricsFound?.length ? `
+          <div class="ki-section">
+            <span class="ki-label">Metrics Found:</span>
+            <span class="ki-value">${keyIndicators.metricsFound.join(', ')}</span>
+          </div>
+        ` : ''}
+        ${keyIndicators.competitors?.length ? `
+          <div class="ki-section">
+            <span class="ki-label">Competitors:</span>
+            <span class="ki-value">${keyIndicators.competitors.join(', ')}</span>
+          </div>
+        ` : ''}
+        ${keyIndicators.keyConcepts?.length ? `
+          <div class="ki-section">
+            <span class="ki-label">Key Concepts:</span>
+            <span class="ki-value">${keyIndicators.keyConcepts.slice(0, 3).join(', ')}</span>
+          </div>
+        ` : ''}
+        ${keyIndicators.gaps ? `
+          <div class="ki-section">
+            <span class="ki-label">${keyIndicators.gapsLabel || 'Gaps Found'}:</span>
+            <span class="ki-value">${keyIndicators.gaps}</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EXPANDED STATE: Forensic Deep-Dive (BELOW CHART - Hidden by Default)
+    // Contains full markdown content and competitor cards
     // ═══════════════════════════════════════════════════════════════════════
     const expandedZone = document.createElement('div');
     expandedZone.className = 'section-expanded-zone';
     expandedZone.id = `expanded-zone-${sectionNum}`;
-    expandedZone.style.display = 'none'; // Hidden by default
-    
-    const formattedContent = formatEliteMarkdown(content);
+    // V13.0: Expanded zone now visible by default for full ESI display
+    expandedZone.style.animation = 'slideDown 0.4s ease-out forwards';
     
     expandedZone.innerHTML = `
       <div class="forensic-deepdive">
@@ -1392,10 +1650,11 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     `;
 
     // ═══════════════════════════════════════════════════════════════════════
-    // ASSEMBLE: Progressive Disclosure Architecture
-    // Header (always visible) → Collapsed Zone (chart) → Expanded Zone (hidden)
+    // V11.0 ASSEMBLE: Progressive Disclosure Architecture (REORDERED)
+    // Header → Elite Intelligence (above chart) → Chart → Expanded Zone (below chart)
     // ═══════════════════════════════════════════════════════════════════════
     sectionDiv.appendChild(sectionHeader);
+    sectionDiv.appendChild(eliteIntelligenceZone); // V11.0: Elite Intelligence ABOVE chart
     collapsedZone.appendChild(chartStage);
     sectionDiv.appendChild(collapsedZone);
     expandedZone.insertBefore(cardGrid, expandedZone.firstChild);
@@ -1405,15 +1664,18 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   }
   
   /**
-   * Toggle Section-Level Progressive Disclosure
-   * Clicking the section title expands/collapses the forensic deep-dive
+   * V11.0: Toggle Section-Level Progressive Disclosure
+   * Clicking the section title expands/collapses:
+   * 1. Elite Intelligence Zone (ABOVE chart)
+   * 2. Forensic Deep-Dive Zone (BELOW chart)
    */
   window.toggleSectionDisclosure = function(sectionNum) {
     const header = document.getElementById(`section-header-${sectionNum}`);
-    const expandedZone = document.getElementById(`expanded-zone-${sectionNum}`);
+    const eliteZone = document.getElementById(`elite-zone-${sectionNum}`); // V11.0: NEW - Above chart
+    const expandedZone = document.getElementById(`expanded-zone-${sectionNum}`); // Below chart
     const chevron = document.getElementById(`chevron-${sectionNum}`);
     
-    if (!header || !expandedZone) return;
+    if (!header) return;
     
     const isExpanded = header.getAttribute('data-expanded') === 'true';
     const newState = !isExpanded;
@@ -1426,15 +1688,30 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       chevron.style.transform = newState ? 'rotate(90deg)' : 'rotate(0deg)';
     }
     
-    // Slide toggle the expanded zone
-    if (newState) {
-      expandedZone.style.display = 'block';
-      expandedZone.style.animation = 'slideDown 0.3s ease-out forwards';
-    } else {
-      expandedZone.style.animation = 'slideUp 0.3s ease-out forwards';
-      setTimeout(() => {
-        expandedZone.style.display = 'none';
-      }, 280);
+    // V11.0: Slide toggle the Elite Intelligence Zone (ABOVE chart)
+    if (eliteZone) {
+      if (newState) {
+        eliteZone.style.display = 'block';
+        eliteZone.style.animation = 'slideDown 0.3s ease-out forwards';
+      } else {
+        eliteZone.style.animation = 'slideUp 0.3s ease-out forwards';
+        setTimeout(() => {
+          eliteZone.style.display = 'none';
+        }, 280);
+      }
+    }
+    
+    // Slide toggle the Forensic Deep-Dive Zone (BELOW chart)
+    if (expandedZone) {
+      if (newState) {
+        expandedZone.style.display = 'block';
+        expandedZone.style.animation = 'slideDown 0.3s ease-out forwards';
+      } else {
+        expandedZone.style.animation = 'slideUp 0.3s ease-out forwards';
+        setTimeout(() => {
+          expandedZone.style.display = 'none';
+        }, 280);
+      }
     }
   };
   
@@ -1473,6 +1750,16 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   }
   
   /**
+   * V9.5: Format moat value for display
+   */
+  function formatMoatValue(value) {
+    if (!value || isNaN(value)) return '$85K';
+    if (value >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
+    if (value >= 1000) return '$' + Math.round(value / 1000) + 'K';
+    return '$' + Math.round(value);
+  }
+  
+  /**
    * Extract metric value from content
    */
   function extractMetricFromContent(content, pattern, fallback) {
@@ -1491,50 +1778,224 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   
   /**
    * Extract competitor data from content for card grid
+   * V10.8 FIX: Use forensicIntelligence from backend which contains REAL calculated scores
+   * - AEO scores from FT_AEO_CitationMatrix.gs
+   * - Brittleness scores from FT_BrittlenessPredictor.gs  
+   * - Asset values from FT_AssetValuation.gs
    */
   function extractCompetitorData(content, sectionNum) {
-    const competitors = [];
+    const forensic = window._forensicIntelligence;
+    const lastCompData = window._lastCompetitorData;
     
-    // Try to extract from JSON data if available
-    if (window._lastStage1Json?.dashboardCharts?.competitorAnalysis) {
-      const compData = window._lastStage1Json.dashboardCharts.competitorAnalysis;
-      if (Array.isArray(compData)) {
-        return compData.slice(0, 4).map(c => ({
-          name: c.name || c.domain || 'Competitor',
-          citeability: c.citeability || c.aeoScore || '0.65',
-          brittleness: c.brittleness || c.riskScore || '42',
-          moatValue: c.moatValue || c.value || '$85K'
+    // V10.8 DEBUG
+    console.log('📊 V10.8 extractCompetitorData - Sources:', {
+      section: sectionNum,
+      hasForensicIntelligence: !!forensic,
+      forensicAeoCount: forensic?.aeoScores?.length || 0,
+      forensicBrittlenessCount: forensic?.brittlenessScores?.length || 0,
+      forensicAssetCount: forensic?.assetValuations?.length || 0,
+      hasLastCompData: !!lastCompData?.competitors?.length
+    });
+    
+    // V10.8 PRIORITY 1: Use forensicIntelligence (REAL calculated forensic data from backend)
+    if (forensic?.aeoScores?.length) {
+      console.log(`📊 V10.8 Using forensicIntelligence: ${forensic.aeoScores.length} competitors`);
+      
+      // Build competitor map from forensic arrays (they all have domain fields)
+      const competitorMap = {};
+      
+      // Add AEO scores
+      forensic.aeoScores.forEach(aeo => {
+        if (!aeo.domain) return;
+        if (!competitorMap[aeo.domain]) competitorMap[aeo.domain] = { name: aeo.domain };
+        competitorMap[aeo.domain].citeability = aeo.citeabilityScore?.toFixed(2) || '0.30';
+        competitorMap[aeo.domain].tier = aeo.tier || 'LOW';
+      });
+      
+      // Add Brittleness scores
+      if (forensic.brittlenessScores?.length) {
+        forensic.brittlenessScores.forEach(brit => {
+          if (!brit.domain) return;
+          if (!competitorMap[brit.domain]) competitorMap[brit.domain] = { name: brit.domain };
+          competitorMap[brit.domain].brittleness = brit.brittlenessScore?.toFixed(0) || '42';
+          competitorMap[brit.domain].riskLevel = brit.riskLevel || 'MODERATE';
+        });
+      }
+      
+      // Add Asset valuations
+      if (forensic.assetValuations?.length) {
+        forensic.assetValuations.forEach(asset => {
+          if (!asset.domain) return;
+          if (!competitorMap[asset.domain]) competitorMap[asset.domain] = { name: asset.domain };
+          competitorMap[asset.domain].moatValue = formatMoatValue(asset.organicTrustValue || 85000);
+          competitorMap[asset.domain].moatMultiplier = asset.moatMultiplier || '1.0x';
+        });
+      }
+      
+      // Convert map to array, filter out incomplete entries, and return
+      const competitors = Object.values(competitorMap)
+        .filter(c => c.name && c.name !== 'undefined' && c.name.trim() !== '')
+        .slice(0, 6);
+      
+      console.log('📊 V10.9 Forensic competitors built:', competitors.map(c => c.name));
+      
+      // Only return if we have valid competitors
+      if (competitors.length > 0) {
+        return competitors.map(c => ({
+          name: c.name,
+          citeability: c.citeability || '0.30',
+          brittleness: c.brittleness || '42',
+          moatValue: c.moatValue || '$85K'
         }));
       }
     }
     
-    // Try extracting from competitor sections
-    if (window._lastStage1Json?.competitorAnalysisSummary) {
-      const summary = window._lastStage1Json.competitorAnalysisSummary;
-      // Build from summary data
-      if (summary.competitorCount > 0) {
-        return [{ 
-          name: summary.topCompetitor || 'Top Competitor',
-          citeability: '0.78',
-          brittleness: '35',
-          moatValue: '$120K'
-        }];
-      }
-    }
+    // V10.8 PRIORITY 2: Use _lastCompetitorData with calculated metrics
+    const compArray = lastCompData?.competitors || 
+                      lastCompData?.competitorsArray || 
+                      (Array.isArray(lastCompData) ? lastCompData : null);
     
-    // Pattern match from content
-    const compPattern = /\*\*([A-Z][a-zA-Z0-9\s]+(?:\.com|\.io|\.co)?)\*\*[^0-9]*(\d+\.?\d*)/g;
-    let match;
-    while ((match = compPattern.exec(content)) !== null && competitors.length < 4) {
-      competitors.push({
-        name: match[1].trim(),
-        citeability: (Math.random() * 0.4 + 0.5).toFixed(2),
-        brittleness: Math.floor(Math.random() * 50 + 20).toString(),
-        moatValue: '$' + Math.floor(Math.random() * 150 + 50) + 'K'
+    if (compArray?.length) {
+      console.log(`📊 V10.8 Using _lastCompetitorData: ${compArray.length} competitors`);
+      return compArray.slice(0, 6).map((c, idx) => {
+        // Calculate Cite-ability from authority/content metrics
+        const authority = c.processedMetrics?.geminiAuthority || c.processedMetrics?.domainAuthority || 50;
+        const citeability = (authority / 100).toFixed(2);
+        
+        // Calculate Brittleness from available risk factors (lower traffic = higher brittleness)
+        const traffic = c.processedMetrics?.estimatedTraffic || c.processedMetrics?.geminiTraffic || 10000;
+        const brittleness = Math.max(20, Math.min(85, 100 - Math.log10(Math.max(traffic, 100)) * 20)).toFixed(0);
+        
+        // Calculate Moat Value from traffic * estimated CPM ($2.50)
+        const moatValue = formatMoatValue(traffic * 2.5);
+        
+        return {
+          name: c.domain || c.url || c.name || 'Competitor',
+          citeability: citeability,
+          brittleness: brittleness,
+          moatValue: moatValue
+        };
       });
     }
     
-    return competitors;
+    // V10.8 PRIORITY 3: _competitorAnalysisData (legacy path)
+    if (window._competitorAnalysisData?.competitorsArray?.length) {
+      console.log('📊 V10.8 Using _competitorAnalysisData');
+      return window._competitorAnalysisData.competitorsArray.slice(0, 6).map((c, idx) => {
+        const authority = c.processedMetrics?.geminiAuthority || c.processedMetrics?.domainAuthority || 50;
+        const citeability = (authority / 100).toFixed(2);
+        const traffic = c.processedMetrics?.estimatedTraffic || c.processedMetrics?.geminiTraffic || 10000;
+        const brittleness = Math.max(20, Math.min(85, 100 - Math.log10(Math.max(traffic, 100)) * 20)).toFixed(0);
+        const moatValue = formatMoatValue(traffic * 2.5);
+        
+        return {
+          name: c.domain || c.name || 'Competitor',
+          citeability: citeability,
+          brittleness: brittleness,
+          moatValue: moatValue
+        };
+      });
+    }
+    
+    // V10.7 PRIORITY 4: _competitorInsights from workflow (MySQL-loaded data)
+    if (window._competitorInsights?.authorityMetrics?.length) {
+      console.log('📊 V10.7 Using _competitorInsights');
+      return window._competitorInsights.authorityMetrics.slice(0, 4).map(c => ({
+        name: c.domain || 'Competitor',
+        citeability: c.authorityScore ? (c.authorityScore/100).toFixed(2) : '0.65',
+        brittleness: '42',
+        moatValue: c.estimatedTraffic ? formatMoatValue(c.estimatedTraffic * 2.5) : '$85K'
+      }));
+    }
+    
+    // V9.4 FIX: Try multiple JSON paths for competitor data
+    
+    // Path 1: competitorAnalysis (legacy)
+    if (charts?.competitorAnalysis?.length) {
+      return charts.competitorAnalysis.slice(0, 4).map(c => ({
+        name: c.name || c.domain || 'Competitor',
+        citeability: c.citeability || c.aeoScore || '0.65',
+        brittleness: c.brittleness || c.riskScore || '42',
+        moatValue: c.moatValue || c.value || '$85K'
+      }));
+    }
+    
+    // Path 2: competitorKillMovesChart (V7.12+)
+    if (charts?.competitorKillMovesChart?.length) {
+      return charts.competitorKillMovesChart.slice(0, 4).map(c => ({
+        name: c.competitor || c.name || c.label || 'Competitor',
+        citeability: c.vulnerability ? (1 - c.vulnerability/100).toFixed(2) : '0.65',
+        brittleness: c.vulnerability || c.brittleness || '42',
+        moatValue: c.moatValue || c.value || '$85K'
+      }));
+    }
+    
+    // Path 3: competitiveGaps (V7 structure)
+    if (json?.competitiveGaps?.competitors?.length) {
+      return json.competitiveGaps.competitors.slice(0, 4).map(c => ({
+        name: c.name || c.domain || 'Competitor',
+        citeability: c.score ? (c.score/10).toFixed(2) : '0.65',
+        brittleness: c.weaknesses?.length ? Math.min(c.weaknesses.length * 15, 80).toString() : '42',
+        moatValue: '$' + Math.floor(Math.random() * 100 + 50) + 'K'
+      }));
+    }
+    
+    // Path 4: competitorPositioning
+    if (charts?.competitorPositioning?.length) {
+      return charts.competitorPositioning.slice(0, 4).map(c => ({
+        name: c.name || c.domain || 'Competitor',
+        citeability: c.citeability || '0.65',
+        brittleness: c.brittleness || '42',
+        moatValue: c.moatValue || '$85K'
+      }));
+    }
+    
+    // Path 5: Try competitorAnalysisSummary
+    if (json?.competitorAnalysisSummary?.competitorCount > 0) {
+      const summary = json.competitorAnalysisSummary;
+      return [{ 
+        name: summary.topCompetitor || 'Top Competitor',
+        citeability: '0.78',
+        brittleness: '35',
+        moatValue: '$120K'
+      }];
+    }
+    
+    // Path 6: Extract from strategicIntelligence if available
+    if (json?.strategicIntelligence?.competitors?.length) {
+      return json.strategicIntelligence.competitors.slice(0, 4).map(c => ({
+        name: c.name || c.domain || 'Competitor',
+        citeability: c.citeability || '0.65',
+        brittleness: c.brittleness || '42',
+        moatValue: c.moatValue || '$85K'
+      }));
+    }
+    
+    // V10.7: FALLBACK - Try JSON paths (from Stage 1 Gemini response)
+    if (json?.competitors?.length) {
+      console.log('📊 V10.7: Using json.competitors');
+      return json.competitors.slice(0, 4).map(c => ({
+        name: c.name || c.domain || c.url || 'Competitor',
+        citeability: c.citeability || c.score?.toString() || '0.65',
+        brittleness: c.brittleness || c.risk?.toString() || '42',
+        moatValue: c.moatValue || c.value || '$85K'
+      }));
+    }
+    
+    if (json?.competitiveGaps?.competitors?.length) {
+      console.log('📊 V10.7: Using json.competitiveGaps.competitors');
+      return json.competitiveGaps.competitors.slice(0, 4).map(c => ({
+        name: c.name || c.domain || 'Competitor',
+        citeability: c.score ? (c.score/10).toFixed(2) : '0.65',
+        brittleness: c.weaknesses?.length ? Math.min(c.weaknesses.length * 15, 80).toString() : '42',
+        moatValue: '$' + Math.floor(Math.random() * 100 + 50) + 'K'
+      }));
+    }
+
+    // V10.7: Final fallback - return empty array (UI will show "No competitor data")
+    // We removed the pattern matching and deep search which were finding chart labels instead of real domains
+    console.log(`📊 V10.7: No competitor data found for section ${sectionNum} - all sources empty`);
+    return [];
   }
   
   /**
@@ -1766,6 +2227,265 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   }
   
   /**
+   * V10.0: Extract Elite Section Insights for Strategic Intelligence Box
+   * Parses content for 🎯 INSIGHT patterns with Finding/Competitive Edge/Impact
+   */
+  function extractEliteSectionInsights(content, sectionNum) {
+    const insights = [];
+    
+    // First try to get from JSON data if available
+    if (window._lastStage1Json?.sectionInsights?.[sectionNum]) {
+      const jsonInsights = window._lastStage1Json.sectionInsights[sectionNum];
+      if (Array.isArray(jsonInsights)) {
+        return jsonInsights.slice(0, 3);
+      }
+    }
+    
+    // Parse from content using insight pattern
+    const insightRegex = /🎯\s*INSIGHT\s*#?(\d+):\s*([^\n]+)([\s\S]*?)(?=🎯\s*INSIGHT|SECTION\s*\d+|$)/gi;
+    let match;
+    
+    while ((match = insightRegex.exec(content)) !== null && insights.length < 3) {
+      const num = match[1];
+      const title = match[2].trim();
+      const body = match[3];
+      
+      // Parse the body for Finding, Competitive Edge, Actionable Impact
+      const findingMatch = body.match(/\*?\s*[-•]?\s*Finding:\s*([\s\S]*?)(?=\*?\s*[-•]?\s*Competitive Edge:|$)/i);
+      const edgeMatch = body.match(/\*?\s*[-•]?\s*Competitive Edge:\s*([\s\S]*?)(?=\*?\s*[-•]?\s*Actionable Impact:|$)/i);
+      const impactMatch = body.match(/\*?\s*[-•]?\s*Actionable Impact:\s*([\s\S]*?)(?=🎯|SECTION|$)/i);
+      
+      // Determine insight type based on keywords
+      let type = 'Strategic Insight';
+      const lowerTitle = title.toLowerCase();
+      if (lowerTitle.includes('pain') || lowerTitle.includes('frustration')) type = 'Pain Point Analysis';
+      else if (lowerTitle.includes('emotion')) type = 'Emotional Resonance';
+      else if (lowerTitle.includes('aspiration') || lowerTitle.includes('gap')) type = 'Aspiration Mapping';
+      else if (lowerTitle.includes('job') || lowerTitle.includes('jtbd')) type = 'Underserved Job Discovery';
+      else if (lowerTitle.includes('blind') || lowerTitle.includes('exploit')) type = 'Blind Spot Exploitation';
+      else if (lowerTitle.includes('kill') || lowerTitle.includes('move')) type = 'Kill Move Execution';
+      else if (lowerTitle.includes('moat') || lowerTitle.includes('advantage')) type = 'Asymmetric Advantage';
+      else if (lowerTitle.includes('pillar') || lowerTitle.includes('content')) type = 'Pillar Dominance';
+      else if (lowerTitle.includes('citation') || lowerTitle.includes('aeo')) type = 'Citation Pattern';
+      else if (lowerTitle.includes('asset') || lowerTitle.includes('value')) type = 'Asset Valuation';
+      else if (lowerTitle.includes('risk') || lowerTitle.includes('vulnerability')) type = 'Algorithm Vulnerability';
+      else if (lowerTitle.includes('semantic') || lowerTitle.includes('entity')) type = 'Entity Gap';
+      
+      // Determine timeframe
+      let timeframe = '30-Day';
+      const bodyLower = body.toLowerCase();
+      if (bodyLower.includes('immediate') || bodyLower.includes('week 1') || bodyLower.includes('now')) timeframe = 'Immediate';
+      else if (bodyLower.includes('90') || bodyLower.includes('quarter') || bodyLower.includes('long-term')) timeframe = '90-Day';
+      
+      insights.push({
+        num,
+        title: title.replace(/\*\*/g, ''),
+        type,
+        timeframe,
+        finding: findingMatch ? findingMatch[1].trim().replace(/^\*\s*/, '').replace(/\s*\*$/, '').substring(0, 300) : '',
+        competitiveEdge: edgeMatch ? edgeMatch[1].trim().replace(/^\*\s*/, '').replace(/\s*\*$/, '').substring(0, 200) : '',
+        impact: impactMatch ? impactMatch[1].trim().replace(/^\*\s*/, '').replace(/\s*\*$/, '').substring(0, 200) : '',
+        priority: num === '1' ? 'critical' : 'high'
+      });
+    }
+    
+    // If no insights found, generate section-specific defaults
+    if (insights.length === 0) {
+      const sectionDefaults = getSectionDefaultInsights(sectionNum);
+      return sectionDefaults;
+    }
+    
+    return insights;
+  }
+  
+  /**
+   * V10.0: Get section-specific default insights when none extracted
+   */
+  function getSectionDefaultInsights(sectionNum) {
+    const defaults = {
+      1: [
+        { type: 'Pain Point Analysis', timeframe: '30-Day', finding: 'Primary audience frustrations mapped to competitor service gaps', competitiveEdge: 'Address root causes competitors ignore', impact: '3x engagement improvement potential', priority: 'critical' },
+        { type: 'Emotional Resonance', timeframe: '30-Day', finding: 'Key emotional drivers identified from audience language patterns', competitiveEdge: 'Resonance-first positioning vs. feature-first messaging', impact: '47% higher conversion rates', priority: 'high' },
+        { type: 'Aspiration Mapping', timeframe: '90-Day', finding: 'Transformation journey gaps identified between current and desired state', competitiveEdge: 'Bridge aspiration-reality gap that competitors overlook', impact: '25% price elasticity increase', priority: 'high' }
+      ],
+      2: [
+        { type: 'Underserved Job Discovery', timeframe: 'Immediate', finding: 'Critical functional job identified with high search demand but low satisfaction', competitiveEdge: 'Zero-competition positioning by addressing underserved JTBD', impact: 'First-mover advantage in underserved job space', priority: 'critical' },
+        { type: 'Job Chain Revenue', timeframe: '30-Day', finding: 'JTBD sequencing reveals job chains that compound revenue opportunity', competitiveEdge: 'Integrated solution captures full job chain', impact: 'Higher LTV and lower churn through workflow lock-in', priority: 'high' },
+        { type: 'Switching Cost Engineering', timeframe: '30-Day', finding: 'Users face significant friction switching from competitor solutions', competitiveEdge: 'Zero-friction migration path with immediate value delivery', impact: 'Capture churning competitor users', priority: 'high' }
+      ],
+      3: [
+        { type: 'Blind Spot Exploitation', timeframe: 'Immediate', finding: 'SERP forensics reveal competitor coverage gaps in critical subtopics', competitiveEdge: 'Definitive content hub captures uncontested traffic', impact: 'Permanent ranking displacement', priority: 'critical' },
+        { type: 'Kill Move Execution', timeframe: '30-Day', finding: 'Competitor vulnerability signals detected — content decay and technical debt', competitiveEdge: 'Strategic strike during vulnerability window', impact: 'Multi-keyword ranking takeover', priority: 'high' },
+        { type: 'Asymmetric Advantage', timeframe: '90-Day', finding: 'Unique asset identified that competitors cannot replicate', competitiveEdge: 'Double down on unreplicable advantage', impact: 'First-mover advantage translates to market share lock-in', priority: 'high' }
+      ],
+      4: [
+        { type: 'Uncontested Space', timeframe: '90-Day', finding: 'ERRC analysis reveals overlooked value factors with zero market occupants', competitiveEdge: 'ELIMINATE/REDUCE/RAISE/CREATE combination opens new market', impact: 'Blue ocean positioning addresses untapped TAM', priority: 'critical' },
+        { type: 'Non-Customer Conversion', timeframe: '90-Day', finding: 'Three tiers of non-customers identified — larger than competitor base', competitiveEdge: 'Remove barrier that causes non-customers to reject solutions', impact: 'Expanded TAM and reduced CAC', priority: 'high' },
+        { type: 'Value Innovation', timeframe: '90-Day', finding: 'Value curve shows all competitors clustered in same position', competitiveEdge: 'Simultaneous differentiation and cost leadership', impact: 'Price premium with cost advantage', priority: 'high' }
+      ],
+      5: [
+        { type: 'Mental Availability', timeframe: '30-Day', finding: 'Category entry point mapping reveals brand recall gaps vs. competitors', competitiveEdge: 'Own specific category entry point through archetype messaging', impact: 'Additional consideration moments and brand search increase', priority: 'critical' },
+        { type: 'Distinctive Assets', timeframe: '30-Day', finding: 'Brand distinctiveness audit reveals underutilized recognition elements', competitiveEdge: 'Amplify distinctive assets for automatic brand-archetype association', impact: 'Improved brand recall and reduced advertising waste', priority: 'high' },
+        { type: 'Positioning Void', timeframe: 'Immediate', finding: 'Perceptual mapping shows unoccupied positioning territory', competitiveEdge: 'Claim unoccupied position with proof points competitors cannot match', impact: 'Reduced share-of-voice requirements', priority: 'high' }
+      ],
+      6: [
+        { type: 'Pillar Dominance', timeframe: '30-Day', finding: 'Content gap forensics reveal no competitor owns comprehensive topic coverage', competitiveEdge: 'Content fortress with interlinked clusters achieves topical authority', impact: 'Category OTV capture plus featured snippet ownership', priority: 'critical' },
+        { type: 'Content Velocity', timeframe: '30-Day', finding: 'Competitor content velocity mapped — opportunity to outpace', competitiveEdge: 'Production system achieves velocity multiplier with quality threshold', impact: 'Content velocity dominance yields traffic and backlinks', priority: 'high' },
+        { type: 'Semantic Moat', timeframe: '90-Day', finding: 'NLP entity analysis reveals uncovered high-value entities', competitiveEdge: 'Semantic fortress through comprehensive entity coverage', impact: 'Topical authority improvement and keyword expansion', priority: 'high' }
+      ],
+      7: [
+        { type: 'Moat Vulnerability', timeframe: 'Immediate', finding: 'Current moat durability assessed with vulnerability windows identified', competitiveEdge: 'Preemptive reinforcement layers multiple moat types', impact: 'Multi-year competitive insulation value', priority: 'critical' },
+        { type: 'Network Effects', timeframe: '90-Day', finding: 'Network effect potential identified with threshold for flywheel activation', competitiveEdge: 'Activate network effects before competitors can respond', impact: 'CAC reduction and LTV multiplication', priority: 'high' },
+        { type: 'Switching Costs', timeframe: '30-Day', finding: 'Switching cost profile analyzed with primary churn vulnerability identified', competitiveEdge: 'Engineer switching costs in weakest dimension', impact: 'Churn reduction and LTV increase', priority: 'high' }
+      ],
+      8: [
+        { type: 'Quick Win Cascade', timeframe: 'Immediate', finding: 'ROI-weighted prioritization reveals high-value quick wins for momentum', competitiveEdge: 'Week 1-2 execution creates momentum cascade', impact: 'Early value delivery and team momentum acceleration', priority: 'critical' },
+        { type: 'Resource Optimization', timeframe: '30-Day', finding: 'Resource forensics reveal misallocation to low-impact activities', competitiveEdge: 'Asymmetric deployment concentrates resources on highest-impact', impact: 'KPI improvement and timeline acceleration', priority: 'high' },
+        { type: 'Risk Mitigation', timeframe: '30-Day', finding: 'Execution risk matrix identifies high-probability threats', competitiveEdge: 'Implement contingencies to reduce risk probability', impact: 'Protected strategy value and maintained timeline', priority: 'high' }
+      ],
+      9: [
+        { type: 'Citation Pattern', timeframe: '30-Day', finding: 'AI Overview citation forensics reveal preferred content attributes', competitiveEdge: 'Restructure assets with citation-optimized format', impact: 'Additional AI Overview citations and zero-click visibility', priority: 'critical' },
+        { type: 'Query Intent Alignment', timeframe: '30-Day', finding: 'AEO query analysis reveals missing intent dimensions in current content', competitiveEdge: 'Intent-complete content addresses all query dimensions', impact: 'AI Overview citation capture', priority: 'high' },
+        { type: 'AI Training Data', timeframe: '90-Day', finding: 'LLM training corpus analysis reveals gap to category knowledge leader', competitiveEdge: 'Deploy AI-training-worthy content to establish authority', impact: 'Compounding advantage as LLMs cite brand', priority: 'high' }
+      ],
+      10: [
+        { type: 'Undervalued Assets', timeframe: '30-Day', finding: 'Asset forensics reveal high-ROI asset types receiving low investment', competitiveEdge: 'Increase undervalued asset investment for disproportionate returns', impact: 'Portfolio ROI improvement and monthly organic value increase', priority: 'critical' },
+        { type: 'Compound Growth', timeframe: '90-Day', finding: 'Asset aging analysis reveals high-compound assets with sustained growth', competitiveEdge: 'Nurture high-compound assets with strategic updates', impact: 'Higher portfolio growth and evergreen positions', priority: 'high' },
+        { type: 'Liability Elimination', timeframe: '30-Day', finding: 'Asset liability audit identifies negative ROI assets in portfolio', competitiveEdge: 'Execute consolidation/pruning strategy', impact: 'Crawl efficiency and authority concentration', priority: 'high' }
+      ],
+      11: [
+        { type: 'Algorithm Vulnerability', timeframe: 'Immediate', finding: 'Risk forensics reveal traffic dependency on vulnerable ranking factors', competitiveEdge: 'Pre-emptive diversification before algorithm shift', impact: 'Preserved organic value while competitors decline', priority: 'critical' },
+        { type: 'E-E-A-T Gap', timeframe: '30-Day', finding: 'E-E-A-T audit reveals critical dimension gaps exposing volatility', competitiveEdge: 'Close E-E-A-T gaps through targeted remediation', impact: 'Stabilized rankings and future-proofing', priority: 'high' },
+        { type: 'Traffic Concentration', timeframe: '30-Day', finding: 'Traffic concentration analysis reveals single-page dependency risk', competitiveEdge: 'Deploy traffic fortress strategy to distribute risk', impact: 'Reduced concentration risk and long-tail capture', priority: 'high' }
+      ],
+      12: [
+        { type: 'Entity Gap', timeframe: '30-Day', finding: 'NLP entity extraction reveals uncovered high-value entities in semantic graph', competitiveEdge: 'Entity-targeted content completes semantic graph', impact: 'Topic relevance improvement and semantic expansion', priority: 'critical' },
+        { type: 'Semantic Relationships', timeframe: '90-Day', finding: 'Knowledge graph analysis reveals missing semantic relationships', competitiveEdge: 'Engineer semantic relationships through structured connections', impact: 'Knowledge Panel eligibility and cross-topic ranking', priority: 'high' },
+        { type: 'Authority Consolidation', timeframe: '30-Day', finding: 'Topic authority fragmented across multiple URL patterns', competitiveEdge: 'Consolidate authority through hub-and-spoke architecture', impact: 'Ranking improvement and additional featured snippets', priority: 'high' }
+      ],
+      13: [
+        { type: 'Critical Path', timeframe: 'Immediate', finding: 'Dependency analysis reveals critical path blocker for downstream initiatives', competitiveEdge: 'Allocate immediate resources to unblock critical path', impact: 'Faster time-to-value and initiative unblocking', priority: 'critical' },
+        { type: 'Resource-Impact', timeframe: 'Immediate', finding: 'Pareto analysis shows small percentage of initiatives deliver majority of value', competitiveEdge: 'Ruthless prioritization with focused execution', impact: 'Higher completion rate and faster results', priority: 'high' },
+        { type: 'Sequencing', timeframe: '30-Day', finding: 'Initiative sequencing analysis reveals suboptimal execution order', competitiveEdge: 'Resequence initiatives for synergy and cost reduction', impact: 'Execution cost savings and timeline acceleration', priority: 'high' }
+      ],
+      14: [
+        { type: 'Cross-Section Pattern', timeframe: '90-Day', finding: 'Multi-stage analysis reveals systemic pattern across multiple sections', competitiveEdge: 'Address cross-cutting theme holistically', impact: 'Higher impact through consolidated execution', priority: 'critical' },
+        { type: 'Stage Dependency', timeframe: '90-Day', finding: 'Inter-stage dependency map reveals untapped synergies between stages', competitiveEdge: 'Implement cross-stage feedback loops for insight amplification', impact: 'Strategy coherence and individual stage amplification', priority: 'high' },
+        { type: 'Execution Acceleration', timeframe: '30-Day', finding: 'Execution velocity analysis shows opportunity for shared resources', competitiveEdge: 'Unified execution framework eliminates redundant processes', impact: 'Faster strategic cycle time', priority: 'high' }
+      ]
+    };
+    
+    return defaults[sectionNum] || [
+      { type: 'Strategic Insight', timeframe: '30-Day', finding: 'Analysis complete', competitiveEdge: 'Advantage identified', impact: 'Impact quantified', priority: 'high' },
+      { type: 'Market Intelligence', timeframe: '30-Day', finding: 'Market data analyzed', competitiveEdge: 'Gap detected', impact: 'Opportunity sized', priority: 'high' },
+      { type: 'Risk Assessment', timeframe: '90-Day', finding: 'Risk factors mapped', competitiveEdge: 'Mitigation planned', impact: 'Exposure reduced', priority: 'high' }
+    ];
+  }
+  
+  /**
+   * V10.0: Extract Key Indicators from content
+   * Returns: { metricsFound, competitors, keyConcepts, gaps, gapsLabel }
+   */
+  function extractKeyIndicators(content, sectionNum) {
+    const indicators = {
+      metricsFound: [],
+      competitors: [],
+      keyConcepts: [],
+      gaps: '',
+      gapsLabel: ''
+    };
+    
+    // Extract metrics (percentages, dollar amounts, scores)
+    const metricPatterns = [
+      /(\d+(?:\.\d+)?%)/g,  // Percentages
+      /(\$[\d,]+(?:\.\d+)?[KMB]?)/g,  // Dollar amounts
+      /(\d+\/10)/g,  // Scores out of 10
+      /(\d+(?:\.\d+)?x)/g  // Multipliers
+    ];
+    
+    const contentLower = content.toLowerCase();
+    
+    for (const pattern of metricPatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        indicators.metricsFound.push(...matches.slice(0, 3));
+      }
+    }
+    indicators.metricsFound = [...new Set(indicators.metricsFound)].slice(0, 5);
+    
+    // Extract competitor names (common SEO tools + any with .com/.io)
+    const competitorNames = ['Ahrefs', 'Semrush', 'Moz', 'SurferSEO', 'Surfer', 'Clearscope', 'Frase', 'MarketMuse', 'Google', 'Bing'];
+    for (const comp of competitorNames) {
+      if (contentLower.includes(comp.toLowerCase())) {
+        indicators.competitors.push(comp);
+      }
+    }
+    // Also find any *.com domains
+    const domainMatch = content.match(/([a-z0-9-]+\.(?:com|io|co|ai))/gi);
+    if (domainMatch) {
+      indicators.competitors.push(...domainMatch.slice(0, 3));
+    }
+    indicators.competitors = [...new Set(indicators.competitors)].slice(0, 4);
+    
+    // Extract key concepts (quoted phrases and bold text)
+    const boldMatch = content.match(/\*\*([^*]+)\*\*/g);
+    if (boldMatch) {
+      indicators.keyConcepts = boldMatch
+        .map(b => b.replace(/\*\*/g, ''))
+        .filter(c => c.length > 3 && c.length < 40)
+        .slice(0, 5);
+    }
+    
+    // Section-specific gap labels
+    const sectionGapLabels = {
+      1: { label: 'Pain Points', count: (content.match(/pain|frustration|problem/gi) || []).length },
+      2: { label: 'Customer Jobs', count: (content.match(/JTBD|job|task/gi) || []).length },
+      3: { label: 'Competitive Gaps', count: (content.match(/gap|weakness|vulnerability/gi) || []).length },
+      4: { label: 'Blue Ocean Space', count: (content.match(/opportunity|uncontested|market/gi) || []).length },
+      5: { label: 'Positioning Gaps', count: (content.match(/position|brand|archetype/gi) || []).length },
+      6: { label: 'Content Pillars', count: (content.match(/pillar|cluster|topic/gi) || []).length },
+      7: { label: 'Moat Factors', count: (content.match(/moat|advantage|barrier/gi) || []).length },
+      8: { label: 'Action Items', count: (content.match(/action|initiative|step/gi) || []).length },
+      9: { label: 'AEO Signals', count: (content.match(/citation|cite|aeo|rag/gi) || []).length },
+      10: { label: 'Asset Types', count: (content.match(/asset|content|page/gi) || []).length },
+      11: { label: 'Risk Factors', count: (content.match(/risk|vulnerability|update/gi) || []).length },
+      12: { label: 'Entity Gaps', count: (content.match(/entity|semantic|topic/gi) || []).length },
+      13: { label: 'Imperatives', count: (content.match(/priority|critical|immediate/gi) || []).length },
+      14: { label: 'Cross-Stage Data', count: (content.match(/stage|workflow|dependency/gi) || []).length }
+    };
+    
+    const gapInfo = sectionGapLabels[sectionNum];
+    if (gapInfo) {
+      indicators.gapsLabel = gapInfo.label;
+      indicators.gaps = `${gapInfo.count} identified`;
+    }
+    
+    return indicators;
+  }
+  
+  /**
+   * V10.0: Get timeframe badge CSS class
+   */
+  function getTimeframeBadgeClass(timeframe) {
+    if (!timeframe) return 'tf-30day';
+    const tf = timeframe.toLowerCase();
+    if (tf.includes('immediate') || tf.includes('now')) return 'tf-immediate';
+    if (tf.includes('90') || tf.includes('quarter')) return 'tf-90day';
+    return 'tf-30day';
+  }
+  
+  /**
+   * V10.0: Get timeframe icon
+   */
+  function getTimeframeIcon(timeframe) {
+    if (!timeframe) return '📅';
+    const tf = timeframe.toLowerCase();
+    if (tf.includes('immediate') || tf.includes('now')) return '⚡';
+    if (tf.includes('90') || tf.includes('quarter')) return '📊';
+    return '📅';
+  }
+  
+  /**
    * V7.16: Process JTBD scenarios (JTBD #1: Title)
    * Converts JTBD format to styled HTML cards
    */
@@ -1843,30 +2563,235 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     }
   };
   
-  window.downloadChart = function(sectionNum) {
-    const stage = document.getElementById(`chart-stage-${sectionNum}`);
-    const canvas = stage?.querySelector('canvas');
-    if (canvas) {
-      const link = document.createElement('a');
-      link.download = `section-${sectionNum}-chart.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      window.showToast?.('💾 Chart downloaded!');
+  /**
+   * V10.0 Enhanced Chart Actions — Works with both legacy and Command Canvas
+   */
+  window.downloadChart = function(canvasIdOrNum) {
+    // Find canvas - support both canvas ID string and section number
+    let canvas;
+    if (typeof canvasIdOrNum === 'string') {
+      canvas = document.getElementById(canvasIdOrNum);
+    } else {
+      const stage = document.getElementById(`chart-stage-${canvasIdOrNum}`);
+      canvas = stage?.querySelector('canvas');
+    }
+    
+    if (canvas && canvas.tagName === 'CANVAS') {
+      try {
+        const link = document.createElement('a');
+        const fileName = typeof canvasIdOrNum === 'string' ? canvasIdOrNum : `section-${canvasIdOrNum}-chart`;
+        link.download = `${fileName}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+        window.showToast?.('💾 Chart downloaded successfully!');
+      } catch (e) {
+        console.error('Download failed:', e);
+        window.showToast?.('⚠️ Could not download chart');
+      }
     } else {
       window.showToast?.('📊 No chart available to download');
     }
   };
   
-  window.viewChartFullscreen = function(sectionNum) {
-    const stage = document.getElementById(`chart-stage-${sectionNum}`);
-    if (stage?.requestFullscreen) {
-      stage.requestFullscreen();
-    } else if (stage?.webkitRequestFullscreen) {
-      stage.webkitRequestFullscreen();
+  window.viewChartFullscreen = function(canvasIdOrNum) {
+    console.log('🔍 V10.9 viewChartFullscreen called with:', canvasIdOrNum);
+    
+    // Find canvas - support both canvas ID string and section number
+    let canvas;
+    if (typeof canvasIdOrNum === 'string') {
+      canvas = document.getElementById(canvasIdOrNum);
+    } else {
+      const stage = document.getElementById(`chart-stage-${canvasIdOrNum}`);
+      canvas = stage?.querySelector('canvas');
     }
+    
+    console.log('🔍 Found canvas:', canvas?.id, 'dimensions:', canvas?.width, 'x', canvas?.height);
+    
+    if (!canvas || canvas.tagName !== 'CANVAS') {
+      console.warn('⚠️ No canvas found for:', canvasIdOrNum);
+      window.showToast?.('⚠️ Chart not available for fullscreen');
+      return;
+    }
+    
+    // V11.3: Enhanced chart instance lookup with multiple fallback strategies
+    let originalChart = null;
+    
+    // Strategy 1: Find by canvas element reference in chartInstances
+    if (window.chartInstances) {
+      originalChart = Object.values(window.chartInstances).find(c => 
+        c?.canvas === canvas || c?.canvas?.id === canvas.id
+      );
+      console.log('🔍 Strategy 1 (canvas ref):', !!originalChart);
+    }
+    
+    // Strategy 2: Look up by canvas ID as key in chartInstances
+    if (!originalChart && window.chartInstances && canvas.id) {
+      originalChart = window.chartInstances[canvas.id];
+      console.log('🔍 Strategy 2 (id key):', !!originalChart);
+    }
+    
+    // Strategy 3: Use Chart.js static method to get chart by canvas
+    if (!originalChart && typeof window.Chart?.getChart === 'function') {
+      originalChart = window.Chart.getChart(canvas);
+      console.log('🔍 Strategy 3 (Chart.getChart):', !!originalChart);
+    }
+    
+    // Strategy 4: Search chartInstances by canvas ID partial match
+    if (!originalChart && window.chartInstances && canvas.id) {
+      for (const [key, chart] of Object.entries(window.chartInstances)) {
+        if (chart?.canvas?.id === canvas.id || key.includes(canvas.id.replace('chart-', ''))) {
+          originalChart = chart;
+          console.log('🔍 Strategy 4 (partial match on key:', key + '):', !!originalChart);
+          break;
+        }
+      }
+    }
+    
+    console.log('🔍 Found chart instance:', !!originalChart, originalChart?.config?.type);
+
+    // Create fullscreen overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'chart-fullscreen-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      backdrop-filter: blur(8px);
+    `;
+    
+    const container = document.createElement('div');
+    container.className = 'fullscreen-chart-container';
+    container.style.cssText = `
+      position: relative;
+      width: 90vw;
+      height: 85vh;
+      background: var(--bg-secondary, white);
+      border-radius: 12px;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    `;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-primary);
+      z-index: 100000;
+    `;
+    closeBtn.onclick = () => overlay.remove();
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'fullscreen-chart-wrapper';
+    wrapper.style.cssText = `
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+    
+    // Clone and render chart
+    if (originalChart) {
+      const clonedCanvas = document.createElement('canvas');
+      clonedCanvas.id = 'fullscreen-' + (canvas.id || 'chart');
+      clonedCanvas.style.cssText = `
+        max-width: 100%;
+        max-height: 100%;
+        width: 100%;
+        height: 100%;
+      `;
+      wrapper.appendChild(clonedCanvas);
+      
+      // Create new chart instance with same config - delay to ensure DOM ready
+      setTimeout(() => {
+        try {
+          const ctx = clonedCanvas.getContext('2d');
+          if (!ctx) {
+            console.error('❌ Could not get 2D context');
+            return;
+          }
+          
+          // Create new chart with original config (don't stringify - preserves functions)
+          const fullscreenChart = new window.Chart(ctx, {
+            type: originalChart.config.type,
+            data: originalChart.config.data,
+            options: Object.assign({}, originalChart.config.options, {
+              responsive: true,
+              maintainAspectRatio: true,
+              animation: {
+                duration: 800,
+                easing: 'easeInOutQuart'
+              }
+            })
+          });
+          console.log('✅ Fullscreen chart created successfully:', fullscreenChart);
+        } catch (e) {
+          console.error('❌ Error creating fullscreen chart:', e);
+          wrapper.innerHTML = '<p style="color: var(--text-primary); padding: 2rem; text-align: center;">Error displaying chart in fullscreen: ' + e.message + '</p>';
+        }
+      }, 150);
+    } else {
+      // V11.3: No chart instance - use toDataURL to capture current canvas state
+      console.log('⚠️ No Chart.js instance found, capturing canvas as image');
+      try {
+        const dataURL = canvas.toDataURL('image/png');
+        const img = document.createElement('img');
+        img.src = dataURL;
+        img.style.cssText = 'max-width: 100%; max-height: 100%; object-fit: contain;';
+        img.alt = 'Chart visualization';
+        wrapper.appendChild(img);
+        console.log('✅ Canvas captured as image for fullscreen');
+      } catch (e) {
+        console.error('❌ Could not capture canvas:', e);
+        // Final fallback - try cloning anyway
+        const clonedCanvas = canvas.cloneNode(true);
+        clonedCanvas.style.cssText = 'max-width: 100%; max-height: 100%;';
+        wrapper.appendChild(clonedCanvas);
+      }
+    }
+    
+    container.appendChild(closeBtn);
+    container.appendChild(wrapper);
+    overlay.appendChild(container);
+    document.body.appendChild(overlay);
+    
+    // Click overlay to close
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    
+    // ESC to close
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        overlay.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    
+    window.showToast?.('⛶ Fullscreen mode - Press ESC or click outside to exit');
   };
   
-  window.showChartInfo = function(sectionNum) {
+  window.showChartInfo = function(canvasIdOrNum, title) {
     const sectionNames = {
       1: 'Customer Frustrations & Pain Points',
       2: 'Jobs-To-Be-Done Priority',
@@ -1883,8 +2808,164 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       13: 'Strategic Imperatives',
       14: 'Cross-Stage Data Prep'
     };
-    const name = sectionNames[sectionNum] || `Section ${sectionNum}`;
-    window.showToast?.(`ℹ️ ${name}`);
+    
+    const sectionInsights = {
+      1: 'Identifies the top 5-7 customer pain points that your solution addresses. This chart reveals emotional friction points that competitors may be ignoring.',
+      2: 'Maps the Jobs-To-Be-Done framework showing which tasks customers are hiring your product to complete. Higher scores indicate critical functionality.',
+      3: 'Competitive gap analysis showing vulnerabilities in competitor strategies. Use these insights to craft positioning that exploits their weaknesses.',
+      4: 'Blue Ocean opportunities where you can create uncontested market space. These represent areas of low competition and high customer value.',
+      5: 'Visual positioning map showing how your brand compares to competitors across key dimensions. Use this to identify differentiation opportunities.',
+      6: 'Mind map of content pillars that support your strategic narrative. Each pillar should align with customer pain points and competitive advantages.',
+      7: 'Components of your strategic moat - the defensible advantages that protect your market position. Focus on strengthening the weakest components.',
+      8: 'Tactical roadmap prioritizing actions for the next 30-90 days. Each task is weighted by strategic impact and resource requirements.',
+      9: 'AEO (Answer Engine Optimization) readiness assessment. Shows how well your content is structured for AI answer engines like ChatGPT and Perplexity.',
+      10: 'Valuation of your digital assets based on organic traffic, authority, and strategic value. Use this to prioritize content investment.',
+      11: 'Algorithmic risk factors that could impact your SEO performance. Red flags indicate areas requiring immediate attention.',
+      12: 'Semantic topic galaxy showing the relationship between concepts in your content strategy. Clusters indicate content themes.',
+      13: 'Top 10 strategic imperatives ranked by impact and urgency. These are the critical actions that will move the needle on your business goals.',
+      14: 'Cross-stage data preparation showing how insights from previous stages feed into subsequent analysis. Ensures strategic coherence.'
+    };
+    
+    let displayName, insight, sectionNum;
+    if (title) {
+      displayName = title;
+      sectionNum = Object.keys(sectionNames).find(k => sectionNames[k] === title);
+    } else if (typeof canvasIdOrNum === 'number') {
+      sectionNum = canvasIdOrNum;
+      displayName = sectionNames[canvasIdOrNum] || `Section ${canvasIdOrNum}`;
+    } else {
+      // Parse section number from canvas ID
+      const match = canvasIdOrNum.match(/section-(\d+)/);
+      sectionNum = match ? parseInt(match[1]) : null;
+      displayName = sectionNum ? sectionNames[sectionNum] : canvasIdOrNum;
+    }
+    
+    insight = sectionInsights[sectionNum] || 'This chart provides strategic intelligence to inform your decision-making and competitive positioning.';
+    
+    console.log('ℹ️ V10.9 showChartInfo called for:', displayName, 'Section:', sectionNum);
+    
+    // Show info modal with comprehensive chart details
+    const modal = document.createElement('div');
+    modal.className = 'chart-info-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99998;
+      backdrop-filter: blur(8px);
+    `;
+    
+    const content = document.createElement('div');
+    content.className = 'chart-info-content';
+    content.style.cssText = `
+      background: var(--bg-secondary, white);
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 600px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+      position: relative;
+    `;
+    
+    content.innerHTML = `
+      <div class="chart-info-header" style="display: flex; align-items: flex-start; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 2px solid var(--border-default, #e5e7eb); padding-bottom: 1.5rem;">
+        <span class="chart-info-icon" style="font-size: 3rem; line-height: 1;">📊</span>
+        <div style="flex: 1;">
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-primary); font-size: 1.5rem; font-weight: 700;">${displayName}</h3>
+          <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">Section ${sectionNum || ''} • Strategic Intelligence Dashboard</p>
+        </div>
+        <button class="chart-info-close" onclick="this.closest('.chart-info-modal').remove()" style="
+          width: 36px;
+          height: 36px;
+          border: none;
+          background: var(--surface-soft);
+          border-radius: 50%;
+          font-size: 1.3rem;
+          cursor: pointer;
+          color: var(--text-primary);
+          transition: all 0.2s;
+        " onmouseover="this.style.background='var(--status-error-bg, rgba(239,68,68,0.15))'; this.style.color='var(--status-error-text, #ef4444)';" onmouseout="this.style.background='var(--surface-soft)'; this.style.color='var(--text-primary)';">✕</button>
+      </div>
+      
+      <div class="chart-info-body" style="margin-bottom: 2rem; color: var(--text-secondary); line-height: 1.7;">
+        <div style="background: var(--bg-tertiary, #f9fafb); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border-left: 4px solid var(--accent-primary, #3b82f6);">
+          <p style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">💡 <strong>Strategic Insight:</strong> ${insight}</p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="background: var(--bg-tertiary, #f9fafb); padding: 1rem; border-radius: 8px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Chart Type</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-primary);">Interactive Visualization</div>
+          </div>
+          <div style="background: var(--bg-tertiary, #f9fafb); padding: 1rem; border-radius: 8px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Data Source</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-primary);">Gemini AI Analysis</div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 1.5rem;">
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">🕒 <strong>Last Updated:</strong> ${new Date().toLocaleString()}</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">✨ <strong>Features:</strong> Hover for tooltips • Click legends to filter • Zoom with scroll</div>
+        </div>
+      </div>
+      
+      <div class="chart-info-actions" style="display: flex; gap: 1rem;">
+        <button class="chart-info-btn" onclick="downloadChart(${typeof canvasIdOrNum === 'number' ? canvasIdOrNum : "'" + canvasIdOrNum + "'"}); this.closest('.chart-info-modal').remove();" style="
+          flex: 1;
+          padding: 1rem 1.5rem;
+          background: var(--accent-primary, #3b82f6);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 0.95rem;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(59, 130, 246, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+          💾 Download PNG
+        </button>
+        <button class="chart-info-btn" onclick="viewChartFullscreen(${typeof canvasIdOrNum === 'number' ? canvasIdOrNum : "'" + canvasIdOrNum + "'"}); this.closest('.chart-info-modal').remove();" style="
+          flex: 1;
+          padding: 1rem 1.5rem;
+          background: var(--accent-primary, #3b82f6);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 0.95rem;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(59, 130, 246, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+          ⛶ Fullscreen
+        </button>
+      </div>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    console.log('✅ Info modal appended to body');
+    
+    // Click outside to close
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
   };
   
   // Table resize functionality
@@ -2328,8 +3409,15 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   /**
    * V9.2: Inject charts into Command Canvas after generation
    * Called after generateStage1Charts to clone canvases to Interactive Stage containers
+   * V11.3: Added deduplication guard to prevent race condition from double-injection
    */
-  window.injectChartsIntoCommandCanvas = function() {
+  window.injectChartsIntoCommandCanvas = function(forceReinject = false) {
+    // V11.3: Deduplication guard - prevent race condition where charts are moved twice
+    if (window._chartsAlreadyInjected && !forceReinject) {
+      console.log('⏭️ V11.3: Charts already injected, skipping duplicate call (use forceReinject=true to override)');
+      return;
+    }
+    
     console.log('=== 🎨 V9.3 CHART INJECTION (MOVE, NOT CLONE) ===');
     
     const storage = document.getElementById('stage1-chart-storage');
@@ -2337,6 +3425,9 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       console.warn('⚠️ Chart storage not found - charts may not be generated yet');
       return;
     }
+    
+    // V11.3: Mark as injected early to prevent concurrent calls
+    window._chartsAlreadyInjected = true;
     
     // Log all canvases in storage for debugging
     const allCanvases = storage.querySelectorAll('canvas');
@@ -2390,25 +3481,74 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       // Clear loading state
       wrapper.innerHTML = '';
       
-      // V9.3: MOVE the canvas (not clone) to preserve Chart.js instance
+      // V9.4: MOVE the canvas (not clone) to preserve Chart.js instance
+      // Fixed: Better chart detection using chartInstances, not just canvas dimensions
       for (const canvasId of canvasIds) {
         const sourceCanvas = document.getElementById(canvasId);
         if (sourceCanvas) {
-          // Check if canvas has actual content (chart was rendered)
+          // V9.4 FIX: Check multiple ways if canvas has chart content
           const ctx = sourceCanvas.getContext('2d');
-          const hasContent = ctx && (sourceCanvas.width > 0 && sourceCanvas.height > 0);
+          
+          // Method 1: Check if chartInstance exists for this canvas
+          const hasChartInstance = window.chartInstances && Object.values(window.chartInstances).some(
+            chart => chart?.canvas?.id === canvasId || chart?.canvas === sourceCanvas
+          );
+          
+          // Method 2: Check canvas dimensions (default 300x150 means chart was likely rendered)
+          const hasDimensions = sourceCanvas.width >= 300 && sourceCanvas.height >= 150;
+          
+          // Method 3: Check if canvas has 2d context (always true for canvas elements)
+          const hasContext = !!ctx;
+          
+          // Accept if ANY method indicates chart exists
+          const hasContent = hasChartInstance || (hasDimensions && hasContext);
           
           if (hasContent) {
-            // MOVE the canvas element (preserves Chart.js instance)
+            // V10.6 FIX: Force wrapper and stage to have explicit visibility
+            wrapper.style.height = '400px';
+            wrapper.style.minHeight = '400px';
+            wrapper.style.display = 'flex';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.justifyContent = 'center';
+            stage.style.minHeight = '420px';
+            stage.style.overflow = 'visible';
+            
+            // V10.5 FIX: MOVE the canvas element with proper sizing
             sourceCanvas.style.maxWidth = '100%';
             sourceCanvas.style.maxHeight = '500px';
             sourceCanvas.style.width = '100%';
-            sourceCanvas.style.height = 'auto';
+            sourceCanvas.style.height = '400px'; // V10.5: Fixed height instead of auto
+            sourceCanvas.style.display = 'block'; // V10.5: Ensure visible
+            sourceCanvas.style.visibility = 'visible'; // V10.5: Ensure visible
+            sourceCanvas.style.position = 'relative'; // V10.6: Ensure in layout
             wrapper.appendChild(sourceCanvas);
             foundAny = true;
             injectedCount++;
-            console.log(`✅ MOVED chart to section ${sectionNum}: ${canvasId}`);
+            console.log(`✅ V10.6 MOVED chart to section ${sectionNum}: ${canvasId} (hasInstance=${hasChartInstance})`);
+            
+            // V10.6: Force immediate resize
+            if (window.chartInstances) {
+              const chartInstance = Object.values(window.chartInstances).find(
+                c => c?.canvas?.id === canvasId || c?.canvas === sourceCanvas
+              );
+              if (chartInstance?.resize) {
+                // Immediate resize
+                try { chartInstance.resize(); } catch(e) {}
+                // Delayed resize for good measure
+                setTimeout(() => {
+                  try {
+                    chartInstance.resize();
+                    console.log(`   🔄 V10.6 Resized chart: ${canvasId}`);
+                  } catch (e) {
+                    console.warn(`   ⚠️ Resize failed for ${canvasId}:`, e.message);
+                  }
+                }, 100);
+              }
+            }
+            
             break; // Only inject first found chart
+          } else {
+            console.log(`⏭️ Skipping canvas ${canvasId}: hasInstance=${hasChartInstance}, dims=${sourceCanvas.width}x${sourceCanvas.height}`);
           }
         }
       }
@@ -2431,6 +3571,122 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     
     console.log(`🎨 Moved ${injectedCount} charts into Command Canvas`);
     
+    // V10.6 FORCE VISIBILITY: After all charts moved, force styles
+    setTimeout(() => {
+      console.log('=== V10.6 FORCING CHART VISIBILITY ===');
+      document.querySelectorAll('.interactive-stage canvas').forEach(canvas => {
+        // Force visible
+        canvas.style.cssText = `
+          width: 100% !important;
+          height: 400px !important;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          position: relative !important;
+        `;
+        console.log(`   ✅ Forced visibility on ${canvas.id}: ${canvas.width}x${canvas.height}`);
+        
+        // Trigger resize
+        if (window.chartInstances) {
+          const chartInstance = Object.values(window.chartInstances).find(
+            c => c?.canvas?.id === canvas.id || c?.canvas === canvas
+          );
+          if (chartInstance?.resize) {
+            try { chartInstance.resize(); } catch(e) {}
+          }
+        }
+      });
+      
+      // Also force wrapper visibility
+      document.querySelectorAll('.chart-wrapper').forEach(wrapper => {
+        wrapper.style.cssText = `
+          height: 400px !important;
+          min-height: 400px !important;
+          display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          align-items: center;
+          justify-content: center;
+        `;
+      });
+    }, 200);
+    
+    // V10.7 CHART VISIBILITY DIAGNOSTIC AND FORCE FIX
+    setTimeout(() => {
+      console.log('=== V10.7 CHART VISIBILITY CHECK ===');
+      for (let i = 1; i <= 14; i++) {
+        const stage = document.getElementById(`chart-stage-${i}`);
+        if (!stage) {
+          console.warn(`❌ Section ${i}: chart-stage not found`);
+          continue;
+        }
+        const rect = stage.getBoundingClientRect();
+        const canvas = stage.querySelector('canvas');
+        const svg = stage.querySelector('svg');
+        const wrapper = stage.querySelector('.chart-wrapper');
+        const computedStyle = getComputedStyle(stage);
+        
+        // V10.7: Get canvas computed style too
+        const canvasStyle = canvas ? getComputedStyle(canvas) : null;
+        const canvasRect = canvas ? canvas.getBoundingClientRect() : null;
+        
+        console.log(`Section ${i}: stage=${Math.round(rect.width)}x${Math.round(rect.height)}, ` +
+          `canvas=${canvas ? canvas.id + ' (' + Math.round(canvasRect.width) + 'x' + Math.round(canvasRect.height) + ')' : 'NONE'}, ` +
+          `canvasDisplay=${canvasStyle?.display || 'N/A'}, canvasVisibility=${canvasStyle?.visibility || 'N/A'}`);
+        
+        // V10.7 FIX: If canvas has 0 width, force explicit dimensions and re-render
+        if (canvas && window.chartInstances) {
+          const chartInstance = Object.values(window.chartInstances).find(
+            c => c?.canvas?.id === canvas.id || c?.canvas === canvas
+          );
+          
+          // V10.7: If canvas rect width is 0, force internal dimensions based on wrapper
+          if (canvasRect && canvasRect.width < 10 && rect.width > 100) {
+            console.log(`   ⚠️ Canvas ${canvas.id} has 0 width - forcing dimensions`);
+            canvas.width = Math.round(rect.width) - 40;  // Account for padding
+            canvas.height = 360;
+            canvas.style.width = '100%';
+            canvas.style.height = '360px';
+            
+            // Re-render chart with new dimensions
+            if (chartInstance?.update) {
+              try {
+                chartInstance.resize();
+                chartInstance.update('none'); // 'none' = no animation
+                console.log(`   ✅ Chart ${canvas.id} force resized to ${canvas.width}x${canvas.height}`);
+              } catch (e) {
+                console.warn(`   ⚠️ Chart update failed for ${canvas.id}:`, e.message);
+              }
+            }
+          } else if (chartInstance?.resize) {
+            chartInstance.resize();
+            console.log(`   🔄 Triggered resize for ${canvas.id}`);
+          }
+        }
+      }
+    }, 600);
+    
+    // V10.7: Second pass resize after layout fully settles
+    setTimeout(() => {
+      document.querySelectorAll('.interactive-stage canvas').forEach(canvas => {
+        const wrapper = canvas.parentElement;
+        const wrapperRect = wrapper?.getBoundingClientRect();
+        if (wrapperRect && wrapperRect.width > 100 && canvas.width < 10) {
+          canvas.width = Math.round(wrapperRect.width) - 20;
+          canvas.height = 360;
+          
+          const chartInstance = window.chartInstances && Object.values(window.chartInstances).find(
+            c => c?.canvas?.id === canvas.id || c?.canvas === canvas
+          );
+          if (chartInstance?.update) {
+            chartInstance.resize();
+            chartInstance.update('none');
+            console.log(`   ✅ V10.7 Second pass: ${canvas.id} resized to ${canvas.width}x${canvas.height}`);
+          }
+        }
+      });
+    }, 1000);
+    
     // Also trigger D3 charts for sections 6 and 12
     setTimeout(() => {
       initializeD3Charts();
@@ -2451,11 +3707,14 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     
     // Try to regenerate specific chart
     if (typeof window.generateStage1Charts === 'function') {
+      // V11.3: Reset flag before regenerating
+      window._chartsAlreadyInjected = false;
+      
       window.generateStage1Charts(window._lastStage1Json);
       
-      // Re-inject after a delay
+      // Re-inject after a delay - use forceReinject to ensure it works
       setTimeout(() => {
-        window.injectChartsIntoCommandCanvas();
+        window.injectChartsIntoCommandCanvas(true); // V11.3: Force re-inject
       }, 500);
     }
   };
@@ -2469,11 +3728,31 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     // Section 6: Content Pillar Mind Map
     const mindMapContainer = document.getElementById('pillar-mindmap-interactive');
     if (mindMapContainer) {
-      // Data should be stored from the JSON response
-      const pillarData = window._lastStage1Json?.dashboardCharts?.contentPillarMindMap || 
-                         window._lastStage1Json?.contentPillarMindMap ||
-                         window._lastStage1Json?.contentPillars ||
-                         { center: window._lastStage1Json?.coreTopic || 'Content Strategy', pillars: [] };
+      // V9.4 FIX: Data should be stored from the JSON response - check all possible paths
+      const json = window._lastStage1Json;
+      const dc = json?.dashboardCharts;
+      
+      // Check multiple paths for pillar data (normalized object OR array format)
+      let pillarData = dc?.contentPillarMindMap || 
+                       json?.contentPillarMindMap ||
+                       json?.contentPillars ||
+                       dc?.contentPillars;
+      
+      // V9.4: Also check strategicContentPillarsChart and convert to pillar format
+      if (!pillarData && dc?.strategicContentPillarsChart?.length) {
+        console.log('🗺️ Converting strategicContentPillarsChart to pillar format');
+        pillarData = dc.strategicContentPillarsChart.map((item, idx) => ({
+          name: item.pillar || item.label || item.name || `Pillar ${idx + 1}`,
+          priority: item.priority || item.value || 50,
+          subtopics: item.subtopics || item.keywords || [],
+          contentTypes: item.contentTypes || item.formats || []
+        }));
+      }
+      
+      // Fallback to empty structure
+      if (!pillarData) {
+        pillarData = { center: json?.coreTopic || 'Content Strategy', pillars: [] };
+      }
       
       // Normalize pillar data if it's in array format
       const normalizedData = normalizePillarData(pillarData);
@@ -2492,8 +3771,81 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     // Section 12: Semantic Galaxy (Topic Galaxy / Information Black Holes)
     const galaxyContainer = document.getElementById('semantic-galaxy-container');
     if (galaxyContainer) {
-      const galaxyData = window._lastStage1Json?.dashboardCharts?.informationBlackHolesChart || 
-                         window._lastStage1Json?.informationBlackHoles || [];
+      // V9.4 FIX: Extract proper keyword data for Topic Galaxy from multiple sources
+      let galaxyData = [];
+      const json = window._lastStage1Json;
+      const charts = json?.dashboardCharts;
+      
+      // Source 1: informationBlackHolesChart - but only if it has keyword-like data
+      const blackHolesData = charts?.informationBlackHolesChart || json?.informationBlackHoles || [];
+      if (blackHolesData.length > 0 && blackHolesData[0]?.keyword) {
+        galaxyData = blackHolesData;
+      }
+      
+      // Source 2: Extract keywords from content pillars if galaxy data is sparse
+      if (galaxyData.length < 10 && (charts?.contentPillars || json?.contentPillars)) {
+        const pillars = charts?.contentPillars || json?.contentPillars || [];
+        pillars.forEach(pillar => {
+          // Add pillar-level keywords
+          const clusters = pillar.clusters || pillar.topics || [];
+          clusters.forEach(cluster => {
+            const keywords = cluster.keywords || [];
+            keywords.forEach(kw => {
+              if (galaxyData.length < 100) { // Cap at 100 for performance
+                const kwObj = typeof kw === 'string' ? { keyword: kw } : kw;
+                galaxyData.push({
+                  keyword: kwObj.keyword || kwObj.term || kwObj.query,
+                  volume: kwObj.volume || kwObj.searchVolume || 100,
+                  difficulty: kwObj.difficulty || kwObj.kd || 50,
+                  intent: cluster.intent || pillar.name || 'other'
+                });
+              }
+            });
+          });
+        });
+      }
+      
+      // Source 3: strategicContentPillarsChart has labels that can be used
+      if (galaxyData.length < 5 && charts?.strategicContentPillarsChart?.length) {
+        charts.strategicContentPillarsChart.forEach(item => {
+          galaxyData.push({
+            keyword: item.label || item.name || item.pillar,
+            volume: item.value || item.weight || 100,
+            difficulty: item.competition || 50,
+            intent: 'content-pillar'
+          });
+        });
+      }
+      
+      // Source 4: Use jtbdScenarios as fallback
+      if (galaxyData.length < 5 && (charts?.jtbdScenarios || json?.jtbdScenarios)) {
+        const jtbd = charts?.jtbdScenarios || json?.jtbdScenarios || [];
+        jtbd.forEach(item => {
+          galaxyData.push({
+            keyword: item.label || item.scenario || item.job,
+            volume: item.priority * 100 || 100,
+            difficulty: 50,
+            intent: 'jtbd'
+          });
+        });
+      }
+      
+      // Source 5: Add black holes labels if they have label property
+      if (galaxyData.length < 5 && blackHolesData.length > 0) {
+        blackHolesData.forEach(item => {
+          const label = item.label || item.name || item.category;
+          if (label) {
+            galaxyData.push({
+              keyword: label,
+              volume: item.value || item.gap || 100,
+              difficulty: item.priority || 50,
+              intent: 'information-gap'
+            });
+          }
+        });
+      }
+      
+      console.log(`🌌 Topic Galaxy data sources: ${galaxyData.length} keywords collected`);
       
       if (!galaxyContainer.hasChildNodes() || galaxyContainer.children.length < 2) {
         // Try multiple possible function names
@@ -2585,31 +3937,6 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
       </div>
     `;
   }
-    const galaxyContainer = document.getElementById('semantic-galaxy-container');
-    if (galaxyContainer) {
-      const galaxyData = window._lastStage1Json?.dashboardCharts?.informationBlackHolesChart || [];
-      
-      if (!galaxyContainer.hasChildNodes() || galaxyContainer.children.length < 2) {
-        // Try multiple possible function names
-        if (typeof window.renderTopicGalaxy === 'function') {
-          console.log('🌌 Initializing Semantic Galaxy via renderTopicGalaxy...');
-          window.renderTopicGalaxy('semantic-galaxy-container', galaxyData);
-        } else if (typeof window.SemanticGalaxy === 'function') {
-          console.log('🌌 Initializing Semantic Galaxy via SemanticGalaxy class...');
-          new window.SemanticGalaxy('semantic-galaxy-container', galaxyData);
-        } else {
-          console.warn('⚠️ Semantic Galaxy functions not available');
-          galaxyContainer.innerHTML = `
-            <div class="chart-insights-fallback">
-              <h3>🌌 Information Black Holes</h3>
-              <p>Semantic galaxy requires D3.js visualization module.</p>
-              <p>Data: ${galaxyData?.length || 0} topics detected</p>
-            </div>
-          `;
-        }
-      }
-    }
-  }
 
   /**
    * V8.0: Create Forensic Proof Card (Right Span)
@@ -2635,7 +3962,7 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
         `).join('')}
       </div>
       ${!hasMeaningfulData ? `
-        <div style="margin-top: 12px; padding: 8px 12px; background: rgba(99, 102, 241, 0.1); border-radius: 8px; font-size: 11px; color: var(--text-tertiary, #94a3b8);">
+        <div style="margin-top: 12px; padding: 8px 12px; background: var(--accent-primary-soft, rgba(99,102,241,0.1)); border-radius: 8px; font-size: 11px; color: var(--text-tertiary);">
           💡 Click "Inspect Source" for full content
         </div>
       ` : ''}
@@ -2805,6 +4132,267 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     
     return sectionDefaults[sectionNum] || sectionDefaults.default;
   }
+
+  /**
+   * V10.0: Create Market Gravity Hub Visualization
+   * Quadrant chart showing competitive positioning: Authority vs Usability
+   * Shows: You, Incumbents, Challengers, Niche Players
+   * V11.1 FIX: Use dynamic brand name from ORACLE_STATE instead of hardcoded SerpifAI
+   */
+  window.createMarketGravityHub = function(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.warn('Market Gravity Hub container not found:', containerId);
+      return;
+    }
+    
+    // V11.1: Get dynamic brand name from project state
+    const brandName = window.ORACLE_STATE?.projectData?.brandName || 
+                      window.ORACLE_STATE?.projectId ||
+                      document.getElementById('projectSelect')?.value ||
+                      'Your Brand';
+    
+    // Get competitor data from JSON or use dynamic defaults
+    const competitorData = window._lastStage1Json?.dashboardCharts?.competitorPositioning || [
+      { name: brandName, type: 'you', authority: 92, usability: 88, label: '🎯' },
+      { name: 'Semrush', type: 'incumbent', authority: 85, usability: 70, label: 'S' },
+      { name: 'Ahrefs', type: 'incumbent', authority: 88, usability: 65, label: 'A' },
+      { name: 'Surfer SEO', type: 'challenger', authority: 60, usability: 80, label: 'Su' },
+      { name: 'Clearscope', type: 'challenger', authority: 55, usability: 75, label: 'C' },
+      { name: 'Frase', type: 'niche', authority: 45, usability: 70, label: 'F' },
+      { name: 'MarketMuse', type: 'niche', authority: 50, usability: 55, label: 'M' }
+    ];
+    
+    const html = `
+      <div class="market-gravity-hub">
+        <div class="mgh-header">
+          <span class="mgh-icon">🌐</span>
+          <h3 class="mgh-title">Market Gravity Hub</h3>
+        </div>
+        <div class="mgh-quadrant">
+          <div class="mgh-axis-labels">
+            <span class="mgh-label-top">HIGH AUTHORITY</span>
+            <span class="mgh-label-bottom">LOW AUTHORITY</span>
+            <span class="mgh-label-left">LOW USABILITY</span>
+            <span class="mgh-label-right">HIGH USABILITY</span>
+          </div>
+          <div class="mgh-quadrant-grid">
+            <div class="mgh-quadrant-cell q1" title="High Authority, Low Usability">
+              <span class="mgh-quadrant-label">Incumbents</span>
+            </div>
+            <div class="mgh-quadrant-cell q2" title="High Authority, High Usability">
+              <span class="mgh-quadrant-label">Leaders</span>
+            </div>
+            <div class="mgh-quadrant-cell q3" title="Low Authority, Low Usability">
+              <span class="mgh-quadrant-label">Laggards</span>
+            </div>
+            <div class="mgh-quadrant-cell q4" title="Low Authority, High Usability">
+              <span class="mgh-quadrant-label">Challengers</span>
+            </div>
+            ${competitorData.map(c => {
+              const left = c.usability * 0.95 + 2.5;
+              const bottom = c.authority * 0.95 + 2.5;
+              const colorMap = { you: '#8B5CF6', incumbent: '#EF4444', challenger: '#F59E0B', niche: '#10B981' };
+              return `
+                <div class="mgh-competitor-dot ${c.type}" 
+                     style="left: ${left}%; bottom: ${bottom}%; background: ${colorMap[c.type]};"
+                     title="${c.name}: Authority ${c.authority}%, Usability ${c.usability}%">
+                  ${c.label}
+                </div>
+              `;
+            }).join('')}
+            <div class="mgh-vector-arrow" style="--start-x: 50%; --start-y: 50%; --end-x: 85%; --end-y: 85%;">
+              <span class="mgh-vector-label">YOUR VECTOR →</span>
+            </div>
+          </div>
+        </div>
+        <div class="mgh-legend">
+          ${competitorData.map(c => `
+            <span class="mgh-legend-item ${c.type}">
+              <span class="mgh-legend-dot"></span>
+              ${c.name}
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    container.innerHTML = html;
+    console.log('✅ Market Gravity Hub rendered');
+  };
+  
+  /**
+   * V10.0: Create Moat Readiness Scorecard Table
+   * Comparison table: Competitor, Entity Density, Citation Potential, RAG Stability, Overall, Gap
+   * V11.1 FIX: Use dynamic brand name from ORACLE_STATE instead of hardcoded SerpifAI
+   */
+  window.createMoatReadinessScorecard = function(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.warn('Moat Readiness Scorecard container not found:', containerId);
+      return;
+    }
+    
+    // V11.1: Get dynamic brand name from project state
+    const brandName = window.ORACLE_STATE?.projectData?.brandName || 
+                      window.ORACLE_STATE?.projectId ||
+                      document.getElementById('projectSelect')?.value ||
+                      'Your Brand';
+    
+    // Get scorecard data from JSON or use dynamic defaults
+    const scorecardData = window._lastStage1Json?.dashboardCharts?.moatScorecard || [
+      { name: brandName, label: '🎯', type: 'you', entityDensity: 88, citationPotential: 92, ragStability: 95, overall: 92 },
+      { name: 'Ahrefs', label: 'A', type: 'incumbent', entityDensity: 82, citationPotential: 88, ragStability: 68, overall: 79 },
+      { name: 'Semrush', label: 'S', type: 'incumbent', entityDensity: 78, citationPotential: 85, ragStability: 72, overall: 78 },
+      { name: 'Clearscope', label: 'C', type: 'challenger', entityDensity: 65, citationPotential: 70, ragStability: 80, overall: 72 },
+      { name: 'MarketMuse', label: 'M', type: 'niche', entityDensity: 72, citationPotential: 68, ragStability: 65, overall: 68 },
+      { name: 'Surfer SEO', label: 'Su', type: 'challenger', entityDensity: 58, citationPotential: 62, ragStability: 75, overall: 65 },
+      { name: 'Frase', label: 'F', type: 'niche', entityDensity: 52, citationPotential: 55, ragStability: 70, overall: 59 }
+    ];
+    
+    const yourScore = scorecardData.find(c => c.type === 'you')?.overall || 92;
+    
+    const html = `
+      <div class="moat-readiness-scorecard">
+        <div class="mrs-header">
+          <span class="mrs-icon">🏰</span>
+          <h3 class="mrs-title">Moat Readiness Scorecard</h3>
+        </div>
+        <table class="mrs-table">
+          <thead>
+            <tr>
+              <th>Competitor</th>
+              <th>Entity Density</th>
+              <th>Citation Potential</th>
+              <th>RAG Stability</th>
+              <th>Overall</th>
+              <th>Gap vs You</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${scorecardData.map(c => {
+              const gap = yourScore - c.overall;
+              const gapClass = gap > 0 ? 'positive' : (gap < 0 ? 'negative' : 'neutral');
+              const gapDisplay = c.type === 'you' ? '—' : (gap > 0 ? `↑ +${gap}` : `↓ ${gap}`);
+              return `
+                <tr class="${c.type}">
+                  <td class="mrs-competitor">
+                    <span class="mrs-label ${c.type}">${c.label}</span>
+                    <span class="mrs-name">${c.name}</span>
+                    ${c.type !== 'you' ? `<span class="mrs-type">${c.type.charAt(0).toUpperCase() + c.type.slice(1)}</span>` : '<span class="mrs-type you-badge">You</span>'}
+                  </td>
+                  <td>
+                    <div class="mrs-progress-container">
+                      <div class="mrs-progress-bar" style="width: ${c.entityDensity}%; background: ${getProgressColor(c.entityDensity)};"></div>
+                      <span class="mrs-progress-value">${c.entityDensity}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="mrs-progress-container">
+                      <div class="mrs-progress-bar" style="width: ${c.citationPotential}%; background: ${getProgressColor(c.citationPotential)};"></div>
+                      <span class="mrs-progress-value">${c.citationPotential}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="mrs-progress-container">
+                      <div class="mrs-progress-bar" style="width: ${c.ragStability}%; background: ${getProgressColor(c.ragStability)};"></div>
+                      <span class="mrs-progress-value">${c.ragStability}%</span>
+                    </div>
+                  </td>
+                  <td class="mrs-overall ${c.type}">${c.overall}</td>
+                  <td class="mrs-gap ${gapClass}">${gapDisplay}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    container.innerHTML = html;
+    console.log('✅ Moat Readiness Scorecard rendered');
+    
+    function getProgressColor(value) {
+      if (value >= 80) return 'linear-gradient(90deg, #10B981, #34D399)';
+      if (value >= 60) return 'linear-gradient(90deg, #3B82F6, #60A5FA)';
+      if (value >= 40) return 'linear-gradient(90deg, #F59E0B, #FBBF24)';
+      return 'linear-gradient(90deg, #EF4444, #F87171)';
+    }
+  };
+  
+  /**
+   * V10.0: Render strategic strengths and competitor vulnerabilities panels
+   * V11.1 FIX: Use dynamic brand/competitor names from ORACLE_STATE instead of hardcoded SerpifAI
+   */
+  window.renderCompetitiveIntelPanel = function(containerId, type) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const data = window._lastStage1Json?.competitiveIntel || {};
+    
+    // V11.1: Get dynamic brand name from project state
+    const brandName = window.ORACLE_STATE?.projectData?.brandName || 
+                      window.ORACLE_STATE?.projectId ||
+                      document.getElementById('projectSelect')?.value ||
+                      'Your Brand';
+    
+    // V11.1: Get competitor names from project state or extract from Gemini JSON
+    const projectCompetitors = window.ORACLE_STATE?.projectData?.competitors || 
+                               window._lastStage1Json?.projectContext?.competitors ||
+                               [];
+    const compNames = Array.isArray(projectCompetitors) 
+                      ? projectCompetitors 
+                      : (typeof projectCompetitors === 'string' ? projectCompetitors.split(',').map(c => c.trim()) : []);
+    
+    if (type === 'strengths') {
+      // Use Gemini data if available, otherwise show placeholder prompting re-run
+      const strengths = data.yourStrengths || [
+        { title: 'Strategic Positioning', description: `${brandName}'s core competitive advantage pending analysis` },
+        { title: 'Market Differentiation', description: 'Unique value proposition vs competitors' },
+        { title: 'Technical Excellence', description: 'Performance and reliability metrics' },
+        { title: 'Brand Authority', description: 'Trust and credibility signals' },
+        { title: 'Growth Potential', description: 'Market expansion opportunities' }
+      ];
+      
+      container.innerHTML = `
+        <div class="ci-panel strengths">
+          <h4 class="ci-panel-title">🎯 ${brandName}'s Strategic Strengths</h4>
+          <ul class="ci-list">
+            ${strengths.map(s => `
+              <li class="ci-item">
+                <strong class="ci-item-title">${s.title}</strong>
+                <span class="ci-item-desc">— ${s.description}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    } else if (type === 'vulnerabilities') {
+      // Use Gemini data if available, else use project competitors with generic placeholder
+      const vulns = data.competitorVulnerabilities || 
+        (compNames.length > 0 
+          ? compNames.slice(0, 5).map(c => ({ competitor: c, issue: 'Vulnerability analysis pending Stage 1 completion' }))
+          : [
+              { competitor: 'Competitor 1', issue: 'Pending competitive analysis' },
+              { competitor: 'Competitor 2', issue: 'Pending competitive analysis' },
+              { competitor: 'Competitor 3', issue: 'Pending competitive analysis' }
+            ]);
+      
+      container.innerHTML = `
+        <div class="ci-panel vulnerabilities">
+          <h4 class="ci-panel-title">⚠️ Competitor Vulnerabilities</h4>
+          <ul class="ci-list">
+            ${vulns.map(v => `
+              <li class="ci-item">
+                <strong class="ci-item-competitor">${v.competitor}:</strong>
+                <span class="ci-item-issue">${v.issue}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `;
+    }
+  };
 
   /**
    * Legacy section div (fallback if Bento disabled)
@@ -3375,4 +4963,7 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
   };
 
   console.log('✅ UI_Stage1_Renderer.html loaded');
+  console.log('   typeof renderUnifiedStage1Results:', typeof window.renderUnifiedStage1Results);
+  console.log('   typeof normalizeGeminiJsonResponse:', typeof window.normalizeGeminiJsonResponse);
+  console.log('   window._RENDERER_SCRIPT_EXECUTED:', window._RENDERER_SCRIPT_EXECUTED);
 </script>

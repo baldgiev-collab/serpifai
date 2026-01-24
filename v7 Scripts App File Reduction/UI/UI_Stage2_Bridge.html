@@ -1,0 +1,627 @@
+<!--
+  UI_Stage2_Bridge.html
+  🔗 FORENSIC DATA BRIDGE: Stage 1 → Stage 2 Auto-Population
+  Part of V12.0 Strategic Intelligence Pipeline
+  
+  MISSION: Automatically populate ALL 10 Stage 2 input fields from Stage 1 results
+  - Detects when Stage 1 completes
+  - Maps forensicBridge → Stage 2 input IDs (10 fields)
+  - Applies .field-notarized styling
+  - Displays read-only context banners
+  - V12.0: Enhanced extraction from all 18 dashboard charts
+  - V12.0: Pillar/cluster extraction for keywords
+  - V12.0: Comprehensive logging for debugging
+  
+  Dependencies:
+  - UI_Stage_Runner.html (caches forensicBridge to ORACLE_STATE)
+  - UI_Components_Workflow.html (Stage 2 field IDs)
+  - UI_Styles_Command_Canvas.html (.field-notarized CSS)
+  
+  V12.0 FIXES:
+  - Fixed chart key mismatches (blueOceanOpportunitiesChart, customerFrustrationsChart)
+  - Enhanced allItems() helper with nested array support
+  - Added extractAllClusters() for pillar→cluster→keyword extraction
+  - Added comprehensive field population logging
+  - Added validation before field population
+-->
+<script>
+  console.log('🔗 UI_Stage2_Bridge.html V12.0 loading...');
+  
+  /**
+   * Stage 2 Field Mapping
+   * Maps forensicBridge keys to Stage 2 input element IDs
+   */
+  const STAGE2_FIELD_MAP = {
+    'coreStrategicQuestion': 'coreStrategicQuestion',
+    'thesis': 'thesis',
+    'antithesis': 'antithesis',
+    'keyMarketData': 'keyMarketData',
+    'categoryDefinition': 'categoryDefinition',
+    's2_coreMarketProblem': 's2_coreMarketProblem',
+    's2_futureVision': 's2_futureVision',
+    'primaryKeyword': 'primaryKeyword',
+    'secondaryKeywords': 'secondaryKeywords',
+    'keywordsEntities': 'keywordsEntities'
+  };
+  
+  /**
+   * Initialize the Forensic Data Bridge listener
+   * Watches for Stage 1 completion and auto-populates Stage 2
+   */
+  window.initForensicBridge = function() {
+    console.log('🔗 Forensic Bridge: Initializing listener...');
+    
+    // Check if bridge data already exists (page reload after Stage 1)
+    if (window.ORACLE_STATE?.forensicBridge) {
+      console.log('🔗 Forensic Bridge: Found cached data, applying...');
+      applyForensicBridge(window.ORACLE_STATE.forensicBridge);
+    }
+    
+    // Watch for Stage 1 completion
+    const originalDisplayStageResults = window.displayStageResults;
+    if (typeof originalDisplayStageResults === 'function') {
+      window.displayStageResults = function(stageNum, result) {
+        // Call original function first
+        originalDisplayStageResults.call(this, stageNum, result);
+        
+        // If Stage 1 completed, check for forensicBridge
+        if (stageNum === 1 && result?.success && result?.forensicBridge) {
+          console.log('🔗 Forensic Bridge: Stage 1 complete, applying bridge data...');
+          
+          // Cache to ORACLE_STATE for persistence
+          window.ORACLE_STATE = window.ORACLE_STATE || {};
+          window.ORACLE_STATE.forensicBridge = result.forensicBridge;
+          
+          // Apply the bridge
+          applyForensicBridge(result.forensicBridge);
+        }
+      };
+      console.log('🔗 Forensic Bridge: Hooked into displayStageResults');
+    }
+    
+    // Also hook into runStage success handler (backup)
+    document.addEventListener('stage1Complete', function(e) {
+      if (e.detail?.forensicBridge) {
+        console.log('🔗 Forensic Bridge: Received stage1Complete event');
+        applyForensicBridge(e.detail.forensicBridge);
+      }
+    });
+  };
+  
+  /**
+   * V12.0: Apply the Forensic Data Bridge to Stage 2 fields
+   * Enhanced with comprehensive logging and validation
+   * @param {Object} bridge - The forensicBridge object from Stage 1
+   */
+  function applyForensicBridge(bridge) {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔗 FORENSIC BRIDGE APPLICATION (V12.0)');
+    console.log('═══════════════════════════════════════════════════════');
+    
+    if (!bridge) {
+      console.error('🔗 Forensic Bridge: Bridge object is null/undefined');
+      return { success: false, error: 'No bridge data', fieldsPopulated: 0 };
+    }
+    
+    if (!bridge.autoPopulation) {
+      console.error('🔗 Forensic Bridge: Missing autoPopulation property');
+      console.log('   Bridge keys:', Object.keys(bridge).join(', '));
+      return { success: false, error: 'Invalid bridge structure', fieldsPopulated: 0 };
+    }
+    
+    console.log('   Bridge version:', bridge._meta?.version || 'unknown');
+    console.log('   Source:', bridge._meta?.source || 'unknown');
+    console.log('   Fields in bridge:', Object.keys(bridge.autoPopulation).length);
+    
+    let fieldsPopulated = 0;
+    let fieldsSkipped = 0;
+    let fieldsMissing = 0;
+    const populationLog = [];
+    
+    // Populate auto-population fields
+    const autoPopulation = bridge.autoPopulation;
+    for (const [key, data] of Object.entries(autoPopulation)) {
+      const fieldId = STAGE2_FIELD_MAP[key];
+      if (!fieldId) {
+        console.warn(`   ⚠️ No field mapping for key: ${key}`);
+        continue;
+      }
+      
+      // V12.0: Validate field exists before setting
+      const element = document.getElementById(fieldId);
+      if (!element) {
+        console.warn(`   ❌ Field not found in DOM: ${fieldId}`);
+        fieldsMissing++;
+        populationLog.push({ field: fieldId, status: 'MISSING', value: null });
+        continue;
+      }
+      
+      // Get value (handle both string and object formats)
+      const value = typeof data === 'object' ? data.value : data;
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        console.log(`   ⚪ ${fieldId}: (empty value, skipping)`);
+        fieldsSkipped++;
+        populationLog.push({ field: fieldId, status: 'EMPTY', value: null });
+        continue;
+      }
+      
+      // V12.0: Set the value with validation
+      const truncatedValue = value.length > 60 ? value.substring(0, 60) + '...' : value;
+      try {
+        element.value = value;
+        
+        // Apply notarized styling
+        const fieldContainer = element.closest('.field');
+        if (fieldContainer && data.notarized) {
+          fieldContainer.classList.add('field-notarized');
+          fieldContainer.setAttribute('data-source-section', 
+            Array.isArray(data.sourceSection) ? data.sourceSection.join(',') : String(data.sourceSection)
+          );
+        }
+        
+        fieldsPopulated++;
+        console.log(`   ✅ ${fieldId}: "${truncatedValue}" (Section ${data.sourceSection})`);
+        populationLog.push({ field: fieldId, status: 'OK', value: truncatedValue });
+      } catch (err) {
+        console.error(`   ❌ Error setting ${fieldId}:`, err.message);
+        populationLog.push({ field: fieldId, status: 'ERROR', value: err.message });
+      }
+    }
+    
+    console.log('───────────────────────────────────────────────────────');
+    console.log(`   RESULT: ${fieldsPopulated}/10 fields populated`);
+    console.log(`           ${fieldsSkipped} empty, ${fieldsMissing} missing`);
+    console.log('═══════════════════════════════════════════════════════');
+    
+    // Show the context banner
+    showContextBanner(bridge.strategicContext);
+    
+    // Unlock Stage 2 panel if locked
+    unlockStage2();
+    
+    // V12.0: Show toast with detailed result
+    const resultText = fieldsPopulated === 10 
+      ? `🔗 All 10 fields auto-populated from Stage 1` 
+      : `🔗 ${fieldsPopulated}/10 fields auto-populated from Stage 1`;
+    window.showToast?.(resultText);
+    
+    // V12.0: Return result for programmatic access
+    return {
+      success: true,
+      fieldsPopulated,
+      fieldsSkipped,
+      fieldsMissing,
+      populationLog
+    };
+  }
+  
+  /**
+   * Show the read-only context banner with Stage 1 strategic context
+   * @param {Object} context - strategicContext from forensicBridge
+   */
+  function showContextBanner(context) {
+    if (!context) return;
+    
+    const banner = document.getElementById('s2-bridge-banner');
+    if (!banner) {
+      console.warn('🔗 Forensic Bridge: Banner element not found');
+      return;
+    }
+    
+    // Populate banner content
+    const audienceEl = document.getElementById('s2-audience-banner');
+    const goalEl = document.getElementById('s2-goal-banner');
+    
+    if (audienceEl && context.targetAudience) {
+      audienceEl.textContent = truncateText(context.targetAudience, 100);
+      audienceEl.title = context.targetAudience; // Full text on hover
+    }
+    
+    if (goalEl && context.businessGoal) {
+      goalEl.textContent = truncateText(context.businessGoal, 100);
+      goalEl.title = context.businessGoal;
+    }
+    
+    // Show the banner
+    banner.style.display = 'block';
+    console.log('🔗 Forensic Bridge: Context banner displayed');
+  }
+  
+  /**
+   * Unlock Stage 2 panel after Stage 1 completion
+   */
+  function unlockStage2() {
+    const stage2Panel = document.querySelector('.stage-panel[data-stage="2"]');
+    if (stage2Panel && stage2Panel.classList.contains('locked')) {
+      stage2Panel.classList.remove('locked');
+      
+      // Enable run button
+      const runBtn = stage2Panel.querySelector('.btn-run-stage');
+      if (runBtn) runBtn.disabled = false;
+      
+      // Remove lock icon
+      const lockIcon = stage2Panel.querySelector('.stage-lock-icon');
+      if (lockIcon) lockIcon.style.display = 'none';
+      
+      console.log('🔗 Forensic Bridge: Stage 2 unlocked');
+    }
+  }
+  
+  /**
+   * Helper: Truncate text with ellipsis
+   */
+  function truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + '...';
+  }
+  
+  /**
+   * Clear the Forensic Bridge (for project switch or reset)
+   */
+  window.clearForensicBridge = function() {
+    console.log('🔗 Forensic Bridge: Clearing...');
+    
+    // Clear field values and styling
+    for (const fieldId of Object.values(STAGE2_FIELD_MAP)) {
+      const element = document.getElementById(fieldId);
+      if (element) {
+        element.value = '';
+        const fieldContainer = element.closest('.field');
+        if (fieldContainer) {
+          fieldContainer.classList.remove('field-notarized');
+          fieldContainer.removeAttribute('data-source-section');
+        }
+      }
+    }
+    
+    // Hide banner
+    const banner = document.getElementById('s2-bridge-banner');
+    if (banner) banner.style.display = 'none';
+    
+    // Clear cache
+    if (window.ORACLE_STATE) {
+      delete window.ORACLE_STATE.forensicBridge;
+    }
+    
+    console.log('🔗 Forensic Bridge: Cleared');
+  };
+  
+  /**
+   * Manual trigger to apply bridge from ORACLE_STATE
+   * Useful for debugging or manual refresh
+   */
+  window.applyForensicBridgeManual = function() {
+    if (window.ORACLE_STATE?.forensicBridge) {
+      applyForensicBridge(window.ORACLE_STATE.forensicBridge);
+      return true;
+    }
+    console.warn('🔗 Forensic Bridge: No cached bridge data found');
+    // Try fallback synthesis
+    return synthesizeForensicBridge();
+  };
+  
+  /**
+   * V12.0: Synthesize forensicBridge from Stage 1 JSON if not explicitly provided
+   * ENHANCED: Better extraction from all available dashboardCharts data with nested cluster support
+   * Fallback for when the dedicated forensicBridge field isn't in the database
+   */
+  function synthesizeForensicBridge() {
+    console.log('🔗 Forensic Bridge V12.0: Attempting to synthesize from Stage 1 JSON...');
+    
+    const stage1 = window.ORACLE_STATE?.stage1_results;
+    if (!stage1) {
+      console.warn('🔗 Forensic Bridge: No Stage 1 results available for synthesis');
+      return false;
+    }
+    
+    const json = stage1.json || {};
+    const dc = json.dashboardCharts || json;
+    
+    // V12.0: Helper: get first item from array with property (handles nested objects)
+    function firstItem(arr, prop) {
+      if (!arr || !Array.isArray(arr) || arr.length === 0) return '';
+      const item = arr[0];
+      if (!prop) return typeof item === 'string' ? item : '';
+      // Handle nested property access (e.g., 'clusters.clusterName')
+      const props = prop.split('.');
+      let value = item;
+      for (const p of props) {
+        if (!value) return '';
+        value = value[p];
+      }
+      return typeof value === 'string' ? value : '';
+    }
+    
+    // V12.0: Enhanced helper: get all items from array with recursive extraction
+    function allItems(arr, prop, limit = 10) {
+      if (!arr || !Array.isArray(arr)) return '';
+      const results = [];
+      
+      for (const item of arr.slice(0, limit)) {
+        if (!prop) {
+          if (typeof item === 'string') results.push(item);
+          continue;
+        }
+        
+        const value = item[prop];
+        if (typeof value === 'string' && value.length > 0) {
+          results.push(value);
+        } else if (Array.isArray(value)) {
+          // Handle nested arrays (e.g., pillar.clusters or pillar.keywords)
+          value.forEach(subItem => {
+            if (typeof subItem === 'string') results.push(subItem);
+            else if (subItem?.name) results.push(subItem.name);
+            else if (subItem?.clusterName) results.push(subItem.clusterName);
+            else if (subItem?.keyword) results.push(subItem.keyword);
+          });
+        }
+      }
+      
+      return results.filter(Boolean).slice(0, limit).join(', ');
+    }
+    
+    // V12.0: Helper: extract all clusters from pillars (pillar → clusters → clusterName)
+    function extractAllClusters(pillarsArr, limit = 30) {
+      if (!pillarsArr || !Array.isArray(pillarsArr)) return '';
+      const clusters = [];
+      
+      for (const pillar of pillarsArr) {
+        // Add pillar name
+        if (pillar.pillarName) clusters.push(pillar.pillarName);
+        if (pillar.name) clusters.push(pillar.name);
+        
+        // Add cluster names
+        if (Array.isArray(pillar.clusters)) {
+          pillar.clusters.forEach(c => {
+            if (c.clusterName) clusters.push(c.clusterName);
+            if (c.name) clusters.push(c.name);
+          });
+        }
+        
+        // Add keywords from pillar
+        if (Array.isArray(pillar.keywords)) {
+          pillar.keywords.forEach(kw => {
+            if (typeof kw === 'string') clusters.push(kw);
+            else if (kw?.keyword) clusters.push(kw.keyword);
+          });
+        }
+      }
+      
+      return [...new Set(clusters)].slice(0, limit).join(', ');
+    }
+    
+    // V12.0: Chart data extraction (with correct chart key names)
+    const blueOcean = dc.blueOceanOpportunitiesChart || [];
+    const infoBlackHoles = dc.informationBlackHolesChart || [];
+    const brandPos = dc.brandPositioningChart || [];
+    const valueProp = dc.valuePropositionMixChart || [];
+    const compAdvantage = dc.competitiveAdvantageMapChart || [];
+    const custFrust = dc.customerFrustrationsChart || [];
+    const hiddenAsp = dc.hiddenAspirationsChart || [];
+    const pillars = dc.strategicContentPillarsChart || [];
+    const mindsetTrans = dc.mindsetTransformationChart || [];
+    const aeoAnalysis = dc.aeoAnalysisChart || [];
+    const jtbdScenarios = json.jtbdScenarios || dc.customerJobPriorityChart || [];
+    
+    // V12.0: Log available chart data for debugging
+    console.log('🔗 Chart Data Available:', {
+      blueOcean: blueOcean.length,
+      custFrust: custFrust.length,
+      brandPos: brandPos.length,
+      compAdvantage: compAdvantage.length,
+      pillars: pillars.length,
+      aeoAnalysis: aeoAnalysis.length,
+      mindsetTrans: mindsetTrans.length,
+      hiddenAsp: hiddenAsp.length
+    });
+    
+    // V12.0: Build comprehensive synthesized bridge with enhanced extraction
+    const synthesized = {
+      _meta: {
+        version: '12.0.0-synthesized',
+        createdAt: new Date().toISOString(),
+        projectId: window.ORACLE_STATE?.projectId || 'unknown',
+        source: 'synthesizeForensicBridge'
+      },
+      strategicContext: {
+        brandName: window.ORACLE_STATE?.projectId || window.ORACLE_STATE?.projectData?.brandName || '',
+        targetAudience: json.audienceProfile?.primaryAudience || 
+                        firstItem(jtbdScenarios, 'persona') ||
+                        firstItem(custFrust, 'audience') || '',
+        businessGoal: json.strategicIntelligence?.primaryObjective ||
+                      firstItem(brandPos, 'position') ||
+                      firstItem(valueProp, 'proposition') || ''
+      },
+      autoPopulation: {
+        // Section 4: Core Strategic Question - from Blue Ocean or Information Gaps
+        coreStrategicQuestion: {
+          value: firstItem(blueOcean, 'opportunity') || 
+                 firstItem(blueOcean, 'label') ||
+                 firstItem(infoBlackHoles, 'topic') || 
+                 firstItem(infoBlackHoles, 'label') ||
+                 json.strategicIntelligence?.coreQuestion || '',
+          sourceSection: 4,
+          notarized: true
+        },
+        // Section 5: Thesis (Pro Angle) - from Brand Positioning or Value Proposition
+        thesis: {
+          value: firstItem(brandPos, 'advantage') ||
+                 firstItem(brandPos, 'position') ||
+                 firstItem(brandPos, 'label') ||
+                 firstItem(valueProp, 'proposition') ||
+                 json.uniqueMechanism?.thesis || '',
+          sourceSection: 5,
+          notarized: true
+        },
+        // Section 3: Antithesis (Con Angle) - from Competitive Gaps or Customer Frustrations
+        antithesis: {
+          value: firstItem(compAdvantage, 'gap') ||
+                 firstItem(compAdvantage, 'weakness') ||
+                 firstItem(compAdvantage, 'label') ||
+                 firstItem(custFrust, 'frustration') ||
+                 json.competitiveGaps?.primaryGap || '',
+          sourceSection: 3,
+          notarized: true
+        },
+        // Section 1: Key Market Data - from Customer Frustrations or Hidden Aspirations
+        keyMarketData: {
+          value: firstItem(custFrust, 'frustration') ||
+                 firstItem(custFrust, 'label') ||
+                 firstItem(custFrust, 'statistic') ||
+                 firstItem(hiddenAsp, 'aspiration') ||
+                 json.strategicIntelligence?.marketInsight || '',
+          sourceSection: 1,
+          notarized: true
+        },
+        // Section 4: Category Definition - from Content Pillars or Blue Ocean
+        categoryDefinition: {
+          value: allItems(pillars, 'pillarName', 3) ||
+                 firstItem(pillars, 'pillarName') ||
+                 firstItem(blueOcean, 'category') ||
+                 json.contentPillars?.categoryDefinition || '',
+          sourceSection: 4,
+          notarized: true
+        },
+        // Section 1: Core Market Problem (Stage 2 specific)
+        s2_coreMarketProblem: {
+          value: firstItem(custFrust, 'frustration') ||
+                 firstItem(custFrust, 'label') ||
+                 firstItem(infoBlackHoles, 'topic') ||
+                 firstItem(compAdvantage, 'gap') ||
+                 json.strategicIntelligence?.problemStatement || '',
+          sourceSection: 1,
+          notarized: true
+        },
+        // Section 4: Future State Vision (Stage 2 specific)
+        s2_futureVision: {
+          value: firstItem(mindsetTrans, 'after') ||
+                 firstItem(mindsetTrans, 'outcome') ||
+                 firstItem(mindsetTrans, 'transformation') ||
+                 firstItem(hiddenAsp, 'aspiration') ||
+                 firstItem(hiddenAsp, 'label') ||
+                 json.strategicIntelligence?.visionStatement || '',
+          sourceSection: 4,
+          notarized: true
+        },
+        // Section 6: Primary Keyword - from pillars or AEO
+        primaryKeyword: {
+          value: firstItem(pillars, 'pillarName') ||
+                 firstItem(pillars, 'name') ||
+                 firstItem(aeoAnalysis, 'keyword') ||
+                 firstItem(aeoAnalysis, 'entity') ||
+                 json.contentPillars?.primaryKeyword || '',
+          sourceSection: 6,
+          notarized: true
+        },
+        // Section 6: Secondary Keywords & Entities - V12.0: includes cluster extraction
+        secondaryKeywords: {
+          value: extractAllClusters(pillars, 10) ||
+                 allItems(pillars, 'pillarName', 5) ||
+                 allItems(aeoAnalysis, 'entity', 8) ||
+                 json.contentPillars?.secondaryKeywords || '',
+          sourceSection: 6,
+          notarized: true
+        },
+        // Section 9: Keywords & Entities List (Full Research Output) - V12.0: comprehensive extraction
+        keywordsEntities: {
+          value: extractAllClusters(pillars, 30) ||
+                 allItems(aeoAnalysis, 'entity', 15) ||
+                 allItems(aeoAnalysis, 'keyword', 15) ||
+                 json.contentPillars?.entityList || '',
+          sourceSection: 9,
+          notarized: true
+        }
+      }
+    };
+    
+    // V12.0: Enhanced logging for debugging
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔗 FORENSIC BRIDGE SYNTHESIS COMPLETE (V12.0)');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('   Total Fields:', Object.keys(synthesized.autoPopulation).length);
+    
+    const populated = [];
+    const empty = [];
+    for (const [key, data] of Object.entries(synthesized.autoPopulation)) {
+      const val = data.value || '';
+      if (val.length > 0) {
+        populated.push(key);
+        console.log(`   ✅ ${key}: "${val.substring(0, 50)}${val.length > 50 ? '...' : ''}"`);
+      } else {
+        empty.push(key);
+        console.log(`   ⚪ ${key}: (empty)`);
+      }
+    }
+    
+    console.log('───────────────────────────────────────────────────────');
+    console.log(`   Populated: ${populated.length}/10 fields`);
+    console.log(`   Empty: ${empty.length}/10 fields - ${empty.join(', ') || 'none'}`);
+    console.log('═══════════════════════════════════════════════════════');
+    
+    // Cache and apply
+    window.ORACLE_STATE.forensicBridge = synthesized;
+    applyForensicBridge(synthesized);
+    return true;
+  }
+  
+  /**
+   * V12.0: Enhanced diagnostic function to check bridge status
+   */
+  window.diagnoseForensicBridge = function() {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔗 FORENSIC BRIDGE DIAGNOSTIC (V12.0)');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('ORACLE_STATE.forensicBridge:', !!window.ORACLE_STATE?.forensicBridge);
+    console.log('ORACLE_STATE.stage1_results:', !!window.ORACLE_STATE?.stage1_results);
+    console.log('Stage 1 JSON keys:', Object.keys(window.ORACLE_STATE?.stage1_results?.json || {}).join(', '));
+    
+    // V12.0: Show dashboardCharts keys if available
+    const dc = window.ORACLE_STATE?.stage1_results?.json?.dashboardCharts;
+    if (dc) {
+      console.log('DashboardCharts keys:', Object.keys(dc).join(', '));
+      console.log('DashboardCharts data counts:');
+      for (const [key, val] of Object.entries(dc)) {
+        if (Array.isArray(val)) {
+          console.log(`   ${key}: ${val.length} items`);
+        }
+      }
+    }
+    
+    // Check field mappings
+    console.log('\\n--- STAGE 2 FIELD CHECK ---');
+    let populatedCount = 0;
+    for (const [key, fieldId] of Object.entries(STAGE2_FIELD_MAP)) {
+      const element = document.getElementById(fieldId);
+      const value = element?.value || '';
+      if (value.length > 0) populatedCount++;
+      const status = element ? (value ? `✅ "${value.substring(0, 30)}..."` : '⚪ Empty') : '❌ NOT FOUND';
+      console.log(`   ${fieldId}: ${status}`);
+    }
+    
+    console.log(`\\n   RESULT: ${populatedCount}/${Object.keys(STAGE2_FIELD_MAP).length} fields populated`);
+    
+    // Check if listener is active
+    console.log('\\n--- LISTENER STATUS ---');
+    console.log('initForensicBridge:', typeof window.initForensicBridge === 'function' ? '✅ Available' : '❌ Not found');
+    console.log('applyForensicBridgeManual:', typeof window.applyForensicBridgeManual === 'function' ? '✅ Available' : '❌ Not found');
+    
+    console.log('═══════════════════════════════════════════════════════');
+    
+    return {
+      hasBridge: !!window.ORACLE_STATE?.forensicBridge,
+      hasStage1: !!window.ORACLE_STATE?.stage1_results,
+      fieldCount: Object.keys(STAGE2_FIELD_MAP).length,
+      populatedCount: populatedCount
+    };
+  };
+  
+  // Initialize on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.initForensicBridge);
+  } else {
+    // DOM already loaded
+    setTimeout(window.initForensicBridge, 100);
+  }
+  
+  console.log('🔗 UI_Stage2_Bridge.html V12.0 loaded');
+</script>

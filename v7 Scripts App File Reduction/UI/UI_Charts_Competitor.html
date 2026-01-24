@@ -7,11 +7,39 @@
  * - This file: Core charts (Overview, Market Intelligence, Brand Position)
  * - UI_Charts_Competitor_Extended.html: Technical, Content, Keywords, Helpers
  * 
- * @version 8.0.0
+ * @version 8.0.0 - V12.0 FIX: Added missing CHART_PALETTES definition
  */
 
 // Store chart instances globally to destroy on re-render
 window.competitorChartInstances = window.competitorChartInstances || {};
+
+// V12.0 FIX: Define CHART_PALETTES (was referenced but never defined)
+const CHART_PALETTES = {
+  // Primary competitor colors
+  competitors: ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa', '#00acc1', '#ff6f00', '#c2185b'],
+  // Semantic colors
+  success: ['#10b981', '#059669', '#047857'],
+  warning: ['#f59e0b', '#d97706', '#b45309'],
+  danger: ['#ef4444', '#dc2626', '#b91c1c'],
+  info: ['#3b82f6', '#2563eb', '#1d4ed8'],
+  // Category colors for different chart types
+  categories: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e'],
+  // Gradient stops
+  gradients: {
+    blue: ['#3b82f6', '#1d4ed8'],
+    green: ['#10b981', '#047857'],
+    purple: ['#8b5cf6', '#6d28d9'],
+    orange: ['#f97316', '#ea580c']
+  },
+  // Chart-specific
+  radar: ['rgba(26, 115, 232, 0.3)', 'rgba(52, 168, 83, 0.3)', 'rgba(251, 188, 4, 0.3)'],
+  bar: ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa'],
+  pie: ['#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa', '#00acc1'],
+  line: ['#1a73e8', '#34a853', '#8e24aa']
+};
+
+// Also store as existingChartInstances for backwards compatibility
+const existingChartInstances = window.competitorChartInstances;
 
 /**
  * Destroy existing chart instance if it exists
@@ -748,4 +776,5 @@ window.existingChartInstances = existingChartInstances;
 console.log('✅ Competitor charts core module loaded');
 </script>
 
-<?!= include('UI_Charts_Competitor_Extended') ?>
+<!-- V12.0 FIX: Removed UI_Charts_Competitor_Extended include here -->
+<!-- It is included separately in UI_Scripts_App.html to avoid double-loading -->

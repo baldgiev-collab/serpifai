@@ -1,0 +1,467 @@
+<!--
+  UI_ESI_DataViz.html
+  ELITE STRATEGIC INTELLIGENCE - DATA VISUALIZATION WRAPPER v12.0
+  
+  Chart + Narrative side-by-side layout for premium data presentation
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI DATA VISUALIZATION WRAPPER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-dataviz {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 2rem;
+  padding: 1.5rem;
+  background: var(--elite-glass-bg, rgba(255, 255, 255, 0.95));
+  border: 1px solid var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-lg, 1rem);
+  margin: 1.5rem 0;
+}
+
+@media (max-width: 900px) {
+  .esi-dataviz {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Chart Section */
+.esi-dataviz__chart {
+  position: relative;
+  min-height: 300px;
+  background: var(--elite-gray-50, #f9fafb);
+  border-radius: var(--elite-radius-md, 0.75rem);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.esi-dataviz__chart canvas {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.esi-dataviz__chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--elite-gray-400, #9ca3af);
+}
+
+.esi-dataviz__chart-placeholder-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.esi-dataviz__chart-placeholder-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Narrative Section */
+.esi-dataviz__narrative {
+  display: flex;
+  flex-direction: column;
+}
+
+.esi-dataviz__header {
+  margin-bottom: 1.25rem;
+}
+
+.esi-dataviz__category {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--elite-gradient-royal);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: var(--elite-radius-full);
+  margin-bottom: 0.5rem;
+}
+
+.esi-dataviz__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--elite-gray-800, #1f2937);
+  line-height: 1.3;
+  margin: 0 0 0.5rem 0;
+}
+
+.esi-dataviz__subtitle {
+  font-size: 0.875rem;
+  color: var(--elite-gray-500, #6b7280);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Key Insights */
+.esi-dataviz__insights {
+  flex: 1;
+  margin-bottom: 1rem;
+}
+
+.esi-dataviz__insight {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--elite-gray-100, #f3f4f6);
+}
+
+.esi-dataviz__insight:last-child {
+  border-bottom: none;
+}
+
+.esi-dataviz__insight-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-radius: var(--elite-radius-sm, 0.5rem);
+  font-size: 0.875rem;
+}
+
+.esi-dataviz__insight-content {
+  flex: 1;
+}
+
+.esi-dataviz__insight-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--elite-gray-500, #6b7280);
+  margin-bottom: 2px;
+}
+
+.esi-dataviz__insight-value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--elite-gray-800, #1f2937);
+}
+
+.esi-dataviz__insight-value strong {
+  color: var(--elite-primary, #4f46e5);
+}
+
+/* Key Metrics */
+.esi-dataviz__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.esi-dataviz__metric {
+  padding: 0.875rem;
+  background: var(--elite-gray-50, #f9fafb);
+  border-radius: var(--elite-radius-md, 0.75rem);
+  text-align: center;
+}
+
+.esi-dataviz__metric-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--elite-primary, #4f46e5);
+  line-height: 1.2;
+}
+
+.esi-dataviz__metric-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--elite-gray-500, #6b7280);
+  margin-top: 4px;
+}
+
+/* Actions Footer */
+.esi-dataviz__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--elite-gray-200, #e5e7eb);
+}
+
+.esi-dataviz__action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.625rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--elite-radius-md, 0.75rem);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.esi-dataviz__action--primary {
+  background: var(--elite-gradient-royal);
+  color: #fff;
+}
+
+.esi-dataviz__action--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.esi-dataviz__action--secondary {
+  background: var(--elite-gray-100, #f3f4f6);
+  color: var(--elite-gray-700, #374151);
+}
+
+.esi-dataviz__action--secondary:hover {
+  background: var(--elite-gray-200, #e5e7eb);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI DATAVIZ VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Reversed Layout */
+.esi-dataviz--reversed {
+  grid-template-columns: 1fr 1.2fr;
+}
+
+.esi-dataviz--reversed .esi-dataviz__chart {
+  order: 2;
+}
+
+/* Stacked Layout */
+.esi-dataviz--stacked {
+  grid-template-columns: 1fr;
+}
+
+.esi-dataviz--stacked .esi-dataviz__chart {
+  min-height: 280px;
+}
+
+/* Compact Layout */
+.esi-dataviz--compact {
+  padding: 1rem;
+  gap: 1.25rem;
+}
+
+.esi-dataviz--compact .esi-dataviz__chart {
+  min-height: 200px;
+}
+
+.esi-dataviz--compact .esi-dataviz__title {
+  font-size: 1rem;
+}
+
+/* Featured/Highlighted */
+.esi-dataviz--featured {
+  border: 2px solid var(--elite-primary, #4f46e5);
+  box-shadow: var(--elite-shadow-lg), 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+/* Animation */
+@keyframes esi-dataviz-fade {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.esi-dataviz--animate {
+  animation: esi-dataviz-fade 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Dark Theme */
+[data-theme="dark"] .esi-dataviz,
+[data-theme="neon"] .esi-dataviz {
+  background: var(--elite-gray-800, #1f2937);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-dataviz__chart,
+[data-theme="neon"] .esi-dataviz__chart {
+  background: var(--elite-gray-900, #111827);
+}
+
+[data-theme="dark"] .esi-dataviz__title,
+[data-theme="neon"] .esi-dataviz__title {
+  color: var(--elite-gray-100, #f3f4f6);
+}
+
+[data-theme="dark"] .esi-dataviz__subtitle,
+[data-theme="dark"] .esi-dataviz__insight-label,
+[data-theme="neon"] .esi-dataviz__subtitle,
+[data-theme="neon"] .esi-dataviz__insight-label {
+  color: var(--elite-gray-400, #9ca3af);
+}
+
+[data-theme="dark"] .esi-dataviz__insight-value,
+[data-theme="neon"] .esi-dataviz__insight-value {
+  color: var(--elite-gray-200, #e5e7eb);
+}
+
+[data-theme="dark"] .esi-dataviz__metric,
+[data-theme="neon"] .esi-dataviz__metric {
+  background: var(--elite-gray-900, #111827);
+}
+
+[data-theme="dark"] .esi-dataviz__action--secondary,
+[data-theme="neon"] .esi-dataviz__action--secondary {
+  background: var(--elite-gray-700, #374151);
+  color: var(--elite-gray-200, #e5e7eb);
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI DATA VISUALIZATION WRAPPER - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI DataViz Wrapper
+ * @param {Object} config - Wrapper configuration
+ * @param {string} config.chartId - ID for the chart canvas
+ * @param {string} config.category - Category badge text
+ * @param {string} config.title - Main title
+ * @param {string} config.subtitle - Subtitle/description
+ * @param {Array} config.insights - Array of insight objects {icon, label, value}
+ * @param {Array} config.metrics - Array of metric objects {value, label}
+ * @param {Array} config.actions - Array of action buttons {icon, label, onClick, primary}
+ * @param {string} config.variant - 'default', 'reversed', 'stacked', 'compact', 'featured'
+ * @param {boolean} config.animate - Add entrance animation
+ * @returns {HTMLElement}
+ */
+function createESIDataViz(config = {}) {
+  const {
+    chartId = `esi-chart-${Date.now()}`,
+    category = 'Data Analysis',
+    title = 'Chart Title',
+    subtitle = '',
+    insights = [],
+    metrics = [],
+    actions = [],
+    variant = 'default',
+    animate = true
+  } = config;
+
+  const wrapper = document.createElement('div');
+  const classes = ['esi-dataviz'];
+  if (variant !== 'default') classes.push(`esi-dataviz--${variant}`);
+  if (animate) classes.push('esi-dataviz--animate');
+  wrapper.className = classes.join(' ');
+
+  // Build insights HTML
+  const insightsHTML = insights.length > 0 ? `
+    <div class="esi-dataviz__insights">
+      ${insights.map(insight => `
+        <div class="esi-dataviz__insight">
+          <div class="esi-dataviz__insight-icon">${insight.icon || '💡'}</div>
+          <div class="esi-dataviz__insight-content">
+            <div class="esi-dataviz__insight-label">${insight.label || ''}</div>
+            <div class="esi-dataviz__insight-value">${insight.value || ''}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  // Build metrics HTML
+  const metricsHTML = metrics.length > 0 ? `
+    <div class="esi-dataviz__metrics">
+      ${metrics.map(metric => `
+        <div class="esi-dataviz__metric">
+          <div class="esi-dataviz__metric-value">${metric.value || '—'}</div>
+          <div class="esi-dataviz__metric-label">${metric.label || ''}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  // Build actions HTML
+  const actionsHTML = actions.length > 0 ? `
+    <div class="esi-dataviz__actions">
+      ${actions.map((action, idx) => {
+        const isPrimary = action.primary || idx === 0;
+        return `
+          <button class="esi-dataviz__action esi-dataviz__action--${isPrimary ? 'primary' : 'secondary'}" data-action="${action.id || idx}">
+            ${action.icon ? `<span>${action.icon}</span>` : ''}
+            <span>${action.label || 'Action'}</span>
+          </button>
+        `;
+      }).join('')}
+    </div>
+  ` : '';
+
+  wrapper.innerHTML = `
+    <div class="esi-dataviz__chart">
+      <canvas id="${chartId}"></canvas>
+      <div class="esi-dataviz__chart-placeholder" style="display:none;">
+        <span class="esi-dataviz__chart-placeholder-icon">📊</span>
+        <span class="esi-dataviz__chart-placeholder-text">Loading chart...</span>
+      </div>
+    </div>
+    <div class="esi-dataviz__narrative">
+      <div class="esi-dataviz__header">
+        <span class="esi-dataviz__category">📊 ${category}</span>
+        <h3 class="esi-dataviz__title">${title}</h3>
+        ${subtitle ? `<p class="esi-dataviz__subtitle">${subtitle}</p>` : ''}
+      </div>
+      ${insightsHTML}
+      ${metricsHTML}
+      ${actionsHTML}
+    </div>
+  `;
+
+  // Attach action event listeners
+  wrapper.querySelectorAll('.esi-dataviz__action').forEach((btn, idx) => {
+    btn.addEventListener('click', () => {
+      if (actions[idx] && typeof actions[idx].onClick === 'function') {
+        actions[idx].onClick();
+      }
+    });
+  });
+
+  return wrapper;
+}
+
+/**
+ * Render ESI DataViz into container
+ */
+function renderESIDataViz(containerId, config = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  console.log(`📊 ESI DataViz V12.0: Rendering "${config.title || 'chart'}"`);
+  container.appendChild(createESIDataViz(config));
+  
+  // Return chart ID for Chart.js integration
+  return config.chartId || `esi-chart-${Date.now()}`;
+}
+
+window.createESIDataViz = createESIDataViz;
+window.renderESIDataViz = renderESIDataViz;
+
+console.log('📊 ESI DataViz Wrapper Component V12.0 loaded');
+</script>

@@ -160,64 +160,68 @@ function FT_fetchSingleUrl(url, options) {
     var lastError = null;
     var attempt = 0;
     
+    var diagnostics = [];
     while (attempt <= maxRetries) {
       attempt++;
-      
+      // Aggressively rotate user-agent, referer, and accept-language on every retry
+      options.userAgent = undefined;
+      options.headers = undefined;
+      options.randomDelay = true;
       try {
         var result = FT_executeFetch(url, urlParts, domain, options, attempt);
-        
+        // If ok but html is empty or too short, treat as failure and retry
+        if (result.ok && (!result.html || result.html.length < 100)) {
+          diagnostics.push({attempt: attempt, reason: 'Empty or too-short HTML', result: result});
+          lastError = result;
+          continue;
+        }
         // Success!
         if (result.ok) {
           FT_recordSuccess(domain);
-          
           // Cache if enabled
           if (options.useCache !== false && FT_getConfig('cache.enabled', true)) {
             var ttl = FT_getConfig('cache.ttlSeconds', 3600);
             cache.put(cacheKey, JSON.stringify(result), ttl);
           }
-          
           result.executionTime = new Date().getTime() - startTime;
           result.attempts = attempt;
+          if (diagnostics.length > 0) result.diagnostics = diagnostics;
           return result;
         }
-        
         // Check if rate limited
         var rateLimitCheck = FT_isRateLimited(result.status, result.error, result.headers);
         if (rateLimitCheck.isRateLimited) {
+          diagnostics.push({attempt: attempt, reason: 'Rate limited', result: result});
           // Wait and retry
           if (attempt <= maxRetries) {
             var waitTime = rateLimitCheck.retryAfter * 1000;
-            if (waitTime < 30000) { // Max 30s wait per retry
+            if (waitTime < 30000) {
               Utilities.sleep(waitTime);
               continue;
             }
           }
-          
           // Record failure
           FT_recordFailure(domain, result.status, 'Rate limited: ' + rateLimitCheck.reason);
           result.executionTime = new Date().getTime() - startTime;
           result.attempts = attempt;
+          result.diagnostics = diagnostics;
           return result;
         }
-        
         // Non-rate-limit error
+        diagnostics.push({attempt: attempt, reason: 'Error', result: result});
         lastError = result;
-        
         // If server error (5xx), retry with backoff
         if (result.status >= 500 && result.status < 600 && attempt <= maxRetries) {
-          // Exponential backoff with jitter
           var backoff = retryDelay * Math.pow(retryMultiplier, attempt - 1);
-          var jitter = Math.random() * 0.3 * backoff; // 30% jitter
-          var wait = Math.min(backoff + jitter, 10000); // Max 10s per retry
-          
+          var jitter = Math.random() * 0.3 * backoff;
+          var wait = Math.min(backoff + jitter, 10000);
           Utilities.sleep(wait);
           continue;
         }
-        
         // Client error (4xx) or other = don't retry
         break;
-        
       } catch (fetchError) {
+        diagnostics.push({attempt: attempt, reason: 'Exception', error: String(fetchError)});
         lastError = {
           ok: false,
           error: String(fetchError),
@@ -225,7 +229,6 @@ function FT_fetchSingleUrl(url, options) {
           domain: domain,
           attempt: attempt
         };
-        
         // Retry on network errors
         if (attempt <= maxRetries) {
           var backoff = retryDelay * Math.pow(retryMultiplier, attempt - 1);
@@ -233,26 +236,34 @@ function FT_fetchSingleUrl(url, options) {
           Utilities.sleep(Math.min(backoff + jitter, 10000));
           continue;
         }
-        
         break;
       }
     }
-    
-    // All retries failed
+    // All retries failed, try backup fetch if available
+    if (typeof FT_fetchSingleFromCache === 'function') {
+      var backup = FT_fetchSingleFromCache(url, options);
+      diagnostics.push({attempt: 'backup', reason: 'Tried cache', result: backup});
+      if (backup && backup.ok && backup.html && backup.html.length > 100) {
+        backup.diagnostics = diagnostics;
+        return backup;
+      }
+    }
+    // Log all 0-result/fallback events
+    Logger.log('[ELITE_FETCHER] All retries failed for ' + url + '. Diagnostics: ' + JSON.stringify(diagnostics));
     if (lastError) {
       FT_recordFailure(domain, lastError.status || 0, lastError.error || 'Unknown error');
       lastError.executionTime = new Date().getTime() - startTime;
       lastError.attempts = attempt;
+      lastError.diagnostics = diagnostics;
       return lastError;
     }
-    
-    // Shouldn't reach here
     return {
       ok: false,
       error: 'Unexpected fetch failure',
       url: url,
       domain: domain,
-      executionTime: new Date().getTime() - startTime
+      executionTime: new Date().getTime() - startTime,
+      diagnostics: diagnostics
     };
     
   } catch (e) {

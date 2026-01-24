@@ -14,6 +14,9 @@
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER -1: External Libraries (Must load FIRST)                                   -->
 <!-- ------------------------------------------------------------------------------- -->
+<!-- Chart.js 4.4.1 for all chart visualizations (CRITICAL - Must load before D3) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <!-- D3.js for Force-Directed Visualizations (Mind Map, Topic Galaxy) -->
 <script src="https://d3js.org/d3.v7.min.js"></script>
 
@@ -86,6 +89,20 @@
 <?!= include('ELITE_TabRenderers'); ?>
 <?!= include('ELITE_Proof'); ?>
 <?!= include('ELITE_SERP'); ?>
+
+<!-- ------------------------------------------------------------------------------- -->
+<!-- V12.0 PHASE 5: ESI Visual System Components                                     -->
+<!-- ------------------------------------------------------------------------------- -->
+<?!= include('UI_ESI_Progress'); ?>
+<?!= include('UI_ESI_Executive_Summary'); ?>
+<?!= include('UI_ESI_Insight_List'); ?>
+<?!= include('UI_ESI_DataViz'); ?>
+<?!= include('UI_ESI_Comparison_Table'); ?>
+<?!= include('UI_ESI_Card_Premium'); ?>
+<?!= include('UI_ESI_Callout'); ?>
+<?!= include('UI_ESI_Animations'); ?>
+<?!= include('UI_ESI_ActionItem'); ?>
+<?!= include('UI_Components_Sidebar'); ?>
 
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER 2: Core Utilities (Foundation dependencies only)                           -->
@@ -162,6 +179,8 @@
 <?!= include('UI_Styles_DataBadges'); ?>
 <?!= include('UI_Scripts_Settings'); ?>
 <?!= include('DIAG_TabDebug'); ?>
+<?!= include('DIAG_RealDataVerification'); ?>
+<?!= include('UI_Diagnostic_Console'); ?> <!-- V12.0 Phase 8: Diagnostic Console Panel -->
 
 <!-- ------------------------------------------------------------------------------- -->
 <!-- V7.22 PHASE 2-5: Elite Strategic Intelligence Modules                           -->
@@ -195,7 +214,7 @@
 
 <!-- D3.js Visualizations -->
 <?!= include('UI_D3_TopicGalaxy'); ?>
-<?!= include('UI_D3_MindMap'); ?>
+<!-- UI_D3_MindMap removed - already loaded at line 188 (V12.0 FIX) -->
 
 <!-- ------------------------------------------------------------------------------- -->
 <!-- TIER 5: Stage Workflow System                                                   -->
@@ -203,6 +222,7 @@
 <!-- ------------------------------------------------------------------------------- -->
 <?!= include('UI_Stage1_Renderer'); ?>
 <?!= include('UI_Stage_Runner'); ?>
+<?!= include('UI_Stage2_Bridge'); ?>
 <?!= include('UI_Competitor_Forensics'); ?>
 
 <!-- ------------------------------------------------------------------------------- -->

@@ -74,8 +74,19 @@
     // ═══════════════════════════════════════════════════════════════════════════
     const diagnosticResults = runDataDiagnostic(competitors, gemini);
     if (diagnosticResults.apiFailure) {
-      console.log('   ⚠️ API FAILURE DETECTED: Triggering Gemini Deep Research fallback...');
-      console.log('   🔍 Browsing 100+ live SERP results for 2025 data reconstruction...');
+      // V12.0: Enhanced API failure logging with diagnostic guidance
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('⚠️ API FAILURE DETECTED - Forensic Matrix');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(`   SERP Results: ${diagnosticResults.serpDataFound}`);
+      console.log(`   PAA Questions: ${diagnosticResults.paaDataFound}`);
+      console.log(`   Null Values: ${diagnosticResults.nullCount}`);
+      console.log(`   Placeholder Values: ${diagnosticResults.placeholderCount}`);
+      console.log('───────────────────────────────────────────────────────');
+      console.log('   USING FALLBACK: Template-based keywords with niche substitution');
+      console.log('   NOTE: These keywords are marked with _isTemplate: true');
+      console.log('   FIX: Check Serper API configuration and Worker_Fetch.gs');
+      console.log('═══════════════════════════════════════════════════════');
     }
 
     // 2025 Deep Research Protocol: 90-KW Templates per Module

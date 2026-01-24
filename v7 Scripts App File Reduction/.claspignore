@@ -15,3 +15,7 @@ REF_MANIFEST.md
 
 # Ignore node modules if any
 node_modules/**
+
+# Ignore duplicate .js files (clasp pull creates both .gs and .js)
+*.js
+core/**

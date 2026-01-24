@@ -153,7 +153,9 @@ function getChartScales(chartType) {
 // WINDOW EXPORTS - Required for modular architecture cross-file access
 // ═══════════════════════════════════════════════════════════════════════════
 window.ELITE_DESIGN = ELITE_DESIGN;
-window.ELITE_ICONS = ELITE_ICONS;
+window.ELITE_ICONS = ELITE_CATEGORY_ICONS; // V12.0 FIX: Was referencing undefined ELITE_ICONS
+window.ELITE_CATEGORY_ICONS = ELITE_CATEGORY_ICONS;
+window.ELITE_PRIORITY_COLORS = ELITE_PRIORITY_COLORS;
 window.getScoreColor = getScoreColor;
 window.getScoreClass = getScoreClass;
 window.getMetricValueClass = getMetricValueClass;

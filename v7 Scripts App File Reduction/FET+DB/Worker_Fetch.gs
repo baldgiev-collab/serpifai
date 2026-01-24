@@ -442,8 +442,21 @@ function parseApiResponse(response, apiName) {
 /**
  * Synthesize data from multiple APIs with triangulation fallback
  * If primary source fails, estimate from secondary sources
+ * V12.0: Enhanced with comprehensive logging for data flow debugging
  */
 function synthesizeWithTriangulation(domain, stages) {
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('🔄 SYNTHESIZE WITH TRIANGULATION (V12.0) for: ' + domain);
+  console.log('═══════════════════════════════════════════════════════');
+  
+  // V12.0: Log available stage data
+  console.log('   Available stages:');
+  Object.keys(stages).forEach(key => {
+    const stage = stages[key];
+    const status = stage?.success ? '✅' : (stage?.error ? '❌' : '⚪');
+    console.log(`   ${status} ${key}: success=${stage?.success}, error=${stage?.error || 'none'}`);
+  });
+  
   const synth = {
     domain: domain,
     
@@ -473,6 +486,16 @@ function synthesizeWithTriangulation(domain, stages) {
     // Source integrity for each metric
     sourceIntegrity: {}
   };
+  
+  // V12.0: Log synthesized SERP data for debugging
+  console.log('───────────────────────────────────────────────────────');
+  console.log('   📊 SYNTHESIZED DATA SUMMARY:');
+  console.log('   serpFeatures.paaCount:', synth.serpFeatures?._debug?.paaCount || 0);
+  console.log('   serpFeatures.relatedCount:', synth.serpFeatures?._debug?.relatedCount || 0);
+  console.log('   seo.organicResults:', synth.seo?.organicResults?.length || 0);
+  console.log('   website.wordCount:', synth.website?.wordCount || 0);
+  console.log('   authority.pageRank:', synth.authority?.pageRank || 0);
+  console.log('═══════════════════════════════════════════════════════');
   
   // Track which sources provided which data
   Object.keys(synth).forEach(key => {
@@ -795,18 +818,45 @@ function extractContentData(stages) {
 
 /**
  * Extract SERP features from brand query
+ * V12.0: Enhanced with comprehensive logging for debugging PAA/Related=0 issues
  */
 function extractSerpFeatures(stages) {
   const serperBrand = stages.serperBrand?.data || {};
   
+  // V12.0: Detailed logging for debugging data flow
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('🔍 SERP FEATURES EXTRACTION (V12.0)');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('   stages.serperBrand exists:', !!stages.serperBrand);
+  console.log('   stages.serperBrand.success:', stages.serperBrand?.success);
+  console.log('   stages.serperBrand.error:', stages.serperBrand?.error || 'none');
+  console.log('   serperBrand keys:', Object.keys(serperBrand).join(', '));
+  
+  // V12.0: Extract with fallback sources
+  const paa = serperBrand.peopleAlsoAsk || [];
+  const related = serperBrand.relatedSearches || [];
+  
+  console.log('   peopleAlsoAsk raw:', JSON.stringify(paa).substring(0, 200));
+  console.log('   relatedSearches raw:', JSON.stringify(related).substring(0, 200));
+  console.log('   PAA count:', paa.length);
+  console.log('   Related count:', related.length);
+  console.log('═══════════════════════════════════════════════════════');
+  
   return {
-    peopleAlsoAsk: serperBrand.peopleAlsoAsk || [],
-    relatedSearches: serperBrand.relatedSearches || [],
+    peopleAlsoAsk: paa,
+    relatedSearches: related,
     knowledgeGraph: serperBrand.knowledgeGraph || null,
     featuredSnippet: serperBrand.answerBox || null,
     sitelinks: (serperBrand.organic || [])[0]?.sitelinks || [],
     dataSource: Object.keys(serperBrand).length > 0 ? 'serper_brand' : 'none',
-    sourceIntegrity: Object.keys(serperBrand).length > 0 ? 'api' : 'unavailable'
+    sourceIntegrity: Object.keys(serperBrand).length > 0 ? 'api' : 'unavailable',
+    // V12.0: Add diagnostic fields
+    _debug: {
+      hasSerperData: Object.keys(serperBrand).length > 0,
+      paaCount: paa.length,
+      relatedCount: related.length,
+      organicCount: (serperBrand.organic || []).length
+    }
   };
 }
 

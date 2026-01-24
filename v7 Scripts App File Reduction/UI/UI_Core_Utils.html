@@ -15,9 +15,407 @@
   
   Dependencies:
   - DOM elements must be loaded first
+  
+  V12.0 Phase 8: Enhanced error handling & logging
 -->
 <script>
   console.log('🎨 UI_Core_Utils.html loading...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V12.0 PHASE 8: GLOBAL ERROR BOUNDARY & PROMISE REJECTION HANDLING
+  // Comprehensive error handling to prevent unhandled errors
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Store for error telemetry
+  window._errorLog = window._errorLog || [];
+  
+  // Known benign errors to suppress
+  const BENIGN_ERRORS = [
+    '_fn is not a function',           // Chart.js internal callback
+    'Cannot read property of null',    // D3 transition on removed elements
+    'Cannot read properties of null',  // Modern Chrome version
+    'ResizeObserver loop',             // Harmless browser warning
+    'Script error.',                   // Cross-origin script issues
+    'message channel closed',          // Google Apps Script async timing
+    'listener indicated an asynchronous response',  // Google Apps Script
+    'Grammarly',                       // Grammarly extension errors
+    'ambient-light-sensor',            // Google iframe permissions
+    'speaker',                         // Google iframe permissions
+    'vibrate',                         // Google iframe permissions
+    'vr'                               // Google iframe permissions
+  ];
+  
+  /**
+   * Check if error is benign and should be suppressed
+   */
+  function isBenignError(message, stack) {
+    const fullText = (message || '') + (stack || '');
+    return BENIGN_ERRORS.some(e => fullText.includes(e));
+  }
+  
+  /**
+   * Log error for telemetry
+   */
+  function logError(type, message, source, line, stack) {
+    const entry = {
+      type,
+      message,
+      source,
+      line,
+      stack: stack?.substring(0, 500),  // Truncate long stacks
+      timestamp: new Date().toISOString()
+    };
+    window._errorLog.push(entry);
+    // Keep only last 50 errors
+    if (window._errorLog.length > 50) {
+      window._errorLog.shift();
+    }
+  }
+  
+  // Global error handler
+  window.addEventListener('error', function(event) {
+    const errorMsg = event.message || '';
+    const errorStack = event.error?.stack || '';
+    
+    if (isBenignError(errorMsg, errorStack)) {
+      console.debug('🔇 Suppressed benign error:', errorMsg);
+      event.preventDefault();
+      return true;
+    }
+    
+    // Log non-benign errors
+    logError('error', errorMsg, event.filename, event.lineno, errorStack);
+    console.error('❌ Unhandled error:', errorMsg);
+  }, true);
+  
+  // V12.0: Unhandled Promise Rejection Handler
+  window.addEventListener('unhandledrejection', function(event) {
+    const reason = event.reason;
+    const message = reason?.message || String(reason);
+    const stack = reason?.stack || '';
+    
+    if (isBenignError(message, stack)) {
+      console.debug('🔇 Suppressed benign promise rejection:', message);
+      event.preventDefault();
+      return;
+    }
+    
+    // Log promise rejections
+    logError('promise', message, 'unhandledrejection', 0, stack);
+    console.error('❌ Unhandled promise rejection:', message);
+    
+    // Prevent default browser behavior (error in console)
+    event.preventDefault();
+  });
+  
+  /**
+   * Get error log for diagnostics
+   */
+  window.getErrorLog = function() {
+    return window._errorLog;
+  };
+  
+  /**
+   * Clear error log
+   */
+  window.clearErrorLog = function() {
+    window._errorLog = [];
+    console.log('✅ Error log cleared');
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V12.0 PHASE 8.9: INTERVAL TRACKER
+  // Centralized interval management for proper cleanup
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const IntervalTracker = (function() {
+    const intervals = new Map();
+    const timeouts = new Map();
+    let idCounter = 0;
+    
+    /**
+     * Create a tracked interval
+     * @param {string} name - Descriptive name for debugging
+     * @param {Function} callback - Function to execute
+     * @param {number} delay - Interval delay in ms
+     * @param {Object} options - Optional config
+     * @returns {number} Interval ID
+     */
+    function createInterval(name, callback, delay, options = {}) {
+      const id = ++idCounter;
+      const maxRuns = options.maxRuns || Infinity;
+      let runCount = 0;
+      
+      const wrappedCallback = function() {
+        runCount++;
+        if (runCount >= maxRuns) {
+          console.log(`🔄 [IntervalTracker] '${name}' reached max runs (${maxRuns}), auto-clearing`);
+          clearInterval(id);
+          return;
+        }
+        try {
+          callback();
+        } catch (err) {
+          console.error(`❌ [IntervalTracker] '${name}' error:`, err);
+          if (options.clearOnError) {
+            clearInterval(id);
+          }
+        }
+      };
+      
+      const intervalId = setInterval(wrappedCallback, delay);
+      intervals.set(id, {
+        name,
+        intervalId,
+        delay,
+        createdAt: Date.now(),
+        runCount: 0
+      });
+      
+      console.log(`⏱️ [IntervalTracker] Created '${name}' (id: ${id}, ${delay}ms)`);
+      return id;
+    }
+    
+    /**
+     * Clear a tracked interval
+     */
+    function clearInterval_(id) {
+      const entry = intervals.get(id);
+      if (entry) {
+        clearInterval(entry.intervalId);
+        console.log(`⏹️ [IntervalTracker] Cleared '${entry.name}' (id: ${id})`);
+        intervals.delete(id);
+      }
+    }
+    
+    /**
+     * Create a tracked timeout
+     */
+    function createTimeout(name, callback, delay) {
+      const id = ++idCounter;
+      
+      const wrappedCallback = function() {
+        try {
+          callback();
+        } catch (err) {
+          console.error(`❌ [IntervalTracker] Timeout '${name}' error:`, err);
+        }
+        timeouts.delete(id);
+      };
+      
+      const timeoutId = setTimeout(wrappedCallback, delay);
+      timeouts.set(id, { name, timeoutId, delay, createdAt: Date.now() });
+      
+      return id;
+    }
+    
+    /**
+     * Clear a tracked timeout
+     */
+    function clearTimeout_(id) {
+      const entry = timeouts.get(id);
+      if (entry) {
+        clearTimeout(entry.timeoutId);
+        timeouts.delete(id);
+      }
+    }
+    
+    /**
+     * Clear all tracked intervals and timeouts
+     */
+    function clearAll() {
+      let count = 0;
+      intervals.forEach((entry, id) => {
+        clearInterval(entry.intervalId);
+        count++;
+      });
+      intervals.clear();
+      
+      timeouts.forEach((entry, id) => {
+        clearTimeout(entry.timeoutId);
+        count++;
+      });
+      timeouts.clear();
+      
+      console.log(`🧹 [IntervalTracker] Cleared ${count} timers`);
+    }
+    
+    /**
+     * Get status of all tracked timers
+     */
+    function getStatus() {
+      const now = Date.now();
+      const status = {
+        intervals: [],
+        timeouts: []
+      };
+      
+      intervals.forEach((entry, id) => {
+        status.intervals.push({
+          id,
+          name: entry.name,
+          delay: entry.delay,
+          runningFor: now - entry.createdAt
+        });
+      });
+      
+      timeouts.forEach((entry, id) => {
+        status.timeouts.push({
+          id,
+          name: entry.name,
+          delay: entry.delay,
+          remainingApprox: Math.max(0, entry.delay - (now - entry.createdAt))
+        });
+      });
+      
+      return status;
+    }
+    
+    return {
+      createInterval,
+      clearInterval: clearInterval_,
+      createTimeout,
+      clearTimeout: clearTimeout_,
+      clearAll,
+      getStatus,
+      getActiveCount: () => intervals.size + timeouts.size
+    };
+  })();
+  
+  // Expose globally
+  window.IntervalTracker = IntervalTracker;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V12.0 PHASE 9.8: CHART CLEANUP MANAGER
+  // Centralized chart instance management for memory leak prevention
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const ChartCleanupManager = (function() {
+    const chartRegistries = [
+      'chartInstances',
+      'competitorChartInstances',
+      'eliteChartInstances',
+      'overviewCharts',
+      'competitorCharts',
+      'canvasToInstanceMap'
+    ];
+    
+    /**
+     * Destroy a single chart instance safely
+     */
+    function destroySafe(chart, name) {
+      try {
+        if (chart && typeof chart.destroy === 'function') {
+          chart.destroy();
+          return true;
+        }
+      } catch (err) {
+        console.warn(`⚠️ [ChartCleanup] Failed to destroy '${name}':`, err);
+      }
+      return false;
+    }
+    
+    /**
+     * Clean up all charts in a specific registry
+     */
+    function cleanRegistry(registryName) {
+      const registry = window[registryName];
+      if (!registry) return 0;
+      
+      let count = 0;
+      
+      if (registry instanceof Map) {
+        registry.forEach((chart, key) => {
+          if (destroySafe(chart, key)) count++;
+        });
+        registry.clear();
+      } else if (typeof registry === 'object') {
+        Object.keys(registry).forEach(key => {
+          if (destroySafe(registry[key], key)) count++;
+          delete registry[key];
+        });
+      }
+      
+      return count;
+    }
+    
+    /**
+     * Clean up all chart instances across all registries
+     */
+    function cleanAll() {
+      let totalCleaned = 0;
+      
+      chartRegistries.forEach(registryName => {
+        const cleaned = cleanRegistry(registryName);
+        if (cleaned > 0) {
+          console.log(`🧹 [ChartCleanup] Cleaned ${cleaned} from ${registryName}`);
+          totalCleaned += cleaned;
+        }
+      });
+      
+      // Also clean any orphaned Chart instances on canvases
+      document.querySelectorAll('canvas').forEach(canvas => {
+        const chartInstance = Chart.getChart?.(canvas);
+        if (chartInstance) {
+          destroySafe(chartInstance, canvas.id || 'unknown');
+          totalCleaned++;
+        }
+      });
+      
+      console.log(`🧹 [ChartCleanup] Total cleaned: ${totalCleaned} chart instances`);
+      return totalCleaned;
+    }
+    
+    /**
+     * Clean charts within a specific container (for tab switching)
+     */
+    function cleanContainer(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return 0;
+      
+      let count = 0;
+      container.querySelectorAll('canvas').forEach(canvas => {
+        const chartInstance = Chart.getChart?.(canvas);
+        if (chartInstance) {
+          destroySafe(chartInstance, canvas.id);
+          count++;
+        }
+      });
+      
+      console.log(`🧹 [ChartCleanup] Cleaned ${count} charts from #${containerId}`);
+      return count;
+    }
+    
+    /**
+     * Get count of active chart instances
+     */
+    function getActiveCount() {
+      let count = 0;
+      
+      chartRegistries.forEach(registryName => {
+        const registry = window[registryName];
+        if (registry instanceof Map) {
+          count += registry.size;
+        } else if (registry && typeof registry === 'object') {
+          count += Object.keys(registry).length;
+        }
+      });
+      
+      return count;
+    }
+    
+    return {
+      destroySafe,
+      cleanRegistry,
+      cleanAll,
+      cleanContainer,
+      getActiveCount,
+      getRegistries: () => chartRegistries
+    };
+  })();
+  
+  // Expose globally
+  window.ChartCleanupManager = ChartCleanupManager;
 
   /**
    * Set the active tab in the main navigation
@@ -271,5 +669,235 @@
     window.showToast?.(`${title}: ${dataPoints} data points`);
   };
 
-  console.log('✅ UI_Core_Utils.html loaded');
+  // ═══════════════════════════════════════════════════════════════════════════
+  // V12.0 PHASE 9.5: CLIENT-SIDE CACHING
+  // Cache API responses in sessionStorage for performance
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  const ClientCache = (function() {
+    const CACHE_PREFIX = 'serpif_cache_';
+    const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes default
+    const MAX_CACHE_SIZE_MB = 5; // Max cache size in MB
+    
+    /**
+     * Generate cache key from endpoint and params
+     */
+    function makeKey(endpoint, params = {}) {
+      const paramStr = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join('&');
+      return CACHE_PREFIX + endpoint + (paramStr ? '_' + paramStr : '');
+    }
+    
+    /**
+     * Get cached data if valid
+     * @param {string} endpoint - API endpoint
+     * @param {Object} params - Request parameters
+     * @returns {Object|null} Cached data or null if expired/missing
+     */
+    function get(endpoint, params = {}) {
+      try {
+        const key = makeKey(endpoint, params);
+        const cached = sessionStorage.getItem(key);
+        
+        if (!cached) return null;
+        
+        const { data, expires } = JSON.parse(cached);
+        
+        if (Date.now() > expires) {
+          sessionStorage.removeItem(key);
+          console.log(`🗑️ [Cache] Expired: ${endpoint}`);
+          return null;
+        }
+        
+        console.log(`✅ [Cache] Hit: ${endpoint}`);
+        return data;
+      } catch (err) {
+        console.warn('[Cache] Get error:', err);
+        return null;
+      }
+    }
+    
+    /**
+     * Set cached data
+     * @param {string} endpoint - API endpoint
+     * @param {Object} params - Request parameters
+     * @param {any} data - Data to cache
+     * @param {number} ttlMs - Time to live in milliseconds
+     */
+    function set(endpoint, params, data, ttlMs = DEFAULT_TTL_MS) {
+      try {
+        const key = makeKey(endpoint, params);
+        const cacheEntry = {
+          data,
+          expires: Date.now() + ttlMs,
+          cachedAt: new Date().toISOString()
+        };
+        
+        const serialized = JSON.stringify(cacheEntry);
+        
+        // Check if too large (skip if > 1MB single entry)
+        if (serialized.length > 1024 * 1024) {
+          console.warn(`⚠️ [Cache] Skip ${endpoint}: Too large (${Math.round(serialized.length / 1024)}KB)`);
+          return false;
+        }
+        
+        // Evict old entries if needed
+        evictIfNeeded(serialized.length);
+        
+        sessionStorage.setItem(key, serialized);
+        console.log(`💾 [Cache] Stored: ${endpoint} (TTL: ${ttlMs / 1000}s)`);
+        return true;
+      } catch (err) {
+        if (err.name === 'QuotaExceededError') {
+          console.warn('[Cache] Storage quota exceeded, clearing old entries');
+          clear();
+        } else {
+          console.warn('[Cache] Set error:', err);
+        }
+        return false;
+      }
+    }
+    
+    /**
+     * Evict old entries if storage is getting full
+     */
+    function evictIfNeeded(newSize) {
+      let totalSize = 0;
+      const entries = [];
+      
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(CACHE_PREFIX)) {
+          const value = sessionStorage.getItem(key);
+          if (value) {
+            totalSize += value.length;
+            try {
+              const parsed = JSON.parse(value);
+              entries.push({ key, size: value.length, expires: parsed.expires });
+            } catch (e) {
+              // Invalid entry, remove it
+              sessionStorage.removeItem(key);
+            }
+          }
+        }
+      }
+      
+      // If adding new entry would exceed limit, evict oldest
+      const maxBytes = MAX_CACHE_SIZE_MB * 1024 * 1024;
+      if (totalSize + newSize > maxBytes) {
+        // Sort by expiry (oldest first)
+        entries.sort((a, b) => a.expires - b.expires);
+        
+        let freedBytes = 0;
+        const targetFree = newSize + (maxBytes * 0.2); // Free 20% extra
+        
+        for (const entry of entries) {
+          if (freedBytes >= targetFree) break;
+          sessionStorage.removeItem(entry.key);
+          freedBytes += entry.size;
+          console.log(`🗑️ [Cache] Evicted: ${entry.key.replace(CACHE_PREFIX, '')}`);
+        }
+      }
+    }
+    
+    /**
+     * Clear all cached data
+     */
+    function clear() {
+      let count = 0;
+      const keysToRemove = [];
+      
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(CACHE_PREFIX)) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => {
+        sessionStorage.removeItem(key);
+        count++;
+      });
+      
+      console.log(`🧹 [Cache] Cleared ${count} entries`);
+      return count;
+    }
+    
+    /**
+     * Get cache statistics
+     */
+    function getStats() {
+      let totalSize = 0;
+      let entryCount = 0;
+      let expiredCount = 0;
+      const now = Date.now();
+      
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(CACHE_PREFIX)) {
+          const value = sessionStorage.getItem(key);
+          if (value) {
+            totalSize += value.length;
+            entryCount++;
+            try {
+              const parsed = JSON.parse(value);
+              if (now > parsed.expires) expiredCount++;
+            } catch (e) {}
+          }
+        }
+      }
+      
+      return {
+        entries: entryCount,
+        expired: expiredCount,
+        sizeBytes: totalSize,
+        sizeMB: (totalSize / 1024 / 1024).toFixed(2),
+        maxMB: MAX_CACHE_SIZE_MB
+      };
+    }
+    
+    /**
+     * Wrapper to cache google.script.run results
+     * @param {string} methodName - Server method name
+     * @param {Array} args - Method arguments
+     * @param {Object} options - Cache options
+     * @returns {Promise} Cached or fresh result
+     */
+    function wrapGoogleScriptRun(methodName, args, options = {}) {
+      const ttl = options.ttl || DEFAULT_TTL_MS;
+      const cacheKey = methodName;
+      const params = { args: JSON.stringify(args) };
+      
+      // Check cache first
+      const cached = get(cacheKey, params);
+      if (cached !== null) {
+        return Promise.resolve(cached);
+      }
+      
+      // Make fresh request
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler((result) => {
+            set(cacheKey, params, result, ttl);
+            resolve(result);
+          })
+          .withFailureHandler(reject)
+          [methodName].apply(null, args);
+      });
+    }
+    
+    return {
+      get,
+      set,
+      clear,
+      getStats,
+      wrapGoogleScriptRun,
+      makeKey,
+      DEFAULT_TTL_MS
+    };
+  })();
+  
+  // Expose globally
+  window.ClientCache = ClientCache;
+
+  console.log('✅ UI_Core_Utils.html loaded - V12.0 Phase 8-9 Enhanced');
 </script>

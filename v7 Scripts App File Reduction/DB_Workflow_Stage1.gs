@@ -111,6 +111,16 @@ function DB_Workflow_Stage1(projectData, selectedModel) {
     Logger.log('✅ Report cleaned, length: ' + cleanReport.length + ' chars');
     
     // =========================================================================
+    // V11.0 FORENSIC DATA BRIDGE: Extract BEFORE MySQL persist so it gets saved
+    // This ensures bridge data is available during hydration
+    // =========================================================================
+    const forensicBridge = extractForensicBridge(projectData, structuredData, cleanReport);
+    Logger.log('🔗 Forensic Bridge: ' + (forensicBridge ? 'EXTRACTED' : 'SKIPPED'));
+    if (forensicBridge) {
+      Logger.log('   Fields: ' + Object.keys(forensicBridge.autoPopulation || {}).join(', '));
+    }
+    
+    // =========================================================================
     // MYSQL PERSISTENCE: Save Stage 1 results via UPP
     // V7 FIX: Pass transactionId (jobToken) explicitly for persistence
     // =========================================================================
@@ -133,7 +143,9 @@ function DB_Workflow_Stage1(projectData, selectedModel) {
             timestamp: new Date().toISOString(),
             competitorDataUsed: !!(competitorInsights && competitorInsights.hasData),
             promptLength: prompt.length,
-            responseLength: geminiResponse.length
+            responseLength: geminiResponse.length,
+            // V11.0: Include forensicBridge for Stage 2 auto-population during hydration
+            forensicBridge: forensicBridge
           }
         });
         Logger.log('💾 Stage 1 MySQL persistence: ' + (persistResult.success ? '✅ SUCCESS' : '⚠️ FAILED'));
@@ -169,6 +181,8 @@ function DB_Workflow_Stage1(projectData, selectedModel) {
       Logger.log('⚠️ CacheService error (non-fatal): ' + cacheError.toString());
     }
     
+    // Note: forensicBridge was already extracted above before MySQL persist
+    
     // Return both JSON and full response
     return {
       success: true,
@@ -179,6 +193,9 @@ function DB_Workflow_Stage1(projectData, selectedModel) {
       timestamp: new Date().toISOString(),
       projectId: projectData.projectId || projectData.brandName || 'UNNAMED_PROJECT',
       competitorDataUsed: !!(competitorInsights && competitorInsights.hasData),
+      // V10.8: Include forensicIntelligence for competitor cards (AEO, Brittleness, Asset values)
+      forensicIntelligence: (competitorInsights && competitorInsights.forensicIntelligence) ? 
+        competitorInsights.forensicIntelligence : null,
       // V7: Include competitor analysis summary for UI display
       competitorAnalysisSummary: (competitorInsights && competitorInsights.hasData) ? {
         competitorCount: competitorInsights.competitorCount || 0,
@@ -188,7 +205,9 @@ function DB_Workflow_Stage1(projectData, selectedModel) {
         technicalScoresAvailable: !!(competitorInsights.technicalScores && competitorInsights.technicalScores.length > 0),
         contentInsightsAvailable: !!(competitorInsights.contentInsights && competitorInsights.contentInsights.length > 0),
         keywordDataAvailable: !!(competitorInsights.keywordIntelligence && competitorInsights.keywordIntelligence.totalKeywords > 0)
-      } : null
+      } : null,
+      // V11.0: Forensic Data Bridge for Stage 2 auto-population
+      forensicBridge: forensicBridge
     };
     
   } catch (error) {
@@ -200,6 +219,230 @@ function DB_Workflow_Stage1(projectData, selectedModel) {
       error: error.toString(),
       timestamp: new Date().toISOString()
     };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// V11.0 FORENSIC DATA BRIDGE: Stage 1 → Stage 2 Auto-Population
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Extracts strategic intelligence from Stage 1 results to auto-populate Stage 2 fields.
+ * This eliminates manual data re-entry and ensures strategic alignment continuity.
+ * 
+ * @param {Object} projectData - Original Stage 1 input data
+ * @param {Object} structuredData - Parsed Stage 1 JSON output (dashboardCharts, etc.)
+ * @param {string} report - Stage 1 markdown report
+ * @returns {Object} forensicBridge object with Stage 2 field mappings
+ */
+function extractForensicBridge(projectData, structuredData, report) {
+  try {
+    Logger.log('🔗 Extracting Forensic Data Bridge for Stage 2...');
+    
+    const dc = structuredData?.dashboardCharts || {};
+    const now = new Date().toISOString();
+    
+    // Helper: Safely get first item from array or empty string
+    function firstItem(arr, prop) {
+      if (!arr || !Array.isArray(arr) || arr.length === 0) return '';
+      const item = arr[0];
+      return prop ? (item[prop] || '') : (typeof item === 'string' ? item : JSON.stringify(item));
+    }
+    
+    // Helper: Extract from report by section number
+    function extractFromReport(sectionNum, pattern) {
+      if (!report) return '';
+      const sectionRegex = new RegExp('SECTION\\s*' + sectionNum + '[:\\s].*?(?=SECTION\\s*\\d|$)', 'is');
+      const match = report.match(sectionRegex);
+      if (!match) return '';
+      const sectionText = match[0];
+      if (pattern) {
+        const patternMatch = sectionText.match(pattern);
+        return patternMatch ? patternMatch[1]?.trim() || patternMatch[0]?.trim() : '';
+      }
+      // Return first meaningful sentence
+      const sentences = sectionText.split(/[.!?]+/).filter(s => s.trim().length > 30 && s.trim().length < 250);
+      return sentences[0]?.trim() + '.' || '';
+    }
+    
+    // Helper: Collect keywords from multiple sources
+    function collectKeywords(sources) {
+      const keywords = new Set();
+      sources.forEach(source => {
+        if (Array.isArray(source)) {
+          source.forEach(item => {
+            if (typeof item === 'string') keywords.add(item);
+            else if (item?.keyword) keywords.add(item.keyword);
+            else if (item?.name) keywords.add(item.name);
+          });
+        } else if (typeof source === 'string') {
+          source.split(',').forEach(k => keywords.add(k.trim()));
+        }
+      });
+      return Array.from(keywords).filter(k => k.length > 2).slice(0, 15).join(', ');
+    }
+    
+    const bridge = {
+      _meta: {
+        version: '1.0.0',
+        createdAt: now,
+        projectId: projectData.projectId || projectData.brandName || 'UNKNOWN'
+      },
+      
+      // Strategic context for read-only banners
+      strategicContext: {
+        brandName: projectData.brandName || '',
+        targetAudience: projectData.targetAudience || '',
+        businessGoal: projectData.quarterlyObjective || projectData.contentGoals || ''
+      },
+      
+      // Auto-population values for Stage 2 fields
+      autoPopulation: {
+        // Core Strategic Question - from Blue Ocean (Section 4)
+        // V12.0 FIX: Corrected chart key from blueOceanOpportunityChart → blueOceanOpportunitiesChart
+        coreStrategicQuestion: {
+          value: firstItem(dc.blueOceanOpportunitiesChart, 'opportunity') ||
+                 firstItem(dc.blueOceanOpportunitiesChart, 'label') ||
+                 firstItem(dc.informationBlackHolesChart, 'topic') ||
+                 extractFromReport(4, /opportunity[:\s]+([^.]+\.)/i) ||
+                 '',  // V12.0: No fallback templates - use real data only
+          sourceSection: 4,
+          notarized: true
+        },
+        
+        // Thesis (Pro Angle) - from Brand Positioning (Section 5)
+        // V12.0 FIX: Enhanced extraction from brandPositioningChart array
+        thesis: {
+          value: firstItem(dc.brandPositioningChart, 'advantage') ||
+                 firstItem(dc.brandPositioningChart, 'position') ||
+                 firstItem(dc.valuePropositionMixChart, 'proposition') ||
+                 structuredData?.brandPositioning?.thesis ||
+                 extractFromReport(5, /advantage[:\s]+([^.]+\.)/i) ||
+                 projectData.uvp || '',
+          sourceSection: 5,
+          notarized: true
+        },
+        
+        // Antithesis (Con Angle) - from Competitive Gaps (Section 3)
+        antithesis: {
+          value: firstItem(dc.competitiveAdvantageMapChart, 'gap') ||
+                 structuredData?.competitiveGaps?.topicGap ||
+                 extractFromReport(3, /objection[:\s]+([^.]+\.)/i) ||
+                 'Traditional approaches may offer more control but lack scalability.',
+          sourceSection: 3,
+          notarized: true
+        },
+        
+        // Key Market Data - from Customer Frustrations (Section 1)
+        // V12.0 FIX: Corrected chart key from customerFrustrationChart → customerFrustrationsChart
+        keyMarketData: {
+          value: firstItem(dc.customerFrustrationsChart, 'statistic') ||
+                 firstItem(dc.customerFrustrationsChart, 'frustration') ||
+                 firstItem(dc.customerFrustrationsChart, 'label') ||
+                 extractFromReport(1, /(\d+%[^.]+\.)/i) ||
+                 '',  // V12.0: No fallback templates
+          sourceSection: 1,
+          notarized: true
+        },
+        
+        // Category Definition - from Blue Ocean (Section 4) or Content Pillars (Section 6)
+        // V12.0 FIX: Corrected chart key and added pillar extraction
+        categoryDefinition: {
+          value: firstItem(dc.blueOceanOpportunitiesChart, 'category') ||
+                 firstItem(dc.strategicContentPillarsChart, 'pillarName') ||
+                 structuredData?.categoryCreation ||
+                 extractFromReport(4, /category[:\s]+([^.]+\.)/i) ||
+                 projectData.industryVertical || '',
+          sourceSection: 4,
+          notarized: true
+        },
+        
+        // Core Market Problem (Stage 2 version - s2_coreMarketProblem)
+        // V12.0 FIX: Corrected chart key
+        s2_coreMarketProblem: {
+          value: firstItem(dc.customerFrustrationsChart, 'frustration') ||
+                 firstItem(dc.customerFrustrationsChart, 'label') ||
+                 firstItem(dc.informationBlackHolesChart, 'topic') ||
+                 projectData.audiencePains ||
+                 extractFromReport(1, /problem[:\s]+([^.]+\.)/i) ||
+                 '',  // V12.0: No fallback templates
+          sourceSection: 1,
+          notarized: true
+        },
+        
+        // Future Vision (Stage 2 version - s2_futureVision)
+        // V12.0 FIX: Enhanced extraction from mindset transformation and hidden aspirations
+        s2_futureVision: {
+          value: firstItem(dc.mindsetTransformationChart, 'after') ||
+                 firstItem(dc.mindsetTransformationChart, 'outcome') ||
+                 firstItem(dc.hiddenAspirationsChart, 'aspiration') ||
+                 projectData.futureVision ||
+                 projectData.audienceDesired ||
+                 extractFromReport(4, /vision[:\s]+([^.]+\.)/i) ||
+                 '',  // V12.0: No fallback templates
+          sourceSection: 4,
+          notarized: true
+        },
+        
+        // Primary Keyword - from Content Pillars (Section 6)
+        // V12.0 FIX: Better extraction from multiple sources
+        primaryKeyword: {
+          value: firstItem(dc.strategicContentPillarsChart, 'pillarName') ||
+                 firstItem(dc.strategicContentPillarsChart, 'name') ||
+                 firstItem(dc.aeoAnalysisChart, 'keyword') ||
+                 firstItem(structuredData?.contentPillars, 'name') ||
+                 projectData.coreTopic?.split(',')[0]?.trim() ||
+                 projectData.primaryKeyword || '',
+          sourceSection: 6,
+          notarized: true
+        },
+        
+        // Secondary Keywords - from Content Pillars (Section 6)
+        // V12.0 FIX: Enhanced extraction from clusters and supporting keywords
+        secondaryKeywords: {
+          value: collectKeywords([
+            dc.strategicContentPillarsChart?.map(p => p.pillarName),
+            dc.strategicContentPillarsChart?.map(p => p.keywords).flat(),
+            dc.strategicContentPillarsChart?.flatMap(p => p.clusters?.map(c => c.clusterName)),
+            structuredData?.contentPillars?.map(p => p.supportingKeywords).flat(),
+            projectData.secondaryKeywords?.split(',')
+          ]) || projectData.secondaryKeywords || '',
+          sourceSection: 6,
+          notarized: true
+        },
+        
+        // Keywords & Entities - aggregated from Sections 3, 6, 9
+        // V12.0 FIX: Enhanced entity extraction from AEO chart and competitive analysis
+        keywordsEntities: {
+          value: collectKeywords([
+            dc.aeoAnalysisChart?.map(a => a.entity),
+            dc.aeoAnalysisChart?.map(a => a.keyword),
+            dc.strategicContentPillarsChart?.flatMap(p => p.clusters?.map(c => c.clusterName)),
+            dc.competitiveAdvantageMapChart?.map(c => c.label),
+            dc.competitiveAdvantageMapChart?.map(c => c.keyword),
+            structuredData?.entities,
+            structuredData?.contentPillars?.map(p => p.supportingKeywords).flat()
+          ]) || '',
+          sourceSection: [3, 6, 9],
+          notarized: true
+        }
+      }
+    };
+    
+    // V12.0: Log detailed extraction results for debugging
+    const fieldCount = Object.keys(bridge.autoPopulation).length;
+    const populatedFields = Object.entries(bridge.autoPopulation)
+      .filter(([k, v]) => v.value && v.value.length > 0)
+      .map(([k]) => k);
+    
+    Logger.log('🔗 Forensic Bridge extracted: ' + fieldCount + ' fields');
+    Logger.log('   Populated: ' + populatedFields.join(', '));
+    Logger.log('   Empty: ' + Object.keys(bridge.autoPopulation).filter(k => !populatedFields.includes(k)).join(', '));
+    return bridge;
+    
+  } catch (error) {
+    Logger.log('⚠️ Forensic Bridge extraction error: ' + error.toString());
+    return null;
   }
 }
 
@@ -274,8 +517,9 @@ ${JSON.stringify(chartSpecs, null, 2)}
 `;
     }
     
-    // Add JSON output schema
-    prompt += '\n\n' + buildJSONSchemaSection(1);
+    // V7.22 FIX: Use correct dashboard JSON schema (not sectionInsights)
+    // The buildJSONSchemaSection() outputs wrong format - use buildDashboardJSONSchema() instead
+    prompt += '\n\n' + buildDashboardJSONSchema();
     
     // Include the standard prompt content for data context
     prompt += `
@@ -286,6 +530,12 @@ ${JSON.stringify(chartSpecs, null, 2)}
 
 ` + getProjectDataContext(data);
     
+    // V12.0 TODO 7.2: Add competitor data to prompt context
+    prompt += getCompetitorDataContext(competitorData);
+    
+    // V12.0 TODO 7.5: Add forensic bridge output requirements
+    prompt += getForensicBridgeRequirements();
+
     // Add final instructions
     prompt += `
 
@@ -366,6 +616,269 @@ function getProjectDataContext(data) {
 - Channels: ${getField(data, 'primaryChannels')}
 - Content Formats: ${getField(data, 'contentFormats')}
 - Seasonality: ${getField(data, 'seasonality')}
+`;
+}
+
+/**
+ * V12.0 TODO 7.2: Build competitor data context for prompt
+ * Injects actual competitor metrics into the prompt
+ * @param {Object} competitorData - Competitor insights data
+ * @returns {string} Formatted competitor context
+ */
+function getCompetitorDataContext(competitorData) {
+  if (!competitorData || !competitorData.hasData) {
+    return `
+═══════════════════════════════════════════════════════════════════════════════
+🏢 COMPETITOR INTELLIGENCE DATA
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️ No competitor analysis data available. Generate insights based on:
+- Industry benchmarks for the specified vertical
+- Typical competitive patterns in this market segment
+- Standard SEO performance expectations
+
+`;
+  }
+  
+  let context = `
+═══════════════════════════════════════════════════════════════════════════════
+🏢 COMPETITOR INTELLIGENCE DATA — REAL METRICS
+═══════════════════════════════════════════════════════════════════════════════
+
+**Competitors Analyzed:** ${competitorData.competitorCount || 0}
+**Analysis Date:** ${competitorData.timestamp || 'Unknown'}
+
+`;
+
+  // Add market averages
+  if (competitorData.marketAverages) {
+    const avg = competitorData.marketAverages;
+    context += `
+**MARKET AVERAGES:**
+- Domain Authority: ${avg.domainAuthority || 'N/A'}
+- Estimated Traffic: ${(avg.traffic || 0).toLocaleString()}/mo
+- Keyword Count: ${(avg.keywords || 0).toLocaleString()}
+- Backlinks: ${(avg.backlinks || 0).toLocaleString()}
+- Page Speed: ${avg.pageSpeed || 'N/A'}ms
+
+`;
+  }
+
+  // Add individual competitor data
+  if (competitorData.competitors && Array.isArray(competitorData.competitors)) {
+    context += `**COMPETITOR BREAKDOWN:**\n`;
+    
+    competitorData.competitors.slice(0, 10).forEach((comp, i) => {
+      const metrics = comp.metrics || comp;
+      context += `
+${i + 1}. **${comp.domain || comp.url || 'Competitor ' + (i + 1)}**
+   - Authority: ${metrics.authority || metrics.domainAuthority || 'N/A'}
+   - Traffic: ${(metrics.traffic || metrics.organicTraffic || 0).toLocaleString()}/mo
+   - Keywords: ${(metrics.keywords || metrics.organicKeywords || 0).toLocaleString()}
+   - Backlinks: ${(metrics.backlinks || 0).toLocaleString()}
+   - Top Keywords: ${(metrics.topKeywords || []).slice(0, 5).join(', ') || 'N/A'}
+`;
+    });
+  }
+
+  // Add forensic intelligence if available
+  if (competitorData.forensicIntelligence) {
+    const fi = competitorData.forensicIntelligence;
+    context += `
+**FORENSIC INTELLIGENCE:**
+- AEO Readiness: ${fi.aeoReadiness || 'N/A'}
+- Citation Potential: ${fi.citationPotential || 'N/A'}
+- Brittleness Risk: ${fi.brittlenessRisk || 'N/A'}
+- Asset Valuation: ${fi.assetValuation || 'N/A'}
+`;
+  }
+
+  // Add Gemini insights if previously generated
+  if (competitorData.geminiInsights) {
+    context += `
+**PREVIOUS AI ANALYSIS SUMMARY:**
+${competitorData.geminiInsights.summary || 'N/A'}
+`;
+  }
+
+  context += `
+CRITICAL: Use THESE EXACT metrics in your analysis. Do NOT fabricate competitor data.
+Reference competitors by their actual domain names.
+
+`;
+
+  return context;
+}
+
+/**
+ * V12.0 TODO 7.5: Forensic Bridge Output Requirements
+ * Explicitly requests all 10 Stage 2 fields in response
+ * @returns {string} Forensic bridge requirements
+ */
+function getForensicBridgeRequirements() {
+  return `
+═══════════════════════════════════════════════════════════════════════════════
+🔗 FORENSIC BRIDGE — STAGE 2 AUTO-POPULATION REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+Your JSON response MUST include a "forensicBridge" object to auto-populate Stage 2 fields.
+This eliminates manual data re-entry and ensures strategic continuity.
+
+\`\`\`json
+{
+  "forensicBridge": {
+    "primaryKeywords": ["keyword1", "keyword2", "keyword3"],
+    "topicClusters": [
+      {"cluster": "Topic Cluster Name", "keywords": ["kw1", "kw2", "kw3"]}
+    ],
+    "contentGaps": ["Gap 1", "Gap 2", "Gap 3"],
+    "competitorWeaknesses": ["Weakness 1", "Weakness 2"],
+    "strategicOpportunities": ["Opportunity 1", "Opportunity 2"],
+    "recommendedFormats": ["Blog Post", "Video", "Infographic"],
+    "targetAudienceRefinement": "Refined audience description based on analysis",
+    "valuePropositionEnhancements": ["Enhancement 1", "Enhancement 2"],
+    "brandVoiceGuidelines": "Recommended tone and style based on competitor gap",
+    "priorityActions": [
+      {"action": "Action 1", "priority": "high", "timeline": "2 weeks"},
+      {"action": "Action 2", "priority": "medium", "timeline": "1 month"}
+    ],
+    "stage2Recommendations": {
+      "contentPillar1": "Recommended pillar topic based on gaps",
+      "contentPillar2": "Second pillar recommendation",
+      "contentPillar3": "Third pillar recommendation",
+      "keywordFocus": "Primary keyword focus for Stage 2",
+      "competitiveAngle": "Differentiation strategy for content"
+    }
+  }
+}
+\`\`\`
+
+CRITICAL: The forensicBridge data will automatically populate Stage 2 form fields.
+Ensure all 10 field categories are populated with specific, actionable data.
+
+`;
+}
+
+/**
+ * V7.22: Build the correct dashboard JSON schema for Gemini output
+ * This MUST match what parseStage1Response() expects: dashboardCharts structure
+ * NOT the sectionInsights format from buildJSONSchemaSection()
+ * 
+ * @returns {string} The JSON schema instruction block
+ */
+function buildDashboardJSONSchema() {
+  return `
+═══════════════════════════════════════════════════════════════════════════════
+📊 REQUIRED JSON OUTPUT FORMAT
+═══════════════════════════════════════════════════════════════════════════════
+
+Your response MUST start with a JSON code block containing this EXACT structure.
+This JSON powers all dashboard visualizations and charts.
+
+\`\`\`json
+{
+  "dashboardCharts": {
+    "heroMetrics": {
+      "citeabilityCoefficient": 0.0-1.0,
+      "janitorRatio": 0-100,
+      "moatAdjustedValuation": 0
+    },
+    "customerFrustrationsChart": [
+      {"label": "Frustration", "intensity": 1-10, "segment": "Audience", "shortDescription": "Detail"}
+    ],
+    "hiddenAspirationsChart": [
+      {"label": "Aspiration", "intensity": 1-10, "segment": "Audience", "shortDescription": "Detail"}
+    ],
+    "mindsetTransformationChart": [
+      {"fromBelief": "Old belief", "toBelief": "New belief", "importance": 1-10, "segment": "Audience"}
+    ],
+    "customerJobPriorityChart": [
+      {"jobTitle": "JTBD", "urgency": 1-10, "importance": 1-10, "frequency": 1-10, "segment": "Audience", "outcome": "Result"}
+    ],
+    "competitiveAdvantageMapChart": [
+      {"dimension": "Dimension", "yourBrand": 1-10, "competitor1": 1-10, "competitor2": 1-10, "marketAverage": 1-10, "explanation": "Why"}
+    ],
+    "contentFormatStrategyChart": [
+      {"format": "Format", "fitScore": 1-10, "competitiveGap": 1-10, "audienceDemand": 1-10, "feasibility": 1-10, "priority": 1-3}
+    ],
+    "brandPositioningChart": [
+      {"axis": "Spectrum", "position": 1-10, "marketPosition": 1-10, "note": "Meaning"}
+    ],
+    "valuePropositionMixChart": [
+      {"proposition": "Value prop", "appeal": 1-10, "differentiation": 1-10, "credibility": 1-10, "clarity": 1-10}
+    ],
+    "strategicContentPillarsChart": [
+      {"pillar": "Name", "audienceFit": 1-10, "competitiveGap": 1-10, "businessImpact": 1-10, "feasibility": 1-10, "priority": 1-3}
+    ],
+    "priorityFocusMatrixChart": [
+      {"initiative": "Action", "impact": 1-10, "effort": 1-10, "speed": 1-10, "priority": 1-3, "timeline": "Days/weeks"}
+    ],
+    "marketOpportunityAnalysisChart": [
+      {"opportunity": "Gap", "marketSize": 1-10, "competitionLevel": 1-10, "timingSensitivity": 1-10, "fitScore": 1-10, "priority": 1-3}
+    ],
+    "blueOceanOpportunitiesChart": [
+      {"opportunity": "Blue ocean area", "valueInnovation": 1-10, "competitorBlindSpot": true/false, "timeToCapture": "Months", "errcAction": "Eliminate/Reduce/Raise/Create", "estimatedImpact": "Impact description"}
+    ],
+    "competitorKillMovesChart": [
+      {"killMove": "Action", "targetCompetitor": "Domain", "competitorWeakness": "Weakness", "yourAdvantage": "Why you win", "impactLevel": 1-10, "executionDifficulty": 1-10, "timeframe": "Timeline"}
+    ],
+    "aeoAnalysisChart": [
+      {"competitor": "Domain", "citeabilityScore": 0.0-1.0, "citationTier": "HIGH/MEDIUM/LOW", "entityDensity": 0.0-1.0, "schemaCoverage": 0.0-1.0}
+    ],
+    "assetValuationChart": [
+      {"competitor": "Domain", "organicTrustValue": "$X", "valuationTier": "TIER", "moatMultiplier": 1.0-3.0}
+    ],
+    "brittlenessRiskChart": [
+      {"competitor": "Domain", "brittlenessScore": 0-100, "riskLevel": "HIGH/MODERATE/STABLE", "topRiskFactor1": "Risk"}
+    ],
+    "informationBlackHolesChart": [
+      {"topic": "Unaddressed topic", "opportunityScore": 1-10, "competitorCoverage": "None/Superficial", "aiCitationPotential": "HIGH/MEDIUM/LOW"}
+    ]
+  },
+  "jtbdScenarios": [
+    {"id": "JTBD_1", "title": "Job title", "whenSituation": "Trigger", "helpMeDo": "Action", "soICan": "Outcome", "segment": "Audience", "priority": 1-5, "painIntensity": 1-10},
+    {"id": "JTBD_2", "title": "...", "priority": 2, "...": "..."},
+    {"id": "JTBD_3", "title": "...", "priority": 3, "...": "..."},
+    {"id": "JTBD_4", "title": "...", "priority": 4, "...": "..."},
+    {"id": "JTBD_5", "title": "...", "priority": 5, "...": "..."}
+  ],
+  "contentPillars": [
+    {"name": "Pillar 1 Name", "description": "Coverage", "strategicRationale": ["Reason 1", "Reason 2"], "primaryFormats": ["Format 1"], "businessAlignment": "Goal", "competitiveDifferentiation": "Why unique", "clusters": [
+      {"name": "Awareness Cluster", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"], "funnelStage": "awareness"},
+      {"name": "Consideration Cluster", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"], "funnelStage": "consideration"},
+      {"name": "Decision Cluster", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"], "funnelStage": "decision"},
+      {"name": "Retention Cluster", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"], "funnelStage": "retention"},
+      {"name": "Advocacy Cluster", "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"], "funnelStage": "advocacy"}
+    ]},
+    {"name": "Pillar 2 Name", "description": "...", "clusters": ["... 5 clusters with 5+ keywords each ..."]},
+    {"name": "Pillar 3 Name", "description": "...", "clusters": ["... 5 clusters with 5+ keywords each ..."]},
+    {"name": "Pillar 4 Name", "description": "...", "clusters": ["... 5 clusters with 5+ keywords each ..."]},
+    {"name": "Pillar 5 Name", "description": "...", "clusters": ["... 5 clusters with 5+ keywords each ..."]},
+    {"name": "Pillar 6 Name", "description": "...", "clusters": ["... 5 clusters with 5+ keywords each ..."]}
+  ],
+  "competitiveGaps": {
+    "topicGap": "Topics missed", "angleVoiceGap": "Voice difference", "formatGap": "Format opportunity", "audienceGap": "Underserved", "outcomeGap": "Undelivered outcomes"
+  },
+  "uniqueMechanism": {
+    "name": "Framework name", "tagline": "One-liner", "oneParagraphDefinition": "Explanation", "keyPromises": ["Promise 1", "Promise 2", "Promise 3"]
+  },
+  "audienceProfile": {
+    "emotionalPains": ["Pain 1", "Pain 2"], "hiddenDesires": ["Desire 1", "Desire 2"], "limitingBeliefs": ["Belief 1"], "empoweringBeliefs": ["Belief 1"]
+  },
+  "strategicIntelligence": {
+    "the10xOpportunity": {"title": "10x opportunity", "description": "Details", "whyNow": "Timing", "executionPath": "Steps"},
+    "competitorBlindSpots": [{"blindSpot": "What they miss", "evidence": "Data", "exploitStrategy": "How to win"}],
+    "defensibleMoats": [{"moatType": "Type", "currentStrength": 1-10, "buildingStrategy": "How to build"}]
+  }
+}
+\`\`\`
+
+CRITICAL REQUIREMENTS:
+1. Populate ALL arrays with 3-7 items based on ACTUAL analysis. No empty arrays.
+2. contentPillars MUST have EXACTLY 6 pillars (minimum), each with 5 clusters and 5+ keywords per cluster.
+3. jtbdScenarios MUST have EXACTLY 5 scenarios.
+4. Each chart array (customerFrustrationsChart, etc.) MUST have 4-6 items.
+5. heroMetrics MUST have realistic calculated values based on the analysis.
 `;
 }
 
@@ -711,7 +1224,7 @@ function loadCompetitorInsightsForWorkflow(projectData) {
  */
 function buildCompetitorInsightsSection(insights) {
   if (!insights || !insights.hasData) {
-    return '**📊 COMPETITOR INTELLIGENCE:** Not available - Run competitor analysis first for data-driven insights.';
+    return '**📊 COMPETITOR INTELLIGENCE:** No competitor data is currently available for this project. When competitor analysis data exists, this section will display comparative insights, authority metrics, and strategic opportunities automatically.';
   }
   
   let section = `
@@ -975,7 +1488,7 @@ This data is REAL and CURRENT from our analysis - cite specific metrics in your 
  */
 function buildForensicIntelligenceSection(forensic) {
   if (!forensic) {
-    return '\n\n**📊 V7.1 FORENSIC INTELLIGENCE:** Not available — Run competitor analysis to generate forensic data.\n';
+    return '\n\n**📊 V7.1 FORENSIC INTELLIGENCE:** No forensic analysis data is currently available. When competitor analysis has been completed, this section will populate with AEO cite-ability scores, digital asset valuations, and brittleness predictions.\n';
   }
   
   let section = `
@@ -1472,6 +1985,71 @@ For EVERY insight you generate, simultaneously embody:
    \`\`\`
 
 ═══════════════════════════════════════════════════════════════════════════════
+📝 LANGUAGE, CLARITY & CREDIBILITY STANDARDS — PROFESSIONAL GRADE
+═══════════════════════════════════════════════════════════════════════════════
+
+6. **NEUTRAL PROFESSIONAL LANGUAGE**:
+   - Use precise, business-grade terminology over sensational or persuasive phrasing.
+   - Avoid marketing-heavy terms like "game-changer," "revolutionary," or "explosive growth" 
+     unless explicitly defined with supporting data.
+   - If using coined terminology, define it clearly before first use.
+   - Each sentence should communicate ONE core idea. Split overloaded sentences.
+
+7. **EVIDENCE-BACKED CLAIMS**:
+   - For any quantitative, statistical, or factual claim, do ONE of:
+     a) Provide a verifiable external source with URL (industry research, SaaS vendor data, analytics platform)
+     b) Explicitly label as "internal analysis," "industry heuristic," or "estimated based on [methodology]"
+   - NEVER fabricate statistics, sources, or links.
+   - If no reliable external source exists, avoid precise percentages or dollar figures.
+   - Use qualified language: "Industry benchmarks suggest..." or "Based on internal analysis..."
+
+8. **SOURCE CITATION RULES**:
+   - Place source citations immediately after the claims they support.
+   - Format: [Source Name](URL) or "According to [Organization], ..."
+   - Acceptable sources: Industry research firms (Gartner, Forrester, Statista), 
+     reputable SaaS vendors, analytics platforms, peer-reviewed publications.
+   - When citing competitor data: Reference the specific data source (e.g., "From Serpifai analysis" 
+     or "Based on OpenPageRank API data").
+
+9. **REPORT CREDIBILITY STANDARD**:
+   - Output must be suitable for: Agency founders, enterprise buyers, investors, partners.
+   - Avoid absolute claims ("always," "never," "guaranteed").
+   - Avoid exaggerated certainty or unsupported precision.
+   - When uncertain, use "likely," "suggests," or "indicates" rather than definitive statements.
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 VISUALIZATION & CHART RENDERING STANDARDS — ACCURACY MANDATE
+═══════════════════════════════════════════════════════════════════════════════
+
+10. **CHART-TO-SECTION ALIGNMENT**:
+    - Each chart MUST be rendered within the section it directly supports.
+    - Introduce every chart with a brief explanatory sentence describing what it shows.
+    - Include clear titles, axis labels, and units on all charts.
+    - Do NOT render charts outside their semantic section.
+    - Chart titles must match the data they display (e.g., "Customer Frustration Intensity" 
+      not "General Pain Points").
+
+11. **DATA-TO-VISUAL CONSISTENCY**:
+    - Charts must reflect ONLY data discussed in the surrounding text.
+    - Do NOT introduce new metrics, competitors, or interpretations solely in charts.
+    - If a chart references a competitor, that competitor must be discussed in the section text.
+    - All chart data points must be traceable to the JSON dashboardCharts object.
+
+12. **THEME-AWARE ACCESSIBILITY STYLING**:
+    - Color usage must maintain sufficient contrast across light, dark, and high-contrast themes.
+    - Primary data elements: Minimum 4.5:1 contrast ratio.
+    - Labels and text: Minimum 3:1 contrast ratio against chart backgrounds.
+    - Use color to reinforce meaning and hierarchy, not just decoration.
+    - Avoid color combinations that are problematic for colorblind users 
+      (e.g., pure red/green without shape differentiation).
+
+13. **VISUAL HIERARCHY**:
+    - Primary metrics: Larger, bolder, more saturated colors.
+    - Supporting data: Smaller, lighter, less prominent.
+    - Use consistent visual weight across all charts in the report.
+    - Ensure all charts remain readable at 80% zoom.
+
+═══════════════════════════════════════════════════════════════════════════════
 🎯 INSIGHT PRESENTATION FORMAT — ELITE STANDARD
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1541,7 +2119,52 @@ You will perform DEEP strategic analysis across 4 dimensions:
 
 ---
 
-## 📊 COMPLETE CONTEXT (ALL INPUT FIELDS MAPPED)
+## � COMPETITOR DATA INGESTION PROTOCOL
+
+**When competitor intelligence data is provided above, you MUST:**
+
+**1. INGEST & PATTERN RECOGNITION:**
+- Identify key patterns, strengths, weaknesses, gaps from the raw competitor dataset
+- Summarize insights per competitor AND overall market landscape
+- Extract authority metrics, traffic data, keyword profiles, and technical scores
+- Note content gaps, backlink opportunities, and brittleness indicators
+
+**2. PERSONA & JTBD SYNTHESIS:**
+- Generate 3-4 primary personas relevant to this market based on:
+  - Target audience data + competitor audience analysis
+  - Customer pains, desires, and objections
+- For EACH persona, derive:
+  - Top 5 Jobs-to-be-Done with frequency/importance scores
+  - Emotional pains with intensity ratings + competitor failure analysis
+  - Hidden desires with barriers and content opportunities
+  - Charts showing pain/desire intensity distribution
+
+**3. OPPORTUNITY & GAP ANALYSIS:**
+- Highlight untapped niches from competitor blind spots
+- Identify white spaces where NO competitor adequately serves customers
+- Calculate first-mover advantage windows with expiration timelines
+- Generate charts comparing:
+  - Competitor gaps vs. market needs intensity
+  - Moat potential scoring across strategic dimensions
+
+**4. CONTENT & KEYWORD STRATEGY:**
+- Suggest 5-7 content pillars based on competitor content gaps
+- For EACH pillar provide 10 high-value keywords with:
+  - Volume (use "estimated" label if from heuristics)
+  - Difficulty (low/medium/high)
+  - Intent (informational/navigational/commercial/transactional)
+  - Competitor ranking (who ranks and at what position)
+- Suggest 3 content pieces per pillar with strategic summaries
+- Generate charts comparing keyword opportunity vs. competitor saturation
+
+**5. EXECUTIVE SUMMARIES:**
+- Provide 2-3 sentence C-level summaries for each major section
+- Highlight actionable insights and recommended strategic moves
+- Include "The ONE thing leadership should know" for each section
+
+---
+
+## �📊 COMPLETE CONTEXT (ALL INPUT FIELDS MAPPED)
 
 ### STAGE 1: BRAND FOUNDATION & STRATEGY
 
@@ -2079,7 +2702,223 @@ Return a single, valid JSON object. This powers the dashboard visualizations.
         "competitorDifficulty": "Why competitors can't copy"
       }
     ]
-  }
+  },
+  "personas": [
+    {
+      "id": "PERSONA_1",
+      "name": "Primary Persona Name",
+      "demographics": {
+        "role": "Job title/role",
+        "companySize": "SMB/Mid-Market/Enterprise",
+        "industry": "Industry vertical",
+        "decisionPower": "Decision-maker/Influencer/End-user"
+      },
+      "psychographics": {
+        "values": ["Value 1", "Value 2"],
+        "frustrations": ["Daily frustration 1", "Daily frustration 2"],
+        "aspirations": ["Career/business goal 1", "Career/business goal 2"],
+        "informationSources": ["Where they learn", "Who they trust"]
+      },
+      "jtbd": [
+        {
+          "job": "When [situation], help me [action], so I can [outcome]",
+          "frequency": "daily|weekly|monthly|quarterly",
+          "importance": 1-10,
+          "currentSolution": "How they solve this today",
+          "frustrationWithCurrent": "Why current solution fails"
+        }
+      ],
+      "emotionalPains": [
+        {
+          "pain": "Specific emotional pain point",
+          "intensity": 1-10,
+          "trigger": "What triggers this pain",
+          "competitorResponse": "How competitors address (or fail to)"
+        }
+      ],
+      "hiddenDesires": [
+        {
+          "desire": "What they secretly want but won't admit",
+          "intensity": 1-10,
+          "barrier": "What prevents them from achieving it",
+          "contentOpportunity": "Content that speaks to this"
+        }
+      ],
+      "objections": [
+        {
+          "objection": "Why they hesitate to buy/act",
+          "rootCause": "Underlying fear or concern",
+          "counterStrategy": "How to overcome this"
+        }
+      ],
+      "charts": [
+        {
+          "chart_name": "persona_pain_intensity",
+          "x_axis": ["Pain 1", "Pain 2", "Pain 3"],
+          "y_axis": [8, 9, 7],
+          "description": "Emotional pain intensity for this persona"
+        }
+      ]
+    }
+    // Generate 3-4 personas based on targetAudience and customerDemographics
+  ],
+  "competitiveAnalysis": {
+    "insights": [
+      {
+        "insight": "Key competitive insight",
+        "source": "Data source (Serpifai analysis/API data/content audit)",
+        "actionability": 1-10,
+        "urgency": "immediate|short-term|long-term"
+      }
+    ],
+    "strengths": [
+      {
+        "competitor": "Competitor domain",
+        "strength": "What they do well",
+        "threatLevel": 1-10,
+        "yourCounter": "How to neutralize or outperform"
+      }
+    ],
+    "weaknesses": [
+      {
+        "competitor": "Competitor domain",
+        "weakness": "Where they fall short",
+        "exploitability": 1-10,
+        "attackStrategy": "How to capitalize on this"
+      }
+    ],
+    "gaps": [
+      {
+        "gapType": "content|keyword|authority|technical|brand",
+        "description": "Specific gap identified",
+        "marketNeed": "Customer need this gap represents",
+        "captureStrategy": "How to fill this gap first"
+      }
+    ],
+    "moatPotential": [
+      {
+        "moatType": "Content depth|Proprietary data|Community|Brand trust|Technical",
+        "buildDifficulty": 1-10,
+        "competitorReplicability": 1-10,
+        "timeToEstablish": "months/years",
+        "investmentRequired": "Low/Medium/High"
+      }
+    ],
+    "charts": [
+      {
+        "chart_name": "competitor_gaps_vs_needs",
+        "x_axis": ["Gap 1", "Gap 2", "Gap 3"],
+        "y_axis": [85, 72, 68],
+        "description": "Competitor gaps mapped against market demand intensity"
+      },
+      {
+        "chart_name": "moat_potential_scoring",
+        "x_axis": ["Content", "Authority", "Community", "Data", "Brand"],
+        "y_axis": [8, 6, 4, 7, 5],
+        "description": "Moat potential scores across strategic dimensions"
+      }
+    ]
+  },
+  "opportunities": {
+    "niches": [
+      {
+        "niche": "Untapped market segment or topic",
+        "marketSize": "Estimated audience/search volume",
+        "competitorPresence": "None/Weak/Moderate",
+        "captureStrategy": "First-mover approach",
+        "contentNeeded": ["Content piece 1", "Content piece 2"]
+      }
+    ],
+    "firstMoverAdvantage": [
+      {
+        "opportunity": "Time-sensitive opportunity",
+        "windowCloses": "When this opportunity expires",
+        "requiredAction": "What to do immediately",
+        "expectedOutcome": "Measurable result"
+      }
+    ],
+    "strategicMoves": [
+      {
+        "move": "Strategic action",
+        "targetCompetitor": "Who this affects most",
+        "resourcesNeeded": "Investment required",
+        "riskLevel": "Low/Medium/High",
+        "expectedROI": "Return on investment"
+      }
+    ],
+    "charts": [
+      {
+        "chart_name": "opportunity_vs_competition",
+        "x_axis": ["Niche 1", "Niche 2", "Niche 3", "Niche 4"],
+        "y_axis": [90, 78, 65, 82],
+        "description": "Market opportunity score vs competitive saturation (higher = better opportunity)"
+      }
+    ]
+  },
+  "contentStrategy": {
+    "pillars": [
+      {
+        "name": "Content Pillar Name",
+        "strategicRationale": "Why this pillar matters for competitive positioning",
+        "competitorGap": "What competitors miss in this area",
+        "audienceNeed": "Customer pain this addresses",
+        "keywords": [
+          {
+            "keyword": "target keyword",
+            "volume": "monthly searches (estimated if unknown)",
+            "difficulty": "low|medium|high",
+            "intent": "informational|navigational|commercial|transactional",
+            "competitorRanking": "Top competitor and their position",
+            "opportunityScore": 1-10
+          }
+        ],
+        "contentIdeas": [
+          {
+            "title": "Content piece title",
+            "format": "Ultimate Guide|How-To|Comparison|Case Study|Tool",
+            "summary": "2-3 sentence description of content angle",
+            "targetKeywords": ["kw1", "kw2"],
+            "estimatedImpact": "Traffic/leads/authority potential"
+          }
+        ],
+        "charts": [
+          {
+            "chart_name": "keyword_opportunity_vs_saturation",
+            "x_axis": ["KW1", "KW2", "KW3", "KW4", "KW5"],
+            "y_axis": [85, 72, 90, 65, 78],
+            "description": "Keyword opportunity score (volume × 1/difficulty × intent value)"
+          }
+        ]
+      }
+      // Generate 5-7 content pillars with 10 keywords and 3 content ideas each
+    ]
+  },
+  "executiveSummary": [
+    {
+      "section": "Personas & JTBD",
+      "summary": "2-3 sentence C-level summary of key persona insights and priority jobs-to-be-done",
+      "actionableInsight": "The ONE thing leadership should know",
+      "strategicMove": "Recommended immediate action"
+    },
+    {
+      "section": "Competitive Analysis",
+      "summary": "2-3 sentence summary of competitive landscape and key vulnerabilities",
+      "actionableInsight": "The competitor weakness to exploit NOW",
+      "strategicMove": "Recommended offensive strategy"
+    },
+    {
+      "section": "Opportunities",
+      "summary": "2-3 sentence summary of market gaps and first-mover advantages",
+      "actionableInsight": "The opportunity that closes soonest",
+      "strategicMove": "Recommended capture strategy"
+    },
+    {
+      "section": "Content Strategy",
+      "summary": "2-3 sentence summary of content pillars and keyword opportunities",
+      "actionableInsight": "The highest-ROI content investment",
+      "strategicMove": "Recommended publishing priority"
+    }
+  ]
 }
 \`\`\`
 
@@ -3255,12 +4094,30 @@ After the JSON, provide a comprehensive strategic intelligence report structured
 ❌ NEVER: Recommendations that ignore competitor data provided
 ❌ NEVER: Skip sections or subsections
 ❌ NEVER: Use "N/A" or "Not applicable" - always provide relevant analysis
+❌ NEVER: Fabricate statistics, sources, or external links
+❌ NEVER: Use hype-driven language ("game-changer," "revolutionary," "explosive") without data support
+❌ NEVER: Display "Run competitor analysis" or similar instructional messages when data is missing
 ✅ ALWAYS: Cite specific data points from inputs or competitor intelligence
 ✅ ALWAYS: Explain WHY each score is what it is
 ✅ ALWAYS: Connect opportunities to competitor weaknesses
 ✅ ALWAYS: Include timing/urgency analysis
 ✅ ALWAYS: Complete ALL 14 sections with ALL subsections
 ✅ ALWAYS: Use tables where specified in the template
+✅ ALWAYS: Label estimates and heuristics as such ("Based on industry benchmarks..." or "Internal analysis indicates...")
+✅ ALWAYS: Use neutral, professional language suitable for enterprise buyers and investors
+
+**COMPETITOR DATA HANDLING:**
+When competitor intelligence data IS available:
+- Render complete Competitor Analysis section with comparative insights
+- Reference forensic cards and competitor artifacts
+- Include strengths, weaknesses, and notable gaps
+- Use specific metrics from the competitor data (authority scores, traffic, keywords)
+
+When competitor intelligence data is NOT available:
+- Use neutral, informative language explaining what data would appear
+- DO NOT display instructional "run analysis" prompts
+- Provide general strategic guidance based on available project data
+- Clearly state "Based on project inputs" when competitor data is unavailable
 
 **EXAMPLES**:
 ❌ BAD: "Leverage synergistic paradigms to enhance market presence"
@@ -3268,6 +4125,9 @@ After the JSON, provide a comprehensive strategic intelligence report structured
 
 ❌ BAD: "Build authority in your niche"
 ✅ GOOD: "Competitor X has 450 referring domains but weak E-E-A-T signals. Your asymmetric advantage: Leverage ${getField(data, 'authorBio')} credentials + proprietary data to capture authority they can't match."
+
+❌ BAD: "Studies show 80% of customers prefer..."
+✅ GOOD: "According to Forrester Research (2024), 78% of B2B buyers require 3+ content touchpoints... [Source: forrester.com/b2b-buyer-journey]"
 
 **COMPETITOR INTELLIGENCE USAGE:**
 When competitor data is provided above, you MUST:
@@ -3329,85 +4189,255 @@ function callStage1GeminiAPI(prompt, selectedModel) {
 
 /**
  * Parse Gemini response into structured JSON
+ * V12.0: Enhanced with robust JSON extraction and validation
  * Expects response with JSON block + markdown report
  */
 function parseStage1Response(fullResponse) {
   try {
-    // Extract JSON block from response
-    const jsonMatch = fullResponse.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonMatch && jsonMatch[1]) {
-      try {
-        const strategicData = JSON.parse(jsonMatch[1]);
-        Logger.log('✅ Successfully parsed strategicData JSON from response');
-        return strategicData;
-      } catch (jsonError) {
-        Logger.log('⚠️ JSON parse error: ' + jsonError.toString());
-        Logger.log('JSON content: ' + jsonMatch[1].substring(0, 500));
+    // V12.0: Use enhanced JSON extraction from DB_AI_GeminiClient.gs
+    let strategicData = null;
+    
+    if (typeof extractJSONFromResponse === 'function') {
+      strategicData = extractJSONFromResponse(fullResponse);
+      if (strategicData) {
+        Logger.log('✅ V12.0 extractJSONFromResponse succeeded');
       }
     }
     
-    // Fallback: Try to extract JSON without code fence
-    const jsonStart = fullResponse.indexOf('{');
-    const jsonEnd = fullResponse.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-      try {
-        const jsonStr = fullResponse.substring(jsonStart, jsonEnd + 1);
-        const strategicData = JSON.parse(jsonStr);
-        Logger.log('✅ Successfully parsed strategicData JSON (no fence)');
-        return strategicData;
-      } catch (jsonError) {
-        Logger.log('⚠️ Fallback JSON parse failed: ' + jsonError.toString());
+    // Fallback to legacy extraction if enhanced method not available or failed
+    if (!strategicData) {
+      // Extract JSON block from response
+      const jsonMatch = fullResponse.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          strategicData = JSON.parse(jsonMatch[1]);
+          Logger.log('✅ Successfully parsed strategicData JSON from response');
+        } catch (jsonError) {
+          Logger.log('⚠️ JSON parse error: ' + jsonError.toString());
+          Logger.log('JSON content: ' + jsonMatch[1].substring(0, 500));
+        }
       }
+      
+      // Fallback: Try to extract JSON without code fence
+      if (!strategicData) {
+        const jsonStart = fullResponse.indexOf('{');
+        const jsonEnd = fullResponse.lastIndexOf('}');
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+          try {
+            const jsonStr = fullResponse.substring(jsonStart, jsonEnd + 1);
+            strategicData = JSON.parse(jsonStr);
+            Logger.log('✅ Successfully parsed strategicData JSON (no fence)');
+          } catch (jsonError) {
+            Logger.log('⚠️ Fallback JSON parse failed: ' + jsonError.toString());
+          }
+        }
+      }
+    }
+    
+    // V12.0 TODO 7.6: Validate JSON structure
+    if (strategicData) {
+      const validationResult = validateStage1Response(strategicData);
+      if (!validationResult.isValid) {
+        Logger.log('⚠️ V12.0 Validation issues: ' + validationResult.issues.join(', '));
+        // Attempt to repair missing fields
+        strategicData = repairStage1Response(strategicData, validationResult);
+      } else {
+        Logger.log('✅ V12.0 Response validation passed');
+      }
+      return strategicData;
     }
     
     // Final fallback: Return minimal structure
     Logger.log('⚠️ Could not extract valid JSON, returning minimal structure');
-    return {
-      dashboardCharts: {
-        customerFrustrationsChart: [],
-        hiddenAspirationsChart: [],
-        mindsetTransformationChart: [],
-        customerJobPriorityChart: [],
-        competitiveAdvantageMapChart: [],
-        contentFormatStrategyChart: [],
-        brandPositioningChart: [],
-        valuePropositionMixChart: [],
-        strategicContentPillarsChart: [],
-        priorityFocusMatrixChart: [],
-        marketOpportunityAnalysisChart: []
-      },
-      jtbdScenarios: [],
-      contentPillars: [],
-      competitiveGaps: { topicGap: '', angleVoiceGap: '', formatGap: '' },
-      uniqueMechanism: { name: 'Authority Engine Blueprint', tagline: '', oneParagraphDefinition: '', keyPromises: [] },
-      audienceProfile: { emotionalPains: [], hiddenDesires: [], limitingBeliefs: [], empoweringBeliefs: [] },
-      parseError: 'Could not extract valid JSON from response'
-    };
+    return getMinimalStage1Response('Could not extract valid JSON from response');
     
   } catch (error) {
     Logger.log('❌ Critical parse error: ' + error.toString());
-    return {
-      dashboardCharts: {
-        customerFrustrationsChart: [],
-        hiddenAspirationsChart: [],
-        mindsetTransformationChart: [],
-        customerJobPriorityChart: [],
-        competitiveAdvantageMapChart: [],
-        contentFormatStrategyChart: [],
-        brandPositioningChart: [],
-        valuePropositionMixChart: [],
-        strategicContentPillarsChart: [],
-        priorityFocusMatrixChart: [],
-        marketOpportunityAnalysisChart: []
-      },
-      jtbdScenarios: [],
-      contentPillars: [],
-      competitiveGaps: { topicGap: '', angleVoiceGap: '', formatGap: '' },
-      uniqueMechanism: { name: '', tagline: '', oneParagraphDefinition: '', keyPromises: [] },
-      audienceProfile: { emotionalPains: [], hiddenDesires: [], limitingBeliefs: [], empoweringBeliefs: [] },
-      criticalError: error.toString()
+    return getMinimalStage1Response(error.toString());
+  }
+}
+
+/**
+ * V12.0 TODO 7.6: Validate Stage 1 response structure
+ * @param {Object} data - Parsed JSON response
+ * @returns {Object} { isValid: boolean, issues: Array, missing: Array }
+ */
+function validateStage1Response(data) {
+  const issues = [];
+  const missing = [];
+  
+  // Required top-level fields
+  const requiredFields = [
+    'dashboardCharts',
+    'jtbdScenarios',
+    'contentPillars',
+    'competitiveGaps',
+    'uniqueMechanism',
+    'audienceProfile'
+  ];
+  
+  requiredFields.forEach(field => {
+    if (!data[field]) {
+      missing.push(field);
+      issues.push(`Missing required field: ${field}`);
+    }
+  });
+  
+  // Validate dashboardCharts structure
+  if (data.dashboardCharts) {
+    const dc = data.dashboardCharts;
+    const requiredCharts = [
+      'customerFrustrationsChart',
+      'hiddenAspirationsChart',
+      'customerJobPriorityChart',
+      'competitiveAdvantageMapChart',
+      'contentFormatStrategyChart',
+      'strategicContentPillarsChart',
+      'priorityFocusMatrixChart'
+    ];
+    
+    requiredCharts.forEach(chart => {
+      if (!dc[chart] || (Array.isArray(dc[chart]) && dc[chart].length === 0)) {
+        issues.push(`Empty or missing chart: ${chart}`);
+      }
+    });
+  }
+  
+  // Validate content pillars
+  if (data.contentPillars && Array.isArray(data.contentPillars)) {
+    if (data.contentPillars.length < 3) {
+      issues.push('Content pillars should have at least 3 entries');
+    }
+  }
+  
+  // Validate JTBD scenarios
+  if (data.jtbdScenarios && Array.isArray(data.jtbdScenarios)) {
+    if (data.jtbdScenarios.length < 3) {
+      issues.push('JTBD scenarios should have at least 3 entries');
+    }
+  }
+  
+  // Check for forensicBridge (V12.0)
+  if (!data.forensicBridge) {
+    issues.push('Missing forensicBridge for Stage 2 auto-population');
+  }
+  
+  // Check for tabInsights (V12.0)
+  if (!data.tabInsights) {
+    issues.push('Missing tabInsights for 14-tab dashboard');
+  }
+  
+  return {
+    isValid: issues.length === 0,
+    issues: issues,
+    missing: missing,
+    completeness: Math.round(((requiredFields.length - missing.length) / requiredFields.length) * 100)
+  };
+}
+
+/**
+ * V12.0: Repair missing fields in Stage 1 response
+ * @param {Object} data - Original parsed data
+ * @param {Object} validation - Validation result
+ * @returns {Object} Repaired data
+ */
+function repairStage1Response(data, validation) {
+  const repaired = JSON.parse(JSON.stringify(data)); // Deep clone
+  
+  // Add minimal dashboardCharts if missing
+  if (!repaired.dashboardCharts) {
+    repaired.dashboardCharts = {};
+  }
+  
+  const defaultCharts = {
+    customerFrustrationsChart: [],
+    hiddenAspirationsChart: [],
+    mindsetTransformationChart: [],
+    customerJobPriorityChart: [],
+    competitiveAdvantageMapChart: [],
+    contentFormatStrategyChart: [],
+    brandPositioningChart: [],
+    valuePropositionMixChart: [],
+    strategicContentPillarsChart: [],
+    priorityFocusMatrixChart: [],
+    marketOpportunityAnalysisChart: [],
+    blueOceanOpportunitiesChart: [],
+    competitorKillMovesChart: [],
+    aeoAnalysisChart: [],
+    assetValuationChart: [],
+    brittlenessRiskChart: []
+  };
+  
+  Object.keys(defaultCharts).forEach(chart => {
+    if (!repaired.dashboardCharts[chart]) {
+      repaired.dashboardCharts[chart] = defaultCharts[chart];
+    }
+  });
+  
+  // Add missing top-level structures
+  if (!repaired.jtbdScenarios) repaired.jtbdScenarios = [];
+  if (!repaired.contentPillars) repaired.contentPillars = [];
+  if (!repaired.competitiveGaps) repaired.competitiveGaps = { topicGap: '', angleVoiceGap: '', formatGap: '' };
+  if (!repaired.uniqueMechanism) repaired.uniqueMechanism = { name: '', tagline: '', oneParagraphDefinition: '', keyPromises: [] };
+  if (!repaired.audienceProfile) repaired.audienceProfile = { emotionalPains: [], hiddenDesires: [], limitingBeliefs: [], empoweringBeliefs: [] };
+  
+  // Add empty forensicBridge if missing
+  if (!repaired.forensicBridge) {
+    repaired.forensicBridge = {
+      primaryKeywords: [],
+      topicClusters: [],
+      contentGaps: [],
+      competitorWeaknesses: [],
+      strategicOpportunities: [],
+      recommendedFormats: [],
+      targetAudienceRefinement: '',
+      valuePropositionEnhancements: [],
+      brandVoiceGuidelines: '',
+      priorityActions: []
     };
   }
+  
+  // Add empty tabInsights if missing
+  if (!repaired.tabInsights) {
+    repaired.tabInsights = {};
+  }
+  
+  repaired._repaired = true;
+  repaired._repairIssues = validation.issues;
+  
+  Logger.log('✅ V12.0 Response repaired, ' + validation.issues.length + ' issues addressed');
+  return repaired;
+}
+
+/**
+ * V12.0: Get minimal Stage 1 response structure
+ * @param {string} errorMessage - Error message to include
+ * @returns {Object} Minimal response structure
+ */
+function getMinimalStage1Response(errorMessage) {
+  return {
+    dashboardCharts: {
+      customerFrustrationsChart: [],
+      hiddenAspirationsChart: [],
+      mindsetTransformationChart: [],
+      customerJobPriorityChart: [],
+      competitiveAdvantageMapChart: [],
+      contentFormatStrategyChart: [],
+      brandPositioningChart: [],
+      valuePropositionMixChart: [],
+      strategicContentPillarsChart: [],
+      priorityFocusMatrixChart: [],
+      marketOpportunityAnalysisChart: []
+    },
+    jtbdScenarios: [],
+    contentPillars: [],
+    competitiveGaps: { topicGap: '', angleVoiceGap: '', formatGap: '' },
+    uniqueMechanism: { name: '', tagline: '', oneParagraphDefinition: '', keyPromises: [] },
+    audienceProfile: { emotionalPains: [], hiddenDesires: [], limitingBeliefs: [], empoweringBeliefs: [] },
+    forensicBridge: { primaryKeywords: [], topicClusters: [], contentGaps: [] },
+    tabInsights: {},
+    parseError: errorMessage
+  };
 }
 
 /**

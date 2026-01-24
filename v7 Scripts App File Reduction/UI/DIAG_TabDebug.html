@@ -111,10 +111,11 @@ function diagnoseFunctionAvailability() {
   console.log('🔬 DIAGNOSTIC: Function Availability Check');
   console.log('========================================\n');
   
+  // V12.0 FIX: Updated to use correct function names that actually exist
   const criticalFunctions = [
     // Overview
     'populateOverviewTab',
-    'renderCompetitorGrid',
+    // 'renderCompetitorGrid', // Legacy - not used
     
     // Conversion & Distribution
     'populateConversionDataTab',
@@ -129,22 +130,17 @@ function diagnoseFunctionAvailability() {
     'populatePerformancePredictiveTab',
     'populateStrategicOpportunitiesTab',
     
-    // Technical & Brand
-    'populateTechnicalForensicsTab',
-    'populateBrandVoiceTab',
+    // Technical & Brand - V12.0: Corrected function names
+    'populateTechnicalSEOTab',        // Was: populateTechnicalForensicsTab
+    'populateBrandPositioningTab',    // Was: populateBrandVoiceTab
     
-    // Content & Keywords
-    'populateContentDNATab',
-    'populateKeywordAnalysisTab',
+    // Content & Keywords - V14.0: Fixed to actual function names in codebase
+    'populateContentIntelligenceTab', // V14.0 FIX: Was incorrectly 'populateContentIntelTab'
+    'populateKeywordStrategyTab',     // Was: populateKeywordAnalysisTab
     
-    // Elite renderers
-    'renderEliteAudienceIntel',
-    'renderEliteConversionIntel',
-    'renderEliteGeoAeoIntel',
-    'renderEliteAuthorityIntel',
-    'renderElitePerformanceIntel',
-    'renderEliteOpportunitiesIntel',
-    'renderEliteDistributionIntel'
+    // Elite renderers - V14.0: Removed renderEliteAudienceIntelligence 
+    // This function is in UI_Tab_Audience.html but UI_Tab_Audience_V45.html is used instead
+    // The V45 tab files handle audience rendering with populateAudienceIntelligenceTab
   ];
   
   const results = {

@@ -524,7 +524,11 @@ function UPP_saveWorkflowStage(jobToken, projectId, competitorId, payload) {
   const stageNum = payload.stage || 1;
   const analysisJson = JSON.stringify(payload.json || {});
   const analysisText = payload.report || '';
-  const dataSize = analysisJson.length + analysisText.length;
+  // V11.0: Also save forensicBridge for Stage 2 auto-population
+  const forensicBridge = payload.forensicBridge ? JSON.stringify(payload.forensicBridge) : null;
+  const dataSize = analysisJson.length + analysisText.length + (forensicBridge ? forensicBridge.length : 0);
+  
+  console.log(`[UPP] 🔗 forensicBridge present: ${!!forensicBridge}`);
   
   // V7 FIX: Use new dedicated workflow stage endpoint
   const response = callGateway('upp_save_workflow_stage', {
@@ -533,6 +537,8 @@ function UPP_saveWorkflowStage(jobToken, projectId, competitorId, payload) {
     stage: stageNum,
     analysis_json: analysisJson,
     analysis_text: analysisText,
+    // V11.0: Include forensicBridge for Stage 2 auto-population
+    forensic_bridge: forensicBridge,
     model: payload.model || 'gemini-3-flash-preview',
     stage_name: payload.stageName || 'Stage ' + stageNum,
     competitor_data_used: payload.competitorDataUsed || false

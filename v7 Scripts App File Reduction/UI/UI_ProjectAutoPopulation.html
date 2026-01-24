@@ -509,12 +509,17 @@ function hideProjectLoadingState() {
 
 /**
  * Initialize project dropdown
+ * V14.0 FIX: Updated to look for 'projectSelect' (actual ID in UI_Components_ProjectManager.html)
+ * Falls back to 'project-selector' for backwards compatibility
  */
 async function initProjectDropdown() {
   try {
-    const dropdown = document.getElementById('project-selector');
+    // V14.0: Try both possible element IDs
+    const dropdown = document.getElementById('projectSelect') || 
+                     document.getElementById('project-selector');
     if (!dropdown) {
-      console.warn('⚠️ Project dropdown not found');
+      // V14.0: Only warn on initial load, not a critical error
+      console.log('ℹ️ Project dropdown not yet available (normal during initial load)');
       return;
     }
     

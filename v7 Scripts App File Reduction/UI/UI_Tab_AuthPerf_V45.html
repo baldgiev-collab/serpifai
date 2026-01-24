@@ -361,10 +361,14 @@ function populatePerformancePredictiveTab(data) {
 function populateStrategicOpportunitiesTab(data) {
   console.log('🎯 Populating Strategic Opportunities Tab (Elite v2.0)...');
 
-  var metricsDiv = document.getElementById('comp-opportunities-metrics');
+  // V73 FIX: Changed from 'opportunities' to 'opportunity' (singular) to match HTML
+  var metricsDiv = document.getElementById('comp-opportunities-metrics') || document.getElementById('comp-opportunity-metrics');
 
   if (!metricsDiv) {
-    var panel = document.querySelector('[data-comp-panel="opportunities"]') || document.getElementById('panel-strategicOpportunities');
+    // V73 FIX: Look for both singular and plural forms
+    var panel = document.querySelector('[data-comp-panel="opportunity"]') || 
+                document.querySelector('[data-comp-panel="opportunities"]') || 
+                document.getElementById('panel-strategicOpportunities');
     if (panel) {
       metricsDiv = document.createElement('div');
       metricsDiv.id = 'comp-opportunities-metrics';

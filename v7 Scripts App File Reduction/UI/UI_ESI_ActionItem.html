@@ -1,0 +1,474 @@
+<!--
+  UI_ESI_ActionItem.html
+  ELITE STRATEGIC INTELLIGENCE - ACTION ITEM COMPONENT v12.0
+  
+  Checkbox-style action with priority, deadline, and status tracking
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI ACTION ITEM - TASK/ACTION COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.esi-action-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--elite-glass-bg, rgba(255, 255, 255, 0.95));
+  border: 1px solid var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-md, 0.75rem);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.esi-action-task:hover {
+  border-color: var(--elite-primary-light, #6366f1);
+  box-shadow: var(--elite-shadow-md);
+  transform: translateX(4px);
+}
+
+/* Checkbox */
+.esi-action-task__checkbox {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--elite-gray-300, #d1d5db);
+  border-radius: var(--elite-radius-sm, 0.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.esi-action-task__checkbox:hover {
+  border-color: var(--elite-primary, #4f46e5);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.esi-action-task__checkbox::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.esi-action-task--completed .esi-action-task__checkbox {
+  border-color: var(--elite-success, #10b981);
+  background: var(--elite-success, #10b981);
+}
+
+.esi-action-task--completed .esi-action-task__checkbox::after {
+  content: '✓';
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  background: transparent;
+}
+
+/* Content */
+.esi-action-task__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.esi-action-task__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.375rem;
+}
+
+.esi-action-task__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--elite-gray-800, #1f2937);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.esi-action-task--completed .esi-action-task__title {
+  text-decoration: line-through;
+  color: var(--elite-gray-400, #9ca3af);
+}
+
+.esi-action-task__description {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--elite-gray-500, #6b7280);
+  margin-bottom: 0.75rem;
+}
+
+/* Priority Badge */
+.esi-action-task__priority {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--elite-radius-full);
+}
+
+.esi-action-task__priority--critical {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--elite-danger, #ef4444);
+}
+
+.esi-action-task__priority--high {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--elite-warning, #f59e0b);
+}
+
+.esi-action-task__priority--medium {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--elite-info, #3b82f6);
+}
+
+.esi-action-task__priority--low {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--elite-success, #10b981);
+}
+
+/* Meta Row */
+.esi-action-task__meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.esi-action-task__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--elite-gray-500, #6b7280);
+}
+
+.esi-action-task__meta-icon {
+  font-size: 0.875rem;
+}
+
+.esi-action-task__deadline--overdue {
+  color: var(--elite-danger, #ef4444);
+  font-weight: 600;
+}
+
+.esi-action-task__deadline--soon {
+  color: var(--elite-warning, #f59e0b);
+  font-weight: 600;
+}
+
+/* Impact Indicator */
+.esi-action-task__impact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--elite-gray-100, #f3f4f6);
+  border-radius: var(--elite-radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--elite-gray-600, #4b5563);
+}
+
+.esi-action-task__impact--high {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--elite-primary, #4f46e5);
+}
+
+/* Category Tag */
+.esi-action-task__category {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--elite-gray-100, #f3f4f6);
+  border-radius: var(--elite-radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--elite-gray-600, #4b5563);
+}
+
+/* Compact Variant */
+.esi-action-list--compact .esi-action-task {
+  padding: 0.75rem 1rem;
+}
+
+.esi-action-list--compact .esi-action-task__checkbox {
+  width: 20px;
+  height: 20px;
+}
+
+.esi-action-list--compact .esi-action-task__title {
+  font-size: 0.875rem;
+}
+
+/* Grouped Variant */
+.esi-action-group {
+  margin-bottom: 1.5rem;
+}
+
+.esi-action-group__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--elite-gray-200, #e5e7eb);
+}
+
+.esi-action-group__title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--elite-gray-600, #4b5563);
+  margin: 0;
+}
+
+.esi-action-group__count {
+  padding: 2px 8px;
+  background: var(--elite-gray-100, #f3f4f6);
+  border-radius: var(--elite-radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--elite-gray-500, #6b7280);
+}
+
+/* Animation */
+@keyframes esi-action-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.esi-action-list--animate .esi-action-task {
+  animation: esi-action-slide 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.esi-action-list--animate .esi-action-task:nth-child(1) { animation-delay: 0ms; }
+.esi-action-list--animate .esi-action-task:nth-child(2) { animation-delay: 50ms; }
+.esi-action-list--animate .esi-action-task:nth-child(3) { animation-delay: 100ms; }
+.esi-action-list--animate .esi-action-task:nth-child(4) { animation-delay: 150ms; }
+.esi-action-list--animate .esi-action-task:nth-child(5) { animation-delay: 200ms; }
+.esi-action-list--animate .esi-action-task:nth-child(6) { animation-delay: 250ms; }
+
+/* Dark Theme */
+[data-theme="dark"] .esi-action-task,
+[data-theme="neon"] .esi-action-task {
+  background: var(--elite-gray-800, #1f2937);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-action-task__title,
+[data-theme="neon"] .esi-action-task__title {
+  color: var(--elite-gray-100, #f3f4f6);
+}
+
+[data-theme="dark"] .esi-action-task__description,
+[data-theme="neon"] .esi-action-task__description {
+  color: var(--elite-gray-400, #9ca3af);
+}
+
+[data-theme="dark"] .esi-action-task__checkbox,
+[data-theme="neon"] .esi-action-task__checkbox {
+  border-color: var(--elite-gray-600, #4b5563);
+}
+
+[data-theme="dark"] .esi-action-task__impact,
+[data-theme="dark"] .esi-action-task__category,
+[data-theme="neon"] .esi-action-task__impact,
+[data-theme="neon"] .esi-action-task__category {
+  background: var(--elite-gray-700, #374151);
+  color: var(--elite-gray-300, #d1d5db);
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI ACTION ITEM - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI Action Item
+ * @param {Object} config - Action configuration
+ * @param {string} config.title - Action title
+ * @param {string} config.description - Action description
+ * @param {string} config.priority - 'critical', 'high', 'medium', 'low'
+ * @param {string} config.deadline - Deadline string
+ * @param {string} config.impact - Impact level
+ * @param {string} config.category - Category tag
+ * @param {boolean} config.completed - Whether completed
+ * @param {Function} config.onToggle - Toggle callback
+ * @returns {HTMLElement}
+ */
+function createESIActionItem(config = {}) {
+  const {
+    id = Math.random().toString(36).substr(2, 9),
+    title = 'Action Item',
+    description = '',
+    priority = 'medium',
+    deadline = '',
+    impact = '',
+    category = '',
+    completed = false,
+    onToggle = null
+  } = config;
+
+  const item = document.createElement('div');
+  item.className = `esi-action-task ${completed ? 'esi-action-task--completed' : ''}`;
+  item.dataset.actionId = id;
+
+  // Check deadline status
+  let deadlineClass = '';
+  if (deadline) {
+    const daysUntil = getDaysUntil(deadline);
+    if (daysUntil < 0) deadlineClass = 'esi-action-task__deadline--overdue';
+    else if (daysUntil <= 3) deadlineClass = 'esi-action-task__deadline--soon';
+  }
+
+  item.innerHTML = `
+    <div class="esi-action-task__checkbox" role="checkbox" aria-checked="${completed}"></div>
+    <div class="esi-action-task__content">
+      <div class="esi-action-task__header">
+        <h4 class="esi-action-task__title">${title}</h4>
+        <span class="esi-action-task__priority esi-action-task__priority--${priority}">
+          ${priority}
+        </span>
+      </div>
+      ${description ? `<p class="esi-action-task__description">${description}</p>` : ''}
+      <div class="esi-action-task__meta">
+        ${deadline ? `
+          <span class="esi-action-task__meta-item ${deadlineClass}">
+            <span class="esi-action-task__meta-icon">📅</span>
+            ${deadline}
+          </span>
+        ` : ''}
+        ${impact ? `
+          <span class="esi-action-task__impact ${impact === 'high' ? 'esi-action-task__impact--high' : ''}">
+            📈 ${impact} impact
+          </span>
+        ` : ''}
+        ${category ? `
+          <span class="esi-action-task__category">
+            🏷️ ${category}
+          </span>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  // Toggle handler
+  const checkbox = item.querySelector('.esi-action-task__checkbox');
+  checkbox.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isCompleted = item.classList.toggle('esi-action-task--completed');
+    checkbox.setAttribute('aria-checked', isCompleted);
+    if (typeof onToggle === 'function') {
+      onToggle(id, isCompleted);
+    }
+    console.log(`📊 ESI Action: ${title} - ${isCompleted ? 'completed' : 'uncompleted'}`);
+  });
+
+  return item;
+}
+
+function getDaysUntil(dateStr) {
+  const target = new Date(dateStr);
+  const today = new Date();
+  const diff = target - today;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Create an ESI Action List
+ * @param {Array} actions - Array of action configurations
+ * @param {Object} options - List options
+ * @returns {HTMLElement}
+ */
+function createESIActionList(actions = [], options = {}) {
+  const { compact = false, animate = true, onToggle = null } = options;
+
+  const list = document.createElement('div');
+  list.className = `esi-action-list ${compact ? 'esi-action-list--compact' : ''} ${animate ? 'esi-action-list--animate' : ''}`;
+
+  actions.forEach(action => {
+    list.appendChild(createESIActionItem({ ...action, onToggle }));
+  });
+
+  return list;
+}
+
+/**
+ * Create grouped ESI Action Lists
+ * @param {Object} groups - { groupName: [actions] }
+ * @param {Object} options - List options
+ * @returns {HTMLElement}
+ */
+function createESIActionGroups(groups = {}, options = {}) {
+  const container = document.createElement('div');
+  container.className = 'esi-action-groups';
+
+  Object.entries(groups).forEach(([groupName, actions]) => {
+    const group = document.createElement('div');
+    group.className = 'esi-action-group';
+    
+    group.innerHTML = `
+      <div class="esi-action-group__header">
+        <h5 class="esi-action-group__title">${groupName}</h5>
+        <span class="esi-action-group__count">${actions.length}</span>
+      </div>
+    `;
+    
+    group.appendChild(createESIActionList(actions, options));
+    container.appendChild(group);
+  });
+
+  return container;
+}
+
+/**
+ * Render ESI Action List into container
+ */
+function renderESIActionList(containerId, actions = [], options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  console.log(`📊 ESI Action List V12.0: Rendering ${actions.length} actions`);
+  container.innerHTML = '';
+  container.appendChild(createESIActionList(actions, options));
+}
+
+window.createESIActionItem = createESIActionItem;
+window.createESIActionList = createESIActionList;
+window.createESIActionGroups = createESIActionGroups;
+window.renderESIActionList = renderESIActionList;
+
+console.log('📊 ESI Action Item Component V12.0 loaded');
+</script>

@@ -1,3 +1,250 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     V12.0 PHASE 6 TODO 6.11: Enhanced Sidebar Navigation
+     Better active states, hover effects, theme-aware styling
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR NAVIGATION ENHANCEMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Sidebar container with scroll */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+
+/* Navigation Button Enhancements */
+.nav-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background: var(--brand-primary, #6366f1);
+  transform: scaleY(0);
+  transition: transform 200ms ease;
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-btn:hover::before {
+  transform: scaleY(0.6);
+}
+
+.nav-btn.active::before {
+  transform: scaleY(1);
+  background: white;
+}
+
+/* Enhanced hover ripple effect */
+.nav-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), 
+              rgba(99,102,241,0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.nav-btn:hover::after {
+  opacity: 1;
+}
+
+/* Sub-navigation styling */
+.nav-submenu {
+  animation: slideDown 200ms ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-subbtn {
+  position: relative;
+}
+
+.nav-subbtn::before {
+  content: '';
+  position: absolute;
+  left: -22px;
+  top: 50%;
+  width: 12px;
+  height: 1px;
+  background: var(--border-subtle);
+  transition: background 200ms ease;
+}
+
+.nav-subbtn:hover::before,
+.nav-subbtn.active::before {
+  background: var(--brand-primary, #6366f1);
+}
+
+/* Status badges with animations */
+.status-badge {
+  transition: all 200ms ease;
+}
+
+.status-badge.completed {
+  animation: badgePop 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Credit display enhancement */
+.credit-display {
+  background: var(--surface-soft, #f8fafc);
+  border-radius: var(--radius-md, 12px);
+  padding: 16px;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  transition: all 200ms ease;
+}
+
+.credit-display:hover {
+  border-color: var(--brand-primary, #6366f1);
+  box-shadow: 0 4px 12px rgba(99,102,241,0.1);
+}
+
+.credit-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.credit-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, var(--brand-primary, #6366f1), var(--brand-secondary, #8b5cf6));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.credit-plan {
+  font-size: 12px;
+  color: var(--text-secondary, #334155);
+  font-weight: 500;
+}
+
+/* Dark theme sidebar overrides */
+[data-theme="dark"] .nav-btn::after {
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), 
+              rgba(165,180,252,0.1) 0%, transparent 60%);
+}
+
+[data-theme="dark"] .credit-display {
+  background: rgba(30,41,59,0.5);
+  border-color: rgba(148,163,184,0.2);
+}
+
+[data-theme="dark"] .credit-display:hover {
+  border-color: rgba(165,180,252,0.4);
+  box-shadow: 0 4px 12px rgba(165,180,252,0.1);
+}
+
+[data-theme="dark"] .credit-value {
+  background: linear-gradient(135deg, #a5b4fc, #c4b5fd);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Aurora theme sidebar overrides */
+[data-theme="aurora"] .nav-btn::after {
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), 
+              rgba(52,211,153,0.1) 0%, transparent 60%);
+}
+
+[data-theme="aurora"] .nav-btn.active::before {
+  background: #34d399;
+}
+
+[data-theme="aurora"] .credit-display {
+  background: rgba(52,211,153,0.08);
+  border-color: rgba(52,211,153,0.2);
+}
+
+[data-theme="aurora"] .credit-display:hover {
+  border-color: rgba(52,211,153,0.4);
+  box-shadow: 0 4px 12px rgba(52,211,153,0.15);
+}
+
+[data-theme="aurora"] .credit-value {
+  background: linear-gradient(135deg, #34d399, #4ade80);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Neon theme sidebar overrides */
+[data-theme="neon"] .nav-btn::before {
+  background: #8b5cf6;
+}
+
+[data-theme="neon"] .nav-btn::after {
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), 
+              rgba(139,92,246,0.12) 0%, transparent 60%);
+}
+
+[data-theme="neon"] .nav-btn.active::before {
+  background: linear-gradient(to bottom, #8b5cf6, #ec4899);
+}
+
+[data-theme="neon"] .credit-display {
+  background: rgba(139,92,246,0.05);
+  border-color: rgba(139,92,246,0.2);
+}
+
+[data-theme="neon"] .credit-display:hover {
+  border-color: rgba(139,92,246,0.4);
+  box-shadow: 0 4px 12px rgba(139,92,246,0.15), 0 0 20px rgba(139,92,246,0.08);
+}
+
+[data-theme="neon"] .credit-value {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+</style>
+
 <aside class="sidebar" aria-label="Main navigation">
   <div class="brand">
     <div class="brand-mark">S</div>

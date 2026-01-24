@@ -579,23 +579,23 @@ window.showPDFProgress = function(current, total, currentTab = '') {
     overlay = document.createElement('div');
     overlay.id = 'pdf-progress-overlay';
     overlay.innerHTML = `
-      <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); 
+      <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--surface-overlay, rgba(0,0,0,0.7)); 
                   display: flex; align-items: center; justify-content: center; z-index: 99999;">
-        <div style="background: white; border-radius: 16px; padding: 32px 48px; text-align: center; 
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px;">
+        <div style="background: var(--surface-card); border-radius: 16px; padding: 32px 48px; text-align: center; 
+                    box-shadow: var(--shadow-xl); max-width: 400px; border: 1px solid var(--border-subtle);">
           <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
-          <h3 style="margin: 0 0 8px; font-size: 20px; color: #1e293b;">Generating PDF...</h3>
-          <p id="pdf-progress-text" style="margin: 0 0 16px; color: #64748b; font-size: 14px;">
+          <h3 style="margin: 0 0 8px; font-size: 20px; color: var(--text-primary);">Generating PDF...</h3>
+          <p id="pdf-progress-text" style="margin: 0 0 16px; color: var(--text-secondary); font-size: 14px;">
             Capturing tab ${current} of ${total}
           </p>
-          <p id="pdf-progress-tab" style="margin: 0 0 16px; color: #3b82f6; font-size: 12px; font-weight: 600;">
+          <p id="pdf-progress-tab" style="margin: 0 0 16px; color: var(--accent-primary); font-size: 12px; font-weight: 600;">
             ${currentTab}
           </p>
-          <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
-            <div id="pdf-progress-bar" style="background: linear-gradient(90deg, #3b82f6, #8b5cf6); 
+          <div style="background: var(--surface-hover); height: 8px; border-radius: 4px; overflow: hidden;">
+            <div id="pdf-progress-bar" style="background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary, #8b5cf6)); 
                  height: 100%; width: ${(current / total) * 100}%; transition: width 0.3s;"></div>
           </div>
-          <p style="margin: 12px 0 0; color: #94a3b8; font-size: 11px;">
+          <p style="margin: 12px 0 0; color: var(--text-muted); font-size: 11px;">
             Please wait while we capture all charts and tables...
           </p>
         </div>

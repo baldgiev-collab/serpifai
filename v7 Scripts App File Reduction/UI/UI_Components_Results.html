@@ -30,31 +30,33 @@
     
     <!-- Hidden chart canvases - will be moved into report sections dynamically -->
     <!-- V7.16: Added forensic chart canvas IDs for sections 4, 9-12 -->
-    <div style="display:none;" id="stage1-chart-storage">
+    <!-- V10.2: Added explicit width/height so Chart.js can render in hidden containers -->
+    <!-- V10.7: Use visibility:hidden + position:absolute instead of display:none so Chart.js renders correctly -->
+    <div style="visibility:hidden;position:absolute;left:-9999px;top:0;width:800px;height:500px;" id="stage1-chart-storage">
       <!-- Core Strategic Charts (Sections 1-8) -->
-      <canvas id="chart-emotional-pains"></canvas>
-      <canvas id="chart-hidden-desires"></canvas>
-      <canvas id="chart-mindset-shifts"></canvas>
-      <canvas id="chart-jtbd-impact"></canvas>
-      <canvas id="chart-competitor-gaps"></canvas>
-      <canvas id="chart-format-usage"></canvas>
-      <canvas id="chart-brand-positioning"></canvas>
-      <canvas id="chart-value-proposition"></canvas>
-      <canvas id="chart-content-pillars"></canvas>
-      <canvas id="chart-priority-matrix"></canvas>
-      <canvas id="chart-opportunity-gaps"></canvas>
-      <canvas id="chart-tactical-roadmap"></canvas>
-      <canvas id="chart-impact-matrix"></canvas>
-      <canvas id="chart-resource-allocation"></canvas>
+      <canvas id="chart-emotional-pains" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-hidden-desires" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-mindset-shifts" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-jtbd-impact" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-competitor-gaps" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-format-usage" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-brand-positioning" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-value-proposition" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-content-pillars" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-priority-matrix" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-opportunity-gaps" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-tactical-roadmap" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-impact-matrix" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-resource-allocation" width="720" height="360" style="width:100%;height:360px;"></canvas>
       
       <!-- Blue Ocean Strategy Chart (Section 4) -->
-      <canvas id="chart-blue-ocean"></canvas>
+      <canvas id="chart-blue-ocean" width="720" height="360" style="width:100%;height:360px;"></canvas>
       
       <!-- Forensic Intelligence Charts (Sections 9-12) -->
-      <canvas id="chart-aeo-analysis"></canvas>
-      <canvas id="chart-asset-valuation"></canvas>
-      <canvas id="chart-brittleness-risk"></canvas>
-      <canvas id="chart-information-blackholes"></canvas>
+      <canvas id="chart-aeo-analysis" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-asset-valuation" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-brittleness-risk" width="720" height="360" style="width:100%;height:360px;"></canvas>
+      <canvas id="chart-information-blackholes" width="720" height="360" style="width:100%;height:360px;"></canvas>
     </div>
   </div>
 
@@ -1203,6 +1205,13 @@ body[data-theme="aurora"] .summary-card-label {
 
 .chart-action-btn:active {
   transform: scale(0.95);
+}
+
+/* V10.9 FIX: Override for Command Canvas - Always show chart action buttons */
+.interactive-stage .chart-action-bar,
+.forensic-command-canvas .chart-action-bar {
+  opacity: 1 !important;
+  display: flex !important;
 }
 
 /* Chart Loading State */

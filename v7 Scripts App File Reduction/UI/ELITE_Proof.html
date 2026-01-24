@@ -19,43 +19,44 @@ function renderExpandableProofPanel(metricName, proof, panelId) {
   const rawData = proof.rawData || proof.breakdown || null;
   const sources = proof.sources || proof.apis || [];
   
-  const confidenceColors = { high: '#10b981', medium: '#f59e0b', low: '#ef4444' };
+  // Use CSS variables for confidence colors
+  const confidenceColorVars = { high: 'var(--accent-success)', medium: 'var(--accent-warning)', low: 'var(--accent-danger)' };
   const confidenceWidth = { high: '100%', medium: '66%', low: '33%' };
   
   return `
   <div class="elite-proof-panel" style="margin-top: 12px;">
-    <button class="proof-panel-toggle" onclick="toggleProofPanel('${panelId}')" style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #7dd3fc; border-radius: 10px; cursor: pointer;">
-      <span style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #0369a1; font-weight: 600;">
+    <button class="proof-panel-toggle" onclick="toggleProofPanel('${panelId}')" style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--status-info-bg); border: 1px solid var(--status-info-border); border-radius: 10px; cursor: pointer;">
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--status-info-text); font-weight: 600;">
         <span>🔍</span>
         <span>View Proof & Data Sources</span>
       </span>
-      <span id="${panelId}-chevron" style="transition: transform 0.3s; color: #0369a1;">▼</span>
+      <span id="${panelId}-chevron" style="transition: transform 0.3s; color: var(--status-info-text);">▼</span>
     </button>
     
     <div id="${panelId}" class="proof-panel-content" style="display: none; margin-top: 12px; padding: 0 16px;">
-      <div style="background: #f8fafc; border-radius: 12px; padding: 16px; border: 1px solid #e2e8f0;">
+      <div style="background: var(--surface-soft); border-radius: 12px; padding: 16px; border: 1px solid var(--border-subtle);">
         
         <!-- Data Source & Confidence -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle);">
           <div style="display: flex; align-items: center; gap: 12px;">
             <span class="proof-badge ${dataSource.includes('Real') ? 'proof-badge-real' : dataSource.includes('API') ? 'proof-badge-api' : 'proof-badge-estimate'}">
               ${dataSource.includes('Real') ? '✓ Live Data' : dataSource.includes('API') ? '🔗 API' : '📊 Estimate'}
             </span>
-            <span style="font-size: 11px; color: #64748b;">${dataSource}</span>
+            <span style="font-size: 11px; color: var(--text-muted);">${dataSource}</span>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 11px; color: #64748b;">Confidence:</span>
-            <div class="confidence-bar" style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;">
-              <div class="confidence-bar-fill confidence-${confidence}" style="height: 100%; width: ${confidenceWidth[confidence] || '66%'}; background: ${confidenceColors[confidence]}; border-radius: 3px;"></div>
+            <span style="font-size: 11px; color: var(--text-muted);">Confidence:</span>
+            <div class="confidence-bar" style="width: 80px; height: 6px; background: var(--surface-hover); border-radius: 3px; overflow: hidden;">
+              <div class="confidence-bar-fill confidence-${confidence}" style="height: 100%; width: ${confidenceWidth[confidence] || '66%'}; background: ${confidenceColorVars[confidence]}; border-radius: 3px;"></div>
             </div>
-            <span style="font-size: 11px; font-weight: 600; color: ${confidenceColors[confidence] || '#f59e0b'}; text-transform: capitalize;">${confidence}</span>
+            <span style="font-size: 11px; font-weight: 600; color: ${confidenceColorVars[confidence] || 'var(--accent-warning)'}; text-transform: capitalize;">${confidence}</span>
           </div>
         </div>
         
         ${calculation ? `
           <div style="margin-bottom: 16px;">
-            <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📐 Calculation Method</div>
-            <div style="background: white; border-radius: 8px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; color: #1e293b; border: 1px solid #e2e8f0;">
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📐 Calculation Method</div>
+            <div style="background: var(--surface-card); border-radius: 8px; padding: 12px; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; color: var(--text-primary); border: 1px solid var(--border-subtle);">
               ${calculation}
             </div>
           </div>
@@ -63,12 +64,12 @@ function renderExpandableProofPanel(metricName, proof, panelId) {
         
         ${rawData ? `
           <div style="margin-bottom: 16px;">
-            <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📊 Data Breakdown</div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">📊 Data Breakdown</div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px;">
               ${Object.entries(rawData).map(([key, value]) => `
-                <div style="background: white; border-radius: 8px; padding: 10px; text-align: center; border: 1px solid #e2e8f0;">
-                  <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${typeof value === 'object' ? JSON.stringify(value) : value}</div>
-                  <div style="font-size: 9px; color: #64748b; text-transform: capitalize; margin-top: 4px;">${key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                <div style="background: var(--surface-card); border-radius: 8px; padding: 10px; text-align: center; border: 1px solid var(--border-subtle);">
+                  <div style="font-size: 16px; font-weight: 700; color: var(--text-primary);">${typeof value === 'object' ? JSON.stringify(value) : value}</div>
+                  <div style="font-size: 9px; color: var(--text-muted); text-transform: capitalize; margin-top: 4px;">${key.replace(/([A-Z])/g, ' $1').trim()}</div>
                 </div>
               `).join('')}
             </div>
@@ -77,10 +78,10 @@ function renderExpandableProofPanel(metricName, proof, panelId) {
         
         ${sources.length > 0 ? `
           <div>
-            <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">🔗 Data Sources</div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">🔗 Data Sources</div>
             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
               ${sources.map(source => `
-                <span style="padding: 6px 12px; background: white; border-radius: 20px; font-size: 11px; color: #475569; border: 1px solid #e2e8f0;">
+                <span style="padding: 6px 12px; background: var(--surface-card); border-radius: 20px; font-size: 11px; color: var(--text-secondary); border: 1px solid var(--border-subtle);">
                   ${typeof source === 'object' ? source.name || source.api : source}
                 </span>
               `).join('')}
@@ -89,7 +90,7 @@ function renderExpandableProofPanel(metricName, proof, panelId) {
         ` : ''}
         
         ${proof.lastUpdated ? `
-          <div style="margin-top: 12px; font-size: 10px; color: #94a3b8; text-align: right;">
+          <div style="margin-top: 12px; font-size: 10px; color: var(--text-muted); text-align: right;">
             Last updated: ${proof.lastUpdated}
           </div>
         ` : ''}

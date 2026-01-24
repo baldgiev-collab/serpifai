@@ -3,7 +3,12 @@
   📊 ELITE COMPETITOR INTELLIGENCE RENDERER - MODULAR VERSION
   Board-Ready Design for $100M+ SaaS Organizations
   
-  This is the main entry point that includes all modular components:
+  V12.0 FIX: Removed duplicate includes - these modules are already loaded
+  by UI_Scripts_App.html BEFORE this file. Including them again causes:
+  - SyntaxError: Identifier 'ELITE_DESIGN' has already been declared
+  - Double console.log messages
+  
+  Dependencies (loaded via UI_Scripts_App.html):
   - ELITE_Config.html     - Design system tokens, colors, helpers
   - ELITE_Helpers.html    - Deduplicated utility functions
   - ELITE_Styles.html     - CSS injection system
@@ -16,16 +21,8 @@
   ═══════════════════════════════════════════════════════════════════════════════
 -->
 
-<!-- Include all modular components -->
-<?!= include('ELITE_Config') ?>
-<?!= include('ELITE_Helpers') ?>
-<?!= include('ELITE_Styles') ?>
-<?!= include('ELITE_Executive') ?>
-<?!= include('ELITE_Strategic') ?>
-<?!= include('ELITE_Forensics') ?>
-<?!= include('ELITE_TabRenderers') ?>
-<?!= include('ELITE_Proof') ?>
-<?!= include('ELITE_SERP') ?>
+<!-- V12.0 FIX: All modular components are now loaded via UI_Scripts_App.html -->
+<!-- Removed duplicate includes that were causing ELITE_DESIGN redeclaration error -->
 
 <script>
 /**

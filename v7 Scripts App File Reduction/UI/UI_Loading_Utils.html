@@ -3,12 +3,137 @@
   ║  UI_Loading_Utils.html - Loading States & Utilities Module                        ║
   ║  Provides skeleton loaders, error handlers, and metric validation                 ║
   ║                                                                                    ║
+  ║  V12.0 Phase 8: Added LoadingStateManager for centralized loading state           ║
+  ║                                                                                    ║
   ║  Dependencies: None (Foundation module)                                            ║
   ║  Exports: window.renderSkeletonLoader, window.handleCompetitorError,              ║
-  ║           window.validateMetricAcrossSources                                       ║
+  ║           window.validateMetricAcrossSources, window.LoadingStateManager          ║
   ╚═══════════════════════════════════════════════════════════════════════════════════╝
 -->
 <script>
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   * V12.0 PHASE 8: LOADING STATE MANAGER
+   * Centralized loading state management with timeout protection
+   * ═══════════════════════════════════════════════════════════════════════════════════
+   */
+  const LoadingStateManager = (function() {
+    const states = new Map();
+    const listeners = new Set();
+    const DEFAULT_TIMEOUT_MS = 60000; // 1 minute default timeout
+    
+    /**
+     * Set loading state for a component/operation
+     * @param {string} key - Unique identifier
+     * @param {boolean} isLoading - Loading state
+     * @param {Object} options - Optional config
+     */
+    function setLoading(key, isLoading, options = {}) {
+      const now = Date.now();
+      
+      if (isLoading) {
+        const timeoutMs = options.timeout || DEFAULT_TIMEOUT_MS;
+        const state = {
+          key,
+          startTime: now,
+          timeout: timeoutMs,
+          message: options.message || 'Loading...',
+          timeoutTimer: null
+        };
+        
+        // Set up timeout protection
+        state.timeoutTimer = setTimeout(() => {
+          console.warn(`⚠️ [LoadingState] Timeout for '${key}' after ${timeoutMs}ms`);
+          setLoading(key, false, { timedOut: true });
+          if (options.onTimeout) options.onTimeout(key);
+        }, timeoutMs);
+        
+        states.set(key, state);
+        console.log(`🔄 [LoadingState] Started: ${key}`);
+      } else {
+        const existing = states.get(key);
+        if (existing) {
+          // Clear timeout timer
+          if (existing.timeoutTimer) {
+            clearTimeout(existing.timeoutTimer);
+          }
+          const duration = now - existing.startTime;
+          console.log(`✅ [LoadingState] Finished: ${key} (${duration}ms)${options.timedOut ? ' - TIMED OUT' : ''}`);
+        }
+        states.delete(key);
+      }
+      
+      notifyListeners();
+    }
+    
+    /**
+     * Check if anything is loading
+     */
+    function isAnyLoading() {
+      return states.size > 0;
+    }
+    
+    /**
+     * Get all current loading states
+     */
+    function getLoadingStates() {
+      const result = [];
+      const now = Date.now();
+      states.forEach((state, key) => {
+        result.push({
+          key,
+          message: state.message,
+          elapsed: now - state.startTime,
+          timeout: state.timeout
+        });
+      });
+      return result;
+    }
+    
+    /**
+     * Subscribe to loading state changes
+     */
+    function subscribe(callback) {
+      listeners.add(callback);
+      return () => listeners.delete(callback);
+    }
+    
+    function notifyListeners() {
+      const loadingStates = getLoadingStates();
+      listeners.forEach(cb => {
+        try {
+          cb(loadingStates, isAnyLoading());
+        } catch (e) {
+          console.warn('[LoadingState] Listener error:', e);
+        }
+      });
+    }
+    
+    /**
+     * Clear all loading states (emergency reset)
+     */
+    function clearAll() {
+      states.forEach((state) => {
+        if (state.timeoutTimer) clearTimeout(state.timeoutTimer);
+      });
+      states.clear();
+      console.log('🧹 [LoadingState] All states cleared');
+      notifyListeners();
+    }
+    
+    return {
+      setLoading,
+      isLoading: (key) => states.has(key),
+      isAnyLoading,
+      getLoadingStates,
+      subscribe,
+      clearAll
+    };
+  })();
+  
+  // Expose globally
+  window.LoadingStateManager = LoadingStateManager;
+
   /**
    * ═══════════════════════════════════════════════════════════════════════════════════
    * LOADING STATES (Task 36)
@@ -134,5 +259,5 @@
     };
   };
 
-  console.log('✅ UI_Loading_Utils.html loaded');
+  console.log('✅ UI_Loading_Utils.html loaded - V12.0 Phase 8 LoadingStateManager');
 </script>

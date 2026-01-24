@@ -105,14 +105,14 @@ function formatBreakdownLabel(key) {
  * Handles: numbers, arrays, objects, percentages, scores
  */
 function formatMetricValue(value, key) {
-  if (value === null || value === undefined) return '<span style="color: #94a3b8;">—</span>';
+  if (value === null || value === undefined) return '<span style="color: var(--text-muted);">—</span>';
   
-  // Score types - show with color
+  // Score types - show with color using CSS custom properties
   if (key && (key.toLowerCase().includes('score') || key.toLowerCase().includes('percent'))) {
     const numVal = parseInt(value);
     if (!isNaN(numVal)) {
-      const color = numVal >= 70 ? '#10b981' : numVal >= 40 ? '#f59e0b' : '#ef4444';
-      return `<span style="font-size: 24px; font-weight: 800; color: ${color};">${numVal}%</span>`;
+      const colorVar = numVal >= 70 ? 'var(--accent-success)' : numVal >= 40 ? 'var(--accent-warning)' : 'var(--accent-danger)';
+      return `<span style="font-size: 24px; font-weight: 800; color: ${colorVar};">${numVal}%</span>`;
     }
   }
   
@@ -138,13 +138,13 @@ function formatMetricValue(value, key) {
  * Format cell value based on type (for tables)
  */
 function formatCellValue(value, type, format) {
-  if (value === null || value === undefined) return '<span style="color: #94a3b8;">—</span>';
+  if (value === null || value === undefined) return '<span style="color: var(--text-muted);">—</span>';
   
   switch(type) {
     case 'score':
       const numVal = parseInt(value);
-      const color = numVal >= 70 ? '#10b981' : numVal >= 40 ? '#f59e0b' : '#ef4444';
-      return `<span style="font-weight: 700; color: ${color};">${numVal}%</span>`;
+      const scoreColor = numVal >= 70 ? 'var(--accent-success)' : numVal >= 40 ? 'var(--accent-warning)' : 'var(--accent-danger)';
+      return `<span style="font-weight: 700; color: ${scoreColor};">${numVal}%</span>`;
     
     case 'number':
       return `<span style="font-weight: 600;">${value.toLocaleString()}</span>`;
@@ -160,7 +160,7 @@ function formatCellValue(value, type, format) {
     
     case 'list':
       if (Array.isArray(value)) {
-        return value.slice(0, 3).map(v => `<span style="display: inline-block; padding: 2px 8px; background: #f1f5f9; border-radius: 4px; font-size: 11px; margin: 2px;">${v}</span>`).join('');
+        return value.slice(0, 3).map(v => `<span style="display: inline-block; padding: 2px 8px; background: var(--surface-soft); border-radius: 4px; font-size: 11px; margin: 2px; color: var(--text-primary);">${v}</span>`).join('');
       }
       return value;
     
@@ -358,9 +358,9 @@ function insertCategoryChartInsight(chartId, insight) {
   const insightDiv = document.createElement('div');
   insightDiv.className = 'chart-insight';
   insightDiv.innerHTML = `
-    <div style="padding: 12px; background: #f0f9ff; border-radius: 8px; margin-top: 12px;">
-      <span style="font-weight: 600; color: #0369a1;">💡</span>
-      <span style="color: #0c4a6e; font-size: 13px;">${insight}</span>
+    <div style="padding: 12px; background: var(--status-info-bg, rgba(59,130,246,0.12)); border-radius: 8px; margin-top: 12px; border: 1px solid var(--status-info-border, rgba(59,130,246,0.25));">
+      <span style="font-weight: 600; color: var(--status-info-text, #0369a1);">💡</span>
+      <span style="color: var(--text-primary); font-size: 13px;">${insight}</span>
     </div>
   `;
   

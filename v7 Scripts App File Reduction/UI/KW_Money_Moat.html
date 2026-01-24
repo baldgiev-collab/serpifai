@@ -260,9 +260,23 @@
     });
 
     // FALLBACK ONLY: Fill with niche-specific templates if still below target
-    // V8.5 FIX: Add competitor-specific variants to avoid globalKeywordSet conflicts
+    // V12.0 FIX: Mark template keywords clearly and log warning with diagnostic info
     if (keywords.length < TARGET_COUNT) {
-      console.log(`   ⚠️ MoneyMoat ${domain}: Using templates to fill ${TARGET_COUNT - keywords.length} remaining slots`);
+      const realDataCount = keywords.length;
+      const templateCount = TARGET_COUNT - keywords.length;
+      
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(`⚠️ MoneyMoat ${domain}: INSUFFICIENT REAL DATA`);
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(`   Real keywords: ${realDataCount}/${TARGET_COUNT}`);
+      console.log(`   PAA Questions available: ${paaQuestions.length}`);
+      console.log(`   Related Searches available: ${relatedSearches.length}`);
+      console.log(`   SERP Titles available: ${serpTitles.length}`);
+      console.log(`   Oracle H2 available: ${oracleH2.length}`);
+      console.log(`   Oracle H3 available: ${oracleH3.length}`);
+      console.log('───────────────────────────────────────────────────────');
+      console.log(`   Using ${templateCount} template-based keywords to fill gaps`);
+      console.log('═══════════════════════════════════════════════════════');
       
       // Generate competitor-specific keyword variants
       const domainName = cleanDomain.split('.')[0];
@@ -304,7 +318,8 @@
             y: 5, // Static base value
             mass: 10, // Static base value
             moat_type: moat.type,
-            source: 'competitor_variant',
+            source: 'template_fallback',  // V12.0: Clearly marked as template
+            _isTemplate: true,  // V12.0: Flag for UI to style differently
             competitor: domain,
             tip: generateTip(normalizedKw, clashScore, aioRisk, moat.type, moat.breakerTactic)
           });
@@ -331,7 +346,8 @@
             y: 5, // Static base value
             mass: 10, // Static base value
             moat_type: moat.type,
-            source: 'template',
+            source: 'template_fallback',  // V12.0: Clearly marked as template
+            _isTemplate: true,  // V12.0: Flag for UI to style differently
             competitor: domain,
             tip: generateTip(kwText, clashScore, aioRisk, moat.type, moat.breakerTactic)
           });
@@ -339,7 +355,11 @@
       });
     }
 
-    console.log(`   ✅ MoneyMoat ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => !['template', 'competitor_variant'].includes(k.source)).length} from real data)`);
+    // V12.0: Enhanced logging with real data percentage
+    const realDataKeywords = keywords.filter(k => !k._isTemplate && !['template', 'template_fallback', 'competitor_variant'].includes(k.source));
+    const realDataPercent = Math.round((realDataKeywords.length / keywords.length) * 100);
+    console.log(`   ✅ MoneyMoat ${domain}: Generated ${keywords.length} keywords (${realDataKeywords.length} real data = ${realDataPercent}%)`);
+    
     return keywords;
   }
   window.generateMoneyMoatKWs = generateMoneyMoatKWs;

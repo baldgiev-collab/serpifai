@@ -10,17 +10,235 @@
   - F4: Risk Assessment & Threat Scoring
   - F5: Opportunity Sizing (TAM/SAM/SOM)
   
+  V12.0 Enhancements:
+  - Strict JSON schemas for all chart types
+  - Response validation and repair
+  - Tab-specific insight generation
+  
   Dependencies: 
   - DB_AI_GeminiClient.gs (backend)
   - ELITE_Intelligence modules
   
-  Version: 1.0.0 (January 2025)
+  Version: 12.0.0 (January 2026)
   Part of: Elite Intelligence System Implementation
 -->
 
 <script>
 (function() {
   'use strict';
+  
+  // ==========================================
+  // V12.0 CHART DATA SCHEMAS
+  // Strict JSON schemas for all dashboard charts
+  // ==========================================
+  
+  const CHART_SCHEMAS = {
+    radar: {
+      description: 'Multi-axis comparison (spider/radar chart)',
+      schema: {
+        labels: ['Array of axis labels (6-8 items)'],
+        datasets: [
+          {
+            label: 'Dataset name',
+            data: ['Array of numeric values matching labels length'],
+            backgroundColor: 'rgba(r,g,b,0.2)',
+            borderColor: 'rgba(r,g,b,1)'
+          }
+        ]
+      },
+      example: {
+        labels: ['Authority', 'Content', 'Technical', 'Backlinks', 'Speed', 'UX'],
+        datasets: [
+          { label: 'You', data: [85, 72, 90, 65, 78, 82] },
+          { label: 'Competitor Avg', data: [75, 80, 70, 85, 72, 70] }
+        ]
+      }
+    },
+    
+    bar: {
+      description: 'Vertical or horizontal bar chart',
+      schema: {
+        labels: ['Array of category labels'],
+        datasets: [
+          {
+            label: 'Dataset name',
+            data: ['Array of numeric values'],
+            backgroundColor: 'Color or array of colors'
+          }
+        ]
+      },
+      example: {
+        labels: ['Comp1', 'Comp2', 'Comp3', 'Comp4'],
+        datasets: [
+          { label: 'Content Gap', data: [15, 22, 8, 12] },
+          { label: 'Backlink Gap', data: [25, 18, 30, 22] }
+        ]
+      }
+    },
+    
+    bubble: {
+      description: 'Bubble chart for 3-dimensional data',
+      schema: {
+        datasets: [
+          {
+            label: 'Dataset name',
+            data: [
+              { x: 'X value (e.g., difficulty)', y: 'Y value (e.g., volume)', r: 'Bubble radius (e.g., opportunity)' }
+            ]
+          }
+        ]
+      },
+      example: {
+        datasets: [
+          { label: 'High Volume', data: [{ x: 85, y: 12000, r: 20 }, { x: 72, y: 8000, r: 15 }] },
+          { label: 'Long Tail', data: [{ x: 35, y: 800, r: 10 }, { x: 25, y: 400, r: 8 }] }
+        ]
+      }
+    },
+    
+    scatter: {
+      description: 'Scatter plot for correlation analysis',
+      schema: {
+        datasets: [
+          {
+            label: 'Dataset name',
+            data: [{ x: 'X value', y: 'Y value' }]
+          }
+        ]
+      },
+      example: {
+        datasets: [
+          { label: 'Your Pages', data: [{ x: 85, y: 12 }, { x: 72, y: 8 }] },
+          { label: 'Competitor Pages', data: [{ x: 90, y: 15 }, { x: 65, y: 6 }] }
+        ]
+      }
+    },
+    
+    doughnut: {
+      description: 'Doughnut/pie chart for distribution',
+      schema: {
+        labels: ['Array of segment labels'],
+        datasets: [
+          {
+            data: ['Array of numeric values'],
+            backgroundColor: ['Array of colors']
+          }
+        ]
+      },
+      example: {
+        labels: ['High Authority (80+)', 'Medium (50-79)', 'Low (<50)'],
+        datasets: [{ data: [25, 45, 30], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'] }]
+      }
+    },
+    
+    line: {
+      description: 'Line chart for trends over time',
+      schema: {
+        labels: ['Array of time labels'],
+        datasets: [
+          {
+            label: 'Dataset name',
+            data: ['Array of values'],
+            borderColor: 'Line color',
+            tension: 0.4
+          }
+        ]
+      },
+      example: {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [
+          { label: 'Organic Traffic', data: [12000, 13500, 14200, 15800, 16500, 18000] },
+          { label: 'Competitor Avg', data: [15000, 15200, 15000, 15500, 16000, 16200] }
+        ]
+      }
+    },
+    
+    heatmap: {
+      description: 'Heatmap for matrix data',
+      schema: {
+        xLabels: ['Array of X-axis labels'],
+        yLabels: ['Array of Y-axis labels'],
+        data: [['2D array of values']]
+      },
+      example: {
+        xLabels: ['You', 'Comp1', 'Comp2', 'Comp3'],
+        yLabels: ['Topic1', 'Topic2', 'Topic3', 'Topic4'],
+        data: [[85, 70, 65, 60], [72, 90, 55, 80], [60, 45, 85, 70], [90, 75, 70, 65]]
+      }
+    },
+    
+    gauge: {
+      description: 'Gauge/speedometer for single metrics',
+      schema: {
+        value: 'Current value',
+        min: 'Minimum value',
+        max: 'Maximum value',
+        thresholds: [{ value: 'Threshold value', color: 'Color' }]
+      },
+      example: {
+        value: 78,
+        min: 0,
+        max: 100,
+        thresholds: [
+          { value: 50, color: '#ef4444' },
+          { value: 75, color: '#f59e0b' },
+          { value: 100, color: '#22c55e' }
+        ]
+      }
+    },
+    
+    force: {
+      description: 'Force-directed graph for relationships',
+      schema: {
+        nodes: [{ id: 'Unique ID', group: 'Group number', label: 'Display label' }],
+        links: [{ source: 'Source node ID', target: 'Target node ID', value: 'Link strength' }]
+      },
+      example: {
+        nodes: [
+          { id: 'pillar1', group: 1, label: 'Main Topic' },
+          { id: 'cluster1', group: 2, label: 'Subtopic 1' },
+          { id: 'cluster2', group: 2, label: 'Subtopic 2' }
+        ],
+        links: [
+          { source: 'pillar1', target: 'cluster1', value: 5 },
+          { source: 'pillar1', target: 'cluster2', value: 3 }
+        ]
+      }
+    },
+    
+    timeline: {
+      description: 'Timeline/Gantt for project planning',
+      schema: {
+        items: [
+          {
+            label: 'Task label',
+            start: 'Start week/month',
+            end: 'End week/month',
+            type: 'Task type (quick-win, strategic, etc.)'
+          }
+        ]
+      },
+      example: {
+        items: [
+          { label: 'Quick Win 1', start: 0, end: 2, type: 'quick-win' },
+          { label: 'Strategic Initiative', start: 1, end: 6, type: 'strategic' },
+          { label: 'Content Refresh', start: 2, end: 4, type: 'maintenance' }
+        ]
+      }
+    },
+    
+    polar: {
+      description: 'Polar area chart for multi-category comparison',
+      schema: {
+        labels: ['Array of category labels'],
+        datasets: [{ data: ['Array of values'] }]
+      },
+      example: {
+        labels: ['Brand Moat', 'Content Moat', 'Technical Moat', 'Backlink Moat', 'Data Moat'],
+        datasets: [{ data: [85, 72, 90, 65, 45] }]
+      }
+    }
+  };
   
   // ==========================================
   // ELITE PROMPT FRAMEWORK
@@ -540,6 +758,103 @@ Provide:
   }
   
   // ==========================================
+  // V12.0 CHART DATA HELPERS
+  // ==========================================
+  
+  /**
+   * V12.0: Get schema for a specific chart type
+   * @param {string} chartType - Chart type (radar, bar, bubble, etc.)
+   * @returns {Object|null} Chart schema
+   */
+  function getChartSchema(chartType) {
+    return CHART_SCHEMAS[chartType] || null;
+  }
+  
+  /**
+   * V12.0: Validate chart data against schema
+   * @param {Object} data - Chart data to validate
+   * @param {string} chartType - Expected chart type
+   * @returns {Object} { isValid: boolean, issues: Array }
+   */
+  function validateChartData(data, chartType) {
+    const schema = CHART_SCHEMAS[chartType];
+    if (!schema) {
+      return { isValid: false, issues: ['Unknown chart type: ' + chartType] };
+    }
+    
+    const issues = [];
+    
+    // Basic structure validation
+    if (chartType === 'radar' || chartType === 'bar' || chartType === 'line' || chartType === 'doughnut') {
+      if (!data.labels || !Array.isArray(data.labels)) {
+        issues.push('Missing or invalid labels array');
+      }
+      if (!data.datasets || !Array.isArray(data.datasets)) {
+        issues.push('Missing or invalid datasets array');
+      }
+    }
+    
+    if (chartType === 'bubble' || chartType === 'scatter') {
+      if (!data.datasets || !Array.isArray(data.datasets)) {
+        issues.push('Missing or invalid datasets array');
+      } else {
+        data.datasets.forEach((ds, i) => {
+          if (!ds.data || !Array.isArray(ds.data)) {
+            issues.push(`Dataset ${i} missing data array`);
+          }
+        });
+      }
+    }
+    
+    if (chartType === 'heatmap') {
+      if (!data.xLabels || !data.yLabels || !data.data) {
+        issues.push('Heatmap requires xLabels, yLabels, and data');
+      }
+    }
+    
+    if (chartType === 'gauge') {
+      if (typeof data.value !== 'number') {
+        issues.push('Gauge requires numeric value');
+      }
+    }
+    
+    if (chartType === 'force') {
+      if (!data.nodes || !data.links) {
+        issues.push('Force graph requires nodes and links arrays');
+      }
+    }
+    
+    if (chartType === 'timeline') {
+      if (!data.items || !Array.isArray(data.items)) {
+        issues.push('Timeline requires items array');
+      }
+    }
+    
+    return { isValid: issues.length === 0, issues };
+  }
+  
+  /**
+   * V12.0: Generate chart data prompt instructions
+   * @param {string} chartType - Chart type
+   * @returns {string} Prompt instructions for generating chart data
+   */
+  function getChartPromptInstructions(chartType) {
+    const schema = CHART_SCHEMAS[chartType];
+    if (!schema) {
+      return '';
+    }
+    
+    return `
+Generate ${chartType} chart data following this EXACT schema:
+\`\`\`json
+${JSON.stringify(schema.example, null, 2)}
+\`\`\`
+
+Schema description: ${schema.description}
+`;
+  }
+  
+  // ==========================================
   // EXPORT TO WINDOW
   // ==========================================
   
@@ -548,8 +863,15 @@ Provide:
   window.executeElitePrompt = executeElitePrompt;
   window.getElitePromptList = getElitePromptList;
   
-  console.log('✅ GEMINI_Elite_Prompts.html loaded - Category F Elite Prompting v1.0');
+  // V12.0: Export chart schema helpers
+  window.CHART_SCHEMAS = CHART_SCHEMAS;
+  window.getChartSchema = getChartSchema;
+  window.validateChartData = validateChartData;
+  window.getChartPromptInstructions = getChartPromptInstructions;
+  
+  console.log('✅ GEMINI_Elite_Prompts.html loaded - Category F Elite Prompting v12.0');
   console.log('📋 Available prompts:', getElitePromptList().map(p => p.id).join(', '));
+  console.log('📊 Chart schemas:', Object.keys(CHART_SCHEMAS).join(', '));
   
 })();
 </script>

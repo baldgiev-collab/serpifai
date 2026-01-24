@@ -39,24 +39,44 @@
       typeof q === 'string' ? { query: q } : q
     );
     
-    const keywordSignals = comp.keywordSignals || comp.synthesized?.seo || {};
+    // V73 FIX: Also check apiData.serper for PAA/related (from DB_COMP_Main transformation)
+    const apiDataSerper = comp.apiData?.serper || {};
+    
+    const keywordSignals = comp.keywordProfile || comp.keywordSignals || comp.synthesized?.seo || {};
     let paaQuestions = organizedRawData.paaQuestions || 
-                       keywordSignals.peopleAlsoAsk || comp.stages?.serper?.data?.peopleAlsoAsk || 
+                       keywordSignals.peopleAlsoAsk || 
+                       apiDataSerper.peopleAlsoAsk ||
+                       comp.stages?.serper?.data?.peopleAlsoAsk || 
+                       comp.synthesized?.seo?.peopleAlsoAsk ||
                        kwProfilePAA || [];
     let relatedSearches = organizedRawData.keywords || organizedRawData.relatedSearches || 
-                          keywordSignals.relatedSearches || comp.stages?.serper?.data?.relatedSearches || 
+                          keywordSignals.relatedSearches || 
+                          apiDataSerper.relatedSearches ||
+                          comp.stages?.serper?.data?.relatedSearches || 
+                          comp.synthesized?.seo?.relatedSearches ||
                           kwProfileRelated || [];
     
     // Fallback to global data if empty
     if (paaQuestions.length === 0 && kwRawData.allPAA?.length > 0) paaQuestions = kwRawData.allPAA;
     if (relatedSearches.length === 0 && kwRawData.allRelated?.length > 0) relatedSearches = kwRawData.allRelated;
     
+    // V73 FIX: Also use apiData.serper organic titles as fallback source
+    const apiOrganic = apiDataSerper.organic || [];
+    
     // ORACLE DATA: Extract H2/H3 headings as keyword sources
     const oracleData = comp.stages?.oracleFetcher?.data || comp.synthesized?.website || {};
     const oracleH2 = oracleData.h2 || comp.synthesized?.website?.h2 || [];
     const oracleH3 = oracleData.h3 || comp.synthesized?.website?.h3 || [];
+    
+    // V12.0 FIX: Extract SERP titles to prevent undefined error
+    // V73 FIX: Also check apiData.serper.organic
+    const serpData = comp.stages?.serper?.data || comp.synthesized?.seo || {};
+    const serpTitles = serpData.organic?.map(o => o.title || '') || 
+                       apiOrganic.map(o => o.title || '') ||
+                       serpData.titles || 
+                       organizedRawData.serpTitles || [];
 
-    console.log(`   🛡️ SGE for ${domain}: PAA=${paaQuestions.length}, Related=${relatedSearches.length}, Oracle H2=${oracleH2.length}, H3=${oracleH3.length}`);
+    console.log(`   🛡️ SGE for ${domain}: PAA=${paaQuestions.length}, Related=${relatedSearches.length}, SERP=${serpTitles.length}, Oracle H2=${oracleH2.length}, H3=${oracleH3.length}`);
 
     // SGE Resilience = Lower AIO risk (3-5)
     const calculateAIOScore = () => 3; // Static base value (low risk)
@@ -179,9 +199,23 @@
     });
 
     // FALLBACK ONLY: Fill with templates if still below target
-    // V8.5 FIX: Add competitor-specific variants
+    // V12.0 FIX: Mark template keywords clearly and log warning with diagnostic info
     if (keywords.length < TARGET_COUNT) {
-      console.log(`   ⚠️ SGE ${domain}: Using templates to fill ${TARGET_COUNT - keywords.length} remaining slots`);
+      const realDataCount = keywords.length;
+      const templateCount = TARGET_COUNT - keywords.length;
+      
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(`⚠️ SGE ${domain}: INSUFFICIENT REAL DATA`);
+      console.log('═══════════════════════════════════════════════════════');
+      console.log(`   Real keywords: ${realDataCount}/${TARGET_COUNT}`);
+      console.log(`   PAA Questions available: ${paaQuestions.length}`);
+      console.log(`   Related Searches available: ${relatedSearches.length}`);
+      console.log(`   SERP Titles available: ${serpTitles.length}`);
+      console.log(`   Oracle H2 available: ${oracleH2.length}`);
+      console.log(`   Oracle H3 available: ${oracleH3.length}`);
+      console.log('───────────────────────────────────────────────────────');
+      console.log(`   Using ${templateCount} template-based keywords to fill gaps`);
+      console.log('═══════════════════════════════════════════════════════');
       
       // Generate competitor-specific keyword variants for SGE survival
       const domainName = cleanDomain.split('.')[0];
@@ -222,7 +256,8 @@
             y: 5, // Static base value
             mass: 10, // Static base value
             moat_type: 'Content',
-            source: 'competitor_variant',
+            source: 'template_fallback',  // V12.0: Clearly marked as template
+            _isTemplate: true,  // V12.0: Flag for UI to style differently
             competitor: domain,
             tip: generateTip(normalizedKw, clashScore, aioRisk, 'Content', 'Build interactive tool with proprietary data')
           });
@@ -248,7 +283,8 @@
             y: 5, // Static base value
             mass: 10, // Static base value
             moat_type: 'Content',
-            source: 'template',
+            source: 'template_fallback',  // V12.0: Clearly marked as template
+            _isTemplate: true,  // V12.0: Flag for UI to style differently
             competitor: domain,
             tip: generateTip(kwText, clashScore, aioRisk, 'Content', 'Proprietary data + gated experience')
           });
@@ -256,7 +292,11 @@
       });
     }
 
-    console.log(`   ✅ SGE ${domain}: Generated ${keywords.length} keywords (${keywords.filter(k => !['template', 'competitor_variant'].includes(k.source)).length} from real data)`);
+    // V12.0: Enhanced logging with real data percentage
+    const realDataKeywords = keywords.filter(k => !k._isTemplate && !['template', 'template_fallback', 'competitor_variant'].includes(k.source));
+    const realDataPercent = Math.round((realDataKeywords.length / keywords.length) * 100);
+    console.log(`   ✅ SGE ${domain}: Generated ${keywords.length} keywords (${realDataKeywords.length} real data = ${realDataPercent}%)`);
+    
     return keywords;
   }
   window.generateSGEResilienceKWs = generateSGEResilienceKWs;

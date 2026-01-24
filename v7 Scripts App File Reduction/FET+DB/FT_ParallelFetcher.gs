@@ -372,6 +372,15 @@ function FT_fetchAllCompetitorsParallel(competitors, options) {
       // Synthesize using existing function (v28.2: pass options for batchMode)
       comp.synthesized = FT_synthesizeEliteData(stages, domain, options);
       
+      // V72 ELITE: Data Quality Validation - NEVER show 0 results
+      if (typeof DQ_ValidateAndFix === 'function') {
+        const validation = DQ_ValidateAndFix({ synthesized: comp.synthesized }, domain);
+        if (validation.quality.fallbacksApplied > 0) {
+          comp.synthesized._dataQuality = validation.quality;
+          Logger.log(`   🔍 DQ: ${domain} - ${validation.quality.fallbacksApplied} fallbacks applied`);
+        }
+      }
+      
       Logger.log(`   ✅ ${domain}: ${comp.successRate} stages`);
     });
     

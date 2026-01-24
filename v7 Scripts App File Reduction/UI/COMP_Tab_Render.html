@@ -312,6 +312,24 @@
       window._lastCompetitorData = data;
       window.currentCompetitorData = data;
       console.log('💾 Cached competitor data for chart refresh');
+      
+      // V12.0: Enhanced logging to show data quality in _lastCompetitorData
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📊 V12.0 _lastCompetitorData Quality Report');
+      console.log('═══════════════════════════════════════════════════════');
+      if (data.competitors && data.competitors.length > 0) {
+        data.competitors.forEach((comp, idx) => {
+          const serperData = comp.apiData?.serper || comp.stages?.serper?.data || {};
+          const synthSeo = comp.synthesized?.seo || {};
+          console.log(`   Competitor ${idx + 1}: ${comp.domain || 'unknown'}`);
+          console.log(`      PAA: ${(serperData.peopleAlsoAsk || synthSeo.peopleAlsoAsk || []).length}`);
+          console.log(`      Related: ${(serperData.relatedSearches || synthSeo.relatedSearches || []).length}`);
+          console.log(`      Organic: ${(serperData.organic || synthSeo.organic || []).length}`);
+          console.log(`      processedMetrics: ${Object.keys(comp.processedMetrics || {}).length} keys`);
+          console.log(`      synthesized: ${Object.keys(comp.synthesized || {}).length} keys`);
+        });
+      }
+      console.log('═══════════════════════════════════════════════════════');
 
       // ═══════════════════════════════════════════════════════════════════════════
       // NEW: STORE ORGANIZED DATA & ELITE TAB INTELLIGENCE GLOBALLY

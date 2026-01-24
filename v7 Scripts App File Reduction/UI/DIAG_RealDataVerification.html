@@ -1,0 +1,272 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     DIAG_RealDataVerification.html - V12.0 Real vs Template Data Dashboard
+     
+     PURPOSE:
+     Shows percentage of real API data vs template/fallback data per section
+     Helps diagnose PAA=0, Related=0, SERP=0 issues
+     
+     FUNCTIONS:
+     - runRealDataDiagnostic: Main diagnostic function
+     - showRealDataDashboard: Render visual dashboard
+     - calculateDataQuality: Per-section analysis
+     
+     USAGE:
+     Call window.runRealDataDiagnostic() from console to analyze current data
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * V12.0 REAL DATA VERIFICATION SYSTEM
+   * Analyzes data sources and reports real vs template percentages
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+
+  /**
+   * Run comprehensive data diagnostic across all sources
+   */
+  function runRealDataDiagnostic() {
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log('🔬 V12.0 REAL DATA VERIFICATION DIAGNOSTIC');
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log(`   Timestamp: ${new Date().toISOString()}`);
+    
+    const report = {
+      timestamp: new Date().toISOString(),
+      sections: {},
+      summary: {
+        totalSections: 0,
+        sectionsWithRealData: 0,
+        sectionsWithTemplateData: 0,
+        overallRealDataPercent: 0
+      }
+    };
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 1: COMPETITOR DATA (_lastCompetitorData)
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('\n📊 SECTION 1: Competitor Data Analysis');
+    console.log('───────────────────────────────────────────────────────────────');
+    
+    const compData = window._lastCompetitorData || window.currentCompetitorData;
+    const competitors = compData?.competitors || compData?.competitorsArray || [];
+    
+    let totalPAA = 0, totalRelated = 0, totalOrganic = 0;
+    let compsWithRealData = 0;
+    
+    competitors.forEach((comp, idx) => {
+      const serperData = comp.apiData?.serper || comp.stages?.serper?.data || {};
+      const synthSeo = comp.synthesized?.seo || {};
+      
+      const paa = (serperData.peopleAlsoAsk || synthSeo.peopleAlsoAsk || []).length;
+      const related = (serperData.relatedSearches || synthSeo.relatedSearches || []).length;
+      const organic = (serperData.organic || synthSeo.organic || []).length;
+      
+      totalPAA += paa;
+      totalRelated += related;
+      totalOrganic += organic;
+      
+      if (paa > 0 || related > 0 || organic > 0) compsWithRealData++;
+      
+      console.log(`   ${comp.domain || `Competitor ${idx + 1}`}: PAA=${paa}, Related=${related}, Organic=${organic}`);
+    });
+    
+    const compRealPercent = competitors.length > 0 
+      ? Math.round((compsWithRealData / competitors.length) * 100) 
+      : 0;
+    
+    report.sections.competitorData = {
+      name: 'Competitor SERP Data',
+      totalCompetitors: competitors.length,
+      competitorsWithRealData: compsWithRealData,
+      totalPAA, totalRelated, totalOrganic,
+      realDataPercent: compRealPercent,
+      hasRealData: compRealPercent > 50
+    };
+    
+    console.log(`   SUMMARY: ${compsWithRealData}/${competitors.length} competitors have SERP data (${compRealPercent}%)`);
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 2: KEYWORD GENERATORS
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('\n🔑 SECTION 2: Keyword Generator Analysis');
+    console.log('───────────────────────────────────────────────────────────────');
+    
+    // Check MoneyMoat keywords
+    const allMoneyMoat = document.querySelectorAll('[data-source*="money"], [data-ui-cat="moat"]');
+    const moneyMoatWithTemplate = document.querySelectorAll('[data-source="template_fallback"], [data-is-template="true"]');
+    
+    // Check SGE keywords  
+    const allSGE = document.querySelectorAll('[data-source*="sge"], [data-ui-cat="sge"]');
+    const sgeWithTemplate = document.querySelectorAll('[data-source="template_fallback"][data-ui-cat="sge"]');
+    
+    // Fallback: check console logs for keyword generation stats
+    const kwRawData = window._kwStrategyRawData || {};
+    
+    report.sections.keywords = {
+      name: 'Keyword Generation',
+      hasKWRawData: Object.keys(kwRawData).length > 0,
+      allPAA: kwRawData.allPAA?.length || 0,
+      allOrganic: kwRawData.allOrganic?.length || 0,
+      allRelated: kwRawData.allRelated?.length || 0,
+      realDataPercent: 0 // Will be calculated if data available
+    };
+    
+    console.log(`   KW Raw Data available: ${Object.keys(kwRawData).length > 0 ? 'YES' : 'NO'}`);
+    console.log(`   PAA questions: ${kwRawData.allPAA?.length || 0}`);
+    console.log(`   Organic results: ${kwRawData.allOrganic?.length || 0}`);
+    console.log(`   Related searches: ${kwRawData.allRelated?.length || 0}`);
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 3: ELITE TAB INTELLIGENCE
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('\n🎯 SECTION 3: Elite Tab Intelligence');
+    console.log('───────────────────────────────────────────────────────────────');
+    
+    const eliteIntel = window._eliteTabIntelligence || compData?.eliteTabIntelligence;
+    const eliteKeys = eliteIntel ? Object.keys(eliteIntel) : [];
+    
+    report.sections.eliteIntelligence = {
+      name: 'Elite Tab Intelligence',
+      available: !!eliteIntel,
+      tabCount: eliteKeys.length,
+      tabs: eliteKeys,
+      realDataPercent: eliteIntel ? 100 : 0
+    };
+    
+    console.log(`   Elite Intelligence available: ${eliteIntel ? 'YES' : 'NO'}`);
+    if (eliteIntel) {
+      console.log(`   Tabs with data: ${eliteKeys.join(', ')}`);
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 4: ORGANIZED DATA (from FT_OracleDataOrganizer)
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('\n📦 SECTION 4: Organized Oracle Data');
+    console.log('───────────────────────────────────────────────────────────────');
+    
+    const organizedData = window._organizedData || [];
+    
+    report.sections.organizedData = {
+      name: 'Oracle Organized Data',
+      available: organizedData.length > 0,
+      competitorCount: organizedData.length,
+      realDataPercent: organizedData.length > 0 ? 100 : 0
+    };
+    
+    console.log(`   Organized data available: ${organizedData.length > 0 ? 'YES' : 'NO'}`);
+    console.log(`   Competitors in organized data: ${organizedData.length}`);
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SECTION 5: TRAFFIC & METRICS
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('\n📈 SECTION 5: Traffic & Metrics');
+    console.log('───────────────────────────────────────────────────────────────');
+    
+    let realTrafficCount = 0;
+    let templateTrafficCount = 0;
+    
+    competitors.forEach(comp => {
+      const elite = comp.synthesized?.eliteTraffic;
+      if (elite?.source === 'Oracle Elite Calculator' && elite?.hasRealData) {
+        realTrafficCount++;
+      } else if (elite?._isEmpty || !elite) {
+        templateTrafficCount++;
+      }
+    });
+    
+    const trafficRealPercent = competitors.length > 0 
+      ? Math.round((realTrafficCount / competitors.length) * 100) 
+      : 0;
+    
+    report.sections.traffic = {
+      name: 'Traffic Metrics',
+      totalCompetitors: competitors.length,
+      withRealTraffic: realTrafficCount,
+      withTemplateTraffic: templateTrafficCount,
+      realDataPercent: trafficRealPercent
+    };
+    
+    console.log(`   Real traffic data: ${realTrafficCount}/${competitors.length} competitors (${trafficRealPercent}%)`);
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // OVERALL SUMMARY
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log('\n═══════════════════════════════════════════════════════════════');
+    console.log('📊 OVERALL DATA QUALITY SUMMARY');
+    console.log('═══════════════════════════════════════════════════════════════');
+    
+    const sectionPercents = Object.values(report.sections).map(s => s.realDataPercent || 0);
+    const overallPercent = sectionPercents.length > 0 
+      ? Math.round(sectionPercents.reduce((a, b) => a + b, 0) / sectionPercents.length)
+      : 0;
+    
+    report.summary.totalSections = Object.keys(report.sections).length;
+    report.summary.sectionsWithRealData = Object.values(report.sections).filter(s => s.realDataPercent > 50).length;
+    report.summary.sectionsWithTemplateData = report.summary.totalSections - report.summary.sectionsWithRealData;
+    report.summary.overallRealDataPercent = overallPercent;
+    
+    console.log(`   Sections analyzed: ${report.summary.totalSections}`);
+    console.log(`   Sections with >50% real data: ${report.summary.sectionsWithRealData}`);
+    console.log(`   Sections with template data: ${report.summary.sectionsWithTemplateData}`);
+    console.log(`   OVERALL REAL DATA: ${overallPercent}%`);
+    
+    if (overallPercent < 25) {
+      console.log('\n⚠️ CRITICAL: Less than 25% real data detected!');
+      console.log('   Check: Serper API configuration');
+      console.log('   Check: Worker_Fetch.gs extractSerpFeatures()');
+      console.log('   Check: FT_Serper_Oracle_Bridge.gs API calls');
+    } else if (overallPercent < 50) {
+      console.log('\n⚠️ WARNING: Less than 50% real data detected');
+      console.log('   Some API calls may be failing silently');
+    } else {
+      console.log('\n✅ Data quality is acceptable');
+    }
+    
+    console.log('═══════════════════════════════════════════════════════════════\n');
+    
+    // Store report for programmatic access
+    window._realDataReport = report;
+    
+    return report;
+  }
+  
+  /**
+   * Show visual dashboard in console
+   */
+  function showRealDataDashboard() {
+    const report = runRealDataDiagnostic();
+    
+    console.log('\n┌─────────────────────────────────────────────────────────────────┐');
+    console.log('│            V12.0 REAL DATA VERIFICATION DASHBOARD                │');
+    console.log('├─────────────────────────────────────────────────────────────────┤');
+    
+    Object.entries(report.sections).forEach(([key, section]) => {
+      const bar = '█'.repeat(Math.floor(section.realDataPercent / 5)) + 
+                  '░'.repeat(20 - Math.floor(section.realDataPercent / 5));
+      const status = section.realDataPercent > 50 ? '✅' : '❌';
+      console.log(`│ ${status} ${section.name.padEnd(25)} │${bar}│ ${String(section.realDataPercent).padStart(3)}% │`);
+    });
+    
+    console.log('├─────────────────────────────────────────────────────────────────┤');
+    const overallBar = '█'.repeat(Math.floor(report.summary.overallRealDataPercent / 5)) + 
+                       '░'.repeat(20 - Math.floor(report.summary.overallRealDataPercent / 5));
+    console.log(`│ 📊 OVERALL                       │${overallBar}│ ${String(report.summary.overallRealDataPercent).padStart(3)}% │`);
+    console.log('└─────────────────────────────────────────────────────────────────┘');
+    
+    return report;
+  }
+
+  // Expose functions globally (inside IIFE)
+  window.runRealDataDiagnostic = runRealDataDiagnostic;
+  window.showRealDataDashboard = showRealDataDashboard;
+  
+  // Log successful initialization
+  console.log('✅ DIAG_RealDataVerification.html loaded');
+  console.log('   Run window.runRealDataDiagnostic() for detailed analysis');
+  console.log('   Run window.showRealDataDashboard() for visual dashboard');
+
+})();
+</script>

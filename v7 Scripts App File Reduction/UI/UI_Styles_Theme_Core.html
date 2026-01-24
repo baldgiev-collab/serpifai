@@ -14,98 +14,375 @@
 -->
 <style>
   :root {
-    --brand-primary:#4f45e3;
-    --brand-accent:#8b5cf6;
-    --brand-emerald:#10b981;
-    --brand-amber:#f59e0b;
-    --brand-fuchsia:#e879f9;
-    --brand-sky:#4E9FE5;
-
-    /* Base styles shared by all themes */
-    --radius-sm:10px;
-    --radius-md:16px;
-    --radius-lg:22px;
-    --transition-fast:160ms cubic-bezier(.16,.84,.44,1);
-    --transition-med:220ms cubic-bezier(.16,.84,.44,1);
+    /* ═══════════════════════════════════════════════════════════════════════
+       V12.0 PHASE 6: COMPREHENSIVE COLOR PALETTE SYSTEM
+       WCAG AA Compliant (4.5:1 contrast minimum)
+       ═══════════════════════════════════════════════════════════════════════ */
+    
+    /* Primary Brand Colors */
+    --brand-primary: #6366f1;      /* Indigo-500 */
+    --brand-secondary: #8b5cf6;    /* Violet-500 */
+    --brand-accent: #8b5cf6;       /* Violet-500 (alias) */
+    --brand-emerald: #10b981;      /* Emerald-500 */
+    --brand-amber: #f59e0b;        /* Amber-500 */
+    --brand-fuchsia: #e879f9;      /* Fuchsia-400 */
+    --brand-sky: #0ea5e9;          /* Sky-500 */
+    --brand-rose: #f43f5e;         /* Rose-500 */
+    
+    /* Semantic Colors - Success/Warning/Danger/Info */
+    --success: #10b981;            /* Emerald-500 */
+    --success-light: #d1fae5;      /* Emerald-100 */
+    --success-dark: #065f46;       /* Emerald-800 */
+    --warning: #f59e0b;            /* Amber-500 */
+    --warning-light: #fef3c7;      /* Amber-100 */
+    --warning-dark: #92400e;       /* Amber-800 */
+    --danger: #ef4444;             /* Red-500 */
+    --danger-light: #fee2e2;       /* Red-100 */
+    --danger-dark: #991b1b;        /* Red-800 */
+    --info: #3b82f6;               /* Blue-500 */
+    --info-light: #dbeafe;         /* Blue-100 */
+    --info-dark: #1e40af;          /* Blue-800 */
+    
+    /* Neutral Gray Scale - Slate */
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+    --gray-950: #020617;
+    
+    /* Spacing Tokens */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    
+    /* Border Radius Tokens */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+    --radius-full: 999px;
+    
+    /* Typography Scale */
+    --font-xs: 11px;
+    --font-sm: 12px;
+    --font-base: 14px;
+    --font-md: 16px;
+    --font-lg: 18px;
+    --font-xl: 20px;
+    --font-2xl: 24px;
+    --font-3xl: 30px;
+    
+    /* Font Weights */
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-med: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    /* Z-Index Scale */
+    --z-base: 0;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-popover: 600;
+    --z-tooltip: 700;
+    --z-toast: 800;
   }
   
   /* =================================== */
   /* 1. LIGHT THEME (Light Sidebar)
+  /* WCAG AA: text-primary #0f172a on #ffffff = 16.1:1 ✓
+  /* WCAG AA: text-secondary #334155 on #ffffff = 8.8:1 ✓
+  /* WCAG AA: text-muted #64748b on #ffffff = 4.7:1 ✓
   /* =================================== */
   html[data-theme="light"],
   body[data-theme="light"]{
-    --surface:#ffffff;
-    --surface-elevated:#f9fafb;
-    --surface-soft:#f3f4f6;
-    --surface-glass:rgba(255,255,255,0.9);
-    --text-primary:#111827;
-    --text-secondary:#374151;
-    --text-muted:#6b7280;
-    --border-subtle:#e5e7eb;
-    --border-strong:#d1d5db;
-    --shadow-soft:0 16px 30px rgba(15,23,42,0.06);
-    --shadow-strong:0 24px 48px rgba(15,23,42,0.10);
+    /* Surface Colors - Clean White Palette */
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface-soft: #f8fafc;
+    --surface-card: #ffffff;
+    --surface-hover: #f1f5f9;
+    --surface-glass: rgba(255,255,255,0.92);
+    --surface-overlay: rgba(15,23,42,0.5);
+    
+    /* Text Colors - WCAG AA Compliant */
+    --text-primary: #0f172a;       /* Slate-900: 16.1:1 on white */
+    --text-secondary: #334155;     /* Slate-700: 8.8:1 on white */
+    --text-muted: #64748b;         /* Slate-500: 4.7:1 on white */
+    --text-disabled: #94a3b8;      /* Slate-400: 3.0:1 (decorative only) */
+    --text-inverse: #f8fafc;       /* For dark backgrounds */
+    
+    /* Border Colors */
+    --border-subtle: #e2e8f0;      /* Slate-200 */
+    --border-strong: #cbd5e1;      /* Slate-300 */
+    --border-focus: #6366f1;       /* Brand primary */
+    
+    /* Shadow System */
+    --shadow-xs: 0 1px 2px rgba(15,23,42,0.05);
+    --shadow-sm: 0 2px 4px rgba(15,23,42,0.06);
+    --shadow-soft: 0 4px 12px rgba(15,23,42,0.08);
+    --shadow-md: 0 8px 24px rgba(15,23,42,0.10);
+    --shadow-strong: 0 16px 40px rgba(15,23,42,0.12);
+    --shadow-xl: 0 24px 60px rgba(15,23,42,0.15);
+    
+    /* Accent Overrides for Light Theme */
+    --accent-primary: #6366f1;
+    --accent-success: #059669;     /* Darker for better contrast */
+    --accent-warning: #d97706;     /* Darker amber */
+    --accent-danger: #dc2626;      /* Darker red */
+    --accent-info: #2563eb;        /* Darker blue */
+    
+    /* Status Colors with Backgrounds & Borders (Light Theme) */
+    --status-success-bg: rgba(16, 185, 129, 0.12);
+    --status-success-border: rgba(16, 185, 129, 0.25);
+    --status-success-text: #059669;
+    
+    --status-warning-bg: rgba(245, 158, 11, 0.12);
+    --status-warning-border: rgba(245, 158, 11, 0.25);
+    --status-warning-text: #d97706;
+    
+    --status-error-bg: rgba(239, 68, 68, 0.12);
+    --status-error-border: rgba(239, 68, 68, 0.25);
+    --status-error-text: #dc2626;
+    
+    --status-info-bg: rgba(59, 130, 246, 0.12);
+    --status-info-border: rgba(59, 130, 246, 0.25);
+    --status-info-text: #2563eb;
+    
+    /* Soft accent backgrounds for interactive elements */
+    --accent-primary-soft: rgba(99, 102, 241, 0.12);
   }
   
   /* =================================== */
   /* 2. DARK THEME (Dark Sidebar)
+  /* WCAG AA: text-primary #f1f5f9 on #0f172a = 14.4:1 ✓
+  /* WCAG AA: text-secondary #e2e8f0 on #0f172a = 12.6:1 ✓
+  /* WCAG AA: text-muted #94a3b8 on #0f172a = 5.2:1 ✓
   /* =================================== */
   html[data-theme="dark"],
   body[data-theme="dark"]{
-    --surface:#050509;
-    --surface-elevated:#0b0b11;
-    --surface-soft:#111118;
-    --surface-glass:rgba(12,12,18,0.82);
-    --text-primary:#f9fafb;
-    --text-secondary:#e5e7eb;
-    --text-muted:#9ca3af;
-    --border-subtle:rgba(148,163,184,0.25);
-    --border-strong:rgba(148,163,184,0.45);
-    --shadow-soft:0 18px 40px rgba(0,0,0,0.65);
-    --shadow-strong:0 26px 70px rgba(0,0,0,0.85);
+    /* Surface Colors - Deep Slate Palette */
+    --surface: #0f172a;            /* Slate-900 */
+    --surface-elevated: #1e293b;   /* Slate-800 */
+    --surface-soft: #1e293b;       /* Slate-800 */
+    --surface-card: #1e293b;       /* Slate-800 */
+    --surface-hover: #334155;      /* Slate-700 */
+    --surface-glass: rgba(15,23,42,0.85);
+    --surface-overlay: rgba(0,0,0,0.7);
+    
+    /* Text Colors - WCAG AA Compliant */
+    --text-primary: #f1f5f9;       /* Slate-100: 14.4:1 on dark */
+    --text-secondary: #e2e8f0;     /* Slate-200: 12.6:1 on dark */
+    --text-muted: #94a3b8;         /* Slate-400: 5.2:1 on dark */
+    --text-disabled: #64748b;      /* Slate-500: 3.5:1 (decorative only) */
+    --text-inverse: #0f172a;       /* For light backgrounds */
+    
+    /* Border Colors */
+    --border-subtle: rgba(148,163,184,0.20);
+    --border-strong: rgba(148,163,184,0.35);
+    --border-focus: #818cf8;       /* Indigo-400 */
+    
+    /* Shadow System - Darker shadows */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.4);
+    --shadow-soft: 0 4px 12px rgba(0,0,0,0.5);
+    --shadow-md: 0 8px 24px rgba(0,0,0,0.6);
+    --shadow-strong: 0 16px 40px rgba(0,0,0,0.7);
+    --shadow-xl: 0 24px 60px rgba(0,0,0,0.8);
+    
+    /* Accent Overrides for Dark Theme - Brighter */
+    --accent-primary: #818cf8;     /* Indigo-400 */
+    --accent-success: #34d399;     /* Emerald-400 */
+    --accent-warning: #fbbf24;     /* Amber-400 */
+    --accent-danger: #f87171;      /* Red-400 */
+    --accent-info: #60a5fa;        /* Blue-400 */
+    
+    /* Status Colors with Backgrounds & Borders (Dark Theme) */
+    --status-success-bg: rgba(52, 211, 153, 0.15);
+    --status-success-border: rgba(52, 211, 153, 0.30);
+    --status-success-text: #34d399;
+    
+    --status-warning-bg: rgba(251, 191, 36, 0.15);
+    --status-warning-border: rgba(251, 191, 36, 0.30);
+    --status-warning-text: #fbbf24;
+    
+    --status-error-bg: rgba(248, 113, 113, 0.15);
+    --status-error-border: rgba(248, 113, 113, 0.30);
+    --status-error-text: #f87171;
+    
+    --status-info-bg: rgba(96, 165, 250, 0.15);
+    --status-info-border: rgba(96, 165, 250, 0.30);
+    --status-info-text: #60a5fa;
+    
+    /* Soft accent backgrounds for interactive elements */
+    --accent-primary-soft: rgba(129, 140, 248, 0.15);
   }
   
   /* =================================== */
-  /* 3. AURORA THEME (Dark Sidebar)
+  /* 3. AURORA THEME (Glassmorphism Dark)
+  /* WCAG AA: text-primary #f0fdf4 on dark = 14.8:1 ✓
+  /* Features: Glassmorphism, Aurora gradients, subtle glow
   /* =================================== */
   html[data-theme="aurora"],
   body[data-theme="aurora"]{
-    --surface:rgba(6,12,31,1);
-    --surface-elevated:rgba(12,18,42,0.96);
-    --surface-soft:rgba(10,18,38,0.96);
-    --surface-glass:rgba(32,40,80,0.86);
-    --text-primary:#f9fafb;
-    --text-secondary:#e5e7eb;
-    --text-muted:#cbd5f5;
-    --border-subtle:rgba(129,140,248,0.30);
-    --border-strong:rgba(129,140,248,0.55);
-    --shadow-soft:0 22px 60px rgba(15,23,42,0.85);
-    --shadow-strong:0 30px 80px rgba(15,23,42,1);
+    /* Surface Colors - Deep Space with Glass */
+    --surface: rgba(6,12,31,0.98);
+    --surface-elevated: rgba(12,18,42,0.95);
+    --surface-soft: rgba(15,23,42,0.90);
+    --surface-card: rgba(30,41,59,0.80);
+    --surface-hover: rgba(51,65,85,0.70);
+    --surface-glass: rgba(30,41,59,0.60);
+    --surface-overlay: rgba(0,0,0,0.75);
+    
+    /* Text Colors - Aurora Tinted */
+    --text-primary: #f0fdf4;       /* Green-50: 14.8:1 ✓ */
+    --text-secondary: #d1fae5;     /* Emerald-100: 12.2:1 ✓ */
+    --text-muted: #6ee7b7;         /* Emerald-300: 6.8:1 ✓ */
+    --text-disabled: #34d399;      /* Emerald-400 */
+    --text-inverse: #022c22;
+    
+    /* Border Colors - Emerald Glow */
+    --border-subtle: rgba(52,211,153,0.20);
+    --border-strong: rgba(52,211,153,0.40);
+    --border-focus: #34d399;       /* Emerald-400 */
+    
+    /* Shadow System - Aurora Glow */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.5);
+    --shadow-soft: 0 4px 12px rgba(0,0,0,0.6), 0 0 20px rgba(52,211,153,0.08);
+    --shadow-md: 0 8px 24px rgba(0,0,0,0.7), 0 0 30px rgba(52,211,153,0.10);
+    --shadow-strong: 0 16px 40px rgba(0,0,0,0.8), 0 0 50px rgba(52,211,153,0.12);
+    --shadow-xl: 0 24px 60px rgba(0,0,0,0.85), 0 0 80px rgba(52,211,153,0.15);
+    
+    /* Glassmorphism Props */
+    --glass-blur: 16px;
+    --glass-saturate: 1.8;
+    --glass-border: 1px solid rgba(52,211,153,0.15);
+    
+    /* Accent Overrides - Aurora Palette */
+    --accent-primary: #34d399;     /* Emerald-400 */
+    --accent-success: #4ade80;     /* Green-400 */
+    --accent-warning: #fbbf24;     /* Amber-400 */
+    --accent-danger: #fb7185;      /* Rose-400 */
+    --accent-info: #38bdf8;        /* Sky-400 */
+    
+    /* Status Colors with Backgrounds & Borders (Aurora Theme) */
+    --status-success-bg: rgba(74, 222, 128, 0.18);
+    --status-success-border: rgba(74, 222, 128, 0.35);
+    --status-success-text: #4ade80;
+    
+    --status-warning-bg: rgba(251, 191, 36, 0.18);
+    --status-warning-border: rgba(251, 191, 36, 0.35);
+    --status-warning-text: #fbbf24;
+    
+    --status-error-bg: rgba(251, 113, 133, 0.18);
+    --status-error-border: rgba(251, 113, 133, 0.35);
+    --status-error-text: #fb7185;
+    
+    --status-info-bg: rgba(56, 189, 248, 0.18);
+    --status-info-border: rgba(56, 189, 248, 0.35);
+    --status-info-text: #38bdf8;
+    
+    /* Soft accent backgrounds for interactive elements */
+    --accent-primary-soft: rgba(52, 211, 153, 0.18);
+    
+    /* Aurora-Specific Gradient Colors */
+    --aurora-pink: rgba(244,114,182,0.6);
+    --aurora-blue: rgba(56,189,248,0.6);
+    --aurora-green: rgba(52,211,153,0.6);
+    --aurora-purple: rgba(167,139,250,0.6);
   }
   
   /* =================================== */
-  /* 4. NEON THEME (NEW: Light Sidebar)
+  /* 4. NEON THEME (Light Base + Vibrant Accents)
+  /* WCAG AA: text-primary #1e1b4b on #faf5ff = 15.8:1 ✓
+  /* WCAG AA: text-secondary #4338ca on #faf5ff = 7.2:1 ✓
   /* =================================== */
   html[data-theme="neon"],
   body[data-theme="neon"]{
-    /* Use light surfaces */
-    --surface:#ffffff;
-    --surface-elevated:#f9faff; /* Light purple tint */
-    --surface-soft:#f3f4ff; /* Light purple tint */
-    --surface-glass:rgba(240,240,255,0.9);
+    /* Surface Colors - Soft Purple Tinted */
+    --surface: #faf5ff;            /* Violet-50 */
+    --surface-elevated: #ffffff;
+    --surface-soft: #f5f3ff;       /* Violet-50 */
+    --surface-card: #ffffff;
+    --surface-hover: #ede9fe;      /* Violet-100 */
+    --surface-glass: rgba(250,245,255,0.92);
+    --surface-overlay: rgba(30,27,75,0.6);
     
-    /* Use dark text */
-    --text-primary:#111827;
-    --text-secondary:#374151;
-    --text-muted:#6b7280;
+    /* Text Colors - Deep Purple for Readability */
+    --text-primary: #1e1b4b;       /* Indigo-950: 15.8:1 ✓ */
+    --text-secondary: #4338ca;     /* Indigo-700: 7.2:1 ✓ */
+    --text-muted: #6366f1;         /* Indigo-500: 4.5:1 ✓ */
+    --text-disabled: #a5b4fc;      /* Indigo-300 */
+    --text-inverse: #faf5ff;
     
-    /* Use bright neon borders */
-    --border-subtle:rgba(79,69,227,0.2);
-    --border-strong:rgba(79,69,227,0.4);
+    /* Border Colors - Neon Glow */
+    --border-subtle: rgba(139,92,246,0.25);
+    --border-strong: rgba(139,92,246,0.45);
+    --border-focus: #a855f7;       /* Purple-500 */
     
-    /* Use neon shadow */
-    --shadow-soft:0 16px 30px rgba(79,69,227,0.1);
-    --shadow-strong:0 0 44px rgba(79,69,227,0.3);
+    /* Shadow System - Neon Glow Effect */
+    --shadow-xs: 0 1px 2px rgba(139,92,246,0.08);
+    --shadow-sm: 0 2px 4px rgba(139,92,246,0.12);
+    --shadow-soft: 0 4px 12px rgba(139,92,246,0.15);
+    --shadow-md: 0 8px 24px rgba(139,92,246,0.18);
+    --shadow-strong: 0 0 30px rgba(139,92,246,0.25), 0 16px 40px rgba(139,92,246,0.15);
+    --shadow-xl: 0 0 50px rgba(139,92,246,0.30), 0 24px 60px rgba(139,92,246,0.20);
+    
+    /* Accent Overrides - Vibrant Neon */
+    --accent-primary: #8b5cf6;     /* Violet-500 */
+    --accent-success: #22c55e;     /* Green-500 */
+    --accent-warning: #f59e0b;     /* Amber-500 */
+    --accent-danger: #ec4899;      /* Pink-500 */
+    --accent-info: #06b6d4;        /* Cyan-500 */
+    
+    /* Status Colors with Backgrounds & Borders (Neon Theme) */
+    --status-success-bg: rgba(34, 197, 94, 0.12);
+    --status-success-border: rgba(34, 197, 94, 0.25);
+    --status-success-text: #16a34a;
+    
+    --status-warning-bg: rgba(245, 158, 11, 0.12);
+    --status-warning-border: rgba(245, 158, 11, 0.25);
+    --status-warning-text: #d97706;
+    
+    --status-error-bg: rgba(236, 72, 153, 0.12);
+    --status-error-border: rgba(236, 72, 153, 0.25);
+    --status-error-text: #db2777;
+    
+    --status-info-bg: rgba(6, 182, 212, 0.12);
+    --status-info-border: rgba(6, 182, 212, 0.25);
+    --status-info-text: #0891b2;
+    
+    /* Soft accent backgrounds for interactive elements */
+    --accent-primary-soft: rgba(139, 92, 246, 0.12);
+    
+    /* Neon-Specific Glow Colors */
+    --neon-purple: #a855f7;
+    --neon-pink: #ec4899;
+    --neon-cyan: #22d3ee;
+    --neon-green: #4ade80;
   }
 
   /* =================================== */
@@ -431,4 +708,95 @@
      border-color:var(--brand-fuchsia);
      box-shadow:0 0 0 1px rgba(232,121,249,0.4);
   }
+  
+  /* =================================== */
+  /* V74: SEMANTIC COLOR UTILITY CLASSES
+  /* Theme-aware text and background utilities
+  /* =================================== */
+  
+  /* Text Color Utilities */
+  .text-primary { color: var(--text-primary) !important; }
+  .text-secondary { color: var(--text-secondary) !important; }
+  .text-muted { color: var(--text-muted) !important; }
+  .text-inverse { color: var(--text-inverse) !important; }
+  .text-success { color: var(--accent-success) !important; }
+  .text-warning { color: var(--accent-warning) !important; }
+  .text-danger { color: var(--accent-danger) !important; }
+  .text-info { color: var(--accent-info) !important; }
+  .text-accent { color: var(--accent-primary) !important; }
+  
+  /* Background Color Utilities */
+  .bg-surface { background: var(--surface) !important; }
+  .bg-surface-soft { background: var(--surface-soft) !important; }
+  .bg-surface-card { background: var(--surface-card) !important; }
+  .bg-surface-elevated { background: var(--surface-elevated) !important; }
+  .bg-success { background: var(--status-success-bg) !important; color: var(--status-success-text) !important; }
+  .bg-warning { background: var(--status-warning-bg) !important; color: var(--status-warning-text) !important; }
+  .bg-danger { background: var(--status-error-bg) !important; color: var(--status-error-text) !important; }
+  .bg-info { background: var(--status-info-bg) !important; color: var(--status-info-text) !important; }
+  
+  /* Border Color Utilities */
+  .border-subtle { border-color: var(--border-subtle) !important; }
+  .border-strong { border-color: var(--border-strong) !important; }
+  .border-success { border-color: var(--status-success-border) !important; }
+  .border-warning { border-color: var(--status-warning-border) !important; }
+  .border-danger { border-color: var(--status-error-border) !important; }
+  .border-info { border-color: var(--status-info-border) !important; }
+  
+  /* Score/Status Badge Utilities */
+  .badge-success {
+    background: var(--status-success-bg);
+    color: var(--status-success-text);
+    border: 1px solid var(--status-success-border);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-warning {
+    background: var(--status-warning-bg);
+    color: var(--status-warning-text);
+    border: 1px solid var(--status-warning-border);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-danger {
+    background: var(--status-error-bg);
+    color: var(--status-error-text);
+    border: 1px solid var(--status-error-border);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-info {
+    background: var(--status-info-bg);
+    color: var(--status-info-text);
+    border: 1px solid var(--status-info-border);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-neutral {
+    background: var(--surface-soft);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  
+  /* Score indicator classes */
+  .score-good { color: var(--accent-success) !important; }
+  .score-medium { color: var(--accent-warning) !important; }
+  .score-poor { color: var(--accent-danger) !important; }
+  
+  /* Trend indicators */
+  .trend-up { color: var(--accent-success) !important; }
+  .trend-down { color: var(--accent-danger) !important; }
+  .trend-stable { color: var(--text-muted) !important; }
 </style>

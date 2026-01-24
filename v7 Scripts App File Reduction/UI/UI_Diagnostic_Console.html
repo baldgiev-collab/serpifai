@@ -1,0 +1,648 @@
+<!--
+  ╔═══════════════════════════════════════════════════════════════════════════════════╗
+  ║  UI_Diagnostic_Console.html - V12.0 Phase 8 Diagnostic Console Panel              ║
+  ║                                                                                    ║
+  ║  Provides a floating diagnostic panel for debugging:                              ║
+  ║  - Error log viewer                                                                ║
+  ║  - Loading state monitor                                                           ║
+  ║  - Interval/Timer tracker                                                          ║
+  ║  - Health check status                                                             ║
+  ║  - Real-time system metrics                                                        ║
+  ║                                                                                    ║
+  ║  Dependencies: UI_Core_Utils.html, UI_Loading_Utils.html                          ║
+  ║  Exports: window.DiagnosticConsole                                                ║
+  ╚═══════════════════════════════════════════════════════════════════════════════════╝
+-->
+<style>
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  /* DIAGNOSTIC CONSOLE PANEL STYLES                                              */
+  /* ═══════════════════════════════════════════════════════════════════════════ */
+  
+  .diag-console {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 420px;
+    max-height: 500px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: #e2e8f0;
+    z-index: 99999;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .diag-console.minimized {
+    width: 200px;
+    max-height: 44px;
+  }
+  
+  .diag-console.active {
+    display: flex;
+  }
+  
+  .diag-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(99, 102, 241, 0.2);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    cursor: move;
+  }
+  
+  .diag-header h3 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #a5b4fc;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .diag-header-controls {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .diag-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+    transition: color 0.2s;
+  }
+  
+  .diag-btn:hover {
+    color: #f1f5f9;
+  }
+  
+  .diag-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+  }
+  
+  .diag-tab {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .diag-tab.active {
+    color: #a5b4fc;
+    border-bottom-color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .diag-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    max-height: 380px;
+  }
+  
+  .diag-section {
+    margin-bottom: 12px;
+  }
+  
+  .diag-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .diag-metric {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 6px;
+    margin-bottom: 4px;
+  }
+  
+  .diag-metric-label {
+    color: #94a3b8;
+  }
+  
+  .diag-metric-value {
+    font-weight: 600;
+  }
+  
+  .diag-metric-value.success { color: #22c55e; }
+  .diag-metric-value.warning { color: #f59e0b; }
+  .diag-metric-value.error { color: #ef4444; }
+  .diag-metric-value.info { color: #6366f1; }
+  
+  .diag-error-entry {
+    padding: 8px 10px;
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-size: 10px;
+  }
+  
+  .diag-error-type {
+    color: #f87171;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  
+  .diag-error-message {
+    color: #fca5a5;
+    word-break: break-word;
+  }
+  
+  .diag-error-time {
+    color: #6b7280;
+    font-size: 9px;
+    margin-top: 4px;
+  }
+  
+  .diag-empty {
+    text-align: center;
+    color: #64748b;
+    padding: 20px;
+    font-style: italic;
+  }
+  
+  .diag-status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  
+  .diag-status-indicator.healthy { background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
+  .diag-status-indicator.warning { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+  .diag-status-indicator.error { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+  
+  /* Scrollbar */
+  .diag-content::-webkit-scrollbar { width: 6px; }
+  .diag-content::-webkit-scrollbar-track { background: transparent; }
+  .diag-content::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 3px; }
+  
+  /* Trigger button */
+  .diag-trigger {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    z-index: 99998;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .diag-trigger:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  }
+  
+  .diag-trigger.hidden { display: none; }
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ * V12.0 PHASE 8: DIAGNOSTIC CONSOLE
+ * Real-time monitoring and debugging panel
+ * ═══════════════════════════════════════════════════════════════════════════════════
+ */
+const DiagnosticConsole = (function() {
+  let isOpen = false;
+  let activeTab = 'health';
+  let refreshInterval = null;
+  
+  const TABS = {
+    health: { icon: '❤️', label: 'Health' },
+    errors: { icon: '⚠️', label: 'Errors' },
+    loading: { icon: '⏳', label: 'Loading' },
+    timers: { icon: '⏱️', label: 'Timers' }
+  };
+  
+  /**
+   * Initialize the console
+   */
+  function init() {
+    createTriggerButton();
+    createConsolePanel();
+    
+    // Auto-show if errors exist
+    setTimeout(() => {
+      const errorLog = window.getErrorLog ? window.getErrorLog() : [];
+      if (errorLog.length > 3) {
+        console.log('🔧 DiagnosticConsole: Auto-opening due to errors');
+      }
+    }, 3000);
+    
+    console.log('✅ DiagnosticConsole initialized');
+  }
+  
+  /**
+   * Create the floating trigger button
+   */
+  function createTriggerButton() {
+    const trigger = document.createElement('button');
+    trigger.className = 'diag-trigger';
+    trigger.innerHTML = '🔧';
+    trigger.title = 'Open Diagnostic Console';
+    trigger.onclick = toggle;
+    
+    // Only show in development or with URL param
+    const showDiag = window.location.search.includes('debug=true') || 
+                     window.location.search.includes('diag=true');
+    if (!showDiag) {
+      trigger.classList.add('hidden');
+    }
+    
+    document.body.appendChild(trigger);
+  }
+  
+  /**
+   * Create the main console panel
+   */
+  function createConsolePanel() {
+    const panel = document.createElement('div');
+    panel.className = 'diag-console';
+    panel.id = 'diag-console';
+    
+    panel.innerHTML = `
+      <div class="diag-header">
+        <h3>
+          <span class="diag-status-indicator healthy"></span>
+          Diagnostic Console
+        </h3>
+        <div class="diag-header-controls">
+          <button class="diag-btn" onclick="DiagnosticConsole.refresh()" title="Refresh">🔄</button>
+          <button class="diag-btn" onclick="DiagnosticConsole.minimize()" title="Minimize">−</button>
+          <button class="diag-btn" onclick="DiagnosticConsole.toggle()" title="Close">✕</button>
+        </div>
+      </div>
+      <div class="diag-tabs">
+        ${Object.entries(TABS).map(([key, tab]) => `
+          <button class="diag-tab ${key === activeTab ? 'active' : ''}" 
+                  onclick="DiagnosticConsole.switchTab('${key}')">
+            ${tab.icon} ${tab.label}
+          </button>
+        `).join('')}
+      </div>
+      <div class="diag-content" id="diag-content">
+        <!-- Content loaded dynamically -->
+      </div>
+    `;
+    
+    document.body.appendChild(panel);
+  }
+  
+  /**
+   * Toggle console visibility
+   */
+  function toggle() {
+    const panel = document.getElementById('diag-console');
+    const trigger = document.querySelector('.diag-trigger');
+    
+    if (isOpen) {
+      panel.classList.remove('active');
+      if (trigger) trigger.classList.remove('hidden');
+      clearInterval(refreshInterval);
+    } else {
+      panel.classList.add('active');
+      if (trigger) trigger.classList.add('hidden');
+      refresh();
+      refreshInterval = setInterval(refresh, 2000);
+    }
+    
+    isOpen = !isOpen;
+  }
+  
+  /**
+   * Minimize console
+   */
+  function minimize() {
+    const panel = document.getElementById('diag-console');
+    panel.classList.toggle('minimized');
+  }
+  
+  /**
+   * Switch active tab
+   */
+  function switchTab(tab) {
+    activeTab = tab;
+    
+    // Update tab styles
+    document.querySelectorAll('.diag-tab').forEach(t => {
+      t.classList.toggle('active', t.textContent.toLowerCase().includes(tab));
+    });
+    
+    refresh();
+  }
+  
+  /**
+   * Refresh console content
+   */
+  function refresh() {
+    const content = document.getElementById('diag-content');
+    if (!content) return;
+    
+    switch (activeTab) {
+      case 'health': content.innerHTML = renderHealthTab(); break;
+      case 'errors': content.innerHTML = renderErrorsTab(); break;
+      case 'loading': content.innerHTML = renderLoadingTab(); break;
+      case 'timers': content.innerHTML = renderTimersTab(); break;
+    }
+    
+    updateHealthIndicator();
+  }
+  
+  /**
+   * Render health tab
+   */
+  function renderHealthTab() {
+    const errorLog = window.getErrorLog ? window.getErrorLog() : [];
+    const loadingStates = window.LoadingStateManager?.getLoadingStates() || [];
+    const timerStatus = window.IntervalTracker?.getStatus() || { intervals: [], timeouts: [] };
+    const memoryUsage = performance?.memory?.usedJSHeapSize 
+      ? Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) 
+      : 'N/A';
+    
+    const healthScore = calculateHealthScore(errorLog.length, loadingStates.length, timerStatus);
+    const healthClass = healthScore >= 80 ? 'success' : healthScore >= 50 ? 'warning' : 'error';
+    
+    return `
+      <div class="diag-section">
+        <div class="diag-section-title">📊 System Health</div>
+        <div class="diag-metric">
+          <span class="diag-metric-label">Health Score</span>
+          <span class="diag-metric-value ${healthClass}">${healthScore}%</span>
+        </div>
+        <div class="diag-metric">
+          <span class="diag-metric-label">Errors (last 50)</span>
+          <span class="diag-metric-value ${errorLog.length > 5 ? 'error' : errorLog.length > 0 ? 'warning' : 'success'}">${errorLog.length}</span>
+        </div>
+        <div class="diag-metric">
+          <span class="diag-metric-label">Active Loading</span>
+          <span class="diag-metric-value ${loadingStates.length > 3 ? 'warning' : 'info'}">${loadingStates.length}</span>
+        </div>
+        <div class="diag-metric">
+          <span class="diag-metric-label">Active Timers</span>
+          <span class="diag-metric-value info">${timerStatus.intervals.length + timerStatus.timeouts.length}</span>
+        </div>
+        <div class="diag-metric">
+          <span class="diag-metric-label">Memory (MB)</span>
+          <span class="diag-metric-value">${memoryUsage}</span>
+        </div>
+      </div>
+      
+      <div class="diag-section">
+        <div class="diag-section-title">🔌 Module Status</div>
+        ${renderModuleStatus()}
+      </div>
+    `;
+  }
+  
+  /**
+   * Render module status
+   */
+  function renderModuleStatus() {
+    const modules = [
+      { name: 'ParallelEngine', check: () => typeof window.ParallelEngine !== 'undefined' },
+      { name: 'ChartThemeColors', check: () => typeof window.ChartThemeColors !== 'undefined' },
+      { name: 'LoadingStateManager', check: () => typeof window.LoadingStateManager !== 'undefined' },
+      { name: 'IntervalTracker', check: () => typeof window.IntervalTracker !== 'undefined' },
+      { name: 'D3', check: () => typeof window.d3 !== 'undefined' },
+      { name: 'Chart.js', check: () => typeof window.Chart !== 'undefined' }
+    ];
+    
+    return modules.map(m => {
+      const loaded = m.check();
+      return `
+        <div class="diag-metric">
+          <span class="diag-metric-label">${m.name}</span>
+          <span class="diag-metric-value ${loaded ? 'success' : 'error'}">${loaded ? '✓' : '✗'}</span>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  /**
+   * Render errors tab
+   */
+  function renderErrorsTab() {
+    const errorLog = window.getErrorLog ? window.getErrorLog() : [];
+    
+    if (errorLog.length === 0) {
+      return '<div class="diag-empty">No errors logged</div>';
+    }
+    
+    return `
+      <div class="diag-section">
+        <div class="diag-section-title">⚠️ Recent Errors (${errorLog.length})</div>
+        ${errorLog.slice(-10).reverse().map(e => `
+          <div class="diag-error-entry">
+            <div class="diag-error-type">${e.type.toUpperCase()}</div>
+            <div class="diag-error-message">${escapeHtml(e.message || 'No message')}</div>
+            <div class="diag-error-time">${e.timestamp}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="diag-btn" onclick="window.clearErrorLog && window.clearErrorLog(); DiagnosticConsole.refresh();" 
+              style="width: 100%; padding: 8px; background: rgba(239, 68, 68, 0.2); border-radius: 6px; color: #f87171;">
+        🗑️ Clear Error Log
+      </button>
+    `;
+  }
+  
+  /**
+   * Render loading tab
+   */
+  function renderLoadingTab() {
+    const loadingStates = window.LoadingStateManager?.getLoadingStates() || [];
+    
+    if (loadingStates.length === 0) {
+      return '<div class="diag-empty">No active loading operations</div>';
+    }
+    
+    return `
+      <div class="diag-section">
+        <div class="diag-section-title">⏳ Active Loading (${loadingStates.length})</div>
+        ${loadingStates.map(s => `
+          <div class="diag-metric">
+            <span class="diag-metric-label">${s.key}</span>
+            <span class="diag-metric-value ${s.elapsed > s.timeout * 0.8 ? 'warning' : 'info'}">
+              ${Math.round(s.elapsed / 1000)}s / ${Math.round(s.timeout / 1000)}s
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  /**
+   * Render timers tab
+   */
+  function renderTimersTab() {
+    const timerStatus = window.IntervalTracker?.getStatus() || { intervals: [], timeouts: [] };
+    const totalTimers = timerStatus.intervals.length + timerStatus.timeouts.length;
+    
+    if (totalTimers === 0) {
+      return '<div class="diag-empty">No tracked timers</div>';
+    }
+    
+    let html = '';
+    
+    if (timerStatus.intervals.length > 0) {
+      html += `
+        <div class="diag-section">
+          <div class="diag-section-title">🔄 Intervals (${timerStatus.intervals.length})</div>
+          ${timerStatus.intervals.map(i => `
+            <div class="diag-metric">
+              <span class="diag-metric-label">${i.name}</span>
+              <span class="diag-metric-value info">${i.delay}ms (${Math.round(i.runningFor / 1000)}s)</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    if (timerStatus.timeouts.length > 0) {
+      html += `
+        <div class="diag-section">
+          <div class="diag-section-title">⏱️ Timeouts (${timerStatus.timeouts.length})</div>
+          ${timerStatus.timeouts.map(t => `
+            <div class="diag-metric">
+              <span class="diag-metric-label">${t.name}</span>
+              <span class="diag-metric-value info">~${Math.round(t.remainingApprox / 1000)}s left</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    html += `
+      <button class="diag-btn" onclick="window.IntervalTracker?.clearAll(); DiagnosticConsole.refresh();" 
+              style="width: 100%; padding: 8px; background: rgba(245, 158, 11, 0.2); border-radius: 6px; color: #f59e0b;">
+        🧹 Clear All Timers
+      </button>
+    `;
+    
+    return html;
+  }
+  
+  /**
+   * Calculate health score
+   */
+  function calculateHealthScore(errorCount, loadingCount, timerStatus) {
+    let score = 100;
+    
+    // Deduct for errors
+    score -= Math.min(errorCount * 5, 40);
+    
+    // Deduct for stuck loading
+    score -= Math.min(loadingCount * 10, 30);
+    
+    // Deduct for too many timers
+    const timerCount = timerStatus.intervals.length + timerStatus.timeouts.length;
+    if (timerCount > 10) score -= 20;
+    else if (timerCount > 5) score -= 10;
+    
+    return Math.max(0, Math.min(100, score));
+  }
+  
+  /**
+   * Update health indicator in header
+   */
+  function updateHealthIndicator() {
+    const indicator = document.querySelector('.diag-console .diag-status-indicator');
+    if (!indicator) return;
+    
+    const errorLog = window.getErrorLog ? window.getErrorLog() : [];
+    const loadingStates = window.LoadingStateManager?.getLoadingStates() || [];
+    const timerStatus = window.IntervalTracker?.getStatus() || { intervals: [], timeouts: [] };
+    const score = calculateHealthScore(errorLog.length, loadingStates.length, timerStatus);
+    
+    indicator.className = 'diag-status-indicator ' + 
+      (score >= 80 ? 'healthy' : score >= 50 ? 'warning' : 'error');
+  }
+  
+  /**
+   * Escape HTML for safe rendering
+   */
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  
+  /**
+   * Show console (for programmatic access)
+   */
+  function show() {
+    if (!isOpen) toggle();
+  }
+  
+  /**
+   * Hide console
+   */
+  function hide() {
+    if (isOpen) toggle();
+  }
+  
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  
+  return {
+    toggle,
+    minimize,
+    switchTab,
+    refresh,
+    show,
+    hide,
+    version: '12.0-phase8'
+  };
+})();
+
+// Expose globally
+window.DiagnosticConsole = DiagnosticConsole;
+
+console.log('✅ UI_Diagnostic_Console.html loaded - V12.0 Phase 8');
+</script>

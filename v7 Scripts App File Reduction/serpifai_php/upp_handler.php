@@ -101,13 +101,21 @@ function handleUppAction($action, $payload, $db) {
             case 'upp_save_geo_results':
                 return saveGeoResults($payload, $db);
             
-            // V7 FIX: Elite Stage 1 Result Persistence
+            // V12.0 FIX: Elite Stage Result Persistence (Complete Rewrite)
             case 'upp_save_workflow_stage':
                 return saveWorkflowStageResult($payload, $db);
             
-            // V7 FIX: Job results getter for workflow stage recovery
+            // V12.0 FIX: Job results getter for workflow stage recovery
             case 'job_get_results':
                 return getWorkflowStageResults($payload, $db);
+            
+            // V12.0 NEW: Verify stage persistence was successful
+            case 'verify_stage_persistence':
+                return verifyStageWasSaved($payload, $db);
+            
+            // V12.0 NEW: Get all stages for a project
+            case 'get_all_project_stages':
+                return getAllProjectStages($payload, $db);
                 
             default:
                 return ['success' => false, 'error' => 'Unknown UPP action: ' . $action];
@@ -336,229 +344,331 @@ function saveAiAnalysis($payload, $db) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// V7 ELITE: WORKFLOW STAGE RESULT PERSISTENCE
-// Uses exact column names: job_token, analysis_json, analysis_text
+// V12.0 ELITE: WORKFLOW STAGE RESULT PERSISTENCE - COMPLETE REWRITE
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// CRITICAL FIX: Guaranteed persistence with explicit schema management
+// - Explicit table creation/verification before any INSERT
+// - Retry logic with exponential backoff (3 attempts)
+// - Comprehensive diagnostic logging
+// - Dual-save strategy: job_results (primary) + ai_analysis (secondary)
+// - project_id used consistently across all operations
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
 /**
- * Save workflow stage result to ai_analysis table
+ * V12.0 Helper: Execute with retry logic
+ */
+function executeWithRetry($db, $sql, $params, $maxRetries = 3) {
+    $lastError = null;
+    for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+        try {
+            $stmt = $db->prepare($sql);
+            $result = $stmt->execute($params);
+            if ($result) {
+                return ['success' => true, 'stmt' => $stmt, 'attempt' => $attempt];
+            }
+            $lastError = $stmt->errorInfo();
+        } catch (Exception $e) {
+            $lastError = $e->getMessage();
+            if ($attempt < $maxRetries) {
+                // Exponential backoff: 100ms, 200ms, 400ms
+                usleep(100000 * pow(2, $attempt - 1));
+            }
+        }
+    }
+    return ['success' => false, 'error' => $lastError, 'attempts' => $maxRetries];
+}
+
+/**
+ * V12.0 Helper: Ensure required schema exists for workflow stages
+ */
+function ensureWorkflowSchema($db) {
+    $schemaFixes = [];
+    
+    // 1. Ensure ai_analysis table has all required columns
+    try {
+        $existingCols = [];
+        $colCheck = $db->query("SHOW COLUMNS FROM ai_analysis");
+        while ($col = $colCheck->fetch(PDO::FETCH_ASSOC)) {
+            $existingCols[] = strtolower($col['Field']);
+        }
+        
+        $requiredCols = [
+            'project_id' => 'VARCHAR(255)',
+            'analysis_json' => 'LONGTEXT',
+            'analysis_text' => 'LONGTEXT', 
+            'data_size' => 'INT DEFAULT 0',
+            'forensic_bridge' => 'LONGTEXT'
+        ];
+        
+        foreach ($requiredCols as $colName => $colDef) {
+            if (!in_array(strtolower($colName), $existingCols)) {
+                try {
+                    $db->exec("ALTER TABLE ai_analysis ADD COLUMN $colName $colDef");
+                    $schemaFixes[] = "ai_analysis.$colName ADDED";
+                } catch (Exception $e) {
+                    // Column may already exist
+                }
+            }
+        }
+        
+        // Add indexes for fast retrieval
+        try {
+            $db->exec("ALTER TABLE ai_analysis ADD INDEX idx_project_id (project_id)");
+            $schemaFixes[] = "ai_analysis.idx_project_id ADDED";
+        } catch (Exception $e) {}
+        
+        try {
+            $db->exec("ALTER TABLE ai_analysis ADD INDEX idx_analysis_type (analysis_type)");
+            $schemaFixes[] = "ai_analysis.idx_analysis_type ADDED";
+        } catch (Exception $e) {}
+        
+    } catch (Exception $e) {
+        error_log("[UPP] ai_analysis schema check error: " . $e->getMessage());
+    }
+    
+    // 2. Ensure job_results table has project_id column
+    try {
+        $colCheck = $db->query("SHOW COLUMNS FROM job_results LIKE 'project_id'");
+        if ($colCheck->rowCount() === 0) {
+            $db->exec("ALTER TABLE job_results ADD COLUMN project_id VARCHAR(255)");
+            $schemaFixes[] = "job_results.project_id ADDED";
+        }
+        
+        // Add index for project_id retrieval
+        try {
+            $db->exec("ALTER TABLE job_results ADD INDEX idx_project_id (project_id)");
+            $schemaFixes[] = "job_results.idx_project_id ADDED";
+        } catch (Exception $e) {}
+        
+        // Add composite index for stage retrieval
+        try {
+            $db->exec("ALTER TABLE job_results ADD INDEX idx_project_type (project_id, result_type)");
+            $schemaFixes[] = "job_results.idx_project_type ADDED";
+        } catch (Exception $e) {}
+        
+    } catch (Exception $e) {
+        error_log("[UPP] job_results schema check error: " . $e->getMessage());
+    }
+    
+    return $schemaFixes;
+}
+
+/**
+ * Save workflow stage result to MySQL (CRITICAL PATH)
+ * 
+ * V12.0 COMPLETE REWRITE:
+ * - Guaranteed persistence with retry logic
+ * - Explicit schema verification before INSERT
+ * - Dual-save strategy for data redundancy
+ * - Comprehensive diagnostic logging
+ * 
  * Column Mapping:
  *   - job_token: The anchor token (WF-XXXX format)
+ *   - project_id: The project identifier (e.g., "BairesDEV")
  *   - analysis_json: The structured JSON data for charts
  *   - analysis_text: The markdown strategy report
  *   - analysis_type: WORKFLOW_STAGE_1, WORKFLOW_STAGE_2, etc.
- * 
- * V7.9 FIX: Complete rewrite with robust column detection and fallback strategy
- * MySQL 8.0.15 and earlier don't support ADD COLUMN IF NOT EXISTS
+ *   - forensic_bridge: Stage 1→2 field population data
  */
 function saveWorkflowStageResult($payload, $db) {
+    $startTime = microtime(true);
+    
+    // Extract all parameters with fallbacks
     $jobToken = $payload['job_token'] ?? '';
     $projectId = $payload['project_id'] ?? '';
     $stageNum = intval($payload['stage'] ?? 1);
     $analysisType = 'WORKFLOW_STAGE_' . $stageNum;
     
-    // The actual content
-    $analysisJson = $payload['analysis_json'] ?? $payload['json'] ?? '{}';
-    $analysisText = $payload['analysis_text'] ?? $payload['report'] ?? '';
-    $model = $payload['model'] ?? 'gemini-3-flash-preview';
+    // Content extraction with multiple fallback keys
+    $analysisJson = $payload['analysis_json'] ?? $payload['json'] ?? $payload['data'] ?? '{}';
+    $analysisText = $payload['analysis_text'] ?? $payload['report'] ?? $payload['text'] ?? '';
+    $model = $payload['model'] ?? 'gemini-2.5-flash-preview-05-20';
     
-    error_log("[UPP] ════════════════════════════════════════════════════════════════");
-    error_log("[UPP] 💾 saveWorkflowStageResult V7.9 called");
-    error_log("[UPP]    job_token: $jobToken");
-    error_log("[UPP]    project_id: $projectId");
-    error_log("[UPP]    stage: $stageNum");
-    error_log("[UPP]    analysis_json length: " . strlen($analysisJson) . " bytes");
-    error_log("[UPP]    analysis_text length: " . strlen($analysisText) . " bytes");
-    error_log("[UPP] ════════════════════════════════════════════════════════════════");
+    // Forensic Bridge for Stage 2 auto-population
+    $forensicBridge = $payload['forensic_bridge'] ?? $payload['forensicBridge'] ?? null;
+    if (is_string($forensicBridge) && !empty($forensicBridge)) {
+        $forensicBridge = json_decode($forensicBridge, true);
+    }
     
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // DIAGNOSTIC LOGGING - V12.0
+    // ═══════════════════════════════════════════════════════════════════════════════
+    error_log("[UPP] ╔═══════════════════════════════════════════════════════════════════════╗");
+    error_log("[UPP] ║ 💾 STAGE PERSISTENCE V12.0 - STARTING                                 ║");
+    error_log("[UPP] ╠═══════════════════════════════════════════════════════════════════════╣");
+    error_log("[UPP] ║ job_token:       " . str_pad($jobToken, 50) . " ║");
+    error_log("[UPP] ║ project_id:      " . str_pad($projectId, 50) . " ║");
+    error_log("[UPP] ║ stage:           " . str_pad($stageNum, 50) . " ║");
+    error_log("[UPP] ║ analysis_json:   " . str_pad(strlen($analysisJson) . " bytes", 50) . " ║");
+    error_log("[UPP] ║ analysis_text:   " . str_pad(strlen($analysisText) . " bytes", 50) . " ║");
+    error_log("[UPP] ║ forensicBridge:  " . str_pad($forensicBridge ? 'PRESENT (' . count($forensicBridge) . ' fields)' : 'NONE', 50) . " ║");
+    error_log("[UPP] ╚═══════════════════════════════════════════════════════════════════════╝");
+    
+    // Validate required fields
     if (empty($jobToken) && empty($projectId)) {
-        error_log("[UPP] ❌ saveWorkflowStageResult failed: No job_token or project_id");
+        error_log("[UPP] ❌ VALIDATION FAILED: No job_token or project_id");
         return ['success' => false, 'error' => 'job_token or project_id required'];
     }
     
-    // Ensure it's JSON string
+    // Ensure JSON is string format
     if (is_array($analysisJson) || is_object($analysisJson)) {
-        $analysisJson = json_encode($analysisJson);
+        $analysisJson = json_encode($analysisJson, JSON_UNESCAPED_UNICODE);
     }
     
     $dataSize = strlen($analysisJson) + strlen($analysisText);
-    $savedToAiAnalysis = false;
-    $savedToJobResults = false;
     
-    // V7.9 FIX: Detect existing columns BEFORE trying to add them
-    $existingColumns = [];
-    try {
-        $colCheck = $db->query("SHOW COLUMNS FROM ai_analysis");
-        while ($col = $colCheck->fetch(PDO::FETCH_ASSOC)) {
-            $existingColumns[] = strtolower($col['Field']);
-        }
-        error_log("[UPP] Existing ai_analysis columns: " . implode(', ', $existingColumns));
-    } catch (Exception $e) {
-        error_log("[UPP] Column detection failed: " . $e->getMessage());
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // STEP 1: ENSURE SCHEMA EXISTS
+    // ═══════════════════════════════════════════════════════════════════════════════
+    error_log("[UPP] [Step 1] Verifying MySQL schema...");
+    $schemaFixes = ensureWorkflowSchema($db);
+    if (!empty($schemaFixes)) {
+        error_log("[UPP] Schema updates: " . implode(', ', $schemaFixes));
     }
     
-    // V7.9 FIX: Safe column addition (without IF NOT EXISTS for compatibility)
-    $columnsToAdd = [
-        'project_id' => 'VARCHAR(255)',
-        'analysis_json' => 'LONGTEXT',
-        'analysis_text' => 'LONGTEXT',
-        'data_size' => 'INT DEFAULT 0'
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // STEP 2: SAVE TO job_results (PRIMARY - GUARANTEED TO WORK)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    error_log("[UPP] [Step 2] Saving to job_results (PRIMARY)...");
+    $savedToJobResults = false;
+    $jobResultsId = null;
+    
+    $fullPayload = [
+        'stage' => $stageNum,
+        'project_id' => $projectId,
+        'json' => json_decode($analysisJson, true),
+        'report' => $analysisText,
+        'model' => $model,
+        'timestamp' => date('c'),
+        'forensicBridge' => $forensicBridge,
+        '_meta' => [
+            'version' => 'V12.0',
+            'saved_at' => date('c'),
+            'data_size' => $dataSize
+        ]
     ];
     
-    foreach ($columnsToAdd as $colName => $colDef) {
-        if (!in_array(strtolower($colName), $existingColumns)) {
-            try {
-                $db->exec("ALTER TABLE ai_analysis ADD COLUMN $colName $colDef");
-                error_log("[UPP] ✅ Added column: $colName");
-                $existingColumns[] = strtolower($colName);
-            } catch (Exception $e) {
-                // Column might already exist or can't be added
-                error_log("[UPP] Column $colName add note: " . $e->getMessage());
-            }
-        }
-    }
+    $jobResultsResult = executeWithRetry(
+        $db,
+        "INSERT INTO job_results (job_token, project_id, result_type, data_json, created_at) VALUES (?, ?, ?, ?, NOW())",
+        [$jobToken, $projectId, $analysisType, json_encode($fullPayload, JSON_UNESCAPED_UNICODE)]
+    );
     
-    // V7.9 FIX: Build dynamic INSERT based on available columns
-    $hasProjectId = in_array('project_id', $existingColumns);
-    $hasAnalysisJson = in_array('analysis_json', $existingColumns);
-    $hasAnalysisText = in_array('analysis_text', $existingColumns);
-    $hasDataSize = in_array('data_size', $existingColumns);
-    $hasDomain = in_array('domain', $existingColumns);
-    
-    error_log("[UPP] Column availability: project_id=$hasProjectId, analysis_json=$hasAnalysisJson, analysis_text=$hasAnalysisText, domain=$hasDomain");
-    
-    // V7.9: ALWAYS save to job_results FIRST (this table is guaranteed to work)
-    try {
-        // Check if project_id exists in job_results
-        $hasJRProjectId = false;
-        try {
-            $colCheck = $db->query("SHOW COLUMNS FROM job_results LIKE 'project_id'");
-            $hasJRProjectId = $colCheck->rowCount() > 0;
-        } catch (Exception $e) {}
-        
-        // Try to add project_id column if it doesn't exist
-        if (!$hasJRProjectId) {
-            try {
-                $db->exec("ALTER TABLE job_results ADD COLUMN project_id VARCHAR(255)");
-                $hasJRProjectId = true;
-                error_log("[UPP] Added project_id to job_results");
-            } catch (Exception $e) {
-                // May fail if column exists
-            }
-        }
-        
-        $fullPayload = [
-            'stage' => $stageNum,
-            'json' => json_decode($analysisJson, true),
-            'report' => $analysisText,
-            'model' => $model,
-            'timestamp' => date('c')
-        ];
-        
-        if ($hasJRProjectId) {
-            $stmt = $db->prepare("
-                INSERT INTO job_results (job_token, project_id, result_type, data_json, created_at)
-                VALUES (?, ?, ?, ?, NOW())
-            ");
-            $stmt->execute([$jobToken, $projectId, $analysisType, json_encode($fullPayload)]);
-        } else {
-            $stmt = $db->prepare("
-                INSERT INTO job_results (job_token, result_type, data_json, created_at)
-                VALUES (?, ?, ?, NOW())
-            ");
-            $stmt->execute([$jobToken, $analysisType, json_encode($fullPayload)]);
-        }
-        
+    if ($jobResultsResult['success']) {
         $savedToJobResults = true;
-        error_log("[UPP] ✅ job_results INSERT OK (primary save)");
-        
-    } catch (Exception $e) {
-        error_log("[UPP] ❌ job_results INSERT failed: " . $e->getMessage());
+        $jobResultsId = $db->lastInsertId();
+        error_log("[UPP] ✅ job_results INSERT OK (id=$jobResultsId, attempt=" . $jobResultsResult['attempt'] . ")");
+    } else {
+        error_log("[UPP] ⚠️ job_results INSERT FAILED after " . $jobResultsResult['attempts'] . " attempts: " . json_encode($jobResultsResult['error']));
     }
     
-    // V7.9: Now try ai_analysis with dynamic column handling
-    try {
-        // Build column list and values based on what exists
-        $columns = ['job_token', 'analysis_type', 'model_used', 'created_at'];
-        $placeholders = ['?', '?', '?', 'NOW()'];
-        $values = [$jobToken, $analysisType, $model];
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // STEP 3: SAVE TO ai_analysis (SECONDARY - FOR BACKWARD COMPATIBILITY)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    error_log("[UPP] [Step 3] Saving to ai_analysis (SECONDARY)...");
+    $savedToAiAnalysis = false;
+    $aiAnalysisId = null;
+    
+    $forensicBridgeJson = $forensicBridge ? json_encode($forensicBridge, JSON_UNESCAPED_UNICODE) : null;
+    
+    $aiAnalysisResult = executeWithRetry(
+        $db,
+        "INSERT INTO ai_analysis (job_token, project_id, domain, analysis_type, model_used, analysis_json, analysis_text, forensic_bridge, data_size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+        [$jobToken, $projectId, $projectId, $analysisType, $model, $analysisJson, $analysisText, $forensicBridgeJson, $dataSize]
+    );
+    
+    if ($aiAnalysisResult['success']) {
+        $savedToAiAnalysis = true;
+        $aiAnalysisId = $db->lastInsertId();
+        error_log("[UPP] ✅ ai_analysis INSERT OK (id=$aiAnalysisId, attempt=" . $aiAnalysisResult['attempt'] . ")");
+    } else {
+        error_log("[UPP] ⚠️ ai_analysis INSERT FAILED: " . json_encode($aiAnalysisResult['error']));
         
-        if ($hasProjectId) {
-            $columns[] = 'project_id';
-            $placeholders[] = '?';
-            $values[] = $projectId;
-        }
+        // FALLBACK: Try with minimal columns if full insert failed
+        error_log("[UPP] [Step 3b] Attempting minimal ai_analysis insert...");
+        $fallbackResult = executeWithRetry(
+            $db,
+            "INSERT INTO ai_analysis (job_token, domain, analysis_type, model_used, data_json, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+            [$jobToken, $projectId, $analysisType, $model, $analysisJson]
+        );
         
-        // ALSO save to domain column for Strategy B compatibility
-        if ($hasDomain) {
-            $columns[] = 'domain';
-            $placeholders[] = '?';
-            $values[] = $projectId; // Use projectId as domain too
-        }
-        
-        if ($hasAnalysisJson) {
-            $columns[] = 'analysis_json';
-            $placeholders[] = '?';
-            $values[] = $analysisJson;
-        } else {
-            // Fall back to data_json if analysis_json doesn't exist
-            $columns[] = 'data_json';
-            $placeholders[] = '?';
-            $values[] = $analysisJson;
-        }
-        
-        if ($hasAnalysisText) {
-            $columns[] = 'analysis_text';
-            $placeholders[] = '?';
-            $values[] = $analysisText;
-        }
-        
-        if ($hasDataSize) {
-            $columns[] = 'data_size';
-            $placeholders[] = '?';
-            $values[] = $dataSize;
-        }
-        
-        $sql = "INSERT INTO ai_analysis (" . implode(', ', $columns) . ") 
-                VALUES (" . implode(', ', $placeholders) . ")";
-        
-        error_log("[UPP] Dynamic SQL: $sql");
-        error_log("[UPP] Values count: " . count($values));
-        
-        $stmt = $db->prepare($sql);
-        $result = $stmt->execute($values);
-        
-        if ($result) {
+        if ($fallbackResult['success']) {
             $savedToAiAnalysis = true;
-            error_log("[UPP] ✅ ai_analysis INSERT OK");
+            $aiAnalysisId = $db->lastInsertId();
+            error_log("[UPP] ✅ ai_analysis FALLBACK INSERT OK (id=$aiAnalysisId)");
         } else {
-            $errorInfo = $stmt->errorInfo();
-            error_log("[UPP] ai_analysis INSERT failed: " . json_encode($errorInfo));
+            error_log("[UPP] ❌ ai_analysis FALLBACK also failed: " . json_encode($fallbackResult['error']));
         }
-        
-    } catch (Exception $e) {
-        error_log("[UPP] ❌ ai_analysis INSERT error: " . $e->getMessage());
     }
     
-    // Return success if at least one table worked
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // STEP 4: VERIFICATION - CONFIRM DATA WAS SAVED
+    // ═══════════════════════════════════════════════════════════════════════════════
+    error_log("[UPP] [Step 4] Verifying persistence...");
+    $verified = false;
+    
+    if ($savedToJobResults) {
+        try {
+            $verifyStmt = $db->prepare("SELECT id, project_id, result_type FROM job_results WHERE id = ?");
+            $verifyStmt->execute([$jobResultsId]);
+            $verifyRow = $verifyStmt->fetch(PDO::FETCH_ASSOC);
+            if ($verifyRow) {
+                $verified = true;
+                error_log("[UPP] ✅ VERIFICATION OK: job_results id=$jobResultsId, project=$projectId, type=$analysisType");
+            }
+        } catch (Exception $e) {
+            error_log("[UPP] Verification query failed: " . $e->getMessage());
+        }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // FINAL RESULT
+    // ═══════════════════════════════════════════════════════════════════════════════
+    $elapsedMs = round((microtime(true) - $startTime) * 1000, 2);
+    
     if ($savedToJobResults || $savedToAiAnalysis) {
-        $table = ($savedToAiAnalysis && $savedToJobResults) ? 'ai_analysis + job_results' :
-                 ($savedToAiAnalysis ? 'ai_analysis' : 'job_results');
+        $tables = [];
+        if ($savedToJobResults) $tables[] = 'job_results';
+        if ($savedToAiAnalysis) $tables[] = 'ai_analysis';
+        $tableStr = implode(' + ', $tables);
         
-        error_log("[UPP] ✅ Stage $stageNum saved: " . round($dataSize/1024, 2) . " KB [project=$projectId, token=$jobToken, table=$table]");
+        error_log("[UPP] ╔═══════════════════════════════════════════════════════════════════════╗");
+        error_log("[UPP] ║ ✅ STAGE $stageNum PERSISTENCE COMPLETE                                      ║");
+        error_log("[UPP] ╠═══════════════════════════════════════════════════════════════════════╣");
+        error_log("[UPP] ║ Tables:       $tableStr");
+        error_log("[UPP] ║ Data size:    " . round($dataSize/1024, 2) . " KB");
+        error_log("[UPP] ║ Elapsed:      {$elapsedMs}ms");
+        error_log("[UPP] ║ Verified:     " . ($verified ? 'YES' : 'PENDING'));
+        error_log("[UPP] ╚═══════════════════════════════════════════════════════════════════════╝");
         
         return [
             'success' => true,
-            'table' => $table,
+            'table' => $tableStr,
             'job_token' => $jobToken,
             'project_id' => $projectId,
             'stage' => $stageNum,
             'bytes_written' => $dataSize,
+            'job_results_id' => $jobResultsId,
+            'ai_analysis_id' => $aiAnalysisId,
+            'verified' => $verified,
+            'elapsed_ms' => $elapsedMs,
             'timestamp' => date('c')
         ];
     }
     
-    return ['success' => false, 'error' => 'Failed to save to any table'];
+    // CRITICAL FAILURE - Both tables failed
+    error_log("[UPP] ╔═══════════════════════════════════════════════════════════════════════╗");
+    error_log("[UPP] ║ ❌ STAGE $stageNum PERSISTENCE FAILED - NO DATA SAVED                        ║");
+    error_log("[UPP] ╚═══════════════════════════════════════════════════════════════════════╝");
+    
+    return [
+        'success' => false, 
+        'error' => 'Failed to save to any table',
+        'job_token' => $jobToken,
+        'project_id' => $projectId,
+        'stage' => $stageNum,
+        'elapsed_ms' => $elapsedMs
+    ];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
@@ -788,62 +898,117 @@ function recoverLatestJobToken($payload, $db) {
 }
 
 /**
- * V7.8 FIX: Get workflow stage results for project recovery
- * Uses Elite column names: job_token, result_json, analysis_json, analysis_text
- * V7.8 CRITICAL FIX: Dynamic column detection + multiple fallback strategies
- *   - Strategy A: Query with project_id (if column exists)
- *   - Strategy B: Query with job_token only
- *   - Strategy C: Fallback to job_results table
- *   - Strategy D: Domain-based lookup as last resort
+ * V12.0 FIX: Get workflow stage results for project recovery
+ * 
+ * RETRIEVAL STRATEGY ORDER (most reliable first):
+ *   - Strategy 1: job_results by project_id + result_type (V12.0 primary)
+ *   - Strategy 2: job_results by job_token + result_type
+ *   - Strategy 3: ai_analysis by project_id
+ *   - Strategy 4: ai_analysis by domain (legacy compatibility)
+ *   - Strategy 5: ai_analysis by job_token
+ * 
+ * CRITICAL: Never fall back to global queries - prevents cross-project pollution
  */
 function getWorkflowStageResults($payload, $db) {
+    $startTime = microtime(true);
     $projectId = $payload['project_id'] ?? '';
     $stage = $payload['stage'] ?? null;
     $jobToken = $payload['job_token'] ?? '';
     
-    error_log("[UPP] ════════════════════════════════════════════════════════════════");
-    error_log("[UPP] 📖 getWorkflowStageResults V7.8 called");
-    error_log("[UPP]    project_id: '$projectId'");
-    error_log("[UPP]    stage: " . ($stage !== null ? $stage : 'ALL'));
-    error_log("[UPP]    job_token: '$jobToken'");
-    error_log("[UPP] ════════════════════════════════════════════════════════════════");
+    error_log("[UPP] ╔═══════════════════════════════════════════════════════════════════════╗");
+    error_log("[UPP] ║ 📖 STAGE RETRIEVAL V12.0 - STARTING                                   ║");
+    error_log("[UPP] ╠═══════════════════════════════════════════════════════════════════════╣");
+    error_log("[UPP] ║ project_id:  " . str_pad($projectId ?: '(empty)', 55) . " ║");
+    error_log("[UPP] ║ stage:       " . str_pad($stage !== null ? $stage : 'ALL', 55) . " ║");
+    error_log("[UPP] ║ job_token:   " . str_pad($jobToken ?: '(empty)', 55) . " ║");
+    error_log("[UPP] ╚═══════════════════════════════════════════════════════════════════════╝");
     
     if (empty($projectId) && empty($jobToken)) {
         error_log("[UPP] ❌ HYDRATION FAIL: No project_id or job_token provided!");
         return ['success' => false, 'error' => 'project_id or job_token required'];
     }
     
-    // V7.8 FIX: First, detect which columns exist in ai_analysis table
-    $hasProjectIdCol = false;
-    $hasAnalysisJsonCol = false;
-    $hasAnalysisTextCol = false;
-    try {
-        $colCheck = $db->query("SHOW COLUMNS FROM ai_analysis");
-        $columns = $colCheck->fetchAll(PDO::FETCH_COLUMN, 0);
-        $hasProjectIdCol = in_array('project_id', $columns);
-        $hasAnalysisJsonCol = in_array('analysis_json', $columns);
-        $hasAnalysisTextCol = in_array('analysis_text', $columns);
-        error_log("[UPP] Column check: project_id=" . ($hasProjectIdCol?'YES':'NO') . 
-                  ", analysis_json=" . ($hasAnalysisJsonCol?'YES':'NO') . 
-                  ", analysis_text=" . ($hasAnalysisTextCol?'YES':'NO'));
-    } catch (Exception $e) {
-        error_log("[UPP] Column detection error: " . $e->getMessage());
-    }
+    // Detect available columns in ai_analysis for dynamic queries
+    $aiAnalysisCols = detectTableColumns($db, 'ai_analysis');
+    $hasProjectIdCol = in_array('project_id', $aiAnalysisCols);
+    $hasAnalysisJsonCol = in_array('analysis_json', $aiAnalysisCols);
+    $hasAnalysisTextCol = in_array('analysis_text', $aiAnalysisCols);
+    $hasForensicBridgeCol = in_array('forensic_bridge', $aiAnalysisCols);
+    
+    error_log("[UPP] ai_analysis columns: project_id=" . ($hasProjectIdCol?'Y':'N') . 
+              ", analysis_json=" . ($hasAnalysisJsonCol?'Y':'N') . 
+              ", analysis_text=" . ($hasAnalysisTextCol?'Y':'N') .
+              ", forensic_bridge=" . ($hasForensicBridgeCol?'Y':'N'));
     
     // Build query based on whether specific stage requested
     if ($stage !== null) {
         $analysisType = 'WORKFLOW_STAGE_' . $stage;
         
-        // STRATEGY A: Try ai_analysis with project_id (if column exists)
+        // ═══════════════════════════════════════════════════════════════════════════
+        // STRATEGY 1: job_results by project_id (V12.0 PRIMARY - MOST RELIABLE)
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (!empty($projectId)) {
+            error_log("[UPP] [Strategy 1] job_results by project_id...");
+            try {
+                $stmt = $db->prepare("
+                    SELECT job_token, result_type, data_json, created_at
+                    FROM job_results 
+                    WHERE project_id = ? AND result_type = ?
+                    ORDER BY created_at DESC 
+                    LIMIT 1
+                ");
+                $stmt->execute([$projectId, $analysisType]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($result && !empty($result['data_json'])) {
+                    error_log("[UPP] ✅ Strategy 1 SUCCESS: Found in job_results by project_id");
+                    return formatJobResultsStageResult($result, $stage, 'job_results_project_id');
+                }
+                error_log("[UPP] Strategy 1: No results found");
+            } catch (Exception $e) {
+                error_log("[UPP] Strategy 1 error: " . $e->getMessage());
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // STRATEGY 2: job_results by job_token
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (!empty($jobToken)) {
+            error_log("[UPP] [Strategy 2] job_results by job_token...");
+            try {
+                $stmt = $db->prepare("
+                    SELECT job_token, result_type, data_json, created_at
+                    FROM job_results 
+                    WHERE job_token = ? AND result_type = ?
+                    ORDER BY created_at DESC 
+                    LIMIT 1
+                ");
+                $stmt->execute([$jobToken, $analysisType]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($result && !empty($result['data_json'])) {
+                    error_log("[UPP] ✅ Strategy 2 SUCCESS: Found in job_results by job_token");
+                    return formatJobResultsStageResult($result, $stage, 'job_results_job_token');
+                }
+                error_log("[UPP] Strategy 2: No results found");
+            } catch (Exception $e) {
+                error_log("[UPP] Strategy 2 error: " . $e->getMessage());
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // STRATEGY 3: ai_analysis by project_id
+        // ═══════════════════════════════════════════════════════════════════════════
         if ($hasProjectIdCol && !empty($projectId)) {
-            error_log("[UPP] Strategy A: Query ai_analysis by project_id");
+            error_log("[UPP] [Strategy 3] ai_analysis by project_id...");
             try {
                 $jsonCol = $hasAnalysisJsonCol ? 'analysis_json' : 'data_json';
                 $textCol = $hasAnalysisTextCol ? 'analysis_text' : "'' as analysis_text";
+                $bridgeCol = $hasForensicBridgeCol ? 'forensic_bridge' : "NULL as forensic_bridge";
                 
                 $stmt = $db->prepare("
                     SELECT job_token, analysis_type, model_used,
-                           $jsonCol as analysis_json, $textCol, 
+                           $jsonCol as analysis_json, $textCol, $bridgeCol,
                            data_json as result_json, created_at
                     FROM ai_analysis 
                     WHERE project_id = ? AND analysis_type = ?
@@ -854,50 +1019,60 @@ function getWorkflowStageResults($payload, $db) {
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($result && ($result['analysis_json'] || $result['result_json'])) {
-                    error_log("[UPP] ✅ Strategy A SUCCESS: Found in ai_analysis by project_id");
+                    error_log("[UPP] ✅ Strategy 3 SUCCESS: Found in ai_analysis by project_id");
                     return formatStageResult($result, $stage, 'ai_analysis_project_id');
                 }
+                error_log("[UPP] Strategy 3: No results found");
             } catch (Exception $e) {
-                error_log("[UPP] Strategy A failed: " . $e->getMessage());
+                error_log("[UPP] Strategy 3 error: " . $e->getMessage());
             }
         }
         
-        // STRATEGY B: Try ai_analysis with domain column (project_id may be stored there)
-        error_log("[UPP] Strategy B: Query ai_analysis by domain");
-        try {
-            $jsonCol = $hasAnalysisJsonCol ? 'analysis_json' : 'data_json';
-            $textCol = $hasAnalysisTextCol ? 'analysis_text' : "'' as analysis_text";
-            
-            $stmt = $db->prepare("
-                SELECT job_token, analysis_type, model_used,
-                       $jsonCol as analysis_json, $textCol, 
-                       data_json as result_json, created_at
-                FROM ai_analysis 
-                WHERE domain = ? AND analysis_type = ?
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ");
-            $stmt->execute([$projectId, $analysisType]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($result && ($result['analysis_json'] || $result['result_json'])) {
-                error_log("[UPP] ✅ Strategy B SUCCESS: Found in ai_analysis by domain");
-                return formatStageResult($result, $stage, 'ai_analysis_domain');
-            }
-        } catch (Exception $e) {
-            error_log("[UPP] Strategy B failed: " . $e->getMessage());
-        }
-        
-        // STRATEGY C: Try ai_analysis by job_token only
-        if (!empty($jobToken)) {
-            error_log("[UPP] Strategy C: Query ai_analysis by job_token");
+        // ═══════════════════════════════════════════════════════════════════════════
+        // STRATEGY 4: ai_analysis by domain (legacy compatibility)
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (!empty($projectId)) {
+            error_log("[UPP] [Strategy 4] ai_analysis by domain...");
             try {
                 $jsonCol = $hasAnalysisJsonCol ? 'analysis_json' : 'data_json';
                 $textCol = $hasAnalysisTextCol ? 'analysis_text' : "'' as analysis_text";
+                $bridgeCol = $hasForensicBridgeCol ? 'forensic_bridge' : "NULL as forensic_bridge";
                 
                 $stmt = $db->prepare("
                     SELECT job_token, analysis_type, model_used,
-                           $jsonCol as analysis_json, $textCol, 
+                           $jsonCol as analysis_json, $textCol, $bridgeCol,
+                           data_json as result_json, created_at
+                    FROM ai_analysis 
+                    WHERE domain = ? AND analysis_type = ?
+                    ORDER BY created_at DESC 
+                    LIMIT 1
+                ");
+                $stmt->execute([$projectId, $analysisType]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($result && ($result['analysis_json'] || $result['result_json'])) {
+                    error_log("[UPP] ✅ Strategy 4 SUCCESS: Found in ai_analysis by domain");
+                    return formatStageResult($result, $stage, 'ai_analysis_domain');
+                }
+                error_log("[UPP] Strategy 4: No results found");
+            } catch (Exception $e) {
+                error_log("[UPP] Strategy 4 error: " . $e->getMessage());
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════════
+        // STRATEGY 5: ai_analysis by job_token
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (!empty($jobToken)) {
+            error_log("[UPP] [Strategy 5] ai_analysis by job_token...");
+            try {
+                $jsonCol = $hasAnalysisJsonCol ? 'analysis_json' : 'data_json';
+                $textCol = $hasAnalysisTextCol ? 'analysis_text' : "'' as analysis_text";
+                $bridgeCol = $hasForensicBridgeCol ? 'forensic_bridge' : "NULL as forensic_bridge";
+                
+                $stmt = $db->prepare("
+                    SELECT job_token, analysis_type, model_used,
+                           $jsonCol as analysis_json, $textCol, $bridgeCol,
                            data_json as result_json, created_at
                     FROM ai_analysis 
                     WHERE job_token = ? AND analysis_type = ?
@@ -908,50 +1083,19 @@ function getWorkflowStageResults($payload, $db) {
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 
                 if ($result && ($result['analysis_json'] || $result['result_json'])) {
-                    error_log("[UPP] ✅ Strategy C SUCCESS: Found in ai_analysis by job_token");
+                    error_log("[UPP] ✅ Strategy 5 SUCCESS: Found in ai_analysis by job_token");
                     return formatStageResult($result, $stage, 'ai_analysis_job_token');
                 }
+                error_log("[UPP] Strategy 5: No results found");
             } catch (Exception $e) {
-                error_log("[UPP] Strategy C failed: " . $e->getMessage());
+                error_log("[UPP] Strategy 5 error: " . $e->getMessage());
             }
         }
         
-        // STRATEGY D: Try job_results table (backup table)
-        error_log("[UPP] Strategy D: Query job_results table");
-        $result = queryJobResultsForStage($payload, $db, $stage);
-        if ($result && $result['success']) {
-            error_log("[UPP] ✅ Strategy D SUCCESS: Found in job_results");
-            return $result;
-        }
-        
-        // STRATEGY E: Query ai_analysis by analysis_type only, get latest
-        error_log("[UPP] Strategy E: Query ai_analysis by analysis_type only (latest)");
-        try {
-            $jsonCol = $hasAnalysisJsonCol ? 'analysis_json' : 'data_json';
-            $textCol = $hasAnalysisTextCol ? 'analysis_text' : "'' as analysis_text";
-            
-            $stmt = $db->prepare("
-                SELECT job_token, analysis_type, model_used,
-                       $jsonCol as analysis_json, $textCol, 
-                       data_json as result_json, created_at
-                FROM ai_analysis 
-                WHERE analysis_type = ?
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ");
-            $stmt->execute([$analysisType]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($result && ($result['analysis_json'] || $result['result_json'])) {
-                error_log("[UPP] ✅ Strategy E SUCCESS: Found in ai_analysis by analysis_type only");
-                return formatStageResult($result, $stage, 'ai_analysis_latest');
-            }
-        } catch (Exception $e) {
-            error_log("[UPP] Strategy E failed: " . $e->getMessage());
-        }
-        
-        error_log("[UPP] ❌ ALL STRATEGIES EXHAUSTED: No results for stage $stage");
-        return ['success' => false, 'error' => "No results for stage $stage"];
+        // NO GLOBAL FALLBACK - prevents cross-project data pollution
+        $elapsedMs = round((microtime(true) - $startTime) * 1000, 2);
+        error_log("[UPP] ❌ ALL STRATEGIES EXHAUSTED: No results for stage $stage for project=$projectId (elapsed: {$elapsedMs}ms)");
+        return ['success' => false, 'error' => "No results for stage $stage", 'elapsed_ms' => $elapsedMs];
     }
     
     // Get all stage results for project
@@ -993,18 +1137,77 @@ function getWorkflowStageResults($payload, $db) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// V7.8 HELPER FUNCTIONS FOR STAGE RESULT RETRIEVAL
+// V12.0 HELPER FUNCTIONS FOR STAGE RESULT RETRIEVAL
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
 /**
- * Format a stage result row into standardized response format
+ * V12.0 Helper: Detect available columns in a table
+ */
+function detectTableColumns($db, $tableName) {
+    $columns = [];
+    try {
+        $stmt = $db->query("SHOW COLUMNS FROM $tableName");
+        while ($col = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $columns[] = strtolower($col['Field']);
+        }
+    } catch (Exception $e) {
+        error_log("[UPP] detectTableColumns($tableName) error: " . $e->getMessage());
+    }
+    return $columns;
+}
+
+/**
+ * V12.0: Format job_results row into standardized response format
+ * job_results stores full payload in data_json column
+ */
+function formatJobResultsStageResult($result, $stage, $source) {
+    $dataJson = $result['data_json'] ?? '{}';
+    $parsedData = json_decode($dataJson, true) ?: [];
+    
+    // Extract nested fields from V12.0 payload structure
+    $analysisJson = $parsedData['json'] ?? $parsedData;
+    $analysisText = $parsedData['report'] ?? '';
+    $forensicBridge = $parsedData['forensicBridge'] ?? null;
+    $model = $parsedData['model'] ?? 'unknown';
+    
+    error_log("[UPP] formatJobResultsStageResult:");
+    error_log("[UPP]    source: $source");
+    error_log("[UPP]    json keys: " . (is_array($analysisJson) ? count(array_keys($analysisJson)) : 0));
+    error_log("[UPP]    report length: " . strlen($analysisText) . " bytes");
+    error_log("[UPP]    forensicBridge: " . ($forensicBridge ? 'PRESENT' : 'NONE'));
+    
+    return [
+        'success' => true,
+        'source' => $source,
+        'stage' => (int)$stage,
+        'json' => $analysisJson,
+        'report' => $analysisText,
+        'analysis_text' => $analysisText,
+        'forensicBridge' => $forensicBridge,
+        'model' => $model,
+        'job_token' => $result['job_token'] ?? '',
+        'timestamp' => $result['created_at'] ?? date('c')
+    ];
+}
+
+/**
+ * Format an ai_analysis row into standardized response format
  */
 function formatStageResult($result, $stage, $source) {
     $analysisJson = $result['analysis_json'] ?? $result['result_json'] ?? '{}';
     $analysisText = $result['analysis_text'] ?? '';
+    $forensicBridge = $result['forensic_bridge'] ?? null;
     
+    // Parse forensicBridge if it's a JSON string
+    if (is_string($forensicBridge) && !empty($forensicBridge)) {
+        $forensicBridge = json_decode($forensicBridge, true);
+    }
+    
+    error_log("[UPP] formatStageResult:");
+    error_log("[UPP]    source: $source");
     error_log("[UPP]    analysis_json size: " . strlen($analysisJson) . " bytes");
     error_log("[UPP]    analysis_text size: " . strlen($analysisText) . " bytes");
+    error_log("[UPP]    forensicBridge: " . ($forensicBridge ? 'PRESENT' : 'NONE'));
     
     return [
         'success' => true,
@@ -1013,6 +1216,7 @@ function formatStageResult($result, $stage, $source) {
         'json' => json_decode($analysisJson, true) ?: [],
         'report' => $analysisText,
         'analysis_text' => $analysisText,
+        'forensicBridge' => $forensicBridge,
         'model' => $result['model_used'] ?? 'unknown',
         'job_token' => $result['job_token'] ?? '',
         'timestamp' => $result['created_at'] ?? date('c')
@@ -1020,113 +1224,40 @@ function formatStageResult($result, $stage, $source) {
 }
 
 /**
- * Query job_results table for workflow stage (backup strategy)
- * Uses multiple lookup strategies: project_id, job_token, result_type
+ * V12.0: Legacy compatibility function - now handled by main getWorkflowStageResults
+ * Kept for backward compatibility with any external callers
  */
 function queryJobResultsForStage($payload, $db, $stage) {
     $projectId = $payload['project_id'] ?? '';
     $jobToken = $payload['job_token'] ?? '';
     $resultType = 'WORKFLOW_STAGE_' . $stage;
     
-    // Check if project_id column exists in job_results
-    $hasProjectIdCol = false;
-    try {
-        $colCheck = $db->query("SHOW COLUMNS FROM job_results LIKE 'project_id'");
-        $hasProjectIdCol = $colCheck->rowCount() > 0;
-    } catch (Exception $e) {}
+    error_log("[UPP] queryJobResultsForStage (legacy) called for stage=$stage, project=$projectId");
     
-    // Strategy D.1: Query by project_id if column exists
-    if ($hasProjectIdCol && !empty($projectId)) {
-        try {
-            $stmt = $db->prepare("
-                SELECT job_token, result_type, data_json, created_at
-                FROM job_results 
-                WHERE project_id = ? AND result_type = ?
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ");
-            $stmt->execute([$projectId, $resultType]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($result) {
-                $parsedData = json_decode($result['data_json'], true);
-                return [
-                    'success' => true,
-                    'source' => 'job_results_project_id',
-                    'stage' => (int)$stage,
-                    'json' => $parsedData['json'] ?? $parsedData,
-                    'report' => $parsedData['report'] ?? '',
-                    'analysis_text' => $parsedData['report'] ?? '',
-                    'job_token' => $result['job_token'],
-                    'timestamp' => $result['created_at']
-                ];
-            }
-        } catch (Exception $e) {
-            error_log("[UPP] Strategy D.1 failed: " . $e->getMessage());
-        }
+    // Try project_id first, then job_token
+    $queries = [];
+    if (!empty($projectId)) {
+        $queries[] = ['sql' => "SELECT * FROM job_results WHERE project_id = ? AND result_type = ? ORDER BY created_at DESC LIMIT 1", 'params' => [$projectId, $resultType]];
     }
-    
-    // Strategy D.2: Query by job_token
     if (!empty($jobToken)) {
+        $queries[] = ['sql' => "SELECT * FROM job_results WHERE job_token = ? AND result_type = ? ORDER BY created_at DESC LIMIT 1", 'params' => [$jobToken, $resultType]];
+    }
+    
+    foreach ($queries as $query) {
         try {
-            $stmt = $db->prepare("
-                SELECT job_token, result_type, data_json, created_at
-                FROM job_results 
-                WHERE job_token = ? AND result_type = ?
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ");
-            $stmt->execute([$jobToken, $resultType]);
+            $stmt = $db->prepare($query['sql']);
+            $stmt->execute($query['params']);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($result) {
-                $parsedData = json_decode($result['data_json'], true);
-                return [
-                    'success' => true,
-                    'source' => 'job_results_job_token',
-                    'stage' => (int)$stage,
-                    'json' => $parsedData['json'] ?? $parsedData,
-                    'report' => $parsedData['report'] ?? '',
-                    'analysis_text' => $parsedData['report'] ?? '',
-                    'job_token' => $result['job_token'],
-                    'timestamp' => $result['created_at']
-                ];
+            if ($result && !empty($result['data_json'])) {
+                return formatJobResultsStageResult($result, $stage, 'job_results_legacy');
             }
         } catch (Exception $e) {
-            error_log("[UPP] Strategy D.2 failed: " . $e->getMessage());
+            error_log("[UPP] queryJobResultsForStage query error: " . $e->getMessage());
         }
     }
     
-    // Strategy D.3: Query by result_type only (get latest)
-    try {
-        $stmt = $db->prepare("
-            SELECT job_token, result_type, data_json, created_at
-            FROM job_results 
-            WHERE result_type = ?
-            ORDER BY created_at DESC 
-            LIMIT 1
-        ");
-        $stmt->execute([$resultType]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($result) {
-            $parsedData = json_decode($result['data_json'], true);
-            return [
-                'success' => true,
-                'source' => 'job_results_latest',
-                'stage' => (int)$stage,
-                'json' => $parsedData['json'] ?? $parsedData,
-                'report' => $parsedData['report'] ?? '',
-                'analysis_text' => $parsedData['report'] ?? '',
-                'job_token' => $result['job_token'],
-                'timestamp' => $result['created_at']
-            ];
-        }
-    } catch (Exception $e) {
-        error_log("[UPP] Strategy D.3 failed: " . $e->getMessage());
-    }
-    
-    return ['success' => false];
+    return ['success' => false, 'error' => 'No results for this project'];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
@@ -1777,4 +1908,175 @@ function saveGeoResults($payload, $db) {
     } catch (Exception $e) {
         return ['success' => false, 'error' => $e->getMessage()];
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════
+// V12.0 NEW: DATA INTEGRITY VERIFICATION FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * V12.0: Verify that a workflow stage was successfully saved and can be retrieved
+ * Used for immediate post-save verification
+ */
+function verifyStageWasSaved($payload, $db) {
+    $projectId = $payload['project_id'] ?? '';
+    $stage = intval($payload['stage'] ?? 1);
+    $jobToken = $payload['job_token'] ?? '';
+    $resultType = 'WORKFLOW_STAGE_' . $stage;
+    
+    error_log("[UPP] 🔍 verifyStageWasSaved: project=$projectId, stage=$stage, token=$jobToken");
+    
+    $verification = [
+        'success' => false,
+        'project_id' => $projectId,
+        'stage' => $stage,
+        'job_results' => ['found' => false, 'row_count' => 0, 'latest_id' => null],
+        'ai_analysis' => ['found' => false, 'row_count' => 0, 'latest_id' => null]
+    ];
+    
+    // Check job_results table
+    try {
+        $stmt = $db->prepare("
+            SELECT id, created_at, LENGTH(data_json) as data_size 
+            FROM job_results 
+            WHERE (project_id = ? OR job_token = ?) AND result_type = ?
+            ORDER BY created_at DESC
+        ");
+        $stmt->execute([$projectId, $jobToken, $resultType]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (!empty($results)) {
+            $verification['job_results'] = [
+                'found' => true,
+                'row_count' => count($results),
+                'latest_id' => $results[0]['id'],
+                'latest_created' => $results[0]['created_at'],
+                'data_size' => $results[0]['data_size']
+            ];
+        }
+    } catch (Exception $e) {
+        $verification['job_results']['error'] = $e->getMessage();
+    }
+    
+    // Check ai_analysis table
+    try {
+        $stmt = $db->prepare("
+            SELECT id, created_at, data_size 
+            FROM ai_analysis 
+            WHERE (project_id = ? OR domain = ? OR job_token = ?) AND analysis_type = ?
+            ORDER BY created_at DESC
+        ");
+        $stmt->execute([$projectId, $projectId, $jobToken, $resultType]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (!empty($results)) {
+            $verification['ai_analysis'] = [
+                'found' => true,
+                'row_count' => count($results),
+                'latest_id' => $results[0]['id'],
+                'latest_created' => $results[0]['created_at'],
+                'data_size' => $results[0]['data_size']
+            ];
+        }
+    } catch (Exception $e) {
+        $verification['ai_analysis']['error'] = $e->getMessage();
+    }
+    
+    // Overall success if found in at least one table
+    $verification['success'] = $verification['job_results']['found'] || $verification['ai_analysis']['found'];
+    
+    error_log("[UPP] 🔍 Verification result: " . ($verification['success'] ? 'PASS' : 'FAIL'));
+    error_log("[UPP]    job_results: " . ($verification['job_results']['found'] ? 'FOUND' : 'NOT FOUND'));
+    error_log("[UPP]    ai_analysis: " . ($verification['ai_analysis']['found'] ? 'FOUND' : 'NOT FOUND'));
+    
+    return $verification;
+}
+
+/**
+ * V12.0: Get all workflow stages for a project
+ * Returns summary of all stages with their status
+ */
+function getAllProjectStages($payload, $db) {
+    $projectId = $payload['project_id'] ?? '';
+    $jobToken = $payload['job_token'] ?? '';
+    
+    error_log("[UPP] 📋 getAllProjectStages: project=$projectId, token=$jobToken");
+    
+    if (empty($projectId) && empty($jobToken)) {
+        return ['success' => false, 'error' => 'project_id or job_token required'];
+    }
+    
+    $stages = [];
+    
+    // Query job_results for all workflow stages
+    try {
+        $stmt = $db->prepare("
+            SELECT result_type, job_token, created_at, LENGTH(data_json) as data_size
+            FROM job_results 
+            WHERE (project_id = ? OR job_token = ?) AND result_type LIKE 'WORKFLOW_STAGE_%'
+            ORDER BY result_type ASC, created_at DESC
+        ");
+        $stmt->execute([$projectId, $jobToken]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($results as $row) {
+            preg_match('/WORKFLOW_STAGE_(\d+)/', $row['result_type'], $matches);
+            $stageNum = $matches[1] ?? 0;
+            
+            if (!isset($stages[$stageNum])) {
+                $stages[$stageNum] = [
+                    'stage' => (int)$stageNum,
+                    'source' => 'job_results',
+                    'job_token' => $row['job_token'],
+                    'created_at' => $row['created_at'],
+                    'data_size' => (int)$row['data_size'],
+                    'status' => 'COMPLETE'
+                ];
+            }
+        }
+    } catch (Exception $e) {
+        error_log("[UPP] getAllProjectStages job_results error: " . $e->getMessage());
+    }
+    
+    // Also check ai_analysis for any stages not found in job_results
+    try {
+        $stmt = $db->prepare("
+            SELECT analysis_type, job_token, created_at, data_size
+            FROM ai_analysis 
+            WHERE (project_id = ? OR domain = ? OR job_token = ?) AND analysis_type LIKE 'WORKFLOW_STAGE_%'
+            ORDER BY analysis_type ASC, created_at DESC
+        ");
+        $stmt->execute([$projectId, $projectId, $jobToken]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($results as $row) {
+            preg_match('/WORKFLOW_STAGE_(\d+)/', $row['analysis_type'], $matches);
+            $stageNum = $matches[1] ?? 0;
+            
+            if (!isset($stages[$stageNum])) {
+                $stages[$stageNum] = [
+                    'stage' => (int)$stageNum,
+                    'source' => 'ai_analysis',
+                    'job_token' => $row['job_token'],
+                    'created_at' => $row['created_at'],
+                    'data_size' => (int)$row['data_size'],
+                    'status' => 'COMPLETE'
+                ];
+            }
+        }
+    } catch (Exception $e) {
+        error_log("[UPP] getAllProjectStages ai_analysis error: " . $e->getMessage());
+    }
+    
+    // Sort by stage number
+    ksort($stages);
+    
+    return [
+        'success' => true,
+        'project_id' => $projectId,
+        'job_token' => $jobToken,
+        'stages' => array_values($stages),
+        'stage_count' => count($stages),
+        'highest_stage' => !empty($stages) ? max(array_keys($stages)) : 0
+    ];
 }

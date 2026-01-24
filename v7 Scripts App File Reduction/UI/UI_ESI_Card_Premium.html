@@ -1,0 +1,689 @@
+<!--
+  UI_ESI_Card_Premium.html
+  ELITE STRATEGIC INTELLIGENCE - PREMIUM CARD COMPONENT v12.0
+  
+  Premium SaaS-tier visual component for strategic insights display
+  Includes: Gradient headers, key findings, confidence badges, action items
+  
+  Created: January 23, 2026
+  Version: 12.0 - Phase 5 Visual Overhaul
+-->
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI PREMIUM CARD - STRATEGIC INSIGHT COMPONENT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-card {
+  position: relative;
+  background: var(--elite-glass-bg, rgba(255, 255, 255, 0.95));
+  border: 1px solid var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-lg, 1rem);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--elite-shadow-md);
+}
+
+.esi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--elite-shadow-xl);
+  border-color: var(--elite-primary-light, #6366f1);
+}
+
+/* Card Header with Gradient */
+.esi-card__header {
+  position: relative;
+  padding: 1.25rem 1.5rem;
+  background: var(--elite-gradient-royal, linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.esi-card__header--success {
+  background: var(--elite-gradient-success, linear-gradient(135deg, #10b981 0%, #059669 100%));
+}
+
+.esi-card__header--warning {
+  background: var(--elite-gradient-sunset, linear-gradient(135deg, #f59e0b 0%, #ef4444 100%));
+}
+
+.esi-card__header--info {
+  background: var(--elite-gradient-ocean, linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%));
+}
+
+.esi-card__header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.esi-card__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--elite-radius-md, 0.75rem);
+  font-size: 1.25rem;
+  backdrop-filter: blur(4px);
+}
+
+.esi-card__title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.esi-card__category {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.85;
+  margin-bottom: 2px;
+}
+
+.esi-card__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.esi-card__star {
+  font-size: 1.25rem;
+  color: #fbbf24;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+/* Card Body */
+.esi-card__body {
+  padding: 1.5rem;
+}
+
+/* Key Finding Section */
+.esi-card__finding {
+  margin-bottom: 1.25rem;
+}
+
+.esi-card__finding-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--elite-gray-500, #6b7280);
+  margin-bottom: 0.5rem;
+}
+
+.esi-card__finding-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--elite-gray-800, #1f2937);
+  padding: 1rem;
+  background: var(--elite-gray-50, #f9fafb);
+  border-left: 3px solid var(--elite-primary, #4f46e5);
+  border-radius: 0 var(--elite-radius-sm, 0.5rem) var(--elite-radius-sm, 0.5rem) 0;
+}
+
+.esi-card__finding-text em,
+.esi-card__finding-text strong {
+  color: var(--elite-primary, #4f46e5);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Metric Badges Row */
+.esi-card__metrics {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.esi-metric-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 0.875rem;
+  background: var(--elite-gray-50, #f9fafb);
+  border: 1px solid var(--elite-gray-200, #e5e7eb);
+  border-radius: var(--elite-radius-full, 9999px);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--elite-gray-700, #374151);
+  transition: all 0.2s ease;
+}
+
+.esi-metric-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--elite-shadow-sm);
+}
+
+.esi-metric-badge__icon {
+  font-size: 1rem;
+}
+
+.esi-metric-badge__value {
+  font-weight: 700;
+  color: var(--elite-primary, #4f46e5);
+}
+
+.esi-metric-badge--high .esi-metric-badge__value {
+  color: var(--elite-success, #10b981);
+}
+
+.esi-metric-badge--medium .esi-metric-badge__value {
+  color: var(--elite-warning, #f59e0b);
+}
+
+.esi-metric-badge--low .esi-metric-badge__value {
+  color: var(--elite-danger, #ef4444);
+}
+
+/* Action Items Section */
+.esi-card__actions {
+  border-top: 1px solid var(--elite-gray-200, #e5e7eb);
+  padding-top: 1.25rem;
+}
+
+.esi-card__actions-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--elite-gray-500, #6b7280);
+  margin-bottom: 0.75rem;
+}
+
+.esi-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.625rem;
+}
+
+.esi-action-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.625rem 0.875rem;
+  background: linear-gradient(135deg, var(--elite-primary-light, #6366f1) 0%, var(--elite-secondary, #8b5cf6) 100%);
+  color: #fff;
+  border: none;
+  border-radius: var(--elite-radius-md, 0.75rem);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.esi-action-item:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.esi-action-item__icon {
+  font-size: 1rem;
+}
+
+.esi-action-item--secondary {
+  background: var(--elite-gray-100, #f3f4f6);
+  color: var(--elite-gray-700, #374151);
+}
+
+.esi-action-item--secondary:hover {
+  background: var(--elite-gray-200, #e5e7eb);
+  box-shadow: var(--elite-shadow-md);
+}
+
+/* Card Footer */
+.esi-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.5rem;
+  background: var(--elite-gray-50, #f9fafb);
+  border-top: 1px solid var(--elite-gray-200, #e5e7eb);
+  font-size: 0.75rem;
+  color: var(--elite-gray-500, #6b7280);
+}
+
+.esi-card__source {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.esi-card__timestamp {
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI CARD VARIANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Compact Variant */
+.esi-card--compact .esi-card__header {
+  padding: 1rem 1.25rem;
+}
+
+.esi-card--compact .esi-card__body {
+  padding: 1rem 1.25rem;
+}
+
+.esi-card--compact .esi-card__title {
+  font-size: 1rem;
+}
+
+/* Featured Variant */
+.esi-card--featured {
+  border: 2px solid var(--elite-primary, #4f46e5);
+  box-shadow: var(--elite-shadow-lg), 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.esi-card--featured::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--elite-gradient-royal);
+}
+
+/* Glass Variant for Dark Themes */
+.esi-card--glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.esi-card--glass .esi-card__body,
+.esi-card--glass .esi-card__finding-text {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.esi-card--glass .esi-card__footer {
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI CARD ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes esi-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes esi-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes esi-pulse-glow {
+  0%, 100% {
+    box-shadow: var(--elite-shadow-lg);
+  }
+  50% {
+    box-shadow: var(--elite-shadow-lg), 0 0 20px rgba(99, 102, 241, 0.2);
+  }
+}
+
+.esi-card--animate {
+  animation: esi-fade-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-card--animate-scale {
+  animation: esi-scale-in 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.esi-card--pulse {
+  animation: esi-pulse-glow 3s ease-in-out infinite;
+}
+
+/* Stagger Animation for Multiple Cards */
+.esi-card-grid .esi-card:nth-child(1) { animation-delay: 0ms; }
+.esi-card-grid .esi-card:nth-child(2) { animation-delay: 100ms; }
+.esi-card-grid .esi-card:nth-child(3) { animation-delay: 200ms; }
+.esi-card-grid .esi-card:nth-child(4) { animation-delay: 300ms; }
+.esi-card-grid .esi-card:nth-child(5) { animation-delay: 400ms; }
+.esi-card-grid .esi-card:nth-child(6) { animation-delay: 500ms; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ESI CARD GRID LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.esi-card-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.esi-card-grid--2-col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.esi-card-grid--3-col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 768px) {
+  .esi-card-grid,
+  .esi-card-grid--2-col,
+  .esi-card-grid--3-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK THEME SUPPORT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] .esi-card,
+[data-theme="neon"] .esi-card {
+  background: var(--elite-gray-800, #1f2937);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-card__finding-text,
+[data-theme="neon"] .esi-card__finding-text {
+  background: var(--elite-gray-900, #111827);
+  color: var(--elite-gray-200, #e5e7eb);
+}
+
+[data-theme="dark"] .esi-card__footer,
+[data-theme="neon"] .esi-card__footer {
+  background: var(--elite-gray-900, #111827);
+  border-color: var(--elite-gray-700, #374151);
+}
+
+[data-theme="dark"] .esi-metric-badge,
+[data-theme="neon"] .esi-metric-badge {
+  background: var(--elite-gray-900, #111827);
+  border-color: var(--elite-gray-600, #4b5563);
+  color: var(--elite-gray-300, #d1d5db);
+}
+
+[data-theme="dark"] .esi-action-item--secondary,
+[data-theme="neon"] .esi-action-item--secondary {
+  background: var(--elite-gray-700, #374151);
+  color: var(--elite-gray-200, #e5e7eb);
+}
+
+/* Neon Theme Glow Effects */
+[data-theme="neon"] .esi-card:hover {
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+}
+
+[data-theme="neon"] .esi-card__header {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+</style>
+
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESI PREMIUM CARD - COMPONENT GENERATOR v12.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Create an ESI Premium Card
+ * @param {Object} config - Card configuration
+ * @param {string} config.icon - Emoji or icon for the card
+ * @param {string} config.category - Category label (e.g., "STRATEGIC INSIGHT")
+ * @param {string} config.title - Card title
+ * @param {string} config.finding - Main finding/insight text
+ * @param {Array} config.metrics - Array of metric objects {icon, label, value, level}
+ * @param {Array} config.actions - Array of action objects {icon, label, onClick}
+ * @param {string} config.source - Data source attribution
+ * @param {string} config.timestamp - When the insight was generated
+ * @param {string} config.variant - Card variant: 'default', 'success', 'warning', 'info', 'featured', 'compact', 'glass'
+ * @param {boolean} config.animate - Whether to animate the card on render
+ * @param {boolean} config.starred - Show star icon
+ * @returns {HTMLElement} The card element
+ */
+function createESICard(config = {}) {
+  const {
+    icon = '🎯',
+    category = 'STRATEGIC INSIGHT',
+    title = 'Insight Title',
+    finding = '',
+    metrics = [],
+    actions = [],
+    source = '',
+    timestamp = '',
+    variant = 'default',
+    animate = true,
+    starred = false
+  } = config;
+
+  // Determine header class based on variant
+  const headerVariants = {
+    success: 'esi-card__header--success',
+    warning: 'esi-card__header--warning',
+    info: 'esi-card__header--info'
+  };
+
+  const cardClasses = ['esi-card'];
+  if (variant === 'featured') cardClasses.push('esi-card--featured');
+  if (variant === 'compact') cardClasses.push('esi-card--compact');
+  if (variant === 'glass') cardClasses.push('esi-card--glass');
+  if (animate) cardClasses.push('esi-card--animate');
+
+  const card = document.createElement('div');
+  card.className = cardClasses.join(' ');
+
+  // Build metrics HTML
+  const metricsHTML = metrics.length > 0 ? `
+    <div class="esi-card__metrics">
+      ${metrics.map(m => {
+        const levelClass = m.level ? `esi-metric-badge--${m.level}` : '';
+        return `
+          <div class="esi-metric-badge ${levelClass}">
+            <span class="esi-metric-badge__icon">${m.icon || '📊'}</span>
+            <span class="esi-metric-badge__label">${m.label || ''}:</span>
+            <span class="esi-metric-badge__value">${m.value || 'N/A'}</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  ` : '';
+
+  // Build actions HTML
+  const actionsHTML = actions.length > 0 ? `
+    <div class="esi-card__actions">
+      <div class="esi-card__actions-title">
+        <span>⚡</span> Recommended Actions
+      </div>
+      <div class="esi-action-grid">
+        ${actions.map((a, i) => {
+          const secondaryClass = i > 2 ? 'esi-action-item--secondary' : '';
+          return `
+            <button class="esi-action-item ${secondaryClass}" data-action="${a.id || i}">
+              <span class="esi-action-item__icon">${a.icon || '→'}</span>
+              <span>${a.label || 'Action'}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  // Build footer HTML
+  const footerHTML = (source || timestamp) ? `
+    <div class="esi-card__footer">
+      ${source ? `<span class="esi-card__source"><span>📌</span> Source: ${source}</span>` : ''}
+      ${timestamp ? `<span class="esi-card__timestamp">${timestamp}</span>` : ''}
+    </div>
+  ` : '';
+
+  card.innerHTML = `
+    <div class="esi-card__header ${headerVariants[variant] || ''}">
+      <div class="esi-card__header-left">
+        <div class="esi-card__icon">${icon}</div>
+        <div class="esi-card__title-group">
+          <span class="esi-card__category">${category}</span>
+          <h3 class="esi-card__title">${title}</h3>
+        </div>
+      </div>
+      ${starred ? '<span class="esi-card__star">⭐</span>' : ''}
+    </div>
+    <div class="esi-card__body">
+      ${finding ? `
+        <div class="esi-card__finding">
+          <div class="esi-card__finding-label">
+            <span>💡</span> Key Finding
+          </div>
+          <div class="esi-card__finding-text">${finding}</div>
+        </div>
+      ` : ''}
+      ${metricsHTML}
+      ${actionsHTML}
+    </div>
+    ${footerHTML}
+  `;
+
+  // Attach event listeners to action buttons
+  card.querySelectorAll('.esi-action-item').forEach((btn, idx) => {
+    btn.addEventListener('click', () => {
+      if (actions[idx] && typeof actions[idx].onClick === 'function') {
+        actions[idx].onClick();
+      }
+      console.log(`📊 ESI Card Action: ${actions[idx]?.label || idx}`);
+    });
+  });
+
+  return card;
+}
+
+/**
+ * Create an ESI Card Grid
+ * @param {Array} cards - Array of card configs
+ * @param {string} columns - '2-col' or '3-col'
+ * @returns {HTMLElement} Grid container
+ */
+function createESICardGrid(cards = [], columns = 'auto') {
+  const grid = document.createElement('div');
+  grid.className = `esi-card-grid ${columns === '2-col' ? 'esi-card-grid--2-col' : columns === '3-col' ? 'esi-card-grid--3-col' : ''}`;
+  
+  cards.forEach((cardConfig, index) => {
+    const card = createESICard({ ...cardConfig, animate: true });
+    card.style.animationDelay = `${index * 100}ms`;
+    grid.appendChild(card);
+  });
+
+  return grid;
+}
+
+/**
+ * Render ESI Cards into a container from data
+ * @param {string} containerId - Container element ID
+ * @param {Array} insightsData - Array of insight data objects
+ */
+function renderESICards(containerId, insightsData = []) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.warn(`📊 ESI Cards: Container #${containerId} not found`);
+    return;
+  }
+
+  console.log(`📊 ESI Cards V12.0: Rendering ${insightsData.length} cards`);
+
+  // Clear existing content
+  container.innerHTML = '';
+
+  // Map data to card configs
+  const cardConfigs = insightsData.map(insight => ({
+    icon: insight.icon || getInsightIcon(insight.type),
+    category: insight.type?.toUpperCase() || 'INSIGHT',
+    title: insight.title || 'Strategic Insight',
+    finding: insight.description || insight.finding || insight.text || '',
+    metrics: insight.metrics || [
+      { icon: '📊', label: 'Confidence', value: insight.confidence || '—', level: getConfidenceLevel(insight.confidence) },
+      { icon: '📈', label: 'Impact', value: insight.impact || '—', level: getImpactLevel(insight.impact) }
+    ],
+    actions: insight.actions || [],
+    source: insight.source || 'Gemini Analysis',
+    timestamp: insight.timestamp || new Date().toLocaleDateString(),
+    variant: insight.variant || getVariantFromType(insight.type),
+    starred: insight.starred || insight.priority === 'high'
+  }));
+
+  const grid = createESICardGrid(cardConfigs);
+  container.appendChild(grid);
+}
+
+// Helper functions
+function getInsightIcon(type) {
+  const icons = {
+    'strategic': '🎯',
+    'competitive': '⚔️',
+    'opportunity': '💎',
+    'warning': '⚠️',
+    'success': '✅',
+    'content': '📝',
+    'technical': '⚙️',
+    'audience': '👥',
+    'market': '📊'
+  };
+  return icons[type?.toLowerCase()] || '🎯';
+}
+
+function getVariantFromType(type) {
+  const variants = {
+    'success': 'success',
+    'warning': 'warning',
+    'opportunity': 'info',
+    'critical': 'warning'
+  };
+  return variants[type?.toLowerCase()] || 'default';
+}
+
+function getConfidenceLevel(value) {
+  if (!value) return null;
+  const num = parseInt(value);
+  if (num >= 80) return 'high';
+  if (num >= 50) return 'medium';
+  return 'low';
+}
+
+function getImpactLevel(value) {
+  if (!value) return null;
+  const str = String(value).toLowerCase();
+  if (str.includes('high') || str.includes('critical')) return 'high';
+  if (str.includes('medium') || str.includes('moderate')) return 'medium';
+  return 'low';
+}
+
+// Export to global scope
+window.createESICard = createESICard;
+window.createESICardGrid = createESICardGrid;
+window.renderESICards = renderESICards;
+
+console.log('📊 ESI Premium Card Component V12.0 loaded');
+</script>

@@ -1003,21 +1003,58 @@
 
   /**
    * TASK 31: Main entry point for pillar mind map
+   * V12.0: Enhanced with container creation fallback and diagnostic logging
    */
   window.createInteractivePillarMindMap = function(containerId, data) {
-    console.log('🗺️ Creating Interactive Pillar Mind Map...');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🗺️ V12.0 Creating Interactive Pillar Mind Map...');
+    console.log(`   Container ID: ${containerId}`);
+    console.log(`   Data provided: ${!!data}`);
+    console.log('───────────────────────────────────────────────────────');
     
-    const container = document.getElementById(containerId);
+    let container = document.getElementById(containerId);
+    
+    // V12.0 FIX: If container not found, try to find section-6 chart wrapper and create container
     if (!container) {
-      console.error(`❌ Container #${containerId} not found`);
-      return;
+      console.log(`   ⚠️ Container #${containerId} not found - searching for Section 6 wrapper...`);
+      
+      // Try to find Section 6 chart canvas wrapper
+      const section6Canvas = document.querySelector('[data-chart-section="6"]') ||
+                             document.querySelector('#section-6-chart-canvas') ||
+                             document.querySelector('.section-6 .chart-wrapper') ||
+                             document.querySelector('.section-6 .chart-canvas');
+      
+      if (section6Canvas) {
+        console.log('   ✅ Found Section 6 wrapper, creating container dynamically');
+        const newContainer = document.createElement('div');
+        newContainer.id = containerId;
+        newContainer.className = 'pillar-mindmap-container d3-chart-container';
+        newContainer.style.cssText = 'width:100%;height:500px;min-height:400px;';
+        section6Canvas.appendChild(newContainer);
+        container = newContainer;
+      } else {
+        console.error(`   ❌ Container #${containerId} not found and no Section 6 wrapper available`);
+        console.log('   Available D3 containers:', [...document.querySelectorAll('.d3-chart-container, .pillar-mindmap-container')].map(el => el.id || el.className).join(', '));
+        return;
+      }
+    }
+    
+    // Ensure container has dimensions
+    if (container.clientWidth === 0 || container.clientHeight === 0) {
+      console.log('   ⚠️ Container has no dimensions, setting defaults...');
+      container.style.width = container.style.width || '100%';
+      container.style.height = container.style.height || '500px';
+      container.style.minHeight = '400px';
     }
     
     if (typeof d3 === 'undefined') {
-      console.error('❌ D3.js not loaded');
+      console.error('   ❌ D3.js not loaded - showing fallback');
       showPillarMindMapFallback(container);
       return;
     }
+    
+    console.log(`   Container dimensions: ${container.clientWidth}x${container.clientHeight}`);
+    console.log('═══════════════════════════════════════════════════════');
     
     initPillarMindMap(container, data);
   };
@@ -1064,9 +1101,31 @@
   }
 
   function extractPillarsData(data) {
+    // V9.4 FIX: Check more possible data paths for pillar data
     if (Array.isArray(data)) return data;
-    if (data?.contentPillarMindMap?.pillars) return data.contentPillarMindMap.pillars;
-    if (data?.dashboardCharts?.contentPillarMindMap?.pillars) return data.dashboardCharts.contentPillarMindMap.pillars;
+    
+    // Direct pillars property (from normalizePillarData)
+    if (data?.pillars?.length) return data.pillars;
+    
+    // contentPillarMindMap format
+    if (data?.contentPillarMindMap?.pillars?.length) return data.contentPillarMindMap.pillars;
+    if (data?.dashboardCharts?.contentPillarMindMap?.pillars?.length) return data.dashboardCharts.contentPillarMindMap.pillars;
+    
+    // contentPillars array directly
+    if (data?.contentPillars?.length) return data.contentPillars;
+    if (data?.dashboardCharts?.contentPillars?.length) return data.dashboardCharts.contentPillars;
+    
+    // strategicContentPillarsChart
+    if (data?.dashboardCharts?.strategicContentPillarsChart?.length) {
+      return data.dashboardCharts.strategicContentPillarsChart.map((item, idx) => ({
+        name: item.label || item.name || `Pillar ${idx + 1}`,
+        clusters: [],
+        moatScore: item.value || 7,
+        competitiveGap: 6
+      }));
+    }
+    
+    // Last resort: parse from report text
     if (data?.report || data?.analysis_text) {
       return window.parsePillarStructureFromContent?.(data.report || data.analysis_text) || [];
     }

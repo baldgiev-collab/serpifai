@@ -331,19 +331,54 @@ const FORCE_CONFIG = {
 
 /**
  * Initialize Semantic Galaxy Visualization
+ * V12.0: Enhanced with container creation fallback and diagnostic logging
  * @param {string} containerId - Container element ID
  * @param {Object} data - Semantic data with entities and relationships
  */
 window.initSemanticGalaxy = function(containerId, data) {
-  console.log('🌌 Initializing Semantic Galaxy...');
-  console.log('   Entities:', data.entities?.length || 0);
-  console.log('   Relationships:', data.relationships?.length || 0);
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('🌌 V12.0 Initializing Semantic Galaxy...');
+  console.log(`   Container ID: ${containerId}`);
+  console.log('   Entities:', data?.entities?.length || 0);
+  console.log('   Relationships:', data?.relationships?.length || 0);
+  console.log('───────────────────────────────────────────────────────');
   
-  const container = document.getElementById(containerId);
+  let container = document.getElementById(containerId);
+  
+  // V12.0 FIX: If container not found, try to find Section 12 wrapper and create container
   if (!container) {
-    console.error('❌ Galaxy container not found:', containerId);
-    return;
+    console.log(`   ⚠️ Container #${containerId} not found - searching for Section 12 wrapper...`);
+    
+    const section12Canvas = document.querySelector('[data-chart-section="12"]') ||
+                            document.querySelector('#section-12-chart-canvas') ||
+                            document.querySelector('.section-12 .chart-wrapper') ||
+                            document.querySelector('.section-12 .chart-canvas');
+    
+    if (section12Canvas) {
+      console.log('   ✅ Found Section 12 wrapper, creating container dynamically');
+      const newContainer = document.createElement('div');
+      newContainer.id = containerId;
+      newContainer.className = 'semantic-galaxy-container d3-chart-container';
+      newContainer.style.cssText = 'width:100%;height:500px;min-height:400px;';
+      section12Canvas.appendChild(newContainer);
+      container = newContainer;
+    } else {
+      console.error(`   ❌ Galaxy container #${containerId} not found and no Section 12 wrapper available`);
+      console.log('   Available D3 containers:', [...document.querySelectorAll('.d3-chart-container, .semantic-galaxy-container')].map(el => el.id || el.className).join(', '));
+      return;
+    }
   }
+  
+  // Ensure container has dimensions
+  if (container.clientWidth === 0 || container.clientHeight === 0) {
+    console.log('   ⚠️ Container has no dimensions, setting defaults...');
+    container.style.width = container.style.width || '100%';
+    container.style.height = container.style.height || '500px';
+    container.style.minHeight = '400px';
+  }
+  
+  console.log(`   Container dimensions: ${container.clientWidth}x${container.clientHeight}`);
+  console.log('═══════════════════════════════════════════════════════');
   
   // Clear existing content
   container.innerHTML = '';
