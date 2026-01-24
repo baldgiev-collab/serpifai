@@ -2526,14 +2526,23 @@
   }
 
   /**
-   * Get KD Tier label and color
+   * Get KD Tier label and color - V75: Theme-aware
    */
   function getKDTier(kd) {
-    if (kd <= 20) return { label: 'Very Easy', color: '#22c55e', icon: '🟢' };
-    if (kd <= 40) return { label: 'Easy', color: '#84cc16', icon: '🟡' };
-    if (kd <= 60) return { label: 'Medium', color: '#f59e0b', icon: '🟠' };
-    if (kd <= 80) return { label: 'Hard', color: '#ef4444', icon: '🔴' };
-    return { label: 'Very Hard', color: '#7c3aed', icon: '💀' };
+    // V75: Get CSS variables with fallbacks for theme consistency
+    const cs = typeof getComputedStyle !== 'undefined' && document?.documentElement 
+      ? getComputedStyle(document.documentElement) : null;
+    const success = cs?.getPropertyValue('--accent-success').trim() || '#22c55e';
+    const lime = '#84cc16'; // Keep as gradient step
+    const warning = cs?.getPropertyValue('--accent-warning').trim() || '#f59e0b';
+    const danger = cs?.getPropertyValue('--accent-danger').trim() || '#ef4444';
+    const purple = '#7c3aed'; // Keep as special "very hard" indicator
+    
+    if (kd <= 20) return { label: 'Very Easy', color: success, icon: '🟢' };
+    if (kd <= 40) return { label: 'Easy', color: lime, icon: '🟡' };
+    if (kd <= 60) return { label: 'Medium', color: warning, icon: '🟠' };
+    if (kd <= 80) return { label: 'Hard', color: danger, icon: '🔴' };
+    return { label: 'Very Hard', color: purple, icon: '💀' };
   }
 
   /**

@@ -62,7 +62,12 @@
     const hasPerformance = (performance || 0) > 0;
     const confidenceLevel = (hasPageRank ? 35 : 0) + (hasSEO ? 35 : 0) + (hasPerformance ? 30 : 15);
     const confidenceLabel = confidenceLevel >= 80 ? 'High' : confidenceLevel >= 50 ? 'Medium' : 'Low';
-    const factCheckColor = confidenceLevel >= 95 ? '#22c55e' : confidenceLevel >= 80 ? '#f59e0b' : '#ef4444';
+    // V75: Use CSS variables for theme-aware colors with fallbacks
+    const cs = typeof getComputedStyle !== 'undefined' ? getComputedStyle(document.documentElement) : null;
+    const successColor = cs?.getPropertyValue('--accent-success').trim() || '#22c55e';
+    const warningColor = cs?.getPropertyValue('--accent-warning').trim() || '#f59e0b';
+    const dangerColor = cs?.getPropertyValue('--accent-danger').trim() || '#ef4444';
+    const factCheckColor = confidenceLevel >= 95 ? successColor : confidenceLevel >= 80 ? warningColor : dangerColor;
     const factCheckLabel = confidenceLevel >= 95 ? 'Green (Technical)' : confidenceLevel >= 80 ? 'Amber (Forensic)' : 'Red (Predictive)';
 
     return {

@@ -4192,7 +4192,13 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
             ${competitorData.map(c => {
               const left = c.usability * 0.95 + 2.5;
               const bottom = c.authority * 0.95 + 2.5;
-              const colorMap = { you: '#8B5CF6', incumbent: '#EF4444', challenger: '#F59E0B', niche: '#10B981' };
+              const cs = getComputedStyle(document.documentElement);
+              const colorMap = { 
+                you: cs.getPropertyValue('--accent-primary').trim() || '#8B5CF6', 
+                incumbent: cs.getPropertyValue('--accent-danger').trim() || '#EF4444', 
+                challenger: cs.getPropertyValue('--accent-warning').trim() || '#F59E0B', 
+                niche: cs.getPropertyValue('--accent-success').trim() || '#10B981' 
+              };
               return `
                 <div class="mgh-competitor-dot ${c.type}" 
                      style="left: ${left}%; bottom: ${bottom}%; background: ${colorMap[c.type]};"
@@ -4313,10 +4319,15 @@ JSON keys: ${jsonData ? Object.keys(jsonData).join(', ') : 'none'}
     console.log('✅ Moat Readiness Scorecard rendered');
     
     function getProgressColor(value) {
-      if (value >= 80) return 'linear-gradient(90deg, #10B981, #34D399)';
-      if (value >= 60) return 'linear-gradient(90deg, #3B82F6, #60A5FA)';
-      if (value >= 40) return 'linear-gradient(90deg, #F59E0B, #FBBF24)';
-      return 'linear-gradient(90deg, #EF4444, #F87171)';
+      const cs = getComputedStyle(document.documentElement);
+      const success = cs.getPropertyValue('--accent-success').trim() || '#10B981';
+      const primary = cs.getPropertyValue('--accent-primary').trim() || '#3B82F6';
+      const warning = cs.getPropertyValue('--accent-warning').trim() || '#F59E0B';
+      const danger = cs.getPropertyValue('--accent-danger').trim() || '#EF4444';
+      if (value >= 80) return `linear-gradient(90deg, ${success}, ${success}dd)`;
+      if (value >= 60) return `linear-gradient(90deg, ${primary}, ${primary}dd)`;
+      if (value >= 40) return `linear-gradient(90deg, ${warning}, ${warning}dd)`;
+      return `linear-gradient(90deg, ${danger}, ${danger}dd)`;
     }
   };
   

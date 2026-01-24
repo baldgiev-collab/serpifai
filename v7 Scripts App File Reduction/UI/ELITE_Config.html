@@ -81,12 +81,19 @@ const ELITE_PRIORITY_COLORS = {
   low: { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' }
 };
 
-// Score color thresholds
+// V75: Score color thresholds - now uses CSS variables with fallbacks
 function getScoreColor(score) {
-  if (score >= 80) return '#10b981'; // Emerald
-  if (score >= 60) return '#3b82f6'; // Blue
-  if (score >= 40) return '#f59e0b'; // Amber
-  return '#ef4444'; // Red
+  const cs = typeof getComputedStyle !== 'undefined' && document?.documentElement 
+    ? getComputedStyle(document.documentElement) : null;
+  const success = cs?.getPropertyValue('--accent-success').trim() || '#10b981';
+  const primary = cs?.getPropertyValue('--accent-primary').trim() || '#3b82f6';
+  const warning = cs?.getPropertyValue('--accent-warning').trim() || '#f59e0b';
+  const danger = cs?.getPropertyValue('--accent-danger').trim() || '#ef4444';
+  
+  if (score >= 80) return success; // Emerald
+  if (score >= 60) return primary; // Blue
+  if (score >= 40) return warning; // Amber
+  return danger; // Red
 }
 
 function getScoreClass(score) {
@@ -106,10 +113,17 @@ function getMetricValueClass(value) {
   return 'metric-neutral';
 }
 
-// Chart color palette
+// V75: Chart color palette - theme-aware with fallbacks
 function getColorByIndex(index) {
+  const cs = typeof getComputedStyle !== 'undefined' && document?.documentElement 
+    ? getComputedStyle(document.documentElement) : null;
+  const primary = cs?.getPropertyValue('--accent-primary').trim() || '#1a73e8';
+  const success = cs?.getPropertyValue('--accent-success').trim() || '#34a853';
+  const warning = cs?.getPropertyValue('--accent-warning').trim() || '#fbbc04';
+  const danger = cs?.getPropertyValue('--accent-danger').trim() || '#ea4335';
+  
   const colors = [
-    '#1a73e8', '#34a853', '#fbbc04', '#ea4335', '#8e24aa',
+    primary, success, warning, danger, '#8e24aa',
     '#00acc1', '#ff6f00', '#c2185b', '#7cb342', '#5e35b1'
   ];
   return colors[index % colors.length];
